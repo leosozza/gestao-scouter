@@ -10,13 +10,15 @@ import * as XLSX from 'xlsx';
 
 interface UploadPanelProps {
   onDataLoad: (data: { fichas: any[], projetos: any[] }) => void;
-  onSourceChange: (source: 'sheets' | 'upload') => void;
-  currentSource: 'sheets' | 'upload';
+  onSourceChange: (source: 'sheets' | 'upload' | 'custom-sheets') => void;
+  currentSource: 'sheets' | 'upload' | 'custom-sheets';
 }
 
 export const UploadPanel = ({ onDataLoad, onSourceChange, currentSource }: UploadPanelProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<{ fichas?: File, projetos?: File }>({});
+  const [customSheetUrl, setCustomSheetUrl] = useState('');
+  const [customGids, setCustomGids] = useState({ fichas: '452792639', projetos: '449483735' });
   const { toast } = useToast();
   const fichasInputRef = useRef<HTMLInputElement>(null);
   const projetosInputRef = useRef<HTMLInputElement>(null);
@@ -165,6 +167,144 @@ export const UploadPanel = ({ onDataLoad, onSourceChange, currentSource }: Uploa
     }
   };
 
+  const extractSpreadsheetId = (url: string): string | null => {
+    const regex = /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+  };
+
+  const processCustomSheets = async () => {
+    if (!customSheetUrl.trim()) {
+      toast({
+        title: "URL obrigatória",
+        description: "Por favor, cole o link da planilha do Google Sheets",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const spreadsheetId = extractSpreadsheetId(customSheetUrl);
+    if (!spreadsheetId) {
+      toast({
+        title: "URL inválida",
+        description: "Por favor, cole um link válido do Google Sheets",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    
+    try {
+      const [fichasData, projetosData] = await Promise.all([
+        fetchCustomSheetData(spreadsheetId, customGids.fichas),
+        fetchCustomSheetData(spreadsheetId, customGids.projetos)
+      ]);
+
+      const processedFichas = fichasData.map(row => ({
+        ID: parseInt(row.ID) || 0,
+        Projetos_Comerciais: row['Projetos_Cormeciais'] || row['Projetos_Comerciais'] || row['Projetos Comerciais'] || '',
+        Gestao_de_Scouter: row['Gestao_de_Scouter'] || row['Gestão de Scouter'] || '',
+        Criado: row.Criado || '',
+        Data_de_Criacao_da_Ficha: row['Data_de_Criacao_da_Ficha'] || row['Data de Criação da Ficha'] || '',
+        MaxScouterApp_Verificacao: row['MaxScouterApp_Verificacao'] || '',
+        Valor_por_Fichas: row['Valor_por_Fichas'] || row['Valor por Fichas'] || 'R$ 0,00'
+      })).filter(row => row.ID > 0 && row.Gestao_de_Scouter);
+
+      const processedProjetos = projetosData.map(row => ({
+        Agencia_e_Seletiva: row['Agencia_e_Seletiva'] || row['agencia e seletiva'] || '',
+        Meta_de_Fichas: parseInt(row['Meta_de_Fichas']) || parseInt(row['meta de fichas']) || 0,
+        Inicio_Captacao_Fichas: row['Inicio_Captacao_Fichas'] || row['Inicio Captação fichas'] || '',
+        Termino_Captacao_Fichas: row['Termino_Captacao_Fichas'] || row['Termino Captação fichas'] || ''
+      })).filter(row => row.Agencia_e_Seletiva && row.Meta_de_Fichas > 0);
+
+      if (processedFichas.length === 0 && processedProjetos.length === 0) {
+        throw new Error('Nenhum dado válido encontrado na planilha');
+      }
+
+      toast({
+        title: "Dados carregados com sucesso",
+        description: `${processedFichas.length} fichas e ${processedProjetos.length} projetos da planilha personalizada`
+      });
+
+      onDataLoad({ fichas: processedFichas, projetos: processedProjetos });
+      onSourceChange('custom-sheets');
+
+    } catch (error) {
+      console.error('Erro ao carregar planilha:', error);
+      toast({
+        title: "Erro ao carregar planilha",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const fetchCustomSheetData = async (spreadsheetId: string, gid: string): Promise<any[]> => {
+    const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
+    
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const csvText = await response.text();
+      return csvToJson(csvText);
+    } catch (error) {
+      console.error(`Erro ao buscar dados da planilha (GID: ${gid}):`, error);
+      throw error;
+    }
+  };
+
+  const csvToJson = (csvText: string): any[] => {
+    const lines = csvText.split('\n');
+    if (lines.length < 2) return [];
+
+    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+    const data: any[] = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      const values = parseCSVLine(line);
+      if (values.length === headers.length) {
+        const row: any = {};
+        headers.forEach((header, index) => {
+          row[header] = values[index]?.trim().replace(/"/g, '') || '';
+        });
+        data.push(row);
+      }
+    }
+
+    return data;
+  };
+
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        result.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    
+    result.push(current);
+    return result;
+  };
+
   const clearFiles = () => {
     setUploadedFiles({});
     if (fichasInputRef.current) fichasInputRef.current.value = '';
@@ -173,6 +313,16 @@ export const UploadPanel = ({ onDataLoad, onSourceChange, currentSource }: Uploa
     toast({
       title: "Arquivos removidos",
       description: "Selecione novos arquivos para upload"
+    });
+  };
+
+  const clearCustomSheets = () => {
+    setCustomSheetUrl('');
+    setCustomGids({ fichas: '452792639', projetos: '449483735' });
+    
+    toast({
+      title: "Link removido",
+      description: "Cole um novo link para carregar dados"
     });
   };
 
@@ -185,8 +335,8 @@ export const UploadPanel = ({ onDataLoad, onSourceChange, currentSource }: Uploa
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <Tabs value={currentSource} onValueChange={(value) => onSourceChange(value as 'sheets' | 'upload')}>
-          <TabsList className="grid w-full grid-cols-2">
+        <Tabs value={currentSource} onValueChange={(value) => onSourceChange(value as 'sheets' | 'upload' | 'custom-sheets')}>
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="sheets" className="flex items-center gap-2">
               <Database className="h-4 w-4" />
               Google Sheets
@@ -194,6 +344,10 @@ export const UploadPanel = ({ onDataLoad, onSourceChange, currentSource }: Uploa
             <TabsTrigger value="upload" className="flex items-center gap-2">
               <Upload className="h-4 w-4" />
               Upload Planilha
+            </TabsTrigger>
+            <TabsTrigger value="custom-sheets" className="flex items-center gap-2">
+              <FileSpreadsheet className="h-4 w-4" />
+              Link Google Sheets
             </TabsTrigger>
           </TabsList>
           
@@ -262,6 +416,75 @@ export const UploadPanel = ({ onDataLoad, onSourceChange, currentSource }: Uploa
                   <p className="font-medium">Formato esperado:</p>
                   <p className="text-muted-foreground">
                     Colunas necessárias: ID, Projetos_Comerciais, Gestao_de_Scouter, Data_de_Criacao_da_Ficha, Valor_por_Fichas
+                  </p>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="custom-sheets" className="space-y-4">
+            <div className="grid gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="sheet-url">Link da Planilha do Google Sheets</Label>
+                <Input
+                  id="sheet-url"
+                  type="url"
+                  placeholder="https://docs.google.com/spreadsheets/d/..."
+                  value={customSheetUrl}
+                  onChange={(e) => setCustomSheetUrl(e.target.value)}
+                />
+                {customSheetUrl && (
+                  <p className="text-sm text-success">✓ Link inserido</p>
+                )}
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="fichas-gid">GID da Aba Fichas</Label>
+                  <Input
+                    id="fichas-gid"
+                    placeholder="452792639"
+                    value={customGids.fichas}
+                    onChange={(e) => setCustomGids(prev => ({ ...prev, fichas: e.target.value }))}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="projetos-gid">GID da Aba Projetos</Label>
+                  <Input
+                    id="projetos-gid"
+                    placeholder="449483735"
+                    value={customGids.projetos}
+                    onChange={(e) => setCustomGids(prev => ({ ...prev, projetos: e.target.value }))}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button 
+                  onClick={processCustomSheets}
+                  disabled={isProcessing || !customSheetUrl.trim()}
+                  className="flex-1"
+                >
+                  {isProcessing ? 'Carregando...' : 'Carregar da Planilha'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={clearCustomSheets}
+                  disabled={!customSheetUrl}
+                >
+                  Limpar
+                </Button>
+              </div>
+              
+              <div className="flex items-start gap-2 p-3 bg-info/10 rounded-lg">
+                <AlertCircle className="h-4 w-4 text-info mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium">Como usar:</p>
+                  <p className="text-muted-foreground">
+                    1. Cole o link da planilha do Google Sheets<br/>
+                    2. Ajuste os GIDs das abas se necessário<br/>
+                    3. A planilha deve ser pública para acesso
                   </p>
                 </div>
               </div>

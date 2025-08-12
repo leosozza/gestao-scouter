@@ -16,7 +16,7 @@ interface DashboardProps {
 
 export const Dashboard = ({ onLogout }: DashboardProps) => {
   const [isLoading, setIsLoading] = useState(true);
-  const [dataSource, setDataSource] = useState<'sheets' | 'upload'>('sheets');
+  const [dataSource, setDataSource] = useState<'sheets' | 'upload' | 'custom-sheets'>('sheets');
   const [filters, setFilters] = useState<DashboardFilters>({
     dateRange: {
       start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -95,7 +95,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     });
   };
 
-  const handleSourceChange = (source: 'sheets' | 'upload') => {
+  const handleSourceChange = (source: 'sheets' | 'upload' | 'custom-sheets') => {
     setDataSource(source);
     if (source === 'sheets') {
       loadData();
