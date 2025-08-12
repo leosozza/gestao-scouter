@@ -126,19 +126,34 @@ export const mockMetasScouter: MetaScouter[] = [
   }
 ];
 
-// Função para simular chamada à API do Google Sheets
+// Função para buscar dados reais do Google Sheets
+import { GoogleSheetsService } from '@/services/googleSheetsService';
+
 export const fetchSheetData = async (sheetType: 'fichas' | 'projetos' | 'metas'): Promise<any[]> => {
-  // Simula delay da API
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
-  switch (sheetType) {
-    case 'fichas':
-      return mockFichas;
-    case 'projetos':
-      return mockProjetos;
-    case 'metas':
-      return mockMetasScouter;
-    default:
-      return [];
+  try {
+    switch (sheetType) {
+      case 'fichas':
+        return await GoogleSheetsService.fetchFichas();
+      case 'projetos':
+        return await GoogleSheetsService.fetchProjetos();
+      case 'metas':
+        return await GoogleSheetsService.fetchMetasScouter();
+      default:
+        return [];
+    }
+  } catch (error) {
+    console.error(`Erro ao buscar dados (${sheetType}):`, error);
+    
+    // Fallback para dados mock em caso de erro
+    switch (sheetType) {
+      case 'fichas':
+        return mockFichas;
+      case 'projetos':
+        return mockProjetos;
+      case 'metas':
+        return mockMetasScouter;
+      default:
+        return [];
+    }
   }
 };
