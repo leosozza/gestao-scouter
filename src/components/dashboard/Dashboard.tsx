@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { DashboardHeader } from "./DashboardHeader";
 import { FilterPanel, DashboardFilters } from "./FilterPanel";
+import { UploadPanel } from "./UploadPanel";
 import { KPICard } from "./KPICard";
 import { CustomBarChart } from "./charts/BarChart";
 import { CustomLineChart } from "./charts/LineChart";
@@ -15,6 +16,7 @@ interface DashboardProps {
 
 export const Dashboard = ({ onLogout }: DashboardProps) => {
   const [isLoading, setIsLoading] = useState(true);
+  const [dataSource, setDataSource] = useState<'sheets' | 'upload'>('sheets');
   const [filters, setFilters] = useState<DashboardFilters>({
     dateRange: {
       start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -35,8 +37,10 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   // Carregar dados iniciais
   useEffect(() => {
-    loadData();
-  }, []);
+    if (dataSource === 'sheets') {
+      loadData();
+    }
+  }, [dataSource]);
 
   // Processar dados quando filtros mudam
   useEffect(() => {
@@ -70,6 +74,31 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleUploadedData = (uploadedData: { fichas: any[], projetos: any[] }) => {
+    setData({
+      fichas: uploadedData.fichas,
+      projetos: uploadedData.projetos,
+      metas: [] // Metas não implementadas no upload ainda
+    });
+    
+    // Limpar filtros ao trocar fonte de dados
+    setFilters({
+      dateRange: {
+        start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        end: new Date().toISOString().split('T')[0]
+      },
+      scouters: [],
+      projects: []
+    });
+  };
+
+  const handleSourceChange = (source: 'sheets' | 'upload') => {
+    setDataSource(source);
+    if (source === 'sheets') {
+      loadData();
     }
   };
 
@@ -223,6 +252,13 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       <DashboardHeader onLogout={onLogout} />
       
       <div className="container mx-auto px-6 py-6 space-y-6">
+        {/* Upload Panel */}
+        <UploadPanel 
+          onDataLoad={handleUploadedData}
+          onSourceChange={handleSourceChange}
+          currentSource={dataSource}
+        />
+
         {/* Filtros */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-1">
