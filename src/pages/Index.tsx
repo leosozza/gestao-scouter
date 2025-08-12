@@ -1,14 +1,27 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import { LoginForm } from "@/components/auth/LoginForm";
+import { Dashboard } from "@/components/dashboard/Dashboard";
 
 const Index = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
-    </div>
+  const [authToken, setAuthToken] = useState<string | null>(
+    localStorage.getItem('maxfama_auth_token')
   );
+
+  const handleLogin = (token: string) => {
+    localStorage.setItem('maxfama_auth_token', token);
+    setAuthToken(token);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('maxfama_auth_token');
+    setAuthToken(null);
+  };
+
+  if (!authToken) {
+    return <LoginForm onLogin={handleLogin} />;
+  }
+
+  return <Dashboard onLogout={handleLogout} />;
 };
 
 export default Index;
