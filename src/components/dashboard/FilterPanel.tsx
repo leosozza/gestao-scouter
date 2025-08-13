@@ -147,7 +147,7 @@ export const FilterPanel = ({
             </SelectTrigger>
             <SelectContent>
               {availableScouters
-                .filter(scouter => !tempFilters.scouters.includes(scouter))
+                .filter(scouter => scouter && scouter.trim() && !tempFilters.scouters.includes(scouter))
                 .map(scouter => (
                   <SelectItem key={scouter} value={scouter}>
                     {scouter}
@@ -184,7 +184,7 @@ export const FilterPanel = ({
             </SelectTrigger>
             <SelectContent>
               {availableProjects
-                .filter(project => !tempFilters.projects.includes(project))
+                .filter(project => project && project.trim() && !tempFilters.projects.includes(project))
                 .map(project => (
                   <SelectItem key={project} value={project}>
                     {project}
