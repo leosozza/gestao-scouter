@@ -6,7 +6,11 @@ import { KPICard } from "./KPICard";
 import { CustomBarChart } from "./charts/BarChart";
 import { CustomLineChart } from "./charts/LineChart";
 import { AnalysisPanel } from "./AnalysisPanel";
-import { Target, DollarSign, Calendar, TrendingUp, Users, AlertTriangle } from "lucide-react";
+import { SavedViews } from "./SavedViews";
+import { ScouterTable } from "./tables/ScouterTable";
+import { ProjectTable } from "./tables/ProjectTable";
+import { AuditTable } from "./tables/AuditTable";
+import { Target, DollarSign, Calendar, TrendingUp, Users, AlertTriangle, Camera, CheckCircle, Clock } from "lucide-react";
 import { fetchSheetData, mockFichas, mockProjetos } from "@/data/mockData";
 import { useToast } from "@/hooks/use-toast";
 
@@ -115,17 +119,28 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       return dateInRange && scouterMatch && projectMatch;
     });
 
-    // KPIs
+    // KPIs principais
     const totalFichas = filteredFichas.length;
     const diasPagos = calcularDiasPagos(filteredFichas);
     const ajudaCusto = diasPagos * 30;
     const pagamentoPorFichas = calcularPagamentoPorFichas(filteredFichas);
     const metaProgress = calcularProgressoMeta(filteredFichas);
 
+    // Novos KPIs
+    const percentFoto = calcularPercentFoto(filteredFichas);
+    const taxaConfirmacao = calcularTaxaConfirmacao(filteredFichas);
+    const intervaloMedio = calcularIntervaloMedio(filteredFichas);
+    const custoFichaConfirmada = calcularCustoFichaConfirmada(filteredFichas, ajudaCusto, pagamentoPorFichas);
+
     // Dados para gráficos
     const fichasPorScouter = processarFichasPorScouter(filteredFichas);
     const fichasPorProjeto = processarFichasPorProjeto(filteredFichas);
     const projecaoVsReal = processarProjecaoVsReal(filteredFichas);
+
+    // Dados para tabelas
+    const scouterTableData = processarDadosScouters(filteredFichas);
+    const projectTableData = processarDadosProjetos(filteredFichas);
+    const auditTableData = processarDadosAuditoria(filteredFichas);
 
     setProcessedData({
       kpis: {
@@ -134,15 +149,157 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
         ajudaCusto,
         pagamentoPorFichas,
         metaProgress,
-        ritmoNecessario: calcularRitmoNecessario(filteredFichas)
+        ritmoNecessario: calcularRitmoNecessario(filteredFichas),
+        percentFoto,
+        taxaConfirmacao,
+        intervaloMedio,
+        custoFichaConfirmada
       },
       charts: {
         fichasPorScouter,
         fichasPorProjeto,
         projecaoVsReal
       },
+      tables: {
+        scouters: scouterTableData,
+        projects: projectTableData,
+        audit: auditTableData
+      },
       filteredFichas
     });
+  };
+
+  const calcularPercentFoto = (fichas: any[]) => {
+    if (fichas.length === 0) return 0;
+    const comFoto = fichas.filter(f => f.tem_foto || f.Tem_Foto === 'Sim').length;
+    return (comFoto / fichas.length) * 100;
+  };
+
+  const calcularTaxaConfirmacao = (fichas: any[]) => {
+    if (fichas.length === 0) return 0;
+    const confirmadas = fichas.filter(f => f.status_normalizado === 'Confirmado' || f.Status_Confirmacao === 'Confirmado').length;
+    return (confirmadas / fichas.length) * 100;
+  };
+
+  const calcularIntervaloMedio = (fichas: any[]) => {
+    // Simulação - em implementação real seria calculado com base nos timestamps
+    return Math.random() * 10 + 5; // 5-15 minutos
+  };
+
+  const calcularCustoFichaConfirmada = (fichas: any[], ajudaCusto: number, pagamentoPorFichas: number) => {
+    const confirmadas = fichas.filter(f => f.status_normalizado === 'Confirmado' || f.Status_Confirmacao === 'Confirmado').length;
+    if (confirmadas === 0) return 0;
+    return (ajudaCusto + pagamentoPorFichas) / confirmadas;
+  };
+
+  const processarDadosScouters = (fichas: any[]) => {
+    const scouterStats = fichas.reduce((acc, ficha) => {
+      const scouter = ficha.Gestao_de_Scouter;
+      if (!acc[scouter]) {
+        acc[scouter] = {
+          fichas: 0,
+          valor: 0,
+          diasTrabalhados: new Set(),
+          comFoto: 0,
+          confirmadas: 0
+        };
+      }
+      
+      acc[scouter].fichas++;
+      acc[scouter].valor += ficha.valor_por_ficha_num || 0;
+      
+      const date = new Date(ficha.Data_de_Criacao_da_Ficha).toISOString().split('T')[0];
+      acc[scouter].diasTrabalhados.add(date);
+      
+      if (ficha.tem_foto || ficha.Tem_Foto === 'Sim') acc[scouter].comFoto++;
+      if (ficha.status_normalizado === 'Confirmado') acc[scouter].confirmadas++;
+      
+      return acc;
+    }, {});
+
+    return Object.entries(scouterStats).map(([scouter, stats]: [string, any]) => {
+      const diasPagos = Math.floor(stats.fichas / 20);
+      const ajudaCusto = diasPagos * 30;
+      
+      return {
+        scouter,
+        fichas: stats.fichas,
+        mediaDia: stats.fichas / Math.max(1, stats.diasTrabalhados.size),
+        diasPagos,
+        ajudaCusto,
+        pagamentoFichas: stats.valor,
+        total: ajudaCusto + stats.valor,
+        percentFoto: (stats.comFoto / stats.fichas) * 100,
+        percentConfirmacao: (stats.confirmadas / stats.fichas) * 100,
+        score: Math.min(100, (stats.fichas / 10) + (stats.comFoto / stats.fichas * 50) + (stats.confirmadas / stats.fichas * 30))
+      };
+    }).sort((a, b) => b.score - a.score);
+  };
+
+  const processarDadosProjetos = (fichas: any[]) => {
+    const projectStats = fichas.reduce((acc, ficha) => {
+      const projeto = ficha.Projetos_Comerciais;
+      if (!acc[projeto]) {
+        acc[projeto] = { fichas: 0, valor: 0 };
+      }
+      acc[projeto].fichas++;
+      acc[projeto].valor += ficha.valor_por_ficha_num || 0;
+      return acc;
+    }, {});
+
+    return Object.entries(projectStats).map(([projeto, stats]: [string, any]) => {
+      const meta = 1000; // Simulação
+      const esperado = 500; // Simulação
+      const delta = stats.fichas - esperado;
+      
+      return {
+        projeto,
+        meta,
+        progresso: stats.fichas,
+        esperado,
+        delta,
+        status: delta >= 0 ? 'on-track' : delta > -100 ? 'warning' : 'critical',
+        roi: stats.valor / 1000, // Simulação
+        percentConcluido: (stats.fichas / meta) * 100
+      };
+    });
+  };
+
+  const processarDadosAuditoria = (fichas: any[]) => {
+    const problemas = [];
+    
+    fichas.forEach(ficha => {
+      // Fichas sem foto
+      if (!ficha.tem_foto && ficha.Tem_Foto !== 'Sim') {
+        problemas.push({
+          id: ficha.ID.toString(),
+          scouter: ficha.Gestao_de_Scouter,
+          projeto: ficha.Projetos_Comerciais,
+          dataFicha: new Date(ficha.Data_de_Criacao_da_Ficha).toLocaleDateString('pt-BR'),
+          problema: 'Sem foto',
+          severidade: 'medium' as const,
+          detalhes: 'Ficha cadastrada sem foto anexada'
+        });
+      }
+      
+      // Status aguardando há muito tempo (simulação)
+      if (ficha.status_normalizado === 'Aguardando') {
+        const diasAguardando = Math.floor(Math.random() * 10);
+        if (diasAguardando > 5) {
+          problemas.push({
+            id: ficha.ID.toString(),
+            scouter: ficha.Gestao_de_Scouter,
+            projeto: ficha.Projetos_Comerciais,
+            dataFicha: new Date(ficha.Data_de_Criacao_da_Ficha).toLocaleDateString('pt-BR'),
+            problema: 'Aguardando confirmação',
+            severidade: 'high' as const,
+            detalhes: `${diasAguardando} dias aguardando confirmação`
+          });
+        }
+      }
+    });
+
+    return problemas.slice(0, 10); // Limitar a 10 itens
   };
 
   const calcularDiasPagos = (fichas: any[]) => {
@@ -247,6 +404,10 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     });
   };
 
+  const handleLoadView = (viewFilters: DashboardFilters) => {
+    setFilters(viewFilters);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <DashboardHeader onLogout={onLogout} />
@@ -259,8 +420,8 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
           currentSource={dataSource}
         />
 
-        {/* Filtros */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Filtros e Visões Salvas */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
             <FilterPanel
               filters={filters}
@@ -272,51 +433,77 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
             />
           </div>
 
-          {/* KPIs */}
-          <div className="lg:col-span-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <KPICard
-                title="Total de Fichas"
-                value={processedData.kpis?.totalFichas || 0}
-                icon={Target}
-                isLoading={isLoading}
-              />
-              <KPICard
-                title="Ajuda de Custo"
-                value={`R$ ${(processedData.kpis?.ajudaCusto || 0).toLocaleString('pt-BR')}`}
-                subtitle={`${processedData.kpis?.diasPagos || 0} dias pagos`}
-                icon={DollarSign}
-                variant="success"
-                isLoading={isLoading}
-              />
-              <KPICard
-                title="Pagamento por Fichas"
-                value={`R$ ${(processedData.kpis?.pagamentoPorFichas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                icon={TrendingUp}
-                variant="success"
-                isLoading={isLoading}
-              />
-              {processedData.kpis?.metaProgress && (
-                <KPICard
-                  title="% da Meta"
-                  value={`${processedData.kpis.metaProgress}%`}
-                  icon={Target}
-                  variant={processedData.kpis.metaProgress >= 50 ? "success" : "warning"}
-                  isLoading={isLoading}
-                />
-              )}
-              {processedData.kpis?.ritmoNecessario && (
-                <KPICard
-                  title="Ritmo Necessário"
-                  value={`${processedData.kpis.ritmoNecessario}/dia`}
-                  subtitle="para atingir meta"
-                  icon={AlertTriangle}
-                  variant={processedData.kpis.ritmoNecessario > 25 ? "destructive" : "warning"}
-                  isLoading={isLoading}
-                />
-              )}
-            </div>
+          <div className="lg:col-span-2">
+            <SavedViews
+              currentFilters={filters}
+              onLoadView={handleLoadView}
+            />
           </div>
+        </div>
+
+        {/* KPIs */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <KPICard
+            title="Total de Fichas"
+            value={processedData.kpis?.totalFichas || 0}
+            icon={Target}
+            isLoading={isLoading}
+          />
+          <KPICard
+            title="Ajuda de Custo"
+            value={`R$ ${(processedData.kpis?.ajudaCusto || 0).toLocaleString('pt-BR')}`}
+            subtitle={`${processedData.kpis?.diasPagos || 0} dias pagos`}
+            icon={DollarSign}
+            variant="success"
+            isLoading={isLoading}
+          />
+          <KPICard
+            title="Pagamento por Fichas"
+            value={`R$ ${(processedData.kpis?.pagamentoPorFichas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+            icon={TrendingUp}
+            variant="success"
+            isLoading={isLoading}
+          />
+          <KPICard
+            title="% com Foto"
+            value={`${(processedData.kpis?.percentFoto || 0).toFixed(1)}%`}
+            icon={Camera}
+            variant={processedData.kpis?.percentFoto >= 80 ? "success" : "warning"}
+            isLoading={isLoading}
+          />
+          <KPICard
+            title="Taxa de Confirmação"
+            value={`${(processedData.kpis?.taxaConfirmacao || 0).toFixed(1)}%`}
+            icon={CheckCircle}
+            variant={processedData.kpis?.taxaConfirmacao >= 70 ? "success" : "warning"}
+            isLoading={isLoading}
+          />
+          <KPICard
+            title="Intervalo Médio"
+            value={`${(processedData.kpis?.intervaloMedio || 0).toFixed(1)} min`}
+            icon={Clock}
+            variant={processedData.kpis?.intervaloMedio <= 8 ? "success" : "warning"}
+            isLoading={isLoading}
+          />
+          {processedData.kpis?.metaProgress && (
+            <KPICard
+              title="% da Meta"
+              value={`${processedData.kpis.metaProgress}%`}
+              icon={Target}
+              variant={processedData.kpis.metaProgress >= 50 ? "success" : "warning"}
+              isLoading={isLoading}
+            />
+          )}
+          {processedData.kpis?.ritmoNecessario && (
+            <KPICard
+              title="Ritmo Necessário"
+              value={`${processedData.kpis.ritmoNecessario}/dia`}
+              subtitle="para atingir meta"
+              icon={AlertTriangle}
+              variant={processedData.kpis.ritmoNecessario > 25 ? "destructive" : "warning"}
+              isLoading={isLoading}
+            />
+          )}
         </div>
 
         {/* Gráficos */}
@@ -339,6 +526,24 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
           <CustomLineChart
             title="Projeção vs Real (Acumulado)"
             data={processedData.charts?.projecaoVsReal || []}
+            isLoading={isLoading}
+          />
+        </div>
+
+        {/* Tabelas */}
+        <div className="grid grid-cols-1 gap-6">
+          <ScouterTable
+            data={processedData.tables?.scouters || []}
+            isLoading={isLoading}
+          />
+          
+          <ProjectTable
+            data={processedData.tables?.projects || []}
+            isLoading={isLoading}
+          />
+          
+          <AuditTable
+            data={processedData.tables?.audit || []}
             isLoading={isLoading}
           />
         </div>
