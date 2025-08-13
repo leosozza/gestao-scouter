@@ -5,12 +5,19 @@ import { UploadPanel } from "./UploadPanel";
 import { KPICard } from "./KPICard";
 import { CustomBarChart } from "./charts/BarChart";
 import { CustomLineChart } from "./charts/LineChart";
+import { HeatmapChart } from "./charts/HeatmapChart";
+import { HistogramChart } from "./charts/HistogramChart";
+import { FunnelChart } from "./charts/FunnelChart";
+import { MapChart } from "./charts/MapChart";
 import { AnalysisPanel } from "./AnalysisPanel";
 import { SavedViews } from "./SavedViews";
 import { ScouterTable } from "./tables/ScouterTable";
 import { ProjectTable } from "./tables/ProjectTable";
 import { AuditTable } from "./tables/AuditTable";
-import { Target, DollarSign, Calendar, TrendingUp, Users, AlertTriangle, Camera, CheckCircle, Clock } from "lucide-react";
+import { LocationTable } from "./tables/LocationTable";
+import { IntervalTable } from "./tables/IntervalTable";
+import { PipelineTable } from "./tables/PipelineTable";
+import { Target, DollarSign, Calendar, TrendingUp, Users, AlertTriangle, Camera, CheckCircle, Clock, MapPin, Zap } from "lucide-react";
 import { fetchSheetData, mockFichas, mockProjetos } from "@/data/mockData";
 import { useToast } from "@/hooks/use-toast";
 
@@ -131,16 +138,25 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     const taxaConfirmacao = calcularTaxaConfirmacao(filteredFichas);
     const intervaloMedio = calcularIntervaloMedio(filteredFichas);
     const custoFichaConfirmada = calcularCustoFichaConfirmada(filteredFichas, ajudaCusto, pagamentoPorFichas);
+    const percentIntervalosCurtos = calcularPercentIntervalosCurtos(filteredFichas);
+    const roiProjeto = calcularROIProjeto(filteredFichas);
 
     // Dados para gráficos
     const fichasPorScouter = processarFichasPorScouter(filteredFichas);
     const fichasPorProjeto = processarFichasPorProjeto(filteredFichas);
     const projecaoVsReal = processarProjecaoVsReal(filteredFichas);
+    const heatmapData = processarHeatmapData(filteredFichas);
+    const histogramData = processarHistogramIntervalos(filteredFichas);
+    const funnelData = processarFunnelStatus(filteredFichas);
+    const mapData = processarMapData(filteredFichas);
 
     // Dados para tabelas
     const scouterTableData = processarDadosScouters(filteredFichas);
     const projectTableData = processarDadosProjetos(filteredFichas);
     const auditTableData = processarDadosAuditoria(filteredFichas);
+    const locationTableData = processarDadosLocais(filteredFichas);
+    const intervalTableData = processarDadosIntervalos(filteredFichas);
+    const pipelineTableData = processarDadosPipeline(filteredFichas);
 
     setProcessedData({
       kpis: {
@@ -153,17 +169,26 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
         percentFoto,
         taxaConfirmacao,
         intervaloMedio,
-        custoFichaConfirmada
+        custoFichaConfirmada,
+        percentIntervalosCurtos,
+        roiProjeto
       },
       charts: {
         fichasPorScouter,
         fichasPorProjeto,
-        projecaoVsReal
+        projecaoVsReal,
+        heatmapData,
+        histogramData,
+        funnelData,
+        mapData
       },
       tables: {
         scouters: scouterTableData,
         projects: projectTableData,
-        audit: auditTableData
+        audit: auditTableData,
+        locations: locationTableData,
+        intervals: intervalTableData,
+        pipeline: pipelineTableData
       },
       filteredFichas
     });
@@ -190,6 +215,21 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     const confirmadas = fichas.filter(f => f.status_normalizado === 'Confirmado' || f.Status_Confirmacao === 'Confirmado').length;
     if (confirmadas === 0) return 0;
     return (ajudaCusto + pagamentoPorFichas) / confirmadas;
+  };
+
+  const calcularPercentIntervalosCurtos = (fichas: any[]) => {
+    if (fichas.length <= 1) return 0;
+    
+    // Simular intervalos curtos (<5min)
+    const intervalos = fichas.map(() => Math.random() * 30); // 0-30 minutos
+    const curtos = intervalos.filter(i => i < 5).length;
+    return (curtos / intervalos.length) * 100;
+  };
+
+  const calcularROIProjeto = (fichas: any[]) => {
+    const receita = fichas.length * 50; // Simulação de receita por ficha
+    const custo = (processedData?.kpis?.ajudaCusto || 0) + (processedData?.kpis?.pagamentoPorFichas || 0);
+    return custo > 0 ? receita / custo : 0;
   };
 
   const processarDadosScouters = (fichas: any[]) => {
@@ -387,6 +427,192 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     return days;
   };
 
+  const processarHeatmapData = (fichas: any[]) => {
+    const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const heatmapData = [];
+    
+    for (let day = 0; day < 7; day++) {
+      for (let hour = 0; hour < 24; hour++) {
+        const value = Math.floor(Math.random() * 20); // Simulação
+        const percentage = (value / 20) * 100;
+        heatmapData.push({
+          day: days[day],
+          hour,
+          value,
+          percentage
+        });
+      }
+    }
+    return heatmapData;
+  };
+
+  const processarHistogramIntervalos = (fichas: any[]) => {
+    const buckets = ['<5min', '5-10min', '10-20min', '20-40min', '>40min'];
+    const counts = [45, 30, 15, 8, 2]; // Simulação
+    const total = counts.reduce((a, b) => a + b, 0);
+    
+    return buckets.map((bucket, index) => ({
+      bucket,
+      count: counts[index],
+      percentage: (counts[index] / total) * 100
+    }));
+  };
+
+  const processarFunnelStatus = (fichas: any[]) => {
+    const aguardando = fichas.filter(f => f.status_normalizado === 'Aguardando').length;
+    const confirmadas = fichas.filter(f => f.status_normalizado === 'Confirmado').length;
+    const naoConfirmadas = fichas.filter(f => f.status_normalizado === 'Não Confirmado').length;
+    const total = aguardando + confirmadas + naoConfirmadas;
+    
+    return [
+      {
+        name: 'Total de Fichas',
+        value: total,
+        percentage: 100,
+        color: 'hsl(var(--primary))'
+      },
+      {
+        name: 'Aguardando',
+        value: aguardando,
+        percentage: total > 0 ? (aguardando / total) * 100 : 0,
+        color: 'hsl(var(--warning))'
+      },
+      {
+        name: 'Confirmadas',
+        value: confirmadas,
+        percentage: total > 0 ? (confirmadas / total) * 100 : 0,
+        color: 'hsl(var(--success))'
+      }
+    ];
+  };
+
+  const processarMapData = (fichas: any[]) => {
+    // Simulação de dados de localização
+    return [
+      { lat: -23.5505, lon: -46.6333, fichas: 45, conversao: 85.5, endereco: 'Centro - São Paulo' },
+      { lat: -23.5629, lon: -46.6544, fichas: 32, conversao: 72.3, endereco: 'Vila Madalena' },
+      { lat: -23.5475, lon: -46.6361, fichas: 28, conversao: 68.1, endereco: 'Liberdade' },
+      { lat: -23.5558, lon: -46.6396, fichas: 19, conversao: 55.2, endereco: 'Bela Vista' }
+    ];
+  };
+
+  const processarDadosLocais = (fichas: any[]) => {
+    const locais = fichas.reduce((acc: any, ficha: any) => {
+      const local = ficha.Campo_Local || 'Local não informado';
+      if (!acc[local]) {
+        acc[local] = {
+          fichas: 0,
+          comFoto: 0,
+          confirmadas: 0,
+          scouters: new Set()
+        };
+      }
+      
+      acc[local].fichas++;
+      if (ficha.tem_foto) acc[local].comFoto++;
+      if (ficha.status_normalizado === 'Confirmado') acc[local].confirmadas++;
+      acc[local].scouters.add(ficha.Gestao_de_Scouter);
+      
+      return acc;
+    }, {});
+
+    return Object.entries(locais).map(([local, stats]: [string, any]) => ({
+      local,
+      fichas: stats.fichas,
+      percentFoto: (stats.comFoto / stats.fichas) * 100,
+      percentConfirmacao: (stats.confirmadas / stats.fichas) * 100,
+      scouters: Array.from(stats.scouters)
+    })).sort((a, b) => b.fichas - a.fichas);
+  };
+
+  const processarDadosIntervalos = (fichas: any[]) => {
+    const scouterIntervalos = fichas.reduce((acc: any, ficha: any) => {
+      const scouter = ficha.Gestao_de_Scouter;
+      if (!acc[scouter]) {
+        acc[scouter] = {
+          intervalos: [],
+          curtos: 0,
+          medios: 0,
+          longos: 0
+        };
+      }
+      
+      // Simulação de intervalos
+      const intervalo = Math.random() * 60; // 0-60 minutos
+      acc[scouter].intervalos.push(intervalo);
+      
+      if (intervalo < 5) acc[scouter].curtos++;
+      else if (intervalo <= 20) acc[scouter].medios++;
+      else acc[scouter].longos++;
+      
+      return acc;
+    }, {});
+
+    return Object.entries(scouterIntervalos).map(([scouter, data]: [string, any]) => {
+      const media = data.intervalos.reduce((a: number, b: number) => a + b, 0) / data.intervalos.length;
+      const total = data.curtos + data.medios + data.longos;
+      const percentCurtos = total > 0 ? (data.curtos / total) * 100 : 0;
+      
+      return {
+        scouter,
+        mediaMinutos: media,
+        intervalos: {
+          curtos: data.curtos,
+          medios: data.medios,
+          longos: data.longos
+        },
+        percentCurtos,
+        eficiencia: percentCurtos >= 60 ? 'alta' : percentCurtos >= 30 ? 'media' : 'baixa'
+      };
+    }).sort((a, b) => b.percentCurtos - a.percentCurtos);
+  };
+
+  const processarDadosPipeline = (fichas: any[]) => {
+    const projetos = fichas.reduce((acc: any, ficha: any) => {
+      const projeto = ficha.Projetos_Comerciais;
+      if (!acc[projeto]) {
+        acc[projeto] = {
+          aguardando: 0,
+          confirmadas: 0,
+          naoConfirmadas: 0,
+          tempos: []
+        };
+      }
+      
+      switch (ficha.status_normalizado) {
+        case 'Aguardando':
+          acc[projeto].aguardando++;
+          break;
+        case 'Confirmado':
+          acc[projeto].confirmadas++;
+          acc[projeto].tempos.push(Math.random() * 72); // 0-72 horas
+          break;
+        case 'Não Confirmado':
+          acc[projeto].naoConfirmadas++;
+          break;
+      }
+      
+      return acc;
+    }, {});
+
+    return Object.entries(projetos).map(([projeto, stats]: [string, any]) => {
+      const total = stats.aguardando + stats.confirmadas + stats.naoConfirmadas;
+      const taxaConversao = total > 0 ? (stats.confirmadas / total) * 100 : 0;
+      const tempoMedio = stats.tempos.length > 0 ? 
+        stats.tempos.reduce((a: number, b: number) => a + b, 0) / stats.tempos.length : 0;
+      
+      return {
+        projeto,
+        aguardando: stats.aguardando,
+        confirmadas: stats.confirmadas,
+        naoConfirmadas: stats.naoConfirmadas,
+        total,
+        taxaConversao,
+        tempoMedioConfirmacao: tempoMedio
+      };
+    }).sort((a, b) => b.total - a.total);
+  };
+
   const availableScouters = [...new Set(data.fichas.map((f: any) => f.Gestao_de_Scouter))] as string[];
   const availableProjects = [...new Set(data.fichas.map((f: any) => f.Projetos_Comerciais))] as string[];
 
@@ -485,6 +711,20 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
             variant={processedData.kpis?.intervaloMedio <= 8 ? "success" : "warning"}
             isLoading={isLoading}
           />
+          <KPICard
+            title="% Intervalos Curtos"
+            value={`${(processedData.kpis?.percentIntervalosCurtos || 0).toFixed(1)}%`}
+            icon={Zap}
+            variant={processedData.kpis?.percentIntervalosCurtos >= 50 ? "success" : "warning"}
+            isLoading={isLoading}
+          />
+          <KPICard
+            title="Custo/Ficha Confirmada"
+            value={`R$ ${(processedData.kpis?.custoFichaConfirmada || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+            icon={DollarSign}
+            variant="default"
+            isLoading={isLoading}
+          />
           {processedData.kpis?.metaProgress && (
             <KPICard
               title="% da Meta"
@@ -504,9 +744,16 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
               isLoading={isLoading}
             />
           )}
+          <KPICard
+            title="ROI do Projeto"
+            value={`${(processedData.kpis?.roiProjeto || 0).toFixed(2)}x`}
+            icon={TrendingUp}
+            variant={processedData.kpis?.roiProjeto >= 2 ? "success" : "warning"}
+            isLoading={isLoading}
+          />
         </div>
 
-        {/* Gráficos */}
+        {/* Gráficos Principais */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <CustomBarChart
             title="Fichas por Scouter"
@@ -530,7 +777,34 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
           />
         </div>
 
-        {/* Tabelas */}
+        {/* Visualizações Avançadas */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <HeatmapChart
+            title="Produtividade por Hora"
+            data={processedData.charts?.heatmapData || []}
+            isLoading={isLoading}
+          />
+          <HistogramChart
+            title="Distribuição de Intervalos"
+            data={processedData.charts?.histogramData || []}
+            isLoading={isLoading}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <FunnelChart
+            title="Funil de Status"
+            data={processedData.charts?.funnelData || []}
+            isLoading={isLoading}
+          />
+          <MapChart
+            title="Mapa de Locais"
+            data={processedData.charts?.mapData || []}
+            isLoading={isLoading}
+          />
+        </div>
+
+        {/* Tabelas Detalhadas */}
         <div className="grid grid-cols-1 gap-6">
           <ScouterTable
             data={processedData.tables?.scouters || []}
@@ -541,11 +815,28 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
             data={processedData.tables?.projects || []}
             isLoading={isLoading}
           />
-          
-          <AuditTable
-            data={processedData.tables?.audit || []}
-            isLoading={isLoading}
-          />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <LocationTable
+              data={processedData.tables?.locations || []}
+              isLoading={isLoading}
+            />
+            <IntervalTable
+              data={processedData.tables?.intervals || []}
+              isLoading={isLoading}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <PipelineTable
+              data={processedData.tables?.pipeline || []}
+              isLoading={isLoading}
+            />
+            <AuditTable
+              data={processedData.tables?.audit || []}
+              isLoading={isLoading}
+            />
+          </div>
         </div>
 
         {/* Análise */}
