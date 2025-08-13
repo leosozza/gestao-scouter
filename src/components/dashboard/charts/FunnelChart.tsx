@@ -58,9 +58,11 @@ export const FunnelChart = ({ title, data, isLoading }: FunnelChartProps) => {
                   fill="#fff" 
                   stroke="none" 
                   fontSize={12}
-                  formatter={(value: number, entry: FunnelData) => 
-                    `${entry.name}: ${value} (${entry.percentage.toFixed(1)}%)`
-                  }
+                  formatter={(value: number, payload: any) => {
+                    if (!payload || !payload.payload) return value;
+                    const entry = payload.payload;
+                    return `${entry.name}: ${value} (${entry.percentage.toFixed(1)}%)`;
+                  }}
                 />
               </Funnel>
               <ChartTooltip
