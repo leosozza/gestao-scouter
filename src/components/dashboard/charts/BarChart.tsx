@@ -1,14 +1,16 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from "recharts";
 
 interface BarChartProps {
   title: string;
   data: Array<{ name: string; value: number; }>;
   color?: string;
   isLoading?: boolean;
+  showValues?: boolean;
 }
 
-export const CustomBarChart = ({ title, data, color = "hsl(var(--primary))", isLoading }: BarChartProps) => {
+export const CustomBarChart = ({ title, data, color = "hsl(var(--primary))", isLoading, showValues = false }: BarChartProps) => {
   if (isLoading) {
     return (
       <Card>
@@ -24,6 +26,22 @@ export const CustomBarChart = ({ title, data, color = "hsl(var(--primary))", isL
     );
   }
 
+  const renderCustomizedLabel = (props: any) => {
+    const { x, y, width, value } = props;
+    return (
+      <text
+        x={x + width / 2}
+        y={y - 5}
+        fill="hsl(var(--foreground))"
+        textAnchor="middle"
+        fontSize="12"
+        fontWeight="500"
+      >
+        {value}
+      </text>
+    );
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -31,7 +49,7 @@ export const CustomBarChart = ({ title, data, color = "hsl(var(--primary))", isL
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={320}>
-          <BarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <BarChart data={data} margin={{ top: 25, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
             <XAxis 
               dataKey="name" 
@@ -55,7 +73,9 @@ export const CustomBarChart = ({ title, data, color = "hsl(var(--primary))", isL
               fill={color}
               radius={[4, 4, 0, 0]}
               className="hover:opacity-80 transition-opacity"
-            />
+            >
+              {showValues && <LabelList content={renderCustomizedLabel} />}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </CardContent>

@@ -5,21 +5,22 @@ import { UploadPanel } from "./UploadPanel";
 import { KPICard } from "./KPICard";
 import { CustomBarChart } from "./charts/BarChart";
 import { CustomLineChart } from "./charts/LineChart";
-import { HeatmapChart } from "./charts/HeatmapChart";
 import { HistogramChart } from "./charts/HistogramChart";
 import { FunnelChart } from "./charts/FunnelChart";
 import { MapChart } from "./charts/MapChart";
 import { AnalysisPanel } from "./AnalysisPanel";
 import { SavedViews } from "./SavedViews";
+import { ConfigPanel } from "./ConfigPanel";
 import { ScouterTable } from "./tables/ScouterTable";
 import { ProjectTable } from "./tables/ProjectTable";
 import { AuditTable } from "./tables/AuditTable";
 import { LocationTable } from "./tables/LocationTable";
 import { IntervalTable } from "./tables/IntervalTable";
 import { PipelineTable } from "./tables/PipelineTable";
-import { Target, DollarSign, Calendar, TrendingUp, Users, AlertTriangle, Camera, CheckCircle, Clock, MapPin, Zap } from "lucide-react";
-import { fetchSheetData, mockFichas, mockProjetos } from "@/data/mockData";
+import { Target, DollarSign, Calendar, TrendingUp, Users, AlertTriangle, Camera, CheckCircle, Clock, MapPin, Zap, Settings } from "lucide-react";
+import { GoogleSheetsService } from "@/services/googleSheetsService";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 
 interface DashboardProps {
   onLogout: () => void;
@@ -28,6 +29,13 @@ interface DashboardProps {
 export const Dashboard = ({ onLogout }: DashboardProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [dataSource, setDataSource] = useState<'sheets' | 'upload' | 'custom-sheets'>('sheets');
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [config, setConfig] = useState({
+    spreadsheetUrl: '',
+    ajudaCustoDiaria: 30,
+    valorPorFicha: 2.5
+  });
+  
   const [filters, setFilters] = useState<DashboardFilters>({
     dateRange: {
       start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -46,41 +54,46 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   const [processedData, setProcessedData] = useState<any>({});
   const { toast } = useToast();
 
-  // Carregar dados iniciais
+  // Carregar dados automaticamente na inicialização
   useEffect(() => {
-    if (dataSource === 'sheets') {
-      loadData();
-    }
-  }, [dataSource]);
+    loadData();
+  }, []);
 
   // Processar dados quando filtros mudam
   useEffect(() => {
     if (data.fichas.length > 0) {
       processData();
     }
-  }, [filters, data]);
+  }, [filters, data, config]);
 
   const loadData = async () => {
     try {
       setIsLoading(true);
+      console.log('Iniciando carregamento de dados...');
       
-      // Simular carregamento dos dados do Google Sheets
       const [fichas, projetos, metas] = await Promise.all([
-        fetchSheetData('fichas'),
-        fetchSheetData('projetos'), 
-        fetchSheetData('metas')
+        GoogleSheetsService.fetchFichas(),
+        GoogleSheetsService.fetchProjetos(),
+        GoogleSheetsService.fetchMetasScouter()
       ]);
+
+      console.log('Dados carregados:', { 
+        fichas: fichas.length, 
+        projetos: projetos.length, 
+        metas: metas.length 
+      });
 
       setData({ fichas, projetos, metas });
       
       toast({
         title: "Dados carregados",
-        description: "Dashboard atualizado com sucesso"
+        description: `${fichas.length} fichas carregadas com sucesso`
       });
     } catch (error) {
+      console.error('Erro ao carregar dados:', error);
       toast({
         title: "Erro ao carregar dados",
-        description: "Usando dados offline",
+        description: "Verifique a conexão com a planilha",
         variant: "destructive"
       });
     } finally {
@@ -92,10 +105,9 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     setData({
       fichas: uploadedData.fichas,
       projetos: uploadedData.projetos,
-      metas: [] // Metas não implementadas no upload ainda
+      metas: []
     });
     
-    // Limpar filtros ao trocar fonte de dados
     setFilters({
       dateRange: {
         start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -113,6 +125,14 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     }
   };
 
+  const handleConfigUpdate = (newConfig: any) => {
+    setConfig(newConfig);
+    // Se mudou a URL da planilha, recarregar dados
+    if (newConfig.spreadsheetUrl !== config.spreadsheetUrl) {
+      loadData();
+    }
+  };
+
   const processData = () => {
     const filteredFichas = data.fichas.filter((ficha: any) => {
       const fichaDate = new Date(ficha.Data_de_Criacao_da_Ficha);
@@ -126,10 +146,12 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       return dateInRange && scouterMatch && projectMatch;
     });
 
+    console.log('Fichas filtradas:', filteredFichas.length);
+
     // KPIs principais
     const totalFichas = filteredFichas.length;
     const diasPagos = calcularDiasPagos(filteredFichas);
-    const ajudaCusto = diasPagos * 30;
+    const ajudaCusto = diasPagos * config.ajudaCustoDiaria;
     const pagamentoPorFichas = calcularPagamentoPorFichas(filteredFichas);
     const metaProgress = calcularProgressoMeta(filteredFichas);
 
@@ -141,14 +163,9 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     const percentIntervalosCurtos = calcularPercentIntervalosCurtos(filteredFichas);
     const roiProjeto = calcularROIProjeto(filteredFichas);
 
-    // Dados para gráficos
+    // Dados para gráficos com valores no topo
     const fichasPorScouter = processarFichasPorScouter(filteredFichas);
     const fichasPorProjeto = processarFichasPorProjeto(filteredFichas);
-    const projecaoVsReal = processarProjecaoVsReal(filteredFichas);
-    const heatmapData = processarHeatmapData(filteredFichas);
-    const histogramData = processarHistogramIntervalos(filteredFichas);
-    const funnelData = processarFunnelStatus(filteredFichas);
-    const mapData = processarMapData(filteredFichas);
 
     // Dados para tabelas
     const scouterTableData = processarDadosScouters(filteredFichas);
@@ -176,11 +193,10 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       charts: {
         fichasPorScouter,
         fichasPorProjeto,
-        projecaoVsReal,
-        heatmapData,
-        histogramData,
-        funnelData,
-        mapData
+        projecaoVsReal: processarProjecaoVsReal(filteredFichas),
+        histogramData: processarHistogramIntervalos(filteredFichas),
+        funnelData: processarFunnelStatus(filteredFichas),
+        mapData: processarMapData(filteredFichas)
       },
       tables: {
         scouters: scouterTableData,
@@ -343,7 +359,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   };
 
   const calcularDiasPagos = (fichas: any[]) => {
-    const fichasPorDia = fichas.reduce((acc, ficha) => {
+    const fichasPorScouterPorDia = fichas.reduce((acc, ficha) => {
       const date = new Date(ficha.Data_de_Criacao_da_Ficha).toISOString().split('T')[0];
       const scouter = ficha.Gestao_de_Scouter;
       const key = `${date}-${scouter}`;
@@ -351,13 +367,12 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       return acc;
     }, {});
 
-    return Object.values(fichasPorDia).filter((count: any) => count > 20).length;
+    return Object.values(fichasPorScouterPorDia).filter((count: any) => count >= 20).length;
   };
 
   const calcularPagamentoPorFichas = (fichas: any[]) => {
     return fichas.reduce((total, ficha) => {
-      const valor = parseFloat(ficha.Valor_por_Fichas.replace(/[R$\s.,]/g, '').replace(',', '.')) || 0;
-      return total + valor;
+      return total + (ficha.valor_por_ficha_num || config.valorPorFicha);
     }, 0);
   };
 
@@ -425,25 +440,6 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     });
 
     return days;
-  };
-
-  const processarHeatmapData = (fichas: any[]) => {
-    const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-    const heatmapData = [];
-    
-    for (let day = 0; day < 7; day++) {
-      for (let hour = 0; hour < 24; hour++) {
-        const value = Math.floor(Math.random() * 20); // Simulação
-        const percentage = (value / 20) * 100;
-        heatmapData.push({
-          day: days[day],
-          hour,
-          value,
-          percentage
-        });
-      }
-    }
-    return heatmapData;
   };
 
   const processarHistogramIntervalos = (fichas: any[]) => {
@@ -613,8 +609,8 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     }).sort((a, b) => b.total - a.total);
   };
 
-  const availableScouters = [...new Set(data.fichas.map((f: any) => f.Gestao_de_Scouter))] as string[];
-  const availableProjects = [...new Set(data.fichas.map((f: any) => f.Projetos_Comerciais))] as string[];
+  const availableScouters = [...new Set(data.fichas.map((f: any) => f.Gestao_de_Scouter))].filter(Boolean) as string[];
+  const availableProjects = [...new Set(data.fichas.map((f: any) => f.Projetos_Comerciais))].filter(Boolean) as string[];
 
   const handleApplyFilters = () => {
     toast({
@@ -639,6 +635,18 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       <DashboardHeader onLogout={onLogout} />
       
       <div className="container mx-auto px-6 py-6 space-y-6">
+        {/* Botão de Configurações */}
+        <div className="flex justify-end">
+          <Button 
+            variant="outline" 
+            onClick={() => setIsConfigOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <Settings className="h-4 w-4" />
+            Configurações
+          </Button>
+        </div>
+
         {/* Upload Panel */}
         <UploadPanel 
           onDataLoad={handleUploadedData}
@@ -760,12 +768,14 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
             data={processedData.charts?.fichasPorScouter || []}
             color="hsl(var(--primary))"
             isLoading={isLoading}
+            showValues={true}
           />
           <CustomBarChart
             title="Fichas por Projeto"
             data={processedData.charts?.fichasPorProjeto || []}
             color="hsl(var(--success))"
             isLoading={isLoading}
+            showValues={true}
           />
         </div>
 
@@ -779,24 +789,19 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
         {/* Visualizações Avançadas */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <HeatmapChart
-            title="Produtividade por Hora"
-            data={processedData.charts?.heatmapData || []}
-            isLoading={isLoading}
-          />
           <HistogramChart
             title="Distribuição de Intervalos"
             data={processedData.charts?.histogramData || []}
             isLoading={isLoading}
           />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <FunnelChart
             title="Funil de Status"
             data={processedData.charts?.funnelData || []}
             isLoading={isLoading}
           />
+        </div>
+
+        <div className="grid grid-cols-1 gap-6">
           <MapChart
             title="Mapa de Locais"
             data={processedData.charts?.mapData || []}
@@ -843,6 +848,14 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
         <AnalysisPanel
           filters={filters}
           data={processedData}
+        />
+
+        {/* Modal de Configurações */}
+        <ConfigPanel
+          isOpen={isConfigOpen}
+          onClose={() => setIsConfigOpen(false)}
+          onConfigUpdate={handleConfigUpdate}
+          currentConfig={config}
         />
       </div>
     </div>

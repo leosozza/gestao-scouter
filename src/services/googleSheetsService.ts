@@ -6,7 +6,7 @@ export class GoogleSheetsService {
   private static readonly GIDS = {
     fichas: '0', // Primeira aba (geralmente GID 0)
     projetos: '449483735',
-    metas_scouter: '452792639' // Ajustado para usar um GID válido
+    metas_scouter: '452792639'
   };
 
   private static csvToJson(csvText: string): any[] {
@@ -113,26 +113,46 @@ export class GoogleSheetsService {
     try {
       const data = await this.fetchSheetData(this.GIDS.fichas);
       console.log(`Fichas carregadas: ${data.length} registros`);
+      console.log('Headers encontrados:', data.length > 0 ? Object.keys(data[0]) : 'Nenhum');
       
-      // Normalizar dados das fichas
-      return data.map(row => ({
-        ID: parseInt(row.ID) || Math.random() * 1000000, // Fallback se ID não existir
-        Projetos_Comerciais: row['Projetos_Comerciais'] || row['Projetos_Cormeciais'] || row['Projeto'] || '', // Múltiplas variações
-        Gestao_de_Scouter: row['Gestao_de_Scouter'] || row['Scouter'] || row['Nome_Scouter'] || '',
-        Criado: row.Criado || row['Data_Criacao'] || '',
-        Data_de_Criacao_da_Ficha: row['Data_de_Criacao_da_Ficha'] || row['Data'] || row.Criado || '',
-        MaxScouterApp_Verificacao: row['MaxScouterApp_Verificacao'] || row['Verificacao'] || '',
-        Valor_por_Fichas: row['Valor_por_Fichas'] || row['Valor'] || 'R$ 0,00',
-        Campo_Local: row['Campo_Local'] || row['Local'] || row['Endereco'] || '',
-        Tem_Foto: row['Tem_Foto'] || row['Foto'] || 'Não',
-        Status_Confirmacao: row['Status_Confirmacao'] || row['Status'] || 'Aguardando',
+      // Normalizar dados das fichas com melhor mapeamento
+      return data.map(row => {
+        // Tentar diferentes variações de nomes de colunas
+        const projeto = row['Projetos_Comerciais'] || row['Projetos_Cormeciais'] || row['Projeto'] || 
+                       row['Agencia_e_Seletiva'] || row['Agencia'] || row['Seletiva'] || '';
         
-        // Campos processados
-        valor_por_ficha_num: this.parseMoneyBR(row['Valor_por_Fichas'] || row['Valor'] || ''),
-        geo: this.parseLatLon(row['Campo_Local'] || row['Local'] || ''),
-        tem_foto: this.normalizeYesNo(row['Tem_Foto'] || row['Foto'] || ''),
-        status_normalizado: (row['Status_Confirmacao'] || row['Status'] || 'Aguardando').trim()
-      })).filter(row => row.Gestao_de_Scouter); // Manter apenas registros com scouter
+        const scouter = row['Gestao_de_Scouter'] || row['Scouter'] || row['Nome_Scouter'] || 
+                       row['Nome'] || row['Responsavel'] || '';
+        
+        const valor = row['Valor_por_Fichas'] || row['Valor'] || row['Valor_Ficha'] || 'R$ 0,00';
+        
+        const processedRow = {
+          ID: parseInt(row.ID) || Math.random() * 1000000,
+          Projetos_Comerciais: projeto,
+          Gestao_de_Scouter: scouter,
+          Criado: row.Criado || row['Data_Criacao'] || '',
+          Data_de_Criacao_da_Ficha: row['Data_de_Criacao_da_Ficha'] || row['Data'] || row.Criado || '',
+          MaxScouterApp_Verificacao: row['MaxScouterApp_Verificacao'] || row['Verificacao'] || '',
+          Valor_por_Fichas: valor,
+          Campo_Local: row['Campo_Local'] || row['Local'] || row['Endereco'] || '',
+          Tem_Foto: row['Tem_Foto'] || row['Foto'] || 'Não',
+          Status_Confirmacao: row['Status_Confirmacao'] || row['Status'] || 'Aguardando',
+          
+          // Campos processados
+          valor_por_ficha_num: this.parseMoneyBR(valor),
+          geo: this.parseLatLon(row['Campo_Local'] || row['Local'] || ''),
+          tem_foto: this.normalizeYesNo(row['Tem_Foto'] || row['Foto'] || ''),
+          status_normalizado: (row['Status_Confirmacao'] || row['Status'] || 'Aguardando').trim()
+        };
+        
+        console.log('Ficha processada:', { 
+          projeto: processedRow.Projetos_Comerciais, 
+          scouter: processedRow.Gestao_de_Scouter,
+          valor: processedRow.valor_por_ficha_num 
+        });
+        
+        return processedRow;
+      }).filter(row => row.Gestao_de_Scouter && row.Projetos_Comerciais); // Filtrar apenas registros válidos
     } catch (error) {
       console.error('Erro ao carregar fichas:', error);
       throw error;
