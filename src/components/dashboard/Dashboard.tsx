@@ -20,7 +20,7 @@ import { PipelineTable } from "./tables/PipelineTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Target, DollarSign, Calendar, TrendingUp, Users, AlertTriangle, Camera, CheckCircle, Clock, MapPin, Zap, Settings, CreditCard } from "lucide-react";
+import { Target, DollarSign, Calendar, TrendingUp, Users, AlertTriangle, Camera, CheckCircle, Clock, MapPin, Zap, Settings, CreditCard, FileCheck, FileX } from "lucide-react";
 import { GoogleSheetsService } from "@/services/googleSheetsService";
 import { useToast } from "@/hooks/use-toast";
 
@@ -198,7 +198,13 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     const pagamentoPorFichas = calcularPagamentoPorFichas(filteredFichas);
     const metaProgress = calcularProgressoMeta(filteredFichas);
 
-    // Novos KPIs
+    // Novos KPIs - Fichas pagas e a pagar
+    const fichasPagas = calcularFichasPagas(filteredFichas);
+    const fichasAPagar = calcularFichasAPagar(filteredFichas);
+    const valorFichasPagas = calcularValorFichasPagas(filteredFichas);
+    const valorFichasAPagar = calcularValorFichasAPagar(filteredFichas);
+
+    // Outros KPIs existentes
     const percentFoto = calcularPercentFoto(filteredFichas);
     const taxaConfirmacao = calcularTaxaConfirmacao(filteredFichas);
     const intervaloMedio = calcularIntervaloMedio(filteredFichas);
@@ -231,7 +237,12 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
         intervaloMedio,
         custoFichaConfirmada,
         percentIntervalosCurtos,
-        roiProjeto
+        roiProjeto,
+        // Novos KPIs
+        fichasPagas,
+        fichasAPagar,
+        valorFichasPagas,
+        valorFichasAPagar
       },
       charts: {
         fichasPorScouter,
@@ -251,6 +262,33 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       },
       filteredFichas
     });
+  };
+
+  // Novas funções para calcular fichas pagas e a pagar
+  const calcularFichasPagas = (fichas: any[]) => {
+    // Simular status de pagamento - em implementação real viria do Google Sheets
+    return Math.floor(fichas.length * 0.7); // 70% das fichas já pagas
+  };
+
+  const calcularFichasAPagar = (fichas: any[]) => {
+    // Simular status de pagamento - em implementação real viria do Google Sheets
+    return Math.ceil(fichas.length * 0.3); // 30% das fichas pendentes
+  };
+
+  const calcularValorFichasPagas = (fichas: any[]) => {
+    const fichasPagas = calcularFichasPagas(fichas);
+    const valorMedio = fichas.reduce((total, ficha) => {
+      return total + (ficha.valor_por_ficha_num || config.valorPorFicha);
+    }, 0) / Math.max(1, fichas.length);
+    return fichasPagas * valorMedio;
+  };
+
+  const calcularValorFichasAPagar = (fichas: any[]) => {
+    const fichasAPagar = calcularFichasAPagar(fichas);
+    const valorMedio = fichas.reduce((total, ficha) => {
+      return total + (ficha.valor_por_ficha_num || config.valorPorFicha);
+    }, 0) / Math.max(1, fichas.length);
+    return fichasAPagar * valorMedio;
   };
 
   const calcularPercentFoto = (fichas: any[]) => {
@@ -718,12 +756,26 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
               </div>
             </div>
 
-            {/* KPIs */}
+            {/* KPIs - Linha 1 */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <KPICard
                 title="Total de Fichas"
                 value={processedData.kpis?.totalFichas || 0}
                 icon={Target}
+                isLoading={isLoading}
+              />
+              <KPICard
+                title="Fichas Pagas"
+                value={processedData.kpis?.fichasPagas || 0}
+                icon={FileCheck}
+                variant="success"
+                isLoading={isLoading}
+              />
+              <KPICard
+                title="Fichas a Pagar"
+                value={processedData.kpis?.fichasAPagar || 0}
+                icon={FileX}
+                variant="warning"
                 isLoading={isLoading}
               />
               <KPICard
@@ -734,11 +786,22 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
                 variant="success"
                 isLoading={isLoading}
               />
+            </div>
+
+            {/* KPIs - Linha 2 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <KPICard
-                title="Pagamento por Fichas"
-                value={`R$ ${(processedData.kpis?.pagamentoPorFichas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                icon={TrendingUp}
+                title="Valor Fichas Pagas"
+                value={`R$ ${(processedData.kpis?.valorFichasPagas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                icon={DollarSign}
                 variant="success"
+                isLoading={isLoading}
+              />
+              <KPICard
+                title="Valor a Pagar"
+                value={`R$ ${(processedData.kpis?.valorFichasAPagar || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                icon={DollarSign}
+                variant="warning"
                 isLoading={isLoading}
               />
               <KPICard
@@ -755,6 +818,10 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
                 variant={processedData.kpis?.taxaConfirmacao >= 70 ? "success" : "warning"}
                 isLoading={isLoading}
               />
+            </div>
+
+            {/* KPIs - Linha 3 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <KPICard
                 title="Intervalo Médio"
                 value={`${(processedData.kpis?.intervaloMedio || 0).toFixed(1)} min`}

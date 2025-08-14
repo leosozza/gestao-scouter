@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DollarSign, FileText, Download, AlertTriangle, Check, X, CreditCard } from "lucide-react";
+import { DollarSign, FileText, Download, AlertTriangle, Check, X, CreditCard, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DashboardFilters } from "./FilterPanel";
 
@@ -105,21 +105,49 @@ export const FinancialControlPanel = ({
 
   const calculateTotals = () => {
     const pendingItems = paymentItems.filter(item => item.status === 'PENDENTE');
-    const totalFichas = pendingItems.filter(item => item.type === 'ficha').length;
-    const valorFichas = pendingItems
+    const paidItems = paymentItems.filter(item => item.status === 'PAGO');
+    
+    // Fichas pendentes
+    const fichasPendentes = pendingItems.filter(item => item.type === 'ficha').length;
+    const valorFichasPendentes = pendingItems
       .filter(item => item.type === 'ficha')
       .reduce((sum, item) => sum + item.value, 0);
-    const diasAjuda = pendingItems.filter(item => item.type === 'ajuda').length;
-    const valorAjuda = pendingItems
+    
+    // Fichas pagas
+    const fichasPagas = paidItems.filter(item => item.type === 'ficha').length;
+    const valorFichasPagas = paidItems
+      .filter(item => item.type === 'ficha')
+      .reduce((sum, item) => sum + item.value, 0);
+    
+    // Ajuda de custo
+    const diasAjudaPendente = pendingItems.filter(item => item.type === 'ajuda').length;
+    const valorAjudaPendente = pendingItems
+      .filter(item => item.type === 'ajuda')
+      .reduce((sum, item) => sum + item.value, 0);
+      
+    const diasAjudaPaga = paidItems.filter(item => item.type === 'ajuda').length;
+    const valorAjudaPaga = paidItems
       .filter(item => item.type === 'ajuda')
       .reduce((sum, item) => sum + item.value, 0);
 
     return {
-      totalFichas,
-      valorFichas,
-      diasAjuda,
-      valorAjuda,
-      totalGeral: valorFichas + valorAjuda
+      // Pendentes (a pagar)
+      fichasPendentes,
+      valorFichasPendentes,
+      diasAjudaPendente,
+      valorAjudaPendente,
+      totalAPagar: valorFichasPendentes + valorAjudaPendente,
+      
+      // Pagas
+      fichasPagas,
+      valorFichasPagas,
+      diasAjudaPaga,
+      valorAjudaPaga,
+      totalPago: valorFichasPagas + valorAjudaPaga,
+      
+      // Totais gerais
+      totalFichas: fichasPendentes + fichasPagas,
+      totalGeral: valorFichasPendentes + valorAjudaPendente + valorFichasPagas + valorAjudaPaga
     };
   };
 
@@ -208,51 +236,88 @@ export const FinancialControlPanel = ({
 
                 {selectedScouter && (
                   <>
-                    {/* KPIs */}
-                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                      <Card>
+                    {/* KPIs Detalhados */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* Fichas a Pagar */}
+                      <Card className="border-warning">
                         <CardContent className="p-4">
                           <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-primary" />
+                            <FileText className="h-4 w-4 text-warning" />
                             <div>
-                              <p className="text-xs text-muted-foreground">Fichas Pendentes</p>
-                              <p className="text-xl font-bold">{totals.totalFichas}</p>
+                              <p className="text-xs text-muted-foreground">Fichas a Pagar</p>
+                              <p className="text-xl font-bold text-warning">{totals.fichasPendentes}</p>
                             </div>
                           </div>
                         </CardContent>
                       </Card>
 
-                      <Card>
+                      <Card className="border-success">
                         <CardContent className="p-4">
                           <div className="flex items-center gap-2">
-                            <DollarSign className="h-4 w-4 text-success" />
+                            <Check className="h-4 w-4 text-success" />
                             <div>
-                              <p className="text-xs text-muted-foreground">Valor por Fichas</p>
-                              <p className="text-xl font-bold">R$ {totals.valorFichas.toFixed(2)}</p>
+                              <p className="text-xs text-muted-foreground">Fichas Pagas</p>
+                              <p className="text-xl font-bold text-success">{totals.fichasPagas}</p>
                             </div>
                           </div>
                         </CardContent>
                       </Card>
 
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-2">
-                            <Check className="h-4 w-4 text-warning" />
-                            <div>
-                              <p className="text-xs text-muted-foreground">Dias com Ajuda</p>
-                              <p className="text-xl font-bold">{totals.diasAjuda}</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
+                      <Card className="border-warning">
                         <CardContent className="p-4">
                           <div className="flex items-center gap-2">
                             <DollarSign className="h-4 w-4 text-warning" />
                             <div>
-                              <p className="text-xs text-muted-foreground">Ajuda de Custo</p>
-                              <p className="text-xl font-bold">R$ {totals.valorAjuda.toFixed(2)}</p>
+                              <p className="text-xs text-muted-foreground">Valor a Pagar</p>
+                              <p className="text-xl font-bold text-warning">R$ {totals.valorFichasPendentes.toFixed(2)}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="border-success">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2">
+                            <DollarSign className="h-4 w-4 text-success" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">Valor Pago</p>
+                              <p className="text-xl font-bold text-success">R$ {totals.valorFichasPagas.toFixed(2)}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-warning" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">Dias Ajuda Pendente</p>
+                              <p className="text-xl font-bold">{totals.diasAjudaPendente}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-success" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">Dias Ajuda Paga</p>
+                              <p className="text-xl font-bold">{totals.diasAjudaPaga}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="border-warning">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-2">
+                            <DollarSign className="h-4 w-4 text-warning" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">Ajuda a Pagar</p>
+                              <p className="text-xl font-bold text-warning">R$ {totals.valorAjudaPendente.toFixed(2)}</p>
                             </div>
                           </div>
                         </CardContent>
@@ -264,7 +329,7 @@ export const FinancialControlPanel = ({
                             <DollarSign className="h-4 w-4 text-primary" />
                             <div>
                               <p className="text-xs text-muted-foreground">Total a Receber</p>
-                              <p className="text-xl font-bold text-primary">R$ {totals.totalGeral.toFixed(2)}</p>
+                              <p className="text-xl font-bold text-primary">R$ {totals.totalAPagar.toFixed(2)}</p>
                             </div>
                           </div>
                         </CardContent>
@@ -303,13 +368,13 @@ export const FinancialControlPanel = ({
                           <Download className="h-4 w-4 mr-2" />
                           PDF
                         </Button>
-                        {totals.totalGeral > 0 && (
+                        {totals.totalAPagar > 0 && (
                           <Button 
                             onClick={() => setConfirmPayment(true)}
                             className="bg-success hover:bg-success/90"
                           >
                             <Check className="h-4 w-4 mr-2" />
-                            Pagar (R$ {totals.totalGeral.toFixed(2)})
+                            Pagar (R$ {totals.totalAPagar.toFixed(2)})
                           </Button>
                         )}
                       </div>
@@ -375,12 +440,12 @@ export const FinancialControlPanel = ({
           </DialogHeader>
           <div className="space-y-4">
             <p>
-              Confirma o pagamento de <strong>R$ {totals.totalGeral.toFixed(2)}</strong> para{' '}
+              Confirma o pagamento de <strong>R$ {totals.totalAPagar.toFixed(2)}</strong> para{' '}
               <strong>{selectedScouter}</strong>?
             </p>
             <div className="text-sm text-muted-foreground space-y-1">
-              <p>• {totals.totalFichas} fichas: R$ {totals.valorFichas.toFixed(2)}</p>
-              <p>• {totals.diasAjuda} dias de ajuda: R$ {totals.valorAjuda.toFixed(2)}</p>
+              <p>• {totals.fichasPendentes} fichas: R$ {totals.valorFichasPendentes.toFixed(2)}</p>
+              <p>• {totals.diasAjudaPendente} dias de ajuda: R$ {totals.valorAjudaPendente.toFixed(2)}</p>
               <p>• Todas as fichas pendentes serão marcadas como PAGAS</p>
               <p>• Um lote de pagamento será gerado para controle</p>
             </div>
