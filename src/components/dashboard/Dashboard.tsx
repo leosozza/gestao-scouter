@@ -10,13 +10,15 @@ import { MapChart } from "./charts/MapChart";
 import { AnalysisPanel } from "./AnalysisPanel";
 import { SavedViews } from "./SavedViews";
 import { ConfigPanel } from "./ConfigPanel";
+import { FinancialControlPanel } from "./FinancialControlPanel";
 import { ScouterTable } from "./tables/ScouterTable";
 import { ProjectTable } from "./tables/ProjectTable";
 import { AuditTable } from "./tables/AuditTable";
 import { LocationTable } from "./tables/LocationTable";
 import { IntervalTable } from "./tables/IntervalTable";
 import { PipelineTable } from "./tables/PipelineTable";
-import { Target, DollarSign, Calendar, TrendingUp, Users, AlertTriangle, Camera, CheckCircle, Clock, MapPin, Zap, Settings } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Target, DollarSign, Calendar, TrendingUp, Users, AlertTriangle, Camera, CheckCircle, Clock, MapPin, Zap, Settings, CreditCard } from "lucide-react";
 import { GoogleSheetsService } from "@/services/googleSheetsService";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -28,6 +30,7 @@ interface DashboardProps {
 export const Dashboard = ({ onLogout }: DashboardProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [isFinancialOpen, setIsFinancialOpen] = useState(false);
   const [config, setConfig] = useState({
     spreadsheetUrl: '',
     ajudaCustoDiaria: 30,
@@ -51,6 +54,38 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const [processedData, setProcessedData] = useState<any>({});
   const { toast } = useToast();
+
+  // Aplicar tema salvo na inicialização
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('maxfama_theme');
+    if (savedTheme) {
+      applyTheme(savedTheme);
+    }
+  }, []);
+
+  const applyTheme = (theme: string) => {
+    const root = document.documentElement;
+    
+    switch (theme) {
+      case 'dark':
+        root.className = 'dark';
+        break;
+      case 'blue':
+        root.style.setProperty('--primary', '214 94% 58%');
+        root.style.setProperty('--primary-foreground', '0 0% 98%');
+        break;
+      case 'green':
+        root.style.setProperty('--primary', '142 76% 36%');
+        root.style.setProperty('--primary-foreground', '0 0% 98%');
+        break;
+      case 'light':
+      default:
+        root.className = '';
+        root.style.removeProperty('--primary');
+        root.style.removeProperty('--primary-foreground');
+        break;
+    }
+  };
 
   // Carregar dados automaticamente na inicialização
   useEffect(() => {
@@ -107,18 +142,51 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     }
   };
 
-  const processData = () => {
-    const filteredFichas = data.fichas.filter((ficha: any) => {
-      const fichaDate = new Date(ficha.Data_de_Criacao_da_Ficha);
-      const startDate = new Date(filters.dateRange.start);
-      const endDate = new Date(filters.dateRange.end);
-      
-      const dateInRange = fichaDate >= startDate && fichaDate <= endDate;
-      const scouterMatch = filters.scouters.length === 0 || filters.scouters.includes(ficha.Gestao_de_Scouter);
-      const projectMatch = filters.projects.length === 0 || filters.projects.includes(ficha.Projetos_Comerciais);
-      
-      return dateInRange && scouterMatch && projectMatch;
+  const handleResetAll = () => {
+    // Limpar filtros
+    const defaultFilters: DashboardFilters = {
+      dateRange: {
+        start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        end: new Date().toISOString().split('T')[0]
+      },
+      scouters: [],
+      projects: []
+    };
+    setFilters(defaultFilters);
+    
+    // Limpar visões salvas
+    localStorage.removeItem('maxfama_dashboard_views');
+    
+    // Limpar layout personalizado
+    localStorage.removeItem('maxfama_layout_v1');
+    
+    // Recarregar dados
+    loadData();
+    
+    toast({
+      title: "Sistema redefinido",
+      description: "Todos os filtros, visões e layouts foram limpos"
     });
+  };
+
+  const processData = () => {
+    let filteredFichas = data.fichas;
+    
+    // Aplicar filtros apenas se houver seleções específicas
+    if (filters.scouters.length > 0 || filters.projects.length > 0 || filters.dateRange.start || filters.dateRange.end) {
+      filteredFichas = data.fichas.filter((ficha: any) => {
+        const fichaDate = new Date(ficha.Data_de_Criacao_da_Ficha);
+        const startDate = new Date(filters.dateRange.start);
+        const endDate = new Date(filters.dateRange.end);
+        
+        const dateInRange = fichaDate >= startDate && fichaDate <= endDate;
+        // Se lista vazia, interpretar como "todos" (sem filtro)
+        const scouterMatch = filters.scouters.length === 0 || filters.scouters.includes(ficha.Gestao_de_Scouter);
+        const projectMatch = filters.projects.length === 0 || filters.projects.includes(ficha.Projetos_Comerciais);
+        
+        return dateInRange && scouterMatch && projectMatch;
+      });
+    }
 
     console.log('Fichas filtradas:', filteredFichas.length);
 
@@ -608,221 +676,255 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     <div className="min-h-screen bg-background">
       <DashboardHeader onLogout={onLogout} />
       
-      <div className="container mx-auto px-6 py-6 space-y-6">
-        {/* Botão de Configurações */}
-        <div className="flex justify-end">
-          <Button 
-            variant="outline" 
-            onClick={() => setIsConfigOpen(true)}
-            className="flex items-center gap-2"
-          >
-            <Settings className="h-4 w-4" />
-            Configurações
-          </Button>
-        </div>
+      <div className="container mx-auto px-6 py-6">
+        <Tabs defaultValue="dashboard" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <TabsList>
+              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+              <TabsTrigger value="financial">Controle Financeiro</TabsTrigger>
+            </TabsList>
+            
+            <Button 
+              variant="outline" 
+              onClick={() => setIsConfigOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              Configurações
+            </Button>
+          </div>
 
-        {/* Filtros e Visões Salvas */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1">
-            <FilterPanel
+          <TabsContent value="dashboard" className="space-y-6">
+            {/* Filtros e Visões Salvas */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-1">
+                <FilterPanel
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                  availableScouters={availableScouters}
+                  availableProjects={availableProjects}
+                  onApplyFilters={handleApplyFilters}
+                  onClearFilters={handleClearFilters}
+                  onResetAll={handleResetAll}
+                />
+              </div>
+
+              <div className="lg:col-span-2">
+                <SavedViews
+                  currentFilters={filters}
+                  onLoadView={handleLoadView}
+                />
+              </div>
+            </div>
+
+            {/* KPIs */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <KPICard
+                title="Total de Fichas"
+                value={processedData.kpis?.totalFichas || 0}
+                icon={Target}
+                isLoading={isLoading}
+              />
+              <KPICard
+                title="Ajuda de Custo"
+                value={`R$ ${(processedData.kpis?.ajudaCusto || 0).toLocaleString('pt-BR')}`}
+                subtitle={`${processedData.kpis?.diasPagos || 0} dias pagos`}
+                icon={DollarSign}
+                variant="success"
+                isLoading={isLoading}
+              />
+              <KPICard
+                title="Pagamento por Fichas"
+                value={`R$ ${(processedData.kpis?.pagamentoPorFichas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                icon={TrendingUp}
+                variant="success"
+                isLoading={isLoading}
+              />
+              <KPICard
+                title="% com Foto"
+                value={`${(processedData.kpis?.percentFoto || 0).toFixed(1)}%`}
+                icon={Camera}
+                variant={processedData.kpis?.percentFoto >= 80 ? "success" : "warning"}
+                isLoading={isLoading}
+              />
+              <KPICard
+                title="Taxa de Confirmação"
+                value={`${(processedData.kpis?.taxaConfirmacao || 0).toFixed(1)}%`}
+                icon={CheckCircle}
+                variant={processedData.kpis?.taxaConfirmacao >= 70 ? "success" : "warning"}
+                isLoading={isLoading}
+              />
+              <KPICard
+                title="Intervalo Médio"
+                value={`${(processedData.kpis?.intervaloMedio || 0).toFixed(1)} min`}
+                icon={Clock}
+                variant={processedData.kpis?.intervaloMedio <= 8 ? "success" : "warning"}
+                isLoading={isLoading}
+              />
+              <KPICard
+                title="% Intervalos Curtos"
+                value={`${(processedData.kpis?.percentIntervalosCurtos || 0).toFixed(1)}%`}
+                icon={Zap}
+                variant={processedData.kpis?.percentIntervalosCurtos >= 50 ? "success" : "warning"}
+                isLoading={isLoading}
+              />
+              <KPICard
+                title="Custo/Ficha Confirmada"
+                value={`R$ ${(processedData.kpis?.custoFichaConfirmada || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                icon={DollarSign}
+                variant="default"
+                isLoading={isLoading}
+              />
+              {processedData.kpis?.metaProgress && (
+                <KPICard
+                  title="% da Meta"
+                  value={`${processedData.kpis.metaProgress}%`}
+                  icon={Target}
+                  variant={processedData.kpis.metaProgress >= 50 ? "success" : "warning"}
+                  isLoading={isLoading}
+                />
+              )}
+              {processedData.kpis?.ritmoNecessario && (
+                <KPICard
+                  title="Ritmo Necessário"
+                  value={`${processedData.kpis.ritmoNecessario}/dia`}
+                  subtitle="para atingir meta"
+                  icon={AlertTriangle}
+                  variant={processedData.kpis.ritmoNecessario > 25 ? "destructive" : "warning"}
+                  isLoading={isLoading}
+                />
+              )}
+              <KPICard
+                title="ROI do Projeto"
+                value={`${(processedData.kpis?.roiProjeto || 0).toFixed(2)}x`}
+                icon={TrendingUp}
+                variant={processedData.kpis?.roiProjeto >= 2 ? "success" : "warning"}
+                isLoading={isLoading}
+              />
+            </div>
+
+            {/* Gráficos Principais */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <CustomBarChart
+                title="Fichas por Scouter"
+                data={processedData.charts?.fichasPorScouter || []}
+                color="hsl(var(--primary))"
+                isLoading={isLoading}
+                showValues={true}
+              />
+              <CustomBarChart
+                title="Fichas por Projeto"
+                data={processedData.charts?.fichasPorProjeto || []}
+                color="hsl(var(--success))"
+                isLoading={isLoading}
+                showValues={true}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-6">
+              <CustomLineChart
+                title="Projeção vs Real (Acumulado)"
+                data={processedData.charts?.projecaoVsReal || []}
+                isLoading={isLoading}
+              />
+            </div>
+
+            {/* Visualizações Avançadas */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <FunnelChart
+                title="Funil de Status"
+                data={processedData.charts?.funnelData || []}
+                isLoading={isLoading}
+              />
+              <HistogramChart
+                title="Distribuição de Intervalos"
+                data={processedData.charts?.histogramData || []}
+                isLoading={isLoading}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-6">
+              <MapChart
+                title="Mapa de Locais"
+                data={processedData.charts?.mapData || []}
+                isLoading={isLoading}
+              />
+            </div>
+
+            {/* Tabelas Detalhadas */}
+            <div className="grid grid-cols-1 gap-6">
+              <ScouterTable
+                data={processedData.tables?.scouters || []}
+                isLoading={isLoading}
+              />
+              
+              <ProjectTable
+                data={processedData.tables?.projects || []}
+                isLoading={isLoading}
+              />
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <LocationTable
+                  data={processedData.tables?.locations || []}
+                  isLoading={isLoading}
+                />
+                <IntervalTable
+                  data={processedData.tables?.intervals || []}
+                  isLoading={isLoading}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <PipelineTable
+                  data={processedData.tables?.pipeline || []}
+                  isLoading={isLoading}
+                />
+                <AuditTable
+                  data={processedData.tables?.audit || []}
+                  isLoading={isLoading}
+                />
+              </div>
+            </div>
+
+            {/* Análise */}
+            <AnalysisPanel
               filters={filters}
-              onFiltersChange={setFilters}
-              availableScouters={availableScouters}
-              availableProjects={availableProjects}
-              onApplyFilters={handleApplyFilters}
-              onClearFilters={handleClearFilters}
+              data={processedData}
             />
-          </div>
+          </TabsContent>
 
-          <div className="lg:col-span-2">
-            <SavedViews
-              currentFilters={filters}
-              onLoadView={handleLoadView}
-            />
-          </div>
-        </div>
+          <TabsContent value="financial">
+            <Card>
+              <CardContent className="p-6">
+                <div className="text-center space-y-4">
+                  <CreditCard className="h-12 w-12 text-primary mx-auto" />
+                  <h3 className="text-lg font-semibold">Controle Financeiro</h3>
+                  <p className="text-muted-foreground">
+                    Sistema de baixa de pagamentos por scouter
+                  </p>
+                  <Button onClick={() => setIsFinancialOpen(true)}>
+                    Abrir Controle Financeiro
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
-        {/* KPIs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KPICard
-            title="Total de Fichas"
-            value={processedData.kpis?.totalFichas || 0}
-            icon={Target}
-            isLoading={isLoading}
-          />
-          <KPICard
-            title="Ajuda de Custo"
-            value={`R$ ${(processedData.kpis?.ajudaCusto || 0).toLocaleString('pt-BR')}`}
-            subtitle={`${processedData.kpis?.diasPagos || 0} dias pagos`}
-            icon={DollarSign}
-            variant="success"
-            isLoading={isLoading}
-          />
-          <KPICard
-            title="Pagamento por Fichas"
-            value={`R$ ${(processedData.kpis?.pagamentoPorFichas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-            icon={TrendingUp}
-            variant="success"
-            isLoading={isLoading}
-          />
-          <KPICard
-            title="% com Foto"
-            value={`${(processedData.kpis?.percentFoto || 0).toFixed(1)}%`}
-            icon={Camera}
-            variant={processedData.kpis?.percentFoto >= 80 ? "success" : "warning"}
-            isLoading={isLoading}
-          />
-          <KPICard
-            title="Taxa de Confirmação"
-            value={`${(processedData.kpis?.taxaConfirmacao || 0).toFixed(1)}%`}
-            icon={CheckCircle}
-            variant={processedData.kpis?.taxaConfirmacao >= 70 ? "success" : "warning"}
-            isLoading={isLoading}
-          />
-          <KPICard
-            title="Intervalo Médio"
-            value={`${(processedData.kpis?.intervaloMedio || 0).toFixed(1)} min`}
-            icon={Clock}
-            variant={processedData.kpis?.intervaloMedio <= 8 ? "success" : "warning"}
-            isLoading={isLoading}
-          />
-          <KPICard
-            title="% Intervalos Curtos"
-            value={`${(processedData.kpis?.percentIntervalosCurtos || 0).toFixed(1)}%`}
-            icon={Zap}
-            variant={processedData.kpis?.percentIntervalosCurtos >= 50 ? "success" : "warning"}
-            isLoading={isLoading}
-          />
-          <KPICard
-            title="Custo/Ficha Confirmada"
-            value={`R$ ${(processedData.kpis?.custoFichaConfirmada || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-            icon={DollarSign}
-            variant="default"
-            isLoading={isLoading}
-          />
-          {processedData.kpis?.metaProgress && (
-            <KPICard
-              title="% da Meta"
-              value={`${processedData.kpis.metaProgress}%`}
-              icon={Target}
-              variant={processedData.kpis.metaProgress >= 50 ? "success" : "warning"}
-              isLoading={isLoading}
-            />
-          )}
-          {processedData.kpis?.ritmoNecessario && (
-            <KPICard
-              title="Ritmo Necessário"
-              value={`${processedData.kpis.ritmoNecessario}/dia`}
-              subtitle="para atingir meta"
-              icon={AlertTriangle}
-              variant={processedData.kpis.ritmoNecessario > 25 ? "destructive" : "warning"}
-              isLoading={isLoading}
-            />
-          )}
-          <KPICard
-            title="ROI do Projeto"
-            value={`${(processedData.kpis?.roiProjeto || 0).toFixed(2)}x`}
-            icon={TrendingUp}
-            variant={processedData.kpis?.roiProjeto >= 2 ? "success" : "warning"}
-            isLoading={isLoading}
-          />
-        </div>
-
-        {/* Gráficos Principais */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <CustomBarChart
-            title="Fichas por Scouter"
-            data={processedData.charts?.fichasPorScouter || []}
-            color="hsl(var(--primary))"
-            isLoading={isLoading}
-            showValues={true}
-          />
-          <CustomBarChart
-            title="Fichas por Projeto"
-            data={processedData.charts?.fichasPorProjeto || []}
-            color="hsl(var(--success))"
-            isLoading={isLoading}
-            showValues={true}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 gap-6">
-          <CustomLineChart
-            title="Projeção vs Real (Acumulado)"
-            data={processedData.charts?.projecaoVsReal || []}
-            isLoading={isLoading}
-          />
-        </div>
-
-        {/* Visualizações Avançadas */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <FunnelChart
-            title="Funil de Status"
-            data={processedData.charts?.funnelData || []}
-            isLoading={isLoading}
-          />
-          <HistogramChart
-            title="Distribuição de Intervalos"
-            data={processedData.charts?.histogramData || []}
-            isLoading={isLoading}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 gap-6">
-          <MapChart
-            title="Mapa de Locais"
-            data={processedData.charts?.mapData || []}
-            isLoading={isLoading}
-          />
-        </div>
-
-        {/* Tabelas Detalhadas */}
-        <div className="grid grid-cols-1 gap-6">
-          <ScouterTable
-            data={processedData.tables?.scouters || []}
-            isLoading={isLoading}
-          />
-          
-          <ProjectTable
-            data={processedData.tables?.projects || []}
-            isLoading={isLoading}
-          />
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <LocationTable
-              data={processedData.tables?.locations || []}
-              isLoading={isLoading}
-            />
-            <IntervalTable
-              data={processedData.tables?.intervals || []}
-              isLoading={isLoading}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <PipelineTable
-              data={processedData.tables?.pipeline || []}
-              isLoading={isLoading}
-            />
-            <AuditTable
-              data={processedData.tables?.audit || []}
-              isLoading={isLoading}
-            />
-          </div>
-        </div>
-
-        {/* Análise */}
-        <AnalysisPanel
-          filters={filters}
-          data={processedData}
-        />
-
-        {/* Modal de Configurações */}
+        {/* Modais */}
         <ConfigPanel
           isOpen={isConfigOpen}
           onClose={() => setIsConfigOpen(false)}
           onConfigUpdate={handleConfigUpdate}
           currentConfig={config}
+        />
+
+        <FinancialControlPanel
+          isOpen={isFinancialOpen}
+          onClose={() => setIsFinancialOpen(false)}
+          filters={filters}
+          availableScouters={availableScouters}
+          data={processedData}
         />
       </div>
     </div>
