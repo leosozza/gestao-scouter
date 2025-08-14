@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { DashboardHeader } from "./DashboardHeader";
 import { FilterPanel, DashboardFilters } from "./FilterPanel";
@@ -20,10 +19,10 @@ import { IntervalTable } from "./tables/IntervalTable";
 import { PipelineTable } from "./tables/PipelineTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Target, DollarSign, Calendar, TrendingUp, Users, AlertTriangle, Camera, CheckCircle, Clock, MapPin, Zap, Settings, CreditCard } from "lucide-react";
 import { GoogleSheetsService } from "@/services/googleSheetsService";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
 
 interface DashboardProps {
   onLogout: () => void;
