@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Settings, Database, DollarSign, Download } from "lucide-react";
+import { Settings, Database, DollarSign, Download, Upload, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { GoogleSheetsService } from "@/services/googleSheetsService";
 
 interface ConfigPanelProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ interface ConfigPanelProps {
 
 export const ConfigPanel = ({ isOpen, onClose, onConfigUpdate, currentConfig }: ConfigPanelProps) => {
   const [config, setConfig] = useState(currentConfig);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
   const { toast } = useToast();
 
   if (!isOpen) return null;
@@ -32,6 +34,36 @@ export const ConfigPanel = ({ isOpen, onClose, onConfigUpdate, currentConfig }: 
       description: "As configurações foram atualizadas com sucesso"
     });
     onClose();
+  };
+
+  const handleTestConnection = async () => {
+    try {
+      setIsTestingConnection(true);
+      const fichas = await GoogleSheetsService.fetchFichas();
+      toast({
+        title: "Conexão bem-sucedida",
+        description: `${fichas.length} fichas encontradas na planilha`
+      });
+    } catch (error) {
+      toast({
+        title: "Erro na conexão",
+        description: "Verifique se a planilha está pública e o link está correto",
+        variant: "destructive"
+      });
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      toast({
+        title: "Arquivo carregado",
+        description: `Processando arquivo: ${file.name}`,
+      });
+      // Aqui seria implementada a lógica de upload do arquivo
+    }
   };
 
   const handleDownloadReport = () => {
@@ -48,14 +80,14 @@ export const ConfigPanel = ({ isOpen, onClose, onConfigUpdate, currentConfig }: 
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
-              Configurações do Sistema
+              Configurações do Sistema MaxFama
             </CardTitle>
             <Button variant="ghost" onClick={onClose}>×</Button>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="database" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="database">Base de Dados</TabsTrigger>
+                <TabsTrigger value="database">Fonte de Dados</TabsTrigger>
                 <TabsTrigger value="values">Valores</TabsTrigger>
                 <TabsTrigger value="reports">Relatórios</TabsTrigger>
               </TabsList>
@@ -63,34 +95,80 @@ export const ConfigPanel = ({ isOpen, onClose, onConfigUpdate, currentConfig }: 
               <TabsContent value="database" className="space-y-4">
                 <div className="flex items-center gap-2 mb-4">
                   <Database className="h-4 w-4" />
-                  <h3 className="text-lg font-semibold">Configuração da Base de Dados</h3>
+                  <h3 className="text-lg font-semibold">Configuração da Fonte de Dados</h3>
                 </div>
                 
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="spreadsheet-url">URL da Planilha do Google Sheets</Label>
-                    <Input
-                      id="spreadsheet-url"
-                      value={config.spreadsheetUrl}
-                      onChange={(e) => setConfig(prev => ({ ...prev, spreadsheetUrl: e.target.value }))}
-                      placeholder="https://docs.google.com/spreadsheets/d/..."
-                      className="mt-1"
-                    />
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Cole aqui o link completo da sua planilha do Google Sheets
-                    </p>
-                  </div>
-                  
-                  <div className="bg-muted p-4 rounded-lg">
-                    <h4 className="font-medium mb-2">Instruções:</h4>
-                    <ol className="text-sm space-y-1 list-decimal list-inside">
-                      <li>Abra sua planilha no Google Sheets</li>
-                      <li>Clique em "Arquivo" → "Compartilhar" → "Publicar na web"</li>
-                      <li>Selecione "Toda a planilha" e formato "CSV"</li>
-                      <li>Clique em "Publicar" e copie o link gerado</li>
-                      <li>Cole o link no campo acima</li>
-                    </ol>
-                  </div>
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Google Sheets</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <Label htmlFor="spreadsheet-url">URL da Planilha do Google Sheets</Label>
+                        <div className="flex gap-2 mt-1">
+                          <Input
+                            id="spreadsheet-url"
+                            value={config.spreadsheetUrl}
+                            onChange={(e) => setConfig(prev => ({ ...prev, spreadsheetUrl: e.target.value }))}
+                            placeholder="https://docs.google.com/spreadsheets/d/..."
+                            className="flex-1"
+                          />
+                          <Button 
+                            variant="outline" 
+                            onClick={handleTestConnection}
+                            disabled={isTestingConnection}
+                          >
+                            {isTestingConnection ? (
+                              <RefreshCw className="h-4 w-4 animate-spin" />
+                            ) : (
+                              'Testar'
+                            )}
+                          </Button>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Cole aqui o link completo da sua planilha do Google Sheets
+                        </p>
+                      </div>
+                      
+                      <div className="bg-muted p-4 rounded-lg">
+                        <h4 className="font-medium mb-2">Instruções para Google Sheets:</h4>
+                        <ol className="text-sm space-y-1 list-decimal list-inside">
+                          <li>Abra sua planilha no Google Sheets</li>
+                          <li>Clique em "Arquivo" → "Compartilhar" → "Publicar na web"</li>
+                          <li>Selecione "Toda a planilha" e formato "CSV"</li>
+                          <li>Clique em "Publicar" e copie o link gerado</li>
+                          <li>Cole o link no campo acima</li>
+                        </ol>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Upload de Arquivo</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="file-upload">Importar planilha (.xlsx, .csv)</Label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Input
+                              id="file-upload"
+                              type="file"
+                              accept=".xlsx,.xls,.csv"
+                              onChange={handleFileUpload}
+                              className="flex-1"
+                            />
+                            <Upload className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Faça upload de um arquivo Excel ou CSV com os dados
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </TabsContent>
               
@@ -102,7 +180,7 @@ export const ConfigPanel = ({ isOpen, onClose, onConfigUpdate, currentConfig }: 
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="ajuda-custo">Ajuda de Custo por Dia</Label>
+                    <Label htmlFor="ajuda-custo">Ajuda de Custo por Dia (R$)</Label>
                     <Input
                       id="ajuda-custo"
                       type="number"
@@ -112,12 +190,12 @@ export const ConfigPanel = ({ isOpen, onClose, onConfigUpdate, currentConfig }: 
                       className="mt-1"
                     />
                     <p className="text-sm text-muted-foreground mt-1">
-                      Valor pago por dia trabalhado (R$)
+                      Valor pago por dia trabalhado
                     </p>
                   </div>
                   
                   <div>
-                    <Label htmlFor="valor-ficha">Valor por Ficha (Padrão)</Label>
+                    <Label htmlFor="valor-ficha">Valor por Ficha Padrão (R$)</Label>
                     <Input
                       id="valor-ficha"
                       type="number"
@@ -127,7 +205,7 @@ export const ConfigPanel = ({ isOpen, onClose, onConfigUpdate, currentConfig }: 
                       className="mt-1"
                     />
                     <p className="text-sm text-muted-foreground mt-1">
-                      Valor padrão por ficha quando não especificado (R$)
+                      Valor padrão por ficha quando não especificado
                     </p>
                   </div>
                 </div>

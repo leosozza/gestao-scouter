@@ -2,11 +2,11 @@
 export class GoogleSheetsService {
   private static readonly SPREADSHEET_ID = '14l4A_BOFZM-TwLuam-bKzUgInNAA7fOCeamdkE1nt_o';
   
-  // GIDs das abas
+  // GIDs das abas conforme a planilha real
   private static readonly GIDS = {
-    fichas: '0', // Primeira aba (geralmente GID 0)
-    projetos: '449483735',
-    metas_scouter: '452792639'
+    fichas: '0', // Aba principal com dados das fichas
+    projetos: '449483735', // Aba com dados dos projetos
+    metas_scouter: '452792639' // Aba com metas individuais dos scouters
   };
 
   private static csvToJson(csvText: string): any[] {
@@ -113,46 +113,30 @@ export class GoogleSheetsService {
     try {
       const data = await this.fetchSheetData(this.GIDS.fichas);
       console.log(`Fichas carregadas: ${data.length} registros`);
-      console.log('Headers encontrados:', data.length > 0 ? Object.keys(data[0]) : 'Nenhum');
+      console.log('Headers fichas:', data.length > 0 ? Object.keys(data[0]) : 'Nenhum');
       
-      // Normalizar dados das fichas com melhor mapeamento
       return data.map(row => {
-        // Tentar diferentes variações de nomes de colunas
-        const projeto = row['Projetos_Comerciais'] || row['Projetos_Cormeciais'] || row['Projeto'] || 
-                       row['Agencia_e_Seletiva'] || row['Agencia'] || row['Seletiva'] || '';
-        
-        const scouter = row['Gestao_de_Scouter'] || row['Scouter'] || row['Nome_Scouter'] || 
-                       row['Nome'] || row['Responsavel'] || '';
-        
-        const valor = row['Valor_por_Fichas'] || row['Valor'] || row['Valor_Ficha'] || 'R$ 0,00';
-        
         const processedRow = {
           ID: parseInt(row.ID) || Math.random() * 1000000,
-          Projetos_Comerciais: projeto,
-          Gestao_de_Scouter: scouter,
+          Projetos_Comerciais: row['Projetos_Comerciais'] || row['Projeto'] || row['Agencia'] || '',
+          Gestao_de_Scouter: row['Gestao_de_Scouter'] || row['Scouter'] || row['Nome'] || '',
           Criado: row.Criado || row['Data_Criacao'] || '',
           Data_de_Criacao_da_Ficha: row['Data_de_Criacao_da_Ficha'] || row['Data'] || row.Criado || '',
           MaxScouterApp_Verificacao: row['MaxScouterApp_Verificacao'] || row['Verificacao'] || '',
-          Valor_por_Fichas: valor,
+          Valor_por_Fichas: row['Valor_por_Fichas'] || row['Valor'] || 'R$ 2,50',
           Campo_Local: row['Campo_Local'] || row['Local'] || row['Endereco'] || '',
           Tem_Foto: row['Tem_Foto'] || row['Foto'] || 'Não',
           Status_Confirmacao: row['Status_Confirmacao'] || row['Status'] || 'Aguardando',
           
           // Campos processados
-          valor_por_ficha_num: this.parseMoneyBR(valor),
+          valor_por_ficha_num: this.parseMoneyBR(row['Valor_por_Fichas'] || row['Valor'] || '2.50'),
           geo: this.parseLatLon(row['Campo_Local'] || row['Local'] || ''),
           tem_foto: this.normalizeYesNo(row['Tem_Foto'] || row['Foto'] || ''),
           status_normalizado: (row['Status_Confirmacao'] || row['Status'] || 'Aguardando').trim()
         };
         
-        console.log('Ficha processada:', { 
-          projeto: processedRow.Projetos_Comerciais, 
-          scouter: processedRow.Gestao_de_Scouter,
-          valor: processedRow.valor_por_ficha_num 
-        });
-        
         return processedRow;
-      }).filter(row => row.Gestao_de_Scouter && row.Projetos_Comerciais); // Filtrar apenas registros válidos
+      }).filter(row => row.Gestao_de_Scouter && row.Projetos_Comerciais);
     } catch (error) {
       console.error('Erro ao carregar fichas:', error);
       throw error;
@@ -163,25 +147,26 @@ export class GoogleSheetsService {
     try {
       const data = await this.fetchSheetData(this.GIDS.projetos);
       console.log(`Projetos carregados: ${data.length} registros`);
+      console.log('Headers projetos:', data.length > 0 ? Object.keys(data[0]) : 'Nenhum');
       
-      // Normalizar dados dos projetos
       return data.map(row => ({
-        Agencia_e_Seletiva: row['Agencia_e_Seletiva'] || row['Projeto'] || row['Nome'] || '',
-        Meta_de_Fichas: parseInt(row['Meta_de_Fichas'] || row['Meta']) || 1000, // Default 1000
-        Inicio_Captacao_Fichas: row['Inicio_Captacao_Fichas'] || row['Inicio'] || '',
-        Termino_Captacao_Fichas: row['Termino_Captacao_Fichas'] || row['Termino'] || '',
+        agencia_e_seletiva: row['agencia_e_seletiva'] || row['Agencia_e_Seletiva'] || row['Projeto'] || '',
+        meta_de_fichas: parseInt(row['meta_de_fichas'] || row['Meta_de_Fichas'] || row['Meta']) || 1000,
+        inicio_captacao_fichas: row['inicio_captacao_fichas'] || row['Inicio_Captacao_Fichas'] || row['Inicio'] || '',
+        termino_captacao_fichas: row['termino_captacao_fichas'] || row['Termino_Captacao_Fichas'] || row['Termino'] || '',
+        meta_individual: parseInt(row['meta_individual'] || row['Meta_Individual']) || 500,
         
         // Campos calculados
         dias_total: this.calculateProjectDays(
-          row['Inicio_Captacao_Fichas'] || row['Inicio'], 
-          row['Termino_Captacao_Fichas'] || row['Termino']
+          row['inicio_captacao_fichas'] || row['Inicio_Captacao_Fichas'] || row['Inicio'], 
+          row['termino_captacao_fichas'] || row['Termino_Captacao_Fichas'] || row['Termino']
         ),
         taxa_diaria_meta: this.calculateDailyRate(
-          row['Meta_de_Fichas'] || row['Meta'], 
-          row['Inicio_Captacao_Fichas'] || row['Inicio'], 
-          row['Termino_Captacao_Fichas'] || row['Termino']
+          row['meta_de_fichas'] || row['Meta_de_Fichas'] || row['Meta'], 
+          row['inicio_captacao_fichas'] || row['Inicio_Captacao_Fichas'] || row['Inicio'], 
+          row['termino_captacao_fichas'] || row['Termino_Captacao_Fichas'] || row['Termino']
         )
-      })).filter(row => row.Agencia_e_Seletiva);
+      })).filter(row => row.agencia_e_seletiva);
     } catch (error) {
       console.error('Erro ao carregar projetos:', error);
       throw error;
@@ -191,17 +176,19 @@ export class GoogleSheetsService {
   static async fetchMetasScouter(): Promise<any[]> {
     try {
       const data = await this.fetchSheetData(this.GIDS.metas_scouter);
+      console.log(`Metas scouter carregadas: ${data.length} registros`);
+      console.log('Headers metas:', data.length > 0 ? Object.keys(data[0]) : 'Nenhum');
       
       return data.map(row => ({
-        scouter: (row.scouter || '').trim(),
-        meta: parseInt(row.meta) || 0,
-        inicio: row.inicio || '',
-        termino: row.termino || '',
-        projeto: (row.projeto || '').trim(),
-        valor_por_ficha_override: this.parseMoneyBR(row.valor_por_ficha_override || '')
+        scouter: (row.scouter || row.Scouter || row.Nome || '').trim(),
+        meta: parseInt(row.meta || row.Meta) || 0,
+        inicio: row.inicio || row.Inicio || '',
+        termino: row.termino || row.Termino || '',
+        projeto: (row.projeto || row.Projeto || '').trim(),
+        valor_por_ficha_override: this.parseMoneyBR(row.valor_por_ficha_override || row['Valor_Override'] || '')
       })).filter(row => row.scouter && row.meta > 0);
     } catch (error) {
-      console.warn('Aba Metas_Scouter não encontrada, retornando array vazio');
+      console.warn('Erro ao carregar metas scouter:', error);
       return [];
     }
   }
