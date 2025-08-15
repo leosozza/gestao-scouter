@@ -1,14 +1,15 @@
+
 import { useState } from "react";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { OverviewPanel } from "@/components/dashboard/OverviewPanel";
 import { DataPanel } from "@/components/dashboard/DataPanel";
-import { FilterPanel } from "@/components/dashboard/FilterPanel";
+import { PerformancePanel } from "@/components/dashboard/PerformancePanel";
 
 export const Dashboard = () => {
-  const [activePanel, setActivePanel] = useState<"overview" | "data">("overview");
+  const [activePanel, setActivePanel] = useState<"overview" | "data" | "performance">("overview");
   const { processedData, isLoading, handleLoadView } = useDashboardData();
 
-  const handlePanelChange = (panel: "overview" | "data") => {
+  const handlePanelChange = (panel: "overview" | "data" | "performance") => {
     setActivePanel(panel);
   };
 
@@ -33,7 +34,7 @@ export const Dashboard = () => {
           Visão Geral
         </button>
         <button
-          className={`px-4 py-2 rounded ${
+          className={`mr-2 px-4 py-2 rounded ${
             activePanel === "data"
               ? "bg-blue-500 text-white"
               : "bg-gray-200 text-gray-700"
@@ -42,9 +43,17 @@ export const Dashboard = () => {
         >
           Dados
         </button>
+        <button
+          className={`px-4 py-2 rounded ${
+            activePanel === "performance"
+              ? "bg-blue-500 text-white"
+              : "bg-gray-200 text-gray-700"
+          }`}
+          onClick={() => handlePanelChange("performance")}
+        >
+          Performance
+        </button>
       </div>
-
-      <FilterPanel onFiltersChange={handleFiltersChange} />
 
       {activePanel === "overview" && (
         <OverviewPanel 
@@ -55,6 +64,10 @@ export const Dashboard = () => {
 
       {activePanel === "data" && (
         <DataPanel isLoading={isLoading} processedData={processedData} />
+      )}
+
+      {activePanel === "performance" && (
+        <PerformancePanel isLoading={isLoading} />
       )}
     </div>
   );
