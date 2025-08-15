@@ -1,5 +1,3 @@
-
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   Database, 
   RefreshCw, 
@@ -45,6 +44,17 @@ interface BitrixConfig {
   };
 }
 
+interface TestResult {
+  success: boolean;
+  data?: {
+    leads: number;
+    projetos: number;
+    scouters: number;
+  };
+  error?: string;
+  errorCode?: string;
+}
+
 export const BitrixIntegration = () => {
   const [config, setConfig] = useState<BitrixConfig>({
     enabled: false,
@@ -72,6 +82,9 @@ export const BitrixIntegration = () => {
     refreshToken: false,
   });
 
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [showTestResult, setShowTestResult] = useState(false);
+
   const { isConnected, isLoading, lastSync, testConnection, syncData, sendPayments } = useBitrixIntegration();
   const { toast } = useToast();
 
@@ -86,9 +99,26 @@ export const BitrixIntegration = () => {
     }
 
     const success = await testConnection(config);
+    
     if (success) {
       setConfig(prev => ({ ...prev, enabled: true }));
+      setTestResult({
+        success: true,
+        data: {
+          leads: 0, // Será preenchido pelo hook
+          projetos: 0,
+          scouters: 0
+        }
+      });
+    } else {
+      setTestResult({
+        success: false,
+        error: "Falha na conexão com o Bitrix24",
+        errorCode: "CONNECTION_FAILED"
+      });
     }
+    
+    setShowTestResult(true);
   };
 
   const handleSync = async () => {
@@ -136,6 +166,65 @@ export const BitrixIntegration = () => {
           {getStatusBadge()}
         </div>
       </div>
+
+      {/* Dialog para resultado do teste */}
+      <Dialog open={showTestResult} onOpenChange={setShowTestResult}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {testResult?.success ? (
+                <CheckCircle className="h-6 w-6 text-green-500" />
+              ) : (
+                <XCircle className="h-6 w-6 text-red-500" />
+              )}
+              Resultado do Teste de Conexão
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {testResult?.success ? (
+              <div>
+                <Alert>
+                  <CheckCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Conexão estabelecida com sucesso!
+                  </AlertDescription>
+                </Alert>
+                {testResult.data && (
+                  <div className="mt-4 space-y-2">
+                    <p className="font-medium">Dados encontrados:</p>
+                    <ul className="text-sm space-y-1">
+                      <li>• Leads: {testResult.data.leads}</li>
+                      <li>• Projetos: {testResult.data.projetos}</li>
+                      <li>• Scouters: {testResult.data.scouters}</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div>
+                <Alert variant="destructive">
+                  <XCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    {testResult?.error || "Erro desconhecido"}
+                  </AlertDescription>
+                </Alert>
+                {testResult?.errorCode && (
+                  <div className="mt-4">
+                    <p className="text-sm text-muted-foreground">
+                      Código do erro: <code className="bg-muted px-1 rounded">{testResult.errorCode}</code>
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button onClick={() => setShowTestResult(false)}>
+                Fechar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Tabs defaultValue="config" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
@@ -524,4 +613,3 @@ export const BitrixIntegration = () => {
     </div>
   );
 };
-
