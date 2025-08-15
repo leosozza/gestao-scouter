@@ -1,52 +1,21 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { LogOut, Upload, Palette, Settings, Edit, Bookmark, BarChart3, TrendingUp, DollarSign } from "lucide-react";
+import { LogOut, Upload, Palette } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface DashboardHeaderProps {
   onLogout: () => void;
-  isEditMode?: boolean;
-  onToggleEditMode?: () => void;
-  showSavedViews?: boolean;
-  onToggleSavedViews?: () => void;
-  selectedTheme?: string;
-  onThemeChange?: (theme: string) => void;
-  onOpenConfig?: () => void;
-  activePanel?: 'overview' | 'performance' | 'financial';
-  onPanelChange?: (panel: string) => void;
 }
 
-export const DashboardHeader = ({ 
-  onLogout, 
-  isEditMode, 
-  onToggleEditMode,
-  showSavedViews,
-  onToggleSavedViews,
-  selectedTheme,
-  onThemeChange,
-  onOpenConfig,
-  activePanel,
-  onPanelChange
-}: DashboardHeaderProps) => {
+export const DashboardHeader = ({ onLogout }: DashboardHeaderProps) => {
   const [logoDialogOpen, setLogoDialogOpen] = useState(false);
-  const [currentLogo, setCurrentLogo] = useState(() => 
-    localStorage.getItem('maxfama_logo') || "/lovable-uploads/c7328f04-9e37-4cd5-b5a5-260721fcaa72.png"
-  );
-  const [currentTheme, setCurrentTheme] = useState(() => 
-    selectedTheme || localStorage.getItem('maxfama_theme') || 'classico-corporativo'
-  );
+  const [currentLogo, setCurrentLogo] = useState("/lovable-uploads/c7328f04-9e37-4cd5-b5a5-260721fcaa72.png");
+  const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('maxfama_theme') || 'light');
   const { toast } = useToast();
-
-  // Update currentTheme when selectedTheme prop changes
-  useEffect(() => {
-    if (selectedTheme) {
-      setCurrentTheme(selectedTheme);
-    }
-  }, [selectedTheme]);
 
   const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -69,42 +38,33 @@ export const DashboardHeader = ({
   const applyTheme = (theme: string) => {
     const root = document.documentElement;
     
-    // Remove existing theme classes
-    root.className = root.className.replace(/theme-\w+(-\w+)*/g, '');
-    
-    // Apply new theme
-    root.classList.add(`theme-${theme}`);
+    switch (theme) {
+      case 'dark':
+        root.className = 'dark';
+        break;
+      case 'blue':
+        root.style.setProperty('--primary', '214 94% 58%');
+        root.style.setProperty('--primary-foreground', '0 0% 98%');
+        break;
+      case 'green':
+        root.style.setProperty('--primary', '142 76% 36%');
+        root.style.setProperty('--primary-foreground', '0 0% 98%');
+        break;
+      case 'light':
+      default:
+        root.className = '';
+        root.style.removeProperty('--primary');
+        root.style.removeProperty('--primary-foreground');
+        break;
+    }
     
     setCurrentTheme(theme);
     localStorage.setItem('maxfama_theme', theme);
-    
-    // Call parent callback if provided
-    if (onThemeChange) {
-      onThemeChange(theme);
-    }
-    
-    toast({
-      title: "Tema aplicado",
-      description: `Tema ${theme.replace(/-/g, ' ')} foi aplicado com sucesso`
-    });
   };
-
-  const themes = [
-    { value: 'classico-corporativo', label: 'Clássico Corporativo' },
-    { value: 'contemporaneo-moderno', label: 'Contemporâneo Moderno' },
-    { value: 'minimalista', label: 'Minimalista' },
-    { value: 'tecnologico-futurista', label: 'Tecnológico Futurista' },
-    { value: 'analitico-data-driven', label: 'Analítico Data-driven' },
-    { value: 'criativo-gamificado', label: 'Criativo Gamificado' },
-    { value: 'dark-profissional', label: 'Dark Mode Profissional' },
-    { value: 'neumorfico', label: 'Neumórfico' },
-    { value: 'flat-design', label: 'Flat Design' },
-    { value: 'glassmórfico', label: 'Glassmórfico' }
-  ];
 
   return (
     <>
-      <header className="bg-card border-b border-border px-6 py-4 sticky top-0 z-40">
+      <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <img 
@@ -115,106 +75,30 @@ export const DashboardHeader = ({
               title="Clique para trocar o logo"
             />
             <div>
-              <h1 className="text-xl font-semibold text-foreground">
+              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
                 Dashboard MaxFama
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
                 Sistema de Gestão de Scouters
               </p>
             </div>
           </div>
-
-          {/* Panel Navigation */}
-          {onPanelChange && (
-            <div className="flex items-center gap-2 bg-secondary/50 backdrop-blur-sm border rounded-lg p-1">
-              <Button
-                variant={activePanel === 'overview' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => onPanelChange('overview')}
-                className="flex items-center gap-2"
-              >
-                <BarChart3 className="h-4 w-4" />
-                Visão Geral
-              </Button>
-              <Button
-                variant={activePanel === 'performance' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => onPanelChange('performance')}
-                className="flex items-center gap-2"
-              >
-                <TrendingUp className="h-4 w-4" />
-                Performance
-              </Button>
-              <Button
-                variant={activePanel === 'financial' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => onPanelChange('financial')}
-                className="flex items-center gap-2"
-              >
-                <DollarSign className="h-4 w-4" />
-                Financeiro
-              </Button>
-            </div>
-          )}
           
           <div className="flex items-center gap-4">
             {/* Seletor de Tema */}
             <div className="flex items-center gap-2">
-              <Palette className="h-4 w-4 text-muted-foreground" />
+              <Palette className="h-4 w-4 text-gray-600 dark:text-gray-300" />
               <Select value={currentTheme} onValueChange={applyTheme}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {themes.map(theme => (
-                    <SelectItem key={theme.value} value={theme.value}>
-                      {theme.label}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="light">Claro</SelectItem>
+                  <SelectItem value="dark">Escuro</SelectItem>
+                  <SelectItem value="blue">Azul</SelectItem>
+                  <SelectItem value="green">Verde</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            {/* Fixed Control Buttons */}
-            <div className="flex items-center gap-2 bg-secondary/50 backdrop-blur-sm border rounded-lg p-1">
-              {/* Settings button */}
-              {onOpenConfig && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 w-8 p-0"
-                  onClick={onOpenConfig}
-                  title="Configurações"
-                >
-                  <Settings className="h-4 w-4" />
-                </Button>
-              )}
-
-              {/* Saved Views button */}
-              {onToggleSavedViews && (
-                <Button 
-                  variant={showSavedViews ? "default" : "ghost"} 
-                  size="sm"
-                  onClick={onToggleSavedViews}
-                  className="h-8 w-8 p-0"
-                  title="Visões Salvas"
-                >
-                  <Bookmark className="h-4 w-4" />
-                </Button>
-              )}
-
-              {/* Edit Dashboard button */}
-              {onToggleEditMode && (
-                <Button 
-                  variant={isEditMode ? "default" : "ghost"} 
-                  size="sm"
-                  onClick={onToggleEditMode}
-                  className="h-8 w-8 p-0"
-                  title="Editar Dashboard"
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-              )}
             </div>
 
             <Button

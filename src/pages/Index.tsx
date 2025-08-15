@@ -1,92 +1,27 @@
+import { useState } from "react";
+import { LoginForm } from "@/components/auth/LoginForm";
+import { Dashboard } from "@/components/dashboard/Dashboard";
 
-
-import React, { useState, useEffect } from "react";
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import { ConfigPanel } from "@/components/dashboard/ConfigPanel";
-import { PanelLayout } from "@/components/dashboard/PanelLayout";
-import { useDashboardData } from "@/hooks/useDashboardData";
-
-const Index: React.FC = () => {
-  const [showConfigPanel, setShowConfigPanel] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [showSavedViews, setShowSavedViews] = useState(false);
-  const [selectedTheme, setSelectedTheme] = useState(() => 
-    localStorage.getItem('maxfama_theme') || 'classico-corporativo'
+const Index = () => {
+  const [authToken, setAuthToken] = useState<string | null>(
+    localStorage.getItem('maxfama_auth_token')
   );
-  
-  const [config, setConfig] = useState({
-    spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/14l4A_BOFZM-TwLuam-bKzUgInNAA7fOCeamdkE1nt_o/edit',
-    ajudaCustoDiaria: 50.0,
-    valorPorFicha: 15.0
-  });
 
-  const { processedData, isLoading, handleLoadView } = useDashboardData();
-
-  // Apply theme on component mount and when theme changes
-  useEffect(() => {
-    const applyTheme = (theme: string) => {
-      const root = document.documentElement;
-      // Remove existing theme classes
-      root.className = root.className.replace(/theme-\w+(-\w+)*/g, '');
-      // Apply new theme
-      root.classList.add(`theme-${theme}`);
-    };
-
-    applyTheme(selectedTheme);
-  }, [selectedTheme]);
-
-  const handleConfigUpdate = (newConfig: any) => {
-    setConfig(newConfig);
+  const handleLogin = (token: string) => {
+    localStorage.setItem('maxfama_auth_token', token);
+    setAuthToken(token);
   };
 
-  const handleThemeChange = (theme: string) => {
-    setSelectedTheme(theme);
-    localStorage.setItem('maxfama_theme', theme);
-  };
-
-  // Placeholder logout function (will be replaced with Bitrix24 auth later)
   const handleLogout = () => {
-    console.log('Logout clicked - will integrate with Bitrix24 later');
+    localStorage.removeItem('maxfama_auth_token');
+    setAuthToken(null);
   };
 
-  // Create mock filters for the PanelLayout
-  const currentFilters = {
-    dateRange: { start: '', end: '' },
-    scouters: [],
-    projects: []
-  };
+  if (!authToken) {
+    return <LoginForm onLogin={handleLogin} />;
+  }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <DashboardHeader
-        onLogout={handleLogout}
-        isEditMode={isEditMode}
-        onToggleEditMode={() => setIsEditMode(!isEditMode)}
-        showSavedViews={showSavedViews}
-        onToggleSavedViews={() => setShowSavedViews(!showSavedViews)}
-        selectedTheme={selectedTheme}
-        onThemeChange={handleThemeChange}
-        onOpenConfig={() => setShowConfigPanel(true)}
-      />
-      
-      <PanelLayout 
-        processedData={processedData}
-        isLoading={isLoading}
-        currentFilters={currentFilters}
-        onLoadView={handleLoadView}
-        isEditMode={isEditMode}
-        showSavedViews={showSavedViews}
-      />
-      
-      <ConfigPanel
-        isOpen={showConfigPanel}
-        onClose={() => setShowConfigPanel(false)}
-        onConfigUpdate={handleConfigUpdate}
-        currentConfig={config}
-      />
-    </div>
-  );
+  return <Dashboard onLogout={handleLogout} />;
 };
 
 export default Index;
-
