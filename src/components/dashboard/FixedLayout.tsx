@@ -41,7 +41,7 @@ export const FixedLayout = ({
     );
   }
 
-  const { kpis = {}, tables = {}, charts = {} } = processedData;
+  const { kpis = {}, charts = {}, tables = {} } = processedData;
 
   return (
     <div className="p-6 space-y-6">
@@ -58,6 +58,7 @@ export const FixedLayout = ({
           value={`R$ ${(kpis.receitaTotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
           icon={DollarSign}
           trend={kpis.trendReceita}
+          variant="success"
         />
         <KPICard
           title="Scouters Ativos"
@@ -82,7 +83,7 @@ export const FixedLayout = ({
         />
         
         <CustomLineChart
-          title="Evolução Temporal"
+          title="Evolução Temporal (7 dias)"
           data={charts.evolucaoTemporal || []}
         />
       </div>
@@ -91,19 +92,69 @@ export const FixedLayout = ({
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Detalhes por Scouter</CardTitle>
+            <CardTitle>Performance por Scouter</CardTitle>
           </CardHeader>
           <CardContent>
-            <ScouterTable data={tables.scouters || []} />
+            <div className="space-y-4">
+              {tables.scouters && tables.scouters.length > 0 ? (
+                tables.scouters.map((scouter: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">{scouter.scouter}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {scouter.fichas} fichas / Meta: {scouter.meta}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-green-600">
+                        R$ {scouter.receita.toLocaleString('pt-BR')}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {scouter.progresso.toFixed(1)}% da meta
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-muted-foreground text-center py-4">
+                  Nenhum scouter encontrado
+                </p>
+              )}
+            </div>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader>
-            <CardTitle>Projetos</CardTitle>
+            <CardTitle>Projetos Ativos</CardTitle>
           </CardHeader>
           <CardContent>
-            <ProjectTable data={tables.projetos || []} />
+            <div className="space-y-4">
+              {tables.projetos && tables.projetos.length > 0 ? (
+                tables.projetos.map((projeto: any, index: number) => (
+                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">{projeto.projeto}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {projeto.fichas} fichas / Meta: {projeto.meta}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-blue-600">
+                        R$ {projeto.receita.toLocaleString('pt-BR')}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {projeto.progresso.toFixed(1)}% da meta
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-muted-foreground text-center py-4">
+                  Nenhum projeto encontrado
+                </p>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
