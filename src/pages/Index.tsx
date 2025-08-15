@@ -4,6 +4,7 @@ import { LoginForm } from "@/components/auth/LoginForm";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { ConfigPanel } from "@/components/dashboard/ConfigPanel";
 import { PanelLayout } from "@/components/dashboard/PanelLayout";
+import { useDashboardData } from "@/hooks/useDashboardData";
 
 const Index: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -18,6 +19,8 @@ const Index: React.FC = () => {
     ajudaCustoDiaria: 50.0,
     valorPorFicha: 15.0
   });
+
+  const { processedData, isLoading, handleLoadView } = useDashboardData();
 
   const handleLogin = () => {
     setIsAuthenticated(true);
@@ -43,6 +46,13 @@ const Index: React.FC = () => {
     return <LoginForm onLogin={handleLogin} />;
   }
 
+  // Create mock filters for the PanelLayout
+  const currentFilters = {
+    dateRange: { start: '', end: '' },
+    scouters: [],
+    projects: []
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <DashboardHeader
@@ -59,7 +69,10 @@ const Index: React.FC = () => {
       />
       
       <PanelLayout 
-        activePanel={activePanel}
+        processedData={processedData}
+        isLoading={isLoading}
+        currentFilters={currentFilters}
+        onLoadView={handleLoadView}
         isEditMode={isEditMode}
         showSavedViews={showSavedViews}
       />
