@@ -1,3 +1,4 @@
+import { supabase } from "@/integrations/supabase/client";
 
 interface BitrixConfig {
   baseUrl: string;
@@ -27,33 +28,29 @@ export class BitrixService {
   }
 
   private async makeRequest<T = any>(
-    method: string, 
+    method: string,
     params: Record<string, any> = {}
   ): Promise<BitrixResponse<T>> {
-    let url: string;
-    let headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
-
-    if (this.config.authMode === 'webhook') {
-      url = `${this.config.baseUrl}/rest/${this.config.webhookUserId}/${this.config.webhookToken}/${method}.json`;
-    } else {
-      // OAuth implementation would go here
-      const accessToken = await this.getAccessToken();
-      url = `${this.config.baseUrl}/rest/${method}.json?auth=${accessToken}`;
-    }
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(params),
+    const { data, error } = await supabase.functions.invoke("bitrix-proxy", {
+      body: {
+        baseUrl: this.config.baseUrl,
+        authMode: this.config.authMode,
+        webhookUserId: this.config.webhookUserId,
+        webhookToken: this.config.webhookToken,
+        clientId: this.config.clientId,
+        clientSecret: this.config.clientSecret,
+        refreshToken: this.config.refreshToken,
+        method,
+        params,
+      },
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    if (error) {
+      console.error("bitrix-proxy invocation error:", error);
+      throw new Error(error.message || "Falha ao chamar proxy do Bitrix");
     }
 
-    return response.json();
+    return data as BitrixResponse<T>;
   }
 
   private async getAccessToken(): Promise<string> {
