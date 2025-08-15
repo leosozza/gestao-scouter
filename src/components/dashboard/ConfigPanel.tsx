@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Settings, Database, DollarSign, Download, Upload, RefreshCw, FileSpreadsheet } from "lucide-react";
+import { Settings, Database, DollarSign, Download, Upload, RefreshCw, FileSpreadsheet, Plug } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { GoogleSheetsService } from "@/services/googleSheetsService";
 import { TemplateModal } from "./TemplateModal";
+import { IntegrationsPanel } from "./integrations/IntegrationsPanel";
 
 interface ConfigPanelProps {
   isOpen: boolean;
@@ -82,7 +83,7 @@ export const ConfigPanel = ({ isOpen, onClose, onConfigUpdate, currentConfig }: 
   return (
     <>
       <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50">
-        <div className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] w-full max-w-4xl max-h-[90vh] overflow-auto">
+        <div className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] w-full max-w-5xl max-h-[90vh] overflow-auto">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
@@ -93,9 +94,10 @@ export const ConfigPanel = ({ isOpen, onClose, onConfigUpdate, currentConfig }: 
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="database" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="database">Fonte de Dados</TabsTrigger>
                   <TabsTrigger value="values">Valores</TabsTrigger>
+                  <TabsTrigger value="integrations">Integrações</TabsTrigger>
                   <TabsTrigger value="reports">Relatórios</TabsTrigger>
                 </TabsList>
                 
@@ -242,6 +244,15 @@ export const ConfigPanel = ({ isOpen, onClose, onConfigUpdate, currentConfig }: 
                       <li>Os cálculos são atualizados em tempo real conforme os filtros aplicados</li>
                     </ul>
                   </div>
+                </TabsContent>
+
+                <TabsContent value="integrations" className="space-y-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Plug className="h-4 w-4" />
+                    <h3 className="text-lg font-semibold">Integrações Externas</h3>
+                  </div>
+                  
+                  <IntegrationsPanel />
                 </TabsContent>
                 
                 <TabsContent value="reports" className="space-y-4">
