@@ -147,10 +147,9 @@ export const FinancialControlPanel = ({
   const getProjectAjudaValue = (projectName: string, isWorkDay: boolean = true): number => {
     const config = projectValues[projectName];
     if (!config) {
-      // Valores padrão baseados se é distante ou não
       const projectInfo = getProjectInfo(projectName);
       const isDistante = projectInfo?.name?.toLowerCase().includes('distante') || false;
-      return isWorkDay ? (isDistante ? 70 : 30) : (isDistante ? 70 : 50);
+      return isWorkDay ? (isDistante ? 70 : 30) : 50;
     }
     return isWorkDay ? config.ajudaCustoNormal : config.ajudaCustoFolga;
   };
