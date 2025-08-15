@@ -3,22 +3,18 @@ import React, { useState } from "react";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 
-const Index = () => {
-  const [authToken, setAuthToken] = useState<string | null>(
-    localStorage.getItem('maxfama_auth_token')
-  );
+const Index: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const handleLogin = (token: string) => {
-    localStorage.setItem('maxfama_auth_token', token);
-    setAuthToken(token);
+  const handleLogin = () => {
+    setIsAuthenticated(true);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('maxfama_auth_token');
-    setAuthToken(null);
+    setIsAuthenticated(false);
   };
 
-  if (!authToken) {
+  if (!isAuthenticated) {
     return <LoginForm onLogin={handleLogin} />;
   }
 
