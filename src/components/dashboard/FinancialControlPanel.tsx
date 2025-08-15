@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -68,7 +69,7 @@ export const FinancialControlPanel = ({
   const getProjectAjudaValue = (projectName: string, isWorkDay: boolean = true): number => {
     const config = projectValues[projectName];
     if (!config) {
-      // Valores padrão
+      // Valores padrão: 30 para próximas, 70 para distantes
       return isWorkDay ? 30 : 50;
     }
     return isWorkDay ? config.ajudaCustoNormal : config.ajudaCustoFolga;
@@ -180,12 +181,19 @@ export const FinancialControlPanel = ({
   const updateProjectValues = (projectName: string, values: Partial<ProjectValues[string]>) => {
     setProjectValues(prev => ({
       ...prev,
-      [projectName]: { ...prev[projectName], ...values }
+      [projectName]: { 
+        ajudaCustoNormal: 30,
+        ajudaCustoFolga: 50,
+        isDistante: false,
+        ...prev[projectName], 
+        ...values 
+      }
     }));
   };
 
-  const availableProjects = data?.filteredFichas 
-    ? [...new Set(data.filteredFichas.map((f: any) => f.Projetos_Comerciais))]
+  // Corrigindo a tipagem do availableProjects
+  const availableProjects: string[] = data?.filteredFichas 
+    ? [...new Set(data.filteredFichas.map((f: any) => f.Projetos_Comerciais as string).filter(Boolean))]
     : [];
 
   const getFilteredItems = () => {
@@ -599,7 +607,7 @@ export const FinancialControlPanel = ({
             <DialogTitle>Configuração de Valores por Projeto</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 max-h-96 overflow-y-auto">
-            {availableProjects.map(project => (
+            {availableProjects.map((project: string) => (
               <Card key={project}>
                 <CardContent className="p-4">
                   <h4 className="font-medium mb-3">{project}</h4>
@@ -632,7 +640,7 @@ export const FinancialControlPanel = ({
                           isDistante: !!checked 
                         })}
                       />
-                      <Label htmlFor={`distant-${project}`}>Seletiva Distante</Label>
+                      <Label htmlFor={`distant-${project}`}>Seletiva Distante (R$ 70)</Label>
                     </div>
                   </div>
                 </CardContent>
