@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -306,7 +305,7 @@ export const GoogleSheetsIntegration = () => {
               <Label htmlFor="gid-projetos">GID da Aba Projetos</Label>
               <Input
                 id="gid-projetos"
-                placeholder={DEFAULTGIDS.projetos}
+                placeholder={DEFAULT_GIDS.projetos}
                 value={customGids.projetos}
                 onChange={(e) =>
                   setCustomGids((prev) => ({ ...prev, projetos: e.target.value }))
