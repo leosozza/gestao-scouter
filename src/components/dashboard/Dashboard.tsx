@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from "react";
 import { DashboardHeader } from "./DashboardHeader";
 import { PanelLayout } from "./PanelLayout";
@@ -8,10 +7,15 @@ import { Button } from "@/components/ui/button";
 
 export const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [dashboardFilters, setDashboardFilters] = useState<DashboardFilters>({});
+  const [dashboardFilters, setDashboardFilters] = useState<DashboardFilters>({
+    dateRange: { start: new Date().toISOString(), end: new Date().toISOString() },
+    scouters: [],
+    projects: []
+  });
   const { processedData, isLoading, handleLoadView } = useDashboardData();
   const [showSavedViews, setShowSavedViews] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedTheme, setSelectedTheme] = useState("classic");
 
   const handleLogout = useCallback(() => {
     window.location.href = "/auth/sign-in";
@@ -25,6 +29,8 @@ export const Dashboard = () => {
         onToggleEditMode={() => setIsEditMode(!isEditMode)}
         showSavedViews={showSavedViews}
         onToggleSavedViews={() => setShowSavedViews(!showSavedViews)}
+        selectedTheme={selectedTheme}
+        onThemeChange={setSelectedTheme}
       />
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

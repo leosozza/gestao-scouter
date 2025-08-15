@@ -2,10 +2,9 @@
 import { useState } from 'react';
 
 export interface DashboardFilters {
-  dateRange?: { from: Date; to: Date };
-  scouter?: string;
-  location?: string;
-  project?: string;
+  dateRange: { start: string; end: string };
+  scouters: string[];
+  projects: string[];
 }
 
 export const useDashboardData = () => {
