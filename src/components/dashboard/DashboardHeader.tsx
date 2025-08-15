@@ -39,14 +39,14 @@ export const DashboardHeader = ({ onLogout }: DashboardHeaderProps) => {
   const handleThemeChange = (theme: string) => {
     applyTheme(theme as any);
     toast({
-      title: "Tema alterado",
-      description: `Tema ${getThemeName(theme as any)} aplicado com sucesso`
+      title: "Estilo alterado",
+      description: `Estilo ${getThemeName(theme as any)} aplicado com sucesso`
     });
   };
 
   return (
     <>
-      <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+      <header className="bg-card border-b border-border px-6 py-4 transition-colors duration-300">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <img 
@@ -57,40 +57,29 @@ export const DashboardHeader = ({ onLogout }: DashboardHeaderProps) => {
               title="Clique para trocar o logo"
             />
             <div>
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+              <h1 className="text-xl font-semibold text-foreground">
                 Dashboard MaxFama
               </h1>
-              <p className="text-sm text-gray-600 dark:text-gray-300">
+              <p className="text-sm text-muted-foreground">
                 Sistema de Gestão de Scouters
               </p>
             </div>
           </div>
           
           <div className="flex items-center gap-4">
-            {/* Seletor de Tema */}
+            {/* Seletor de Estilo */}
             <div className="flex items-center gap-2">
-              <Palette className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+              <Palette className="h-4 w-4 text-muted-foreground" />
               <Select value={currentTheme} onValueChange={handleThemeChange}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-44">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="light">Claro</SelectItem>
-                  <SelectItem value="dark">Escuro</SelectItem>
-                  <SelectItem value="blue">Azul</SelectItem>
-                  <SelectItem value="green">Verde</SelectItem>
-                  <SelectItem value="purple">Roxo</SelectItem>
-                  <SelectItem value="pink">Rosa</SelectItem>
-                  <SelectItem value="orange">Laranja</SelectItem>
-                  <SelectItem value="red">Vermelho</SelectItem>
-                  <SelectItem value="cyan">Ciano</SelectItem>
-                  <SelectItem value="yellow">Amarelo</SelectItem>
-                  <SelectItem value="dark-blue">Azul Escuro</SelectItem>
-                  <SelectItem value="corporate">Corporate</SelectItem>
-                  <SelectItem value="analytics">Analytics</SelectItem>
-                  <SelectItem value="medical">Medical</SelectItem>
-                  <SelectItem value="presentation">Apresentação</SelectItem>
-                  <SelectItem value="dark-pro">Dark Pro</SelectItem>
+                  <SelectItem value="modern-blue">🔵 Azul Moderno</SelectItem>
+                  <SelectItem value="vibrant-purple">🟣 Roxo Vibrante</SelectItem>
+                  <SelectItem value="nature-green">🟢 Verde Natural</SelectItem>
+                  <SelectItem value="sunset-orange">🟠 Laranja Pôr do Sol</SelectItem>
+                  <SelectItem value="elegant-dark">⚫ Escuro Elegante</SelectItem>
                 </SelectContent>
               </Select>
             </div>
