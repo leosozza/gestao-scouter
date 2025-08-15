@@ -5,7 +5,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import "./index.css";
 
 import Index from "./pages/Index.tsx";
-import { NotFound } from "./pages/NotFound.tsx";
+import NotFound from "./pages/NotFound.tsx";
 import { BitrixCallback } from "./pages/BitrixCallback.tsx";
 
 createRoot(document.getElementById("root")!).render(
