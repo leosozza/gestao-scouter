@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle, XCircle, Copy, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-export const BitrixCallback = () => {
+const BitrixCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -196,3 +196,5 @@ export const BitrixCallback = () => {
     </div>
   );
 };
+
+export default BitrixCallback;
