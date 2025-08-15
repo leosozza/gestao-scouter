@@ -1,26 +1,14 @@
 import { useState, useEffect } from "react";
 import { DashboardHeader } from "./DashboardHeader";
 import { FilterPanel, DashboardFilters } from "./FilterPanel";
-import { KPICard } from "./KPICard";
-import { CustomBarChart } from "./charts/BarChart";
-import { CustomLineChart } from "./charts/LineChart";
-import { HistogramChart } from "./charts/HistogramChart";
-import { FunnelChart } from "./charts/FunnelChart";
-import { MapChart } from "./charts/MapChart";
-import { AnalysisPanel } from "./AnalysisPanel";
 import { SavedViews } from "./SavedViews";
 import { ConfigPanel } from "./ConfigPanel";
 import { FinancialControlPanel } from "./FinancialControlPanel";
-import { ScouterTable } from "./tables/ScouterTable";
-import { ProjectTable } from "./tables/ProjectTable";
-import { AuditTable } from "./tables/AuditTable";
-import { LocationTable } from "./tables/LocationTable";
-import { IntervalTable } from "./tables/IntervalTable";
-import { PipelineTable } from "./tables/PipelineTable";
+import { PanelLayout } from "./PanelLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Target, DollarSign, Calendar, TrendingUp, Users, AlertTriangle, Camera, CheckCircle, Clock, MapPin, Zap, Settings, CreditCard, FileCheck, FileX } from "lucide-react";
+import { Settings, CreditCard } from "lucide-react";
 import { GoogleSheetsService } from "@/services/googleSheetsService";
 import { useToast } from "@/hooks/use-toast";
 
@@ -56,7 +44,6 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   const [processedData, setProcessedData] = useState<any>({});
   const { toast } = useToast();
 
-  // Aplicar tema salvo na inicialização
   useEffect(() => {
     const savedTheme = localStorage.getItem('maxfama_theme');
     if (savedTheme) {
@@ -88,12 +75,10 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     }
   };
 
-  // Carregar dados automaticamente na inicialização
   useEffect(() => {
     loadData();
   }, []);
 
-  // Processar dados quando filtros mudam
   useEffect(() => {
     if (data.fichas.length > 0) {
       processData();
@@ -137,14 +122,12 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const handleConfigUpdate = (newConfig: any) => {
     setConfig(newConfig);
-    // Se mudou a URL da planilha, recarregar dados
     if (newConfig.spreadsheetUrl !== config.spreadsheetUrl) {
       loadData();
     }
   };
 
   const handleResetAll = () => {
-    // Limpar filtros
     const defaultFilters: DashboardFilters = {
       dateRange: {
         start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -155,13 +138,10 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     };
     setFilters(defaultFilters);
     
-    // Limpar visões salvas
     localStorage.removeItem('maxfama_dashboard_views');
-    
-    // Limpar layout personalizado
     localStorage.removeItem('maxfama_layout_v1');
+    localStorage.removeItem('maxfama_panel_layout_v2');
     
-    // Recarregar dados
     loadData();
     
     toast({
@@ -173,7 +153,6 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   const processData = () => {
     let filteredFichas = data.fichas;
     
-    // Aplicar filtros apenas se houver seleções específicas
     if (filters.scouters.length > 0 || filters.projects.length > 0 || filters.dateRange.start || filters.dateRange.end) {
       filteredFichas = data.fichas.filter((ficha: any) => {
         const fichaDate = new Date(ficha.Data_de_Criacao_da_Ficha);
@@ -181,7 +160,6 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
         const endDate = new Date(filters.dateRange.end);
         
         const dateInRange = fichaDate >= startDate && fichaDate <= endDate;
-        // Se lista vazia, interpretar como "todos" (sem filtro)
         const scouterMatch = filters.scouters.length === 0 || filters.scouters.includes(ficha.Gestao_de_Scouter);
         const projectMatch = filters.projects.length === 0 || filters.projects.includes(ficha.Projetos_Comerciais);
         
@@ -191,20 +169,17 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
     console.log('Fichas filtradas:', filteredFichas.length);
 
-    // KPIs principais
     const totalFichas = filteredFichas.length;
     const diasPagos = calcularDiasPagos(filteredFichas);
     const ajudaCusto = diasPagos * config.ajudaCustoDiaria;
     const pagamentoPorFichas = calcularPagamentoPorFichas(filteredFichas);
     const metaProgress = calcularProgressoMeta(filteredFichas);
 
-    // Novos KPIs - Fichas pagas e a pagar
     const fichasPagas = calcularFichasPagas(filteredFichas);
     const fichasAPagar = calcularFichasAPagar(filteredFichas);
     const valorFichasPagas = calcularValorFichasPagas(filteredFichas);
     const valorFichasAPagar = calcularValorFichasAPagar(filteredFichas);
 
-    // Outros KPIs existentes
     const percentFoto = calcularPercentFoto(filteredFichas);
     const taxaConfirmacao = calcularTaxaConfirmacao(filteredFichas);
     const intervaloMedio = calcularIntervaloMedio(filteredFichas);
@@ -212,11 +187,9 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     const percentIntervalosCurtos = calcularPercentIntervalosCurtos(filteredFichas);
     const roiProjeto = calcularROIProjeto(filteredFichas);
 
-    // Dados para gráficos com valores no topo
     const fichasPorScouter = processarFichasPorScouter(filteredFichas);
     const fichasPorProjeto = processarFichasPorProjeto(filteredFichas);
 
-    // Dados para tabelas
     const scouterTableData = processarDadosScouters(filteredFichas);
     const projectTableData = processarDadosProjetos(filteredFichas);
     const auditTableData = processarDadosAuditoria(filteredFichas);
@@ -238,7 +211,6 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
         custoFichaConfirmada,
         percentIntervalosCurtos,
         roiProjeto,
-        // Novos KPIs
         fichasPagas,
         fichasAPagar,
         valorFichasPagas,
@@ -264,15 +236,12 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     });
   };
 
-  // Novas funções para calcular fichas pagas e a pagar
   const calcularFichasPagas = (fichas: any[]) => {
-    // Simular status de pagamento - em implementação real viria do Google Sheets
-    return Math.floor(fichas.length * 0.7); // 70% das fichas já pagas
+    return Math.floor(fichas.length * 0.7);
   };
 
   const calcularFichasAPagar = (fichas: any[]) => {
-    // Simular status de pagamento - em implementação real viria do Google Sheets
-    return Math.ceil(fichas.length * 0.3); // 30% das fichas pendentes
+    return Math.ceil(fichas.length * 0.3);
   };
 
   const calcularValorFichasPagas = (fichas: any[]) => {
@@ -304,8 +273,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   };
 
   const calcularIntervaloMedio = (fichas: any[]) => {
-    // Simulação - em implementação real seria calculado com base nos timestamps
-    return Math.random() * 10 + 5; // 5-15 minutos
+    return Math.random() * 10 + 5;
   };
 
   const calcularCustoFichaConfirmada = (fichas: any[], ajudaCusto: number, pagamentoPorFichas: number) => {
@@ -317,14 +285,13 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   const calcularPercentIntervalosCurtos = (fichas: any[]) => {
     if (fichas.length <= 1) return 0;
     
-    // Simular intervalos curtos (<5min)
-    const intervalos = fichas.map(() => Math.random() * 30); // 0-30 minutos
+    const intervalos = fichas.map(() => Math.random() * 30);
     const curtos = intervalos.filter(i => i < 5).length;
     return (curtos / intervalos.length) * 100;
   };
 
   const calcularROIProjeto = (fichas: any[]) => {
-    const receita = fichas.length * 50; // Simulação de receita por ficha
+    const receita = fichas.length * 50;
     const custo = (processedData?.kpis?.ajudaCusto || 0) + (processedData?.kpis?.pagamentoPorFichas || 0);
     return custo > 0 ? receita / custo : 0;
   };
@@ -385,8 +352,8 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     }, {});
 
     return Object.entries(projectStats).map(([projeto, stats]: [string, any]) => {
-      const meta = 1000; // Simulação
-      const esperado = 500; // Simulação
+      const meta = 1000;
+      const esperado = 500;
       const delta = stats.fichas - esperado;
       
       return {
@@ -396,17 +363,16 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
         esperado,
         delta,
         status: delta >= 0 ? 'on-track' : delta > -100 ? 'warning' : 'critical',
-        roi: stats.valor / 1000, // Simulação
+        roi: stats.valor / 1000,
         percentConcluido: (stats.fichas / meta) * 100
       };
     });
   };
 
   const processarDadosAuditoria = (fichas: any[]) => {
-    const problemas = [];
+    const problemas: any[] = [];
     
     fichas.forEach(ficha => {
-      // Fichas sem foto
       if (!ficha.tem_foto && ficha.Tem_Foto !== 'Sim') {
         problemas.push({
           id: ficha.ID.toString(),
@@ -419,7 +385,6 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
         });
       }
       
-      // Status aguardando há muito tempo (simulação)
       if (ficha.status_normalizado === 'Aguardando') {
         const diasAguardando = Math.floor(Math.random() * 10);
         if (diasAguardando > 5) {
@@ -436,7 +401,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       }
     });
 
-    return problemas.slice(0, 10); // Limitar a 10 itens
+    return problemas.slice(0, 10);
   };
 
   const calcularDiasPagos = (fichas: any[]) => {
@@ -503,10 +468,9 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   };
 
   const processarProjecaoVsReal = (fichas: any[]) => {
-    // Simulação de dados para o gráfico de projeção
     const days = Array.from({ length: 12 }, (_, i) => {
       const date = new Date(2025, 7, i + 1);
-      const esperado = (i + 1) * 32; // Meta diária simulada
+      const esperado = (i + 1) * 32;
       const real = fichas.filter(f => {
         const fichaDate = new Date(f.Data_de_Criacao_da_Ficha);
         return fichaDate <= date;
@@ -525,7 +489,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const processarHistogramIntervalos = (fichas: any[]) => {
     const buckets = ['<5min', '5-10min', '10-20min', '20-40min', '>40min'];
-    const counts = [45, 30, 15, 8, 2]; // Simulação
+    const counts = [45, 30, 15, 8, 2];
     const total = counts.reduce((a, b) => a + b, 0);
     
     return buckets.map((bucket, index) => ({
@@ -564,7 +528,6 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   };
 
   const processarMapData = (fichas: any[]) => {
-    // Simulação de dados de localização
     return [
       { lat: -23.5505, lon: -46.6333, fichas: 45, conversao: 85.5, endereco: 'Centro - São Paulo' },
       { lat: -23.5629, lon: -46.6544, fichas: 32, conversao: 72.3, endereco: 'Vila Madalena' },
@@ -614,8 +577,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
         };
       }
       
-      // Simulação de intervalos
-      const intervalo = Math.random() * 60; // 0-60 minutos
+      const intervalo = Math.random() * 60;
       acc[scouter].intervalos.push(intervalo);
       
       if (intervalo < 5) acc[scouter].curtos++;
@@ -662,7 +624,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
           break;
         case 'Confirmado':
           acc[projeto].confirmadas++;
-          acc[projeto].tempos.push(Math.random() * 72); // 0-72 horas
+          acc[projeto].tempos.push(Math.random() * 72);
           break;
         case 'Não Confirmado':
           acc[projeto].naoConfirmadas++;
@@ -756,208 +718,10 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
               </div>
             </div>
 
-            {/* KPIs - Linha 1 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <KPICard
-                title="Total de Fichas"
-                value={processedData.kpis?.totalFichas || 0}
-                icon={Target}
-                isLoading={isLoading}
-              />
-              <KPICard
-                title="Fichas Pagas"
-                value={processedData.kpis?.fichasPagas || 0}
-                icon={FileCheck}
-                variant="success"
-                isLoading={isLoading}
-              />
-              <KPICard
-                title="Fichas a Pagar"
-                value={processedData.kpis?.fichasAPagar || 0}
-                icon={FileX}
-                variant="warning"
-                isLoading={isLoading}
-              />
-              <KPICard
-                title="Ajuda de Custo"
-                value={`R$ ${(processedData.kpis?.ajudaCusto || 0).toLocaleString('pt-BR')}`}
-                subtitle={`${processedData.kpis?.diasPagos || 0} dias pagos`}
-                icon={DollarSign}
-                variant="success"
-                isLoading={isLoading}
-              />
-            </div>
-
-            {/* KPIs - Linha 2 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <KPICard
-                title="Valor Fichas Pagas"
-                value={`R$ ${(processedData.kpis?.valorFichasPagas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                icon={DollarSign}
-                variant="success"
-                isLoading={isLoading}
-              />
-              <KPICard
-                title="Valor a Pagar"
-                value={`R$ ${(processedData.kpis?.valorFichasAPagar || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                icon={DollarSign}
-                variant="warning"
-                isLoading={isLoading}
-              />
-              <KPICard
-                title="% com Foto"
-                value={`${(processedData.kpis?.percentFoto || 0).toFixed(1)}%`}
-                icon={Camera}
-                variant={processedData.kpis?.percentFoto >= 80 ? "success" : "warning"}
-                isLoading={isLoading}
-              />
-              <KPICard
-                title="Taxa de Confirmação"
-                value={`${(processedData.kpis?.taxaConfirmacao || 0).toFixed(1)}%`}
-                icon={CheckCircle}
-                variant={processedData.kpis?.taxaConfirmacao >= 70 ? "success" : "warning"}
-                isLoading={isLoading}
-              />
-            </div>
-
-            {/* KPIs - Linha 3 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <KPICard
-                title="Intervalo Médio"
-                value={`${(processedData.kpis?.intervaloMedio || 0).toFixed(1)} min`}
-                icon={Clock}
-                variant={processedData.kpis?.intervaloMedio <= 8 ? "success" : "warning"}
-                isLoading={isLoading}
-              />
-              <KPICard
-                title="% Intervalos Curtos"
-                value={`${(processedData.kpis?.percentIntervalosCurtos || 0).toFixed(1)}%`}
-                icon={Zap}
-                variant={processedData.kpis?.percentIntervalosCurtos >= 50 ? "success" : "warning"}
-                isLoading={isLoading}
-              />
-              <KPICard
-                title="Custo/Ficha Confirmada"
-                value={`R$ ${(processedData.kpis?.custoFichaConfirmada || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                icon={DollarSign}
-                variant="default"
-                isLoading={isLoading}
-              />
-              {processedData.kpis?.metaProgress && (
-                <KPICard
-                  title="% da Meta"
-                  value={`${processedData.kpis.metaProgress}%`}
-                  icon={Target}
-                  variant={processedData.kpis.metaProgress >= 50 ? "success" : "warning"}
-                  isLoading={isLoading}
-                />
-              )}
-              {processedData.kpis?.ritmoNecessario && (
-                <KPICard
-                  title="Ritmo Necessário"
-                  value={`${processedData.kpis.ritmoNecessario}/dia`}
-                  subtitle="para atingir meta"
-                  icon={AlertTriangle}
-                  variant={processedData.kpis.ritmoNecessario > 25 ? "destructive" : "warning"}
-                  isLoading={isLoading}
-                />
-              )}
-              <KPICard
-                title="ROI do Projeto"
-                value={`${(processedData.kpis?.roiProjeto || 0).toFixed(2)}x`}
-                icon={TrendingUp}
-                variant={processedData.kpis?.roiProjeto >= 2 ? "success" : "warning"}
-                isLoading={isLoading}
-              />
-            </div>
-
-            {/* Gráficos Principais */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <CustomBarChart
-                title="Fichas por Scouter"
-                data={processedData.charts?.fichasPorScouter || []}
-                color="hsl(var(--primary))"
-                isLoading={isLoading}
-                showValues={true}
-              />
-              <CustomBarChart
-                title="Fichas por Projeto"
-                data={processedData.charts?.fichasPorProjeto || []}
-                color="hsl(var(--success))"
-                isLoading={isLoading}
-                showValues={true}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-6">
-              <CustomLineChart
-                title="Projeção vs Real (Acumulado)"
-                data={processedData.charts?.projecaoVsReal || []}
-                isLoading={isLoading}
-              />
-            </div>
-
-            {/* Visualizações Avançadas */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <FunnelChart
-                title="Funil de Status"
-                data={processedData.charts?.funnelData || []}
-                isLoading={isLoading}
-              />
-              <HistogramChart
-                title="Distribuição de Intervalos"
-                data={processedData.charts?.histogramData || []}
-                isLoading={isLoading}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-6">
-              <MapChart
-                title="Mapa de Locais"
-                data={processedData.charts?.mapData || []}
-                isLoading={isLoading}
-              />
-            </div>
-
-            {/* Tabelas Detalhadas */}
-            <div className="grid grid-cols-1 gap-6">
-              <ScouterTable
-                data={processedData.tables?.scouters || []}
-                isLoading={isLoading}
-              />
-              
-              <ProjectTable
-                data={processedData.tables?.projects || []}
-                isLoading={isLoading}
-              />
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <LocationTable
-                  data={processedData.tables?.locations || []}
-                  isLoading={isLoading}
-                />
-                <IntervalTable
-                  data={processedData.tables?.intervals || []}
-                  isLoading={isLoading}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <PipelineTable
-                  data={processedData.tables?.pipeline || []}
-                  isLoading={isLoading}
-                />
-                <AuditTable
-                  data={processedData.tables?.audit || []}
-                  isLoading={isLoading}
-                />
-              </div>
-            </div>
-
-            {/* Análise */}
-            <AnalysisPanel
-              filters={filters}
-              data={processedData}
+            {/* Dashboard Modular */}
+            <PanelLayout 
+              processedData={processedData}
+              isLoading={isLoading}
             />
           </TabsContent>
 
