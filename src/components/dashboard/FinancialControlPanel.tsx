@@ -241,7 +241,7 @@ export const FinancialControlPanel = ({
     
     const uniqueProjects = [...new Set(scouterProjects)];
     
-    uniqueProjects.forEach(projectName => {
+    uniqueProjects.forEach((projectName: string) => {
       const projectInfo = getProjectInfo(projectName);
       if (projectInfo?.startDate && projectInfo?.endDate) {
         try {
@@ -311,7 +311,7 @@ export const FinancialControlPanel = ({
     ? Array.from(new Set(
         data.filteredFichas
           .map((f: any) => f.Projetos_Comerciais)
-          .filter((project): project is string => typeof project === 'string' && project.length > 0)
+          .filter((project: unknown): project is string => typeof project === 'string' && project.length > 0)
       ))
     : [];
 
@@ -410,7 +410,7 @@ export const FinancialControlPanel = ({
     setConfirmPayment(false);
   };
 
-  const exportReport = (format: 'csv' | 'pdf') => {
+  const exportReport = (exportFormat: 'csv' | 'pdf') => {
     const totals = calculateTotals();
     const reportData = {
       scouter: selectedScouter,
@@ -421,10 +421,10 @@ export const FinancialControlPanel = ({
       items: getFilteredItems()
     };
 
-    console.log(`Exportando relatório ${format.toUpperCase()}:`, reportData);
+    console.log(`Exportando relatório ${exportFormat.toUpperCase()}:`, reportData);
     
     toast({
-      title: `Relatório ${format.toUpperCase()}`,
+      title: `Relatório ${exportFormat.toUpperCase()}`,
       description: `Relatório de ${selectedScouter} está sendo preparado`
     });
   };
