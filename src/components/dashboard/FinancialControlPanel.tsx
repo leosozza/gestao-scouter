@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -193,7 +194,10 @@ export const FinancialControlPanel = ({
 
   // Corrigindo a tipagem do availableProjects
   const availableProjects: string[] = data?.filteredFichas 
-    ? [...new Set(data.filteredFichas.map((f: any) => f.Projetos_Comerciais as string).filter(Boolean))]
+    ? [...new Set(data.filteredFichas
+        .map((f: any) => f.Projetos_Comerciais)
+        .filter((project): project is string => typeof project === 'string' && project.length > 0)
+      )]
     : [];
 
   const getFilteredItems = () => {
@@ -731,3 +735,4 @@ export const FinancialControlPanel = ({
     </>
   );
 };
+
