@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,10 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { DollarSign, FileText, Download, AlertTriangle, Check, X, CreditCard, Calendar as CalendarIcon, Settings, CalendarDays, RefreshCw, HandCoins } from "lucide-react";
+import { DollarSign, FileText, Download, AlertTriangle, Check, X, CreditCard, Calendar as CalendarIcon, Settings, CalendarDays, RefreshCw, HandCoins, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DashboardFilters } from "./FilterPanel";
-import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from "date-fns";
+import { format, parseISO, isWithinInterval, startOfDay, endOfDay, eachDayOfInterval, isWeekend } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
@@ -53,6 +52,15 @@ interface ProjectInfo {
   totalScouters: number;
 }
 
+interface DayBreakdown {
+  date: string;
+  fichas: number;
+  type: 'trabalho' | 'folga' | 'falta' | 'vazio';
+  ajudaValue: number;
+  project?: string;
+  canEdit: boolean;
+}
+
 interface FinancialControlPanelProps {
   isOpen: boolean;
   onClose: () => void;
@@ -79,6 +87,9 @@ export const FinancialControlPanel = ({
   const [selectedDayOffTypes, setSelectedDayOffTypes] = useState<{ [date: string]: 'folga' | 'falta' }>({});
   const [dateFilter, setDateFilter] = useState<DateFilter>({ start: undefined, end: undefined });
   const [projectsInfo, setProjectsInfo] = useState<ProjectInfo[]>([]);
+  const [dayBreakdown, setDayBreakdown] = useState<DayBreakdown[]>([]);
+  const [showDayBreakdown, setShowDayBreakdown] = useState(false);
+  const [editingDay, setEditingDay] = useState<{ date: string; type: 'folga' | 'falta' } | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -90,20 +101,21 @@ export const FinancialControlPanel = ({
   useEffect(() => {
     if (selectedScouter && data?.filteredFichas) {
       generatePaymentItems();
+      if (dateFilter.start && dateFilter.end) {
+        generateDayBreakdown();
+      }
     }
-  }, [selectedScouter, data, projectValues, dateFilter]);
+  }, [selectedScouter, data, projectValues, dateFilter, selectedDayOffTypes]);
 
   const calculateProjectsInfo = () => {
     if (!data?.projetos || !data?.filteredFichas) return;
 
     const projectsMap = new Map<string, ProjectInfo>();
 
-    // Primeiro, mapeamos as informações dos projetos
     data.projetos.forEach((projeto: any) => {
       const projectName = projeto.agencia_e_seletiva;
       if (!projectName) return;
 
-      // Conta quantos scouters únicos trabalham neste projeto
       const scoutersInProject = new Set(
         data.filteredFichas
           .filter((f: any) => f.Projetos_Comerciais === projectName)
@@ -135,7 +147,7 @@ export const FinancialControlPanel = ({
 
     try {
       const checkDate = parseISO(date);
-      const startDate = parseISO(projectInfo.startDate.split('/').reverse().join('-')); // DD/MM/YYYY para YYYY-MM-DD
+      const startDate = parseISO(projectInfo.startDate.split('/').reverse().join('-'));
       const endDate = parseISO(projectInfo.endDate.split('/').reverse().join('-'));
       
       return isWithinInterval(checkDate, { start: startDate, end: endDate });
@@ -149,52 +161,42 @@ export const FinancialControlPanel = ({
     const config = projectValues[projectName];
     if (!config) {
       const projectInfo = getProjectInfo(projectName);
-      const isDistante = projectInfo?.name?.toLowerCase().includes('distante') || false;
-      return isWorkDay ? (isDistante ? 70 : 30) : 50;
+      const isDistante = projectInfo?.name?.toLowerCase().includes('distante') || 
+                        projectInfo?.name?.toLowerCase().includes('longe') || false;
+      return isWorkDay ? (isDistante ? 70 : 30) : (isDistante ? 50 : 30);
     }
     return isWorkDay ? config.ajudaCustoNormal : config.ajudaCustoFolga;
   };
 
   const parseFichaDate = (dateString: string): Date | null => {
     try {
-      console.log('Parseando data da ficha:', dateString);
-      
       if (!dateString) return null;
       
       let parsedDate: Date | null = null;
       
-      // Formato ISO (YYYY-MM-DD ou YYYY-MM-DDTHH:mm:ss)
       if (dateString.includes('-') && dateString.match(/^\d{4}-\d{2}-\d{2}/)) {
         parsedDate = parseISO(dateString);
-      }
-      // Formato brasileiro (DD/MM/YYYY)
-      else if (dateString.includes('/')) {
-        const dateOnly = dateString.split(' ')[0]; // Remove hora se existir
+      } else if (dateString.includes('/')) {
+        const dateOnly = dateString.split(' ')[0];
         const parts = dateOnly.split('/');
         if (parts.length === 3) {
           const day = parts[0].padStart(2, '0');
           const month = parts[1].padStart(2, '0');
           const year = parts[2];
           
-          // Valida se são números válidos
           if (!isNaN(Number(day)) && !isNaN(Number(month)) && !isNaN(Number(year))) {
-            // DD/MM/YYYY -> YYYY-MM-DD
             const isoDate = `${year}-${month}-${day}`;
             parsedDate = parseISO(isoDate);
           }
         }
-      }
-      // Tenta parseISO direto como fallback
-      else {
+      } else {
         parsedDate = parseISO(dateString);
       }
       
       if (parsedDate && !isNaN(parsedDate.getTime())) {
-        console.log('Data parseada com sucesso:', format(parsedDate, 'dd/MM/yyyy'));
         return parsedDate;
       }
       
-      console.warn('Não foi possível parsear a data:', dateString);
       return null;
     } catch (error) {
       console.warn('Erro ao parsear data:', dateString, error);
@@ -202,43 +204,118 @@ export const FinancialControlPanel = ({
     }
   };
 
+  const generateDayBreakdown = () => {
+    if (!selectedScouter || !dateFilter.start || !dateFilter.end) return;
+
+    const scouterFichas = data?.filteredFichas?.filter(
+      (ficha: any) => ficha.Gestao_de_Scouter === selectedScouter
+    ) || [];
+
+    // Agrupar fichas por dia
+    const fichasPorDia = scouterFichas.reduce((acc: any, ficha: any) => {
+      const fichaDate = parseFichaDate(ficha.Data_de_Criacao_da_Ficha);
+      if (!fichaDate) return acc;
+      
+      const date = format(startOfDay(fichaDate), 'yyyy-MM-dd');
+      if (!acc[date]) {
+        acc[date] = { count: 0, project: ficha.Projetos_Comerciais };
+      }
+      acc[date].count += 1;
+      return acc;
+    }, {});
+
+    // Gerar breakdown para cada dia do período
+    const allDays = eachDayOfInterval({
+      start: dateFilter.start,
+      end: dateFilter.end
+    });
+
+    const breakdown: DayBreakdown[] = allDays
+      .filter(day => !isWeekend(day)) // Só dias úteis
+      .map(day => {
+        const dateStr = format(day, 'yyyy-MM-dd');
+        const fichasCount = fichasPorDia[dateStr]?.count || 0;
+        const project = fichasCount > 0 ? fichasPorDia[dateStr].project : getMainProject();
+        
+        let type: 'trabalho' | 'folga' | 'falta' | 'vazio' = 'vazio';
+        let ajudaValue = 0;
+        let canEdit = false;
+
+        if (fichasCount > 0) {
+          type = 'trabalho';
+          if (fichasCount > 20) {
+            ajudaValue = getProjectAjudaValue(project, true);
+          }
+        } else {
+          // Verificar se foi classificado como folga ou falta
+          const dayOffType = selectedDayOffTypes[dateStr];
+          if (dayOffType) {
+            type = dayOffType;
+            if (dayOffType === 'folga') {
+              ajudaValue = getProjectAjudaValue(project, false);
+            }
+          } else {
+            canEdit = true; // Permite editar dias não classificados
+          }
+        }
+
+        return {
+          date: dateStr,
+          fichas: fichasCount,
+          type,
+          ajudaValue,
+          project,
+          canEdit
+        };
+      });
+
+    setDayBreakdown(breakdown);
+  };
+
+  const getMainProject = (): string => {
+    const scouterFichas = data?.filteredFichas?.filter(
+      (ficha: any) => ficha.Gestao_de_Scouter === selectedScouter
+    ) || [];
+
+    const projectCounts = scouterFichas.reduce((acc: any, ficha: any) => {
+      const project = ficha.Projetos_Comerciais;
+      acc[project] = (acc[project] || 0) + 1;
+      return acc;
+    }, {});
+
+    return Object.keys(projectCounts).reduce((a, b) => 
+      projectCounts[a] > projectCounts[b] ? a : b
+    ) || '';
+  };
+
+  const handleEditDay = (date: string, newType: 'folga' | 'falta') => {
+    setSelectedDayOffTypes(prev => ({
+      ...prev,
+      [date]: newType
+    }));
+    setEditingDay(null);
+    
+    toast({
+      title: "Dia atualizado",
+      description: `${format(parseISO(date), 'dd/MM/yyyy')} marcado como ${newType}`,
+      variant: "default"
+    });
+  };
+
   const generatePaymentItems = () => {
     if (!selectedScouter || !data?.filteredFichas) return;
-
-    console.log('=== INÍCIO DA GERAÇÃO DE ITENS ===');
-    console.log('Scouter selecionado:', selectedScouter);
-    console.log('Filtro de data ativo:', dateFilter);
-    console.log('Total de fichas no data:', data.filteredFichas.length);
 
     let scouterFichas = data.filteredFichas.filter(
       (ficha: any) => ficha.Gestao_de_Scouter === selectedScouter
     );
 
-    console.log('Fichas do scouter antes do filtro de data:', scouterFichas.length);
-
-    // Debug das primeiras fichas para ver o formato das datas
-    if (scouterFichas.length > 0) {
-      console.log('Exemplos de datas das fichas:');
-      scouterFichas.slice(0, 3).forEach((ficha: any, index: number) => {
-        console.log(`Ficha ${index + 1}: ${ficha.Data_de_Criacao_da_Ficha}`);
-      });
-    }
-
-    // Aplicar filtro de data se definido
     if (dateFilter.start || dateFilter.end) {
-      console.log('Aplicando filtro de data...');
-      console.log('Data início:', dateFilter.start ? format(dateFilter.start, 'dd/MM/yyyy') : 'não definida');
-      console.log('Data fim:', dateFilter.end ? format(dateFilter.end, 'dd/MM/yyyy') : 'não definida');
-      
       const originalCount = scouterFichas.length;
       
       scouterFichas = scouterFichas.filter((ficha: any) => {
         const fichaDate = parseFichaDate(ficha.Data_de_Criacao_da_Ficha);
         
-        if (!fichaDate) {
-          console.log('Data inválida rejeitada:', ficha.Data_de_Criacao_da_Ficha);
-          return false;
-        }
+        if (!fichaDate) return false;
         
         const fichaDay = startOfDay(fichaDate);
         let isInRange = true;
@@ -247,24 +324,16 @@ export const FinancialControlPanel = ({
           const startDay = startOfDay(dateFilter.start);
           const endDay = endOfDay(dateFilter.end);
           isInRange = isWithinInterval(fichaDay, { start: startDay, end: endDay });
-          
-          console.log(`Ficha ${ficha.ID}: ${format(fichaDay, 'dd/MM/yyyy')} está entre ${format(startDay, 'dd/MM/yyyy')} e ${format(endDay, 'dd/MM/yyyy')}? ${isInRange}`);
         } else if (dateFilter.start) {
           const startDay = startOfDay(dateFilter.start);
           isInRange = fichaDay >= startDay;
-          
-          console.log(`Ficha ${ficha.ID}: ${format(fichaDay, 'dd/MM/yyyy')} >= ${format(startDay, 'dd/MM/yyyy')}? ${isInRange}`);
         } else if (dateFilter.end) {
           const endDay = endOfDay(dateFilter.end);
           isInRange = fichaDay <= endDay;
-          
-          console.log(`Ficha ${ficha.ID}: ${format(fichaDay, 'dd/MM/yyyy')} <= ${format(endDay, 'dd/MM/yyyy')}? ${isInRange}`);
         }
         
         return isInRange;
       });
-      
-      console.log(`Resultado do filtro: ${scouterFichas.length} fichas (eram ${originalCount})`);
     }
 
     const items: PaymentItem[] = [];
@@ -294,8 +363,6 @@ export const FinancialControlPanel = ({
       return acc;
     }, {});
 
-    console.log('Fichas por dia após filtro:', fichasPorDia);
-
     // Adicionar ajudas de custo para dias trabalhados
     Object.entries(fichasPorDia).forEach(([date, info]: [string, any]) => {
       if (info.count > 20 && isDateInProjectRange(date, info.project)) {
@@ -310,21 +377,25 @@ export const FinancialControlPanel = ({
       }
     });
 
-    // Verificar dias não trabalhados dentro do período dos projetos
-    const workDates = Object.keys(fichasPorDia);
-    const projectDates = getProjectWorkingDates();
-    const nonWorkDays = projectDates.filter(date => !workDates.includes(date));
-    
-    if (nonWorkDays.length > 0 && !dayOffDialog.open) {
-      setDayOffDialog({ open: true, dates: nonWorkDays });
-    }
-
-    console.log('=== FINAL DA GERAÇÃO ===');
-    console.log('Total de itens gerados:', items.length);
-    console.log('Itens por tipo:', {
-      fichas: items.filter(i => i.type === 'ficha').length,
-      ajudas: items.filter(i => i.type === 'ajuda').length,
-      folgas: items.filter(i => i.type === 'folga').length
+    // Adicionar folgas remuneradas
+    Object.entries(selectedDayOffTypes).forEach(([date, type]) => {
+      if (type === 'folga') {
+        const recentFicha = data.filteredFichas
+          .filter((f: any) => f.Gestao_de_Scouter === selectedScouter)
+          .sort((a: any, b: any) => new Date(b.Data_de_Criacao_da_Ficha).getTime() - new Date(a.Data_de_Criacao_da_Ficha).getTime())[0];
+        
+        const project = recentFicha?.Projetos_Comerciais || '';
+        
+        items.push({
+          id: `folga-${date}`,
+          type: 'folga',
+          date,
+          project,
+          value: getProjectAjudaValue(project, false),
+          status: 'PENDENTE',
+          isDayOff: true
+        });
+      }
     });
 
     setPaymentItems(items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
@@ -347,7 +418,7 @@ export const FinancialControlPanel = ({
           
           for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
             const weekday = d.getDay();
-            if (weekday >= 1 && weekday <= 5) { // Apenas dias úteis
+            if (weekday >= 1 && weekday <= 5) {
               const dateStr = d.toISOString().split('T')[0];
               if (!dates.includes(dateStr)) {
                 dates.push(dateStr);
@@ -485,6 +556,8 @@ export const FinancialControlPanel = ({
     setFilterStatus('all');
     setDateFilter({ start: undefined, end: undefined });
     setSelectedDayOffTypes({});
+    setDayBreakdown([]);
+    setShowDayBreakdown(false);
     
     toast({
       title: "Scouter redefinido",
@@ -504,13 +577,6 @@ export const FinancialControlPanel = ({
         ? { ...item, status: 'PAGO' as const, lote: loteId, paymentDate }
         : item
     ));
-
-    console.log('Pagamento geral processado:', {
-      scouter: selectedScouter,
-      lote: loteId,
-      data: paymentDate,
-      items: paymentItems.filter(item => item.status === 'PENDENTE')
-    });
 
     toast({
       title: "Pagamento processado",
@@ -536,13 +602,6 @@ export const FinancialControlPanel = ({
         : item
     ));
 
-    console.log('Pagamento de ajuda de custo processado:', {
-      scouter: selectedScouter,
-      lote: loteId,
-      data: paymentDate,
-      items: ajudaPendente
-    });
-
     toast({
       title: "Ajuda de custo paga",
       description: `Lote ${loteId.slice(0, 8)} - ${ajudaPendente.length} itens pagos`,
@@ -560,7 +619,8 @@ export const FinancialControlPanel = ({
         ? `${format(dateFilter.start, 'dd/MM/yyyy')} a ${format(dateFilter.end, 'dd/MM/yyyy')}`
         : 'Todos os períodos',
       ...totals,
-      items: getFilteredItems()
+      items: getFilteredItems(),
+      dayBreakdown: dayBreakdown
     };
 
     console.log(`Exportando relatório ${exportFormat.toUpperCase()}:`, reportData);
@@ -674,9 +734,96 @@ export const FinancialControlPanel = ({
                       >
                         Limpar Filtros
                       </Button>
+                      {dateFilter.start && dateFilter.end && selectedScouter && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setShowDayBreakdown(!showDayBreakdown)}
+                        >
+                          <CalendarDays className="h-4 w-4 mr-2" />
+                          {showDayBreakdown ? 'Ocultar' : 'Ver'} Detalhamento por Dia
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Detalhamento por Dia */}
+                {showDayBreakdown && dayBreakdown.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CalendarDays className="h-5 w-5" />
+                        Detalhamento por Dia - {selectedScouter}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-7 gap-2 max-h-64 overflow-y-auto">
+                        {dayBreakdown.map((day) => (
+                          <Card key={day.date} className="p-2 text-center">
+                            <div className="text-xs font-medium mb-1">
+                              {format(parseISO(day.date), 'dd/MM')}
+                            </div>
+                            
+                            {day.type === 'trabalho' && (
+                              <>
+                                <div className="text-lg font-bold text-success">
+                                  {day.fichas}
+                                </div>
+                                {day.ajudaValue > 0 && (
+                                  <Badge variant="outline" className="text-xs bg-blue-50 text-blue-600 border-blue-200">
+                                    R$ {day.ajudaValue}
+                                  </Badge>
+                                )}
+                              </>
+                            )}
+                            
+                            {day.type === 'folga' && (
+                              <div className="space-y-1">
+                                <Badge 
+                                  variant="outline" 
+                                  className="text-xs bg-green-50 text-green-600 border-green-200 cursor-pointer"
+                                  onClick={() => setEditingDay({ date: day.date, type: 'folga' })}
+                                >
+                                  <Edit className="h-3 w-3 mr-1" />
+                                  Folga
+                                </Badge>
+                                {day.ajudaValue > 0 && (
+                                  <div className="text-xs font-medium text-green-600">
+                                    R$ {day.ajudaValue}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            
+                            {day.type === 'falta' && (
+                              <Badge 
+                                variant="outline" 
+                                className="text-xs bg-red-50 text-red-600 border-red-200 cursor-pointer"
+                                onClick={() => setEditingDay({ date: day.date, type: 'falta' })}
+                              >
+                                <Edit className="h-3 w-3 mr-1" />
+                                Falta
+                              </Badge>
+                            )}
+                            
+                            {day.canEdit && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-6 w-full text-xs"
+                                onClick={() => setEditingDay({ date: day.date, type: 'falta' })}
+                              >
+                                <Edit className="h-3 w-3 mr-1" />
+                                Definir
+                              </Button>
+                            )}
+                          </Card>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Informações dos Projetos */}
                 {projectsInfo.length > 0 && (
@@ -827,7 +974,6 @@ export const FinancialControlPanel = ({
                           PDF
                         </Button>
                         
-                        {/* Botão específico para pagar ajuda de custo */}
                         {valorAjudaPendente > 0 && (
                           <Button 
                             onClick={() => setConfirmAjudaPayment(true)}
@@ -839,7 +985,6 @@ export const FinancialControlPanel = ({
                           </Button>
                         )}
                         
-                        {/* Botão para pagar tudo */}
                         {totals.totalAPagar > 0 && (
                           <Button 
                             onClick={() => setConfirmPayment(true)}
@@ -904,6 +1049,37 @@ export const FinancialControlPanel = ({
         </div>
       </div>
 
+      {/* Dialog para editar tipo do dia */}
+      <Dialog open={!!editingDay} onOpenChange={() => setEditingDay(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Definir tipo do dia - {editingDay && format(parseISO(editingDay.date), 'dd/MM/yyyy')}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Como deseja classificar este dia sem fichas cadastradas?
+            </p>
+            <div className="flex gap-3">
+              <Button 
+                onClick={() => editingDay && handleEditDay(editingDay.date, 'folga')}
+                className="flex-1 bg-green-500 hover:bg-green-600"
+              >
+                Folga Remunerada
+              </Button>
+              <Button 
+                onClick={() => editingDay && handleEditDay(editingDay.date, 'falta')}
+                variant="outline"
+                className="flex-1 border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
+              >
+                Falta
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showProjectValues} onOpenChange={setShowProjectValues}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
@@ -919,7 +1095,7 @@ export const FinancialControlPanel = ({
                       <Label>Ajuda de Custo Normal</Label>
                       <Input
                         type="number"
-                        value={projectValues[project]?.ajudaCustoNormal || 30}
+                        value={projectValues[project]?.ajudaCustoNormal || (project.toLowerCase().includes('distante') || project.toLowerCase().includes('longe') ? 70 : 30)}
                         onChange={(e) => updateProjectValues(project, { 
                           ajudaCustoNormal: Number(e.target.value) 
                         })}
@@ -929,7 +1105,7 @@ export const FinancialControlPanel = ({
                       <Label>Ajuda de Custo Folga</Label>
                       <Input
                         type="number"
-                        value={projectValues[project]?.ajudaCustoFolga || 50}
+                        value={projectValues[project]?.ajudaCustoFolga || (project.toLowerCase().includes('distante') || project.toLowerCase().includes('longe') ? 50 : 30)}
                         onChange={(e) => updateProjectValues(project, { 
                           ajudaCustoFolga: Number(e.target.value) 
                         })}
@@ -938,12 +1114,12 @@ export const FinancialControlPanel = ({
                     <div className="flex items-center space-x-2 pt-6">
                       <Checkbox
                         id={`distant-${project}`}
-                        checked={projectValues[project]?.isDistante || false}
+                        checked={projectValues[project]?.isDistante || project.toLowerCase().includes('distante') || project.toLowerCase().includes('longe')}
                         onCheckedChange={(checked) => updateProjectValues(project, { 
                           isDistante: !!checked 
                         })}
                       />
-                      <Label htmlFor={`distant-${project}`}>Seletiva Distante (R$ 70)</Label>
+                      <Label htmlFor={`distant-${project}`}>Seletiva Distante/Longe</Label>
                     </div>
                   </div>
                 </CardContent>
