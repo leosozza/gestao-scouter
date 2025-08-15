@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -64,7 +63,7 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
     let filteredFichas = fichas;
 
     // Filtrar por projeto se selecionado
-    if (selectedProject) {
+    if (selectedProject && selectedProject !== "all") {
       filteredFichas = filteredFichas.filter(f => f.Projetos_Comerciais === selectedProject);
     }
 
@@ -112,6 +111,17 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
     return Array.from(projectsSet).sort();
   }, [fichas, selectedPeriod]);
 
+  // Função para alternar seleção de scouter (Looker Studio style)
+  const toggleScouter = (scouter: string) => {
+    if (selectedScouter === scouter) {
+      // Se já está selecionado, deseleciona
+      setSelectedScouter("");
+    } else {
+      // Seleciona o novo scouter
+      setSelectedScouter(scouter);
+    }
+  };
+
   // Buscar dados do scouter selecionado
   const scouterData = useMemo(() => {
     if (!selectedScouter) return null;
@@ -119,7 +129,7 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
     let scouterFichas = fichas.filter(f => f.Gestao_de_Scouter === selectedScouter);
 
     // Aplicar filtros
-    if (selectedProject) {
+    if (selectedProject && selectedProject !== "all") {
       scouterFichas = scouterFichas.filter(f => f.Projetos_Comerciais === selectedProject);
     }
 
@@ -250,7 +260,7 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
 
   return (
     <div className="space-y-6">
-      {/* Filtros */}
+      {/* Controles Dinâmicos */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -259,47 +269,63 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Seletiva/Projeto</Label>
-              <Select value={selectedProject} onValueChange={setSelectedProject}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o projeto..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os projetos</SelectItem>
-                  {availableProjects.map(projeto => (
-                    <SelectItem key={projeto} value={projeto}>
-                      {projeto}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Seletor de Projeto */}
+          <div className="space-y-2">
+            <Label>Seletiva/Projeto</Label>
+            <Select value={selectedProject} onValueChange={setSelectedProject}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o projeto..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os projetos</SelectItem>
+                {availableProjects.map(projeto => (
+                  <SelectItem key={projeto} value={projeto}>
+                    {projeto}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
+          {/* Lista de Scouters Dinâmica */}
+          {(selectedProject || selectedPeriod) && (
             <div className="space-y-2">
-              <Label>Scouter</Label>
-              <Select 
-                value={selectedScouter} 
-                onValueChange={setSelectedScouter}
-                disabled={!selectedProject && !selectedPeriod}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={
-                    !selectedProject && !selectedPeriod 
-                      ? "Selecione projeto ou período primeiro..." 
-                      : "Selecione o scouter..."
-                  } />
-                </SelectTrigger>
-                <SelectContent>
+              <Label className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Scouters ({availableScouters.length} disponíveis)
+              </Label>
+              <div className="max-h-32 overflow-y-auto border rounded-md p-2">
+                <div className="flex flex-wrap gap-2">
                   {availableScouters.map(scouter => (
-                    <SelectItem key={scouter} value={scouter}>
+                    <Button
+                      key={scouter}
+                      variant={selectedScouter === scouter ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleScouter(scouter)}
+                      className="text-xs"
+                    >
                       {scouter}
-                    </SelectItem>
+                      {selectedScouter === scouter && (
+                        <X className="w-3 h-3 ml-1" />
+                      )}
+                    </Button>
                   ))}
-                </SelectContent>
-              </Select>
+                </div>
+              </div>
             </div>
+          )}
+
+          {/* Status da Seleção */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {selectedProject && selectedProject !== "all" && (
+              <Badge variant="secondary">Projeto: {selectedProject}</Badge>
+            )}
+            {selectedScouter && (
+              <Badge variant="default">Scouter: {selectedScouter}</Badge>
+            )}
+            {!selectedScouter && (selectedProject || selectedPeriod) && (
+              <span>Clique em um scouter para ver seus dados individuais</span>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -499,12 +525,27 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
       )}
 
       {/* Mensagem quando não há scouter selecionado */}
-      {!selectedScouter && (
+      {!selectedScouter && (selectedProject || selectedPeriod) && (
         <Card>
           <CardContent className="text-center py-12">
             <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">
-              Selecione um projeto ou período e um scouter para ver o controle financeiro
+              {availableScouters.length > 0 
+                ? "Clique em um scouter acima para ver seu controle financeiro individual"
+                : "Nenhum scouter encontrado para os filtros selecionados"
+              }
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Mensagem inicial */}
+      {!selectedProject && !selectedPeriod && (
+        <Card>
+          <CardContent className="text-center py-12">
+            <Target className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">
+              Selecione um projeto ou defina um período para começar
             </p>
           </CardContent>
         </Card>
