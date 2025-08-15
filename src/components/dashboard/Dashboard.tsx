@@ -1,9 +1,13 @@
-import { useState, useCallback } from "react";
+
+import { useState, useCallback, useEffect } from "react";
 import { DashboardHeader } from "./DashboardHeader";
-import { PanelLayout } from "./PanelLayout";
+import { FixedLayout } from "./FixedLayout";
+import { FinancialPanel } from "./FinancialPanel";
+import { DataUploadPanel } from "./DataUploadPanel";
+import { IntegrationsPanel } from "./integrations/IntegrationsPanel";
+import { ConfigPanel } from "./ConfigPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDashboardData, DashboardFilters } from "@/hooks/useDashboardData";
-import { Button } from "@/components/ui/button";
 
 export const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -16,6 +20,17 @@ export const Dashboard = () => {
   const [showSavedViews, setShowSavedViews] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState("classic");
+  const [showConfig, setShowConfig] = useState(false);
+  const [config, setConfig] = useState({
+    spreadsheetUrl: '',
+    ajudaCustoDiaria: 50,
+    valorPorFicha: 15
+  });
+
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', selectedTheme);
+  }, [selectedTheme]);
 
   const handleLogout = useCallback(() => {
     window.location.href = "/auth/sign-in";
@@ -31,6 +46,7 @@ export const Dashboard = () => {
         onToggleSavedViews={() => setShowSavedViews(!showSavedViews)}
         selectedTheme={selectedTheme}
         onThemeChange={setSelectedTheme}
+        onOpenConfig={() => setShowConfig(true)}
       />
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -43,7 +59,7 @@ export const Dashboard = () => {
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-6">
-          <PanelLayout 
+          <FixedLayout 
             processedData={processedData}
             isLoading={isLoading}
             currentFilters={dashboardFilters}
@@ -54,30 +70,37 @@ export const Dashboard = () => {
         </TabsContent>
 
         <TabsContent value="financial" className="mt-6">
-          <div className="flex flex-col space-y-4">
-            <p>Tela de Controle Financeiro em desenvolvimento.</p>
-            <Button>Teste</Button>
-          </div>
+          <FinancialPanel />
         </TabsContent>
 
         <TabsContent value="upload" className="mt-6">
-          <div className="flex flex-col space-y-4">
-            <p>Tela de Upload de Dados em desenvolvimento.</p>
-          </div>
+          <DataUploadPanel />
         </TabsContent>
 
         <TabsContent value="integrations" className="mt-6">
-          <div className="flex flex-col space-y-4">
-            <p>Tela de Integrações em desenvolvimento.</p>
-          </div>
+          <IntegrationsPanel />
         </TabsContent>
 
         <TabsContent value="config" className="mt-6">
-          <div className="flex flex-col space-y-4">
-            <p>Tela de Configurações em desenvolvimento.</p>
+          <div className="p-6">
+            <ConfigPanel
+              isOpen={true}
+              onClose={() => {}}
+              onConfigUpdate={setConfig}
+              currentConfig={config}
+            />
           </div>
         </TabsContent>
       </Tabs>
+
+      {showConfig && (
+        <ConfigPanel
+          isOpen={showConfig}
+          onClose={() => setShowConfig(false)}
+          onConfigUpdate={setConfig}
+          currentConfig={config}
+        />
+      )}
     </div>
   );
 };
