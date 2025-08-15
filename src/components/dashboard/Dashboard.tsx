@@ -20,6 +20,7 @@ import { PipelineTable } from "./tables/PipelineTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Target, DollarSign, Calendar, TrendingUp, Users, AlertTriangle, Camera, CheckCircle, Clock, MapPin, Zap, Settings, CreditCard, FileCheck, FileX } from "lucide-react";
 import { GoogleSheetsService } from "@/services/googleSheetsService";
 import { useToast } from "@/hooks/use-toast";
@@ -962,20 +963,14 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
           </TabsContent>
 
           <TabsContent value="financial">
-            <Card>
-              <CardContent className="p-6">
-                <div className="text-center space-y-4">
-                  <CreditCard className="h-12 w-12 text-primary mx-auto" />
-                  <h3 className="text-lg font-semibold">Controle Financeiro</h3>
-                  <p className="text-muted-foreground">
-                    Sistema de baixa de pagamentos por scouter
-                  </p>
-                  <Button onClick={() => setIsFinancialOpen(true)}>
-                    Abrir Controle Financeiro
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <FinancialControlPanel
+              fichas={data.fichas || []}
+              projetos={data.projetos || []}
+              selectedPeriod={filters.dateRange ? {
+                start: filters.dateRange.start,
+                end: filters.dateRange.end
+              } : null}
+            />
           </TabsContent>
         </Tabs>
 
@@ -985,14 +980,6 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
           onClose={() => setIsConfigOpen(false)}
           onConfigUpdate={handleConfigUpdate}
           currentConfig={config}
-        />
-
-        <FinancialControlPanel
-          isOpen={isFinancialOpen}
-          onClose={() => setIsFinancialOpen(false)}
-          filters={filters}
-          availableScouters={availableScouters}
-          data={processedData}
         />
       </div>
     </div>
