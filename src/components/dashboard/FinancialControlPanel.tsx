@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DollarSign, FileText, Download, AlertTriangle, Check, X, CreditCard, Calendar as CalendarIcon, Settings, CalendarDays, RefreshCw, HandCoins } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DashboardFilters } from "./FilterPanel";
-import { format, parseISO, isWithinInterval } from "date-fns";
+import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
@@ -154,32 +155,95 @@ export const FinancialControlPanel = ({
     return isWorkDay ? config.ajudaCustoNormal : config.ajudaCustoFolga;
   };
 
+  const parseFichaDate = (dateString: string): Date | null => {
+    try {
+      // Log para debug
+      console.log('Parseando data da ficha:', dateString);
+      
+      if (!dateString) return null;
+      
+      // Tenta diferentes formatos de data
+      let parsedDate: Date | null = null;
+      
+      // Formato ISO (YYYY-MM-DD ou YYYY-MM-DDTHH:mm:ss)
+      if (dateString.includes('-')) {
+        parsedDate = parseISO(dateString);
+      }
+      // Formato brasileiro (DD/MM/YYYY)
+      else if (dateString.includes('/')) {
+        const parts = dateString.split(' ')[0].split('/'); // Remove hora se existir
+        if (parts.length === 3) {
+          // DD/MM/YYYY -> YYYY-MM-DD
+          const isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+          parsedDate = parseISO(isoDate);
+        }
+      }
+      
+      if (parsedDate && !isNaN(parsedDate.getTime())) {
+        console.log('Data parseada com sucesso:', parsedDate);
+        return parsedDate;
+      }
+      
+      console.warn('Não foi possível parsear a data:', dateString);
+      return null;
+    } catch (error) {
+      console.warn('Erro ao parsear data:', dateString, error);
+      return null;
+    }
+  };
+
   const generatePaymentItems = () => {
     if (!selectedScouter || !data?.filteredFichas) return;
+
+    console.log('Gerando itens de pagamento para:', selectedScouter);
+    console.log('Filtro de data:', dateFilter);
+    console.log('Total de fichas antes do filtro de scouter:', data.filteredFichas.length);
 
     let scouterFichas = data.filteredFichas.filter(
       (ficha: any) => ficha.Gestao_de_Scouter === selectedScouter
     );
 
+    console.log('Fichas do scouter antes do filtro de data:', scouterFichas.length);
+
     // Aplicar filtro de data se definido
     if (dateFilter.start || dateFilter.end) {
+      const originalCount = scouterFichas.length;
+      
       scouterFichas = scouterFichas.filter((ficha: any) => {
-        try {
-          const fichaDate = parseISO(ficha.Data_de_Criacao_da_Ficha);
-          
-          if (dateFilter.start && dateFilter.end) {
-            return isWithinInterval(fichaDate, { start: dateFilter.start, end: dateFilter.end });
-          } else if (dateFilter.start) {
-            return fichaDate >= dateFilter.start;
-          } else if (dateFilter.end) {
-            return fichaDate <= dateFilter.end;
-          }
-          
-          return true;
-        } catch {
-          return true;
+        const fichaDate = parseFichaDate(ficha.Data_de_Criacao_da_Ficha);
+        
+        if (!fichaDate) {
+          console.warn('Data inválida na ficha:', ficha.Data_de_Criacao_da_Ficha);
+          return false;
         }
+        
+        const fichaDay = startOfDay(fichaDate);
+        
+        if (dateFilter.start && dateFilter.end) {
+          const startDay = startOfDay(dateFilter.start);
+          const endDay = endOfDay(dateFilter.end);
+          const isInRange = isWithinInterval(fichaDay, { start: startDay, end: endDay });
+          
+          console.log('Verificando ficha:', {
+            fichaDate: format(fichaDay, 'dd/MM/yyyy'),
+            startDate: format(startDay, 'dd/MM/yyyy'),
+            endDate: format(endDay, 'dd/MM/yyyy'),
+            isInRange
+          });
+          
+          return isInRange;
+        } else if (dateFilter.start) {
+          const startDay = startOfDay(dateFilter.start);
+          return fichaDay >= startDay;
+        } else if (dateFilter.end) {
+          const endDay = endOfDay(dateFilter.end);
+          return fichaDay <= endDay;
+        }
+        
+        return true;
       });
+      
+      console.log(`Fichas após filtro de data: ${scouterFichas.length} (eram ${originalCount})`);
     }
 
     const items: PaymentItem[] = [];
@@ -198,13 +262,18 @@ export const FinancialControlPanel = ({
 
     // Calcular ajudas de custo por dia (>20 fichas)
     const fichasPorDia = scouterFichas.reduce((acc: any, ficha: any) => {
-      const date = new Date(ficha.Data_de_Criacao_da_Ficha).toISOString().split('T')[0];
+      const fichaDate = parseFichaDate(ficha.Data_de_Criacao_da_Ficha);
+      if (!fichaDate) return acc;
+      
+      const date = format(startOfDay(fichaDate), 'yyyy-MM-dd');
       if (!acc[date]) {
         acc[date] = { count: 0, project: ficha.Projetos_Comerciais };
       }
       acc[date].count += 1;
       return acc;
     }, {});
+
+    console.log('Fichas por dia:', fichasPorDia);
 
     // Adicionar ajudas de custo para dias trabalhados
     Object.entries(fichasPorDia).forEach(([date, info]: [string, any]) => {
@@ -229,6 +298,7 @@ export const FinancialControlPanel = ({
       setDayOffDialog({ open: true, dates: nonWorkDays });
     }
 
+    console.log('Total de itens de pagamento gerados:', items.length);
     setPaymentItems(items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
   };
 
