@@ -17,7 +17,7 @@ const DEFAULT_PANELS: PanelConfig[] = [
     id: 'kpis-fichas',
     title: 'KPIs - Fichas e Valores',
     position: { x: 20, y: 120 },
-    size: { width: 800, height: 200 },
+    size: { width: 800, height: 180 },
     isCollapsed: false,
     component: 'kpis-fichas',
     visible: true
@@ -26,7 +26,7 @@ const DEFAULT_PANELS: PanelConfig[] = [
     id: 'kpis-ajuda',
     title: 'KPIs - Ajuda de Custo',
     position: { x: 840, y: 120 },
-    size: { width: 400, height: 200 },
+    size: { width: 380, height: 180 },
     isCollapsed: false,
     component: 'kpis-ajuda',
     visible: true
@@ -34,7 +34,7 @@ const DEFAULT_PANELS: PanelConfig[] = [
   {
     id: 'charts-scouter',
     title: 'Fichas por Scouter',
-    position: { x: 20, y: 340 },
+    position: { x: 20, y: 320 },
     size: { width: 600, height: 350 },
     isCollapsed: false,
     component: 'chart-scouter',
@@ -43,7 +43,7 @@ const DEFAULT_PANELS: PanelConfig[] = [
   {
     id: 'charts-project',
     title: 'Fichas por Projeto',
-    position: { x: 640, y: 340 },
+    position: { x: 640, y: 320 },
     size: { width: 600, height: 350 },
     isCollapsed: false,
     component: 'chart-project',
@@ -52,7 +52,7 @@ const DEFAULT_PANELS: PanelConfig[] = [
   {
     id: 'line-chart',
     title: 'Projeção vs Real',
-    position: { x: 20, y: 710 },
+    position: { x: 20, y: 690 },
     size: { width: 820, height: 300 },
     isCollapsed: false,
     component: 'line-chart',
@@ -61,7 +61,7 @@ const DEFAULT_PANELS: PanelConfig[] = [
   {
     id: 'funnel-chart',
     title: 'Funil de Status',
-    position: { x: 860, y: 340 },
+    position: { x: 860, y: 320 },
     size: { width: 380, height: 400 },
     isCollapsed: false,
     component: 'funnel-chart',
@@ -70,13 +70,78 @@ const DEFAULT_PANELS: PanelConfig[] = [
   {
     id: 'scouter-table',
     title: 'Tabela de Scouters',
-    position: { x: 20, y: 1030 },
+    position: { x: 20, y: 1010 },
     size: { width: 1220, height: 400 },
     isCollapsed: false,
     component: 'scouter-table',
     visible: true
   }
 ];
+
+// Improved content-aware sizing
+const getContentBasedSize = (component: string) => {
+  const contentSizes = {
+    'kpis-fichas': { width: 800, height: 180 },
+    'kpis-ajuda': { width: 380, height: 180 },
+    'kpis-secondary': { width: 800, height: 180 },
+    'chart-scouter': { width: 600, height: 350 },
+    'chart-project': { width: 600, height: 350 },
+    'line-chart': { width: 820, height: 300 },
+    'funnel-chart': { width: 380, height: 400 },
+    'histogram-chart': { width: 600, height: 350 },
+    'map-chart': { width: 600, height: 400 },
+    'scouter-table': { width: 1220, height: 400 },
+    'project-table': { width: 1000, height: 350 },
+    'audit-table': { width: 900, height: 350 },
+    'location-table': { width: 800, height: 350 },
+    'interval-table': { width: 700, height: 350 },
+    'saved-views': { width: 400, height: 300 },
+    'new-chart': { width: 400, height: 300 }
+  };
+  
+  return contentSizes[component] || { width: 400, height: 300 };
+};
+
+// Enhanced auto-organize with content awareness
+const autoOrganizeWithContent = (panels: PanelConfig[]): PanelConfig[] => {
+  const visiblePanels = panels.filter(p => p.visible);
+  if (visiblePanels.length === 0) return panels;
+
+  const margin = 20;
+  const headerHeight = 120;
+  const viewportWidth = window.innerWidth - 40;
+  
+  let currentX = margin;
+  let currentY = headerHeight;
+  let rowHeight = 0;
+  
+  const organized = visiblePanels.map(panel => {
+    const contentSize = getContentBasedSize(panel.component);
+    
+    // Check if panel fits in current row
+    if (currentX + contentSize.width > viewportWidth && currentX > margin) {
+      // Move to next row
+      currentX = margin;
+      currentY += rowHeight + margin;
+      rowHeight = 0;
+    }
+    
+    const position = { x: currentX, y: currentY };
+    currentX += contentSize.width + margin;
+    rowHeight = Math.max(rowHeight, contentSize.height);
+    
+    return {
+      ...panel,
+      position,
+      size: contentSize
+    };
+  });
+  
+  return panels.map(panel => {
+    const organizedPanel = organized.find(p => p.id === panel.id);
+    return organizedPanel || panel;
+  });
+};
 
 // Detect overlaps and auto-adjust positions
 const avoidOverlaps = (panels: PanelConfig[]): PanelConfig[] => {
@@ -184,39 +249,20 @@ export const usePanelLayout = () => {
 
   const addPanel = useCallback((panelConfig: Omit<PanelConfig, 'id'> & { id?: string }) => {
     const id = panelConfig.id || `panel-${Date.now()}`;
+    const contentSize = getContentBasedSize(panelConfig.component);
+    
     const newPanel: PanelConfig = {
       ...panelConfig,
       id,
+      size: contentSize,
       visible: true
     };
     setPanels(prev => avoidOverlaps([...prev, newPanel]));
   }, []);
 
   const autoOrganize = useCallback(() => {
-    const visiblePanels = panels.filter(p => p.visible);
-    const cols = Math.ceil(Math.sqrt(visiblePanels.length));
-    const organized = visiblePanels.map((panel, index) => {
-      const row = Math.floor(index / cols);
-      const col = index % cols;
-      const margin = 20;
-      const defaultWidth = 400;
-      const defaultHeight = 300;
-      
-      return {
-        ...panel,
-        position: {
-          x: margin + col * (defaultWidth + margin),
-          y: 120 + row * (defaultHeight + margin)
-        },
-        size: { width: defaultWidth, height: defaultHeight }
-      };
-    });
-    
-    setPanels(prev => prev.map(panel => {
-      const organizedPanel = organized.find(p => p.id === panel.id);
-      return organizedPanel || panel;
-    }));
-  }, [panels]);
+    setPanels(prev => autoOrganizeWithContent(prev));
+  }, []);
 
   const alignPanels = useCallback((alignment: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => {
     const visiblePanels = panels.filter(p => p.visible);

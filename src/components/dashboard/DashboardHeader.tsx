@@ -4,17 +4,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { LogOut, Upload, Palette } from "lucide-react";
+import { LogOut, Upload, Palette, Settings, Edit, Bookmark } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface DashboardHeaderProps {
   onLogout: () => void;
+  isEditMode?: boolean;
+  onToggleEditMode?: () => void;
+  showSavedViews?: boolean;
+  onToggleSavedViews?: () => void;
 }
 
-export const DashboardHeader = ({ onLogout }: DashboardHeaderProps) => {
+export const DashboardHeader = ({ 
+  onLogout, 
+  isEditMode, 
+  onToggleEditMode,
+  showSavedViews,
+  onToggleSavedViews 
+}: DashboardHeaderProps) => {
   const [logoDialogOpen, setLogoDialogOpen] = useState(false);
   const [currentLogo, setCurrentLogo] = useState("/lovable-uploads/c7328f04-9e37-4cd5-b5a5-260721fcaa72.png");
-  const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('maxfama_theme') || 'light');
+  const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('maxfama_theme') || 'classico-corporativo');
   const { toast } = useToast();
 
   const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,29 +48,33 @@ export const DashboardHeader = ({ onLogout }: DashboardHeaderProps) => {
   const applyTheme = (theme: string) => {
     const root = document.documentElement;
     
-    switch (theme) {
-      case 'dark':
-        root.className = 'dark';
-        break;
-      case 'blue':
-        root.style.setProperty('--primary', '214 94% 58%');
-        root.style.setProperty('--primary-foreground', '0 0% 98%');
-        break;
-      case 'green':
-        root.style.setProperty('--primary', '142 76% 36%');
-        root.style.setProperty('--primary-foreground', '0 0% 98%');
-        break;
-      case 'light':
-      default:
-        root.className = '';
-        root.style.removeProperty('--primary');
-        root.style.removeProperty('--primary-foreground');
-        break;
-    }
+    // Remove existing theme classes
+    root.className = root.className.replace(/theme-\w+/g, '');
+    
+    // Apply new theme
+    root.classList.add(`theme-${theme}`);
     
     setCurrentTheme(theme);
     localStorage.setItem('maxfama_theme', theme);
+    
+    toast({
+      title: "Tema aplicado",
+      description: `Tema ${theme.replace('-', ' ')} foi aplicado com sucesso`
+    });
   };
+
+  const themes = [
+    { value: 'classico-corporativo', label: 'Clássico Corporativo' },
+    { value: 'contemporaneo-moderno', label: 'Contemporâneo Moderno' },
+    { value: 'minimalista', label: 'Minimalista' },
+    { value: 'tecnologico-futurista', label: 'Tecnológico Futurista' },
+    { value: 'analitico-data-driven', label: 'Analítico Data-driven' },
+    { value: 'criativo-gamificado', label: 'Criativo Gamificado' },
+    { value: 'dark-profissional', label: 'Dark Mode Profissional' },
+    { value: 'neumorfico', label: 'Neumórfico' },
+    { value: 'flat-design', label: 'Flat Design' },
+    { value: 'glassmórfico', label: 'Glassmórfico' }
+  ];
 
   return (
     <>
@@ -89,16 +103,49 @@ export const DashboardHeader = ({ onLogout }: DashboardHeaderProps) => {
             <div className="flex items-center gap-2">
               <Palette className="h-4 w-4 text-gray-600 dark:text-gray-300" />
               <Select value={currentTheme} onValueChange={applyTheme}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-48">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="light">Claro</SelectItem>
-                  <SelectItem value="dark">Escuro</SelectItem>
-                  <SelectItem value="blue">Azul</SelectItem>
-                  <SelectItem value="green">Verde</SelectItem>
+                  {themes.map(theme => (
+                    <SelectItem key={theme.value} value={theme.value}>
+                      {theme.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Fixed Control Buttons */}
+            <div className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border rounded-lg p-1">
+              {/* Settings button */}
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <Settings className="h-4 w-4" />
+              </Button>
+
+              {/* Saved Views button */}
+              {onToggleSavedViews && (
+                <Button 
+                  variant={showSavedViews ? "default" : "ghost"} 
+                  size="sm"
+                  onClick={onToggleSavedViews}
+                  className="h-8 w-8 p-0"
+                >
+                  <Bookmark className="h-4 w-4" />
+                </Button>
+              )}
+
+              {/* Edit Dashboard button */}
+              {onToggleEditMode && (
+                <Button 
+                  variant={isEditMode ? "default" : "ghost"} 
+                  size="sm"
+                  onClick={onToggleEditMode}
+                  className="h-8 w-8 p-0"
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+              )}
             </div>
 
             <Button

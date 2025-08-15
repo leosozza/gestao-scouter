@@ -1,3 +1,4 @@
+
 import { DraggablePanel } from './DraggablePanel';
 import { usePanelLayout } from '@/hooks/usePanelLayout';
 import { KPICard } from './KPICard';
@@ -12,7 +13,7 @@ import { AuditTable } from './tables/AuditTable';
 import { LocationTable } from './tables/LocationTable';
 import { IntervalTable } from './tables/IntervalTable';
 import { Button } from '@/components/ui/button';
-import { RotateCcw, Settings, Plus, Edit, Bookmark } from 'lucide-react';
+import { RotateCcw, Plus, Zap } from 'lucide-react';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -20,24 +21,30 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator 
 } from '@/components/ui/dropdown-menu';
-import { Target, DollarSign, Camera, CheckCircle, Clock, Zap, TrendingUp, FileCheck, FileX } from 'lucide-react';
+import { Target, DollarSign, Camera, CheckCircle, Clock, TrendingUp, FileCheck, FileX, BarChart3 } from 'lucide-react';
 import { SavedViews } from './SavedViews';
 import { DashboardFilters } from './FilterPanel';
-import { useState } from 'react';
 
 interface PanelLayoutProps {
   processedData: any;
   isLoading: boolean;
   currentFilters?: DashboardFilters;
   onLoadView?: (filters: DashboardFilters) => void;
+  isEditMode: boolean;
+  showSavedViews: boolean;
 }
 
-export const PanelLayout = ({ processedData, isLoading, currentFilters, onLoadView }: PanelLayoutProps) => {
+export const PanelLayout = ({ 
+  processedData, 
+  isLoading, 
+  currentFilters, 
+  onLoadView,
+  isEditMode,
+  showSavedViews 
+}: PanelLayoutProps) => {
   const {
     panels,
     allPanels,
-    isEditMode,
-    setIsEditMode,
     movePanel,
     resizePanel,
     togglePanelCollapse,
@@ -45,16 +52,15 @@ export const PanelLayout = ({ processedData, isLoading, currentFilters, onLoadVi
     removePanel,
     resetLayout,
     autoOrganize,
-    alignPanels
+    alignPanels,
+    addPanel
   } = usePanelLayout();
-
-  const [showSavedViews, setShowSavedViews] = useState(false);
 
   const renderPanelContent = (component: string) => {
     switch (component) {
       case 'kpis-fichas':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 h-full">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 p-2">
             <KPICard
               title="Total de Fichas"
               value={processedData.kpis?.totalFichas || 0}
@@ -87,7 +93,7 @@ export const PanelLayout = ({ processedData, isLoading, currentFilters, onLoadVi
 
       case 'kpis-ajuda':
         return (
-          <div className="grid grid-cols-1 gap-4 h-full">
+          <div className="p-4">
             <KPICard
               title="Ajuda de Custo"
               value={`R$ ${(processedData.kpis?.ajudaCusto || 0).toLocaleString('pt-BR')}`}
@@ -101,105 +107,127 @@ export const PanelLayout = ({ processedData, isLoading, currentFilters, onLoadVi
 
       case 'chart-scouter':
         return (
-          <CustomBarChart
-            title=""
-            data={processedData.charts?.fichasPorScouter || []}
-            color="hsl(var(--primary))"
-            isLoading={isLoading}
-            showValues={true}
-          />
+          <div className="p-2 h-full">
+            <CustomBarChart
+              title=""
+              data={processedData.charts?.fichasPorScouter || []}
+              color="hsl(var(--primary))"
+              isLoading={isLoading}
+              showValues={true}
+            />
+          </div>
         );
 
       case 'chart-project':
         return (
-          <CustomBarChart
-            title=""
-            data={processedData.charts?.fichasPorProjeto || []}
-            color="hsl(var(--success))"
-            isLoading={isLoading}
-            showValues={true}
-          />
+          <div className="p-2 h-full">
+            <CustomBarChart
+              title=""
+              data={processedData.charts?.fichasPorProjeto || []}
+              color="hsl(var(--success))"
+              isLoading={isLoading}
+              showValues={true}
+            />
+          </div>
         );
 
       case 'line-chart':
         return (
-          <CustomLineChart
-            title=""
-            data={processedData.charts?.projecaoVsReal || []}
-            isLoading={isLoading}
-          />
+          <div className="p-2 h-full">
+            <CustomLineChart
+              title=""
+              data={processedData.charts?.projecaoVsReal || []}
+              isLoading={isLoading}
+            />
+          </div>
         );
 
       case 'funnel-chart':
         return (
-          <FunnelChart
-            title=""
-            data={processedData.charts?.funnelData || []}
-            isLoading={isLoading}
-          />
+          <div className="p-2 h-full">
+            <FunnelChart
+              title=""
+              data={processedData.charts?.funnelData || []}
+              isLoading={isLoading}
+            />
+          </div>
         );
 
       case 'histogram-chart':
         return (
-          <HistogramChart
-            title=""
-            data={processedData.charts?.histogramData || []}
-            isLoading={isLoading}
-          />
+          <div className="p-2 h-full">
+            <HistogramChart
+              title=""
+              data={processedData.charts?.histogramData || []}
+              isLoading={isLoading}
+            />
+          </div>
         );
 
       case 'map-chart':
         return (
-          <MapChart
-            title=""
-            data={processedData.charts?.mapData || []}
-            isLoading={isLoading}
-          />
+          <div className="p-2 h-full">
+            <MapChart
+              title=""
+              data={processedData.charts?.mapData || []}
+              isLoading={isLoading}
+            />
+          </div>
         );
 
       case 'scouter-table':
         return (
-          <ScouterTable
-            data={processedData.tables?.scouters || []}
-            isLoading={isLoading}
-          />
+          <div className="p-2 h-full overflow-auto">
+            <ScouterTable
+              data={processedData.tables?.scouters || []}
+              isLoading={isLoading}
+            />
+          </div>
         );
 
       case 'project-table':
         return (
-          <ProjectTable
-            data={processedData.tables?.projects || []}
-            isLoading={isLoading}
-          />
+          <div className="p-2 h-full overflow-auto">
+            <ProjectTable
+              data={processedData.tables?.projects || []}
+              isLoading={isLoading}
+            />
+          </div>
         );
 
       case 'audit-table':
         return (
-          <AuditTable
-            data={processedData.tables?.audit || []}
-            isLoading={isLoading}
-          />
+          <div className="p-2 h-full overflow-auto">
+            <AuditTable
+              data={processedData.tables?.audit || []}
+              isLoading={isLoading}
+            />
+          </div>
         );
 
       case 'location-table':
         return (
-          <LocationTable
-            data={processedData.tables?.locations || []}
-            isLoading={isLoading}
-          />
+          <div className="p-2 h-full overflow-auto">
+            <LocationTable
+              data={processedData.tables?.locations || []}
+              isLoading={isLoading}
+            />
+          </div>
         );
 
       case 'interval-table':
         return (
-          <IntervalTable
-            data={processedData.tables?.intervals || []}
-            isLoading={isLoading}
-          />
+          <div className="p-2 h-full overflow-auto">
+            <IntervalTable
+              data={processedData.tables?.intervals || []}
+              isLoading={isLoading}
+            />
+          </div>
         );
 
       case 'kpis-secondary':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 h-full">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 p-2">
             <KPICard
               title="% com Foto"
               value={`${(processedData.kpis?.percentFoto || 0).toFixed(1)}%`}
@@ -233,13 +261,25 @@ export const PanelLayout = ({ processedData, isLoading, currentFilters, onLoadVi
 
       case 'saved-views':
         return currentFilters && onLoadView ? (
-          <SavedViews 
-            currentFilters={currentFilters}
-            onLoadView={onLoadView}
-          />
+          <div className="p-2 h-full">
+            <SavedViews 
+              currentFilters={currentFilters}
+              onLoadView={onLoadView}
+            />
+          </div>
         ) : (
           <div className="p-4 text-center text-muted-foreground">
             Filtros não disponíveis
+          </div>
+        );
+
+      case 'new-chart':
+        return (
+          <div className="p-4 h-full flex items-center justify-center">
+            <div className="text-center">
+              <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground">Novo tipo de gráfico</p>
+            </div>
           </div>
         );
 
@@ -256,117 +296,92 @@ export const PanelLayout = ({ processedData, isLoading, currentFilters, onLoadVi
     { id: 'audit-table', title: 'Auditoria', component: 'audit-table' },
     { id: 'location-table', title: 'Tabela de Locais', component: 'location-table' },
     { id: 'interval-table', title: 'Tabela de Intervalos', component: 'interval-table' },
-    { id: 'saved-views', title: 'Visões Salvas', component: 'saved-views' }
+    { id: 'saved-views', title: 'Visões Salvas', component: 'saved-views' },
+    { id: 'new-chart', title: 'Novo Gráfico', component: 'new-chart' }
   ];
 
   const hiddenPanels = allPanels.filter(p => !p.visible);
 
   return (
     <div className="relative w-full min-h-screen bg-background/50">
-      {/* Control bar - Fixed position */}
-      <div className="fixed top-20 right-6 z-50 flex gap-2 bg-background/95 backdrop-blur-sm border rounded-lg p-2 shadow-lg">
-        {/* Settings button */}
-        <Button variant="outline" size="sm">
-          <Settings className="h-4 w-4" />
-        </Button>
-
-        {/* Saved Views button */}
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={() => setShowSavedViews(!showSavedViews)}
-        >
-          <Bookmark className="h-4 w-4" />
-        </Button>
-
-        {/* Edit Dashboard button */}
-        <Button 
-          variant={isEditMode ? "default" : "outline"} 
-          size="sm"
-          onClick={() => setIsEditMode(!isEditMode)}
-        >
-          <Edit className="h-4 w-4" />
-        </Button>
-
-        {/* Edit mode controls */}
-        {isEditMode && (
-          <>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {hiddenPanels.map(panel => (
+      {/* Edit mode controls - Fixed position at top right */}
+      {isEditMode && (
+        <div className="fixed top-28 right-6 z-50 flex gap-2 bg-background/95 backdrop-blur-sm border rounded-lg p-2 shadow-lg">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {hiddenPanels.map(panel => (
+                <DropdownMenuItem
+                  key={panel.id}
+                  onClick={() => togglePanelVisibility(panel.id)}
+                >
+                  {panel.title}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              {availablePanels
+                .filter(available => !allPanels.some(p => p.id === available.id))
+                .map(available => (
                   <DropdownMenuItem
-                    key={panel.id}
-                    onClick={() => togglePanelVisibility(panel.id)}
+                    key={available.id}
+                    onClick={() => {
+                      addPanel({
+                        ...available,
+                        position: { x: 100 + Math.random() * 200, y: 100 + Math.random() * 200 },
+                        size: { width: 400, height: 300 },
+                        isCollapsed: false,
+                        visible: true
+                      });
+                    }}
                   >
-                    {panel.title}
+                    {available.title}
                   </DropdownMenuItem>
                 ))}
-                <DropdownMenuSeparator />
-                {availablePanels
-                  .filter(available => !allPanels.some(p => p.id === available.id))
-                  .map(available => (
-                    <DropdownMenuItem
-                      key={available.id}
-                      onClick={() => {
-                        const newPanel = {
-                          ...available,
-                          position: { x: 100 + Math.random() * 200, y: 100 + Math.random() * 200 },
-                          size: { width: 400, height: 300 },
-                          isCollapsed: false,
-                          visible: true
-                        };
-                      }}
-                    >
-                      {available.title}
-                    </DropdownMenuItem>
-                  ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  Alinhar
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => alignPanels('left')}>
-                  Alinhar à Esquerda
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => alignPanels('center')}>
-                  Centralizar Horizontalmente
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => alignPanels('right')}>
-                  Alinhar à Direita
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => alignPanels('top')}>
-                  Alinhar ao Topo
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => alignPanels('middle')}>
-                  Centralizar Verticalmente
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => alignPanels('bottom')}>
-                  Alinhar à Base
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                Alinhar
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => alignPanels('left')}>
+                Alinhar à Esquerda
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => alignPanels('center')}>
+                Centralizar Horizontalmente
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => alignPanels('right')}>
+                Alinhar à Direita
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => alignPanels('top')}>
+                Alinhar ao Topo
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => alignPanels('middle')}>
+                Centralizar Verticalmente
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => alignPanels('bottom')}>
+                Alinhar à Base
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-            <Button variant="outline" size="sm" onClick={autoOrganize}>
-              <Zap className="h-4 w-4" />
-            </Button>
+          <Button variant="outline" size="sm" onClick={autoOrganize}>
+            <Zap className="h-4 w-4" />
+          </Button>
 
-            <Button variant="outline" size="sm" onClick={resetLayout}>
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-          </>
-        )}
-      </div>
+          <Button variant="outline" size="sm" onClick={resetLayout}>
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
 
       {/* Saved Views Panel - conditionally rendered */}
       {showSavedViews && currentFilters && onLoadView && (
