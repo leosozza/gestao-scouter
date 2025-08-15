@@ -79,8 +79,12 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
       });
     }
 
-    // Extrair scouters únicos
-    const scoutersSet = new Set(filteredFichas.map(f => f.Gestao_de_Scouter).filter(Boolean));
+    // Extrair scouters únicos e filtrar valores vazios/inválidos
+    const scoutersSet = new Set(
+      filteredFichas
+        .map(f => f.Gestao_de_Scouter)
+        .filter(scouter => scouter && scouter.trim() !== '')
+    );
     return Array.from(scoutersSet).sort();
   }, [fichas, selectedProject, selectedPeriod]);
 
@@ -99,8 +103,12 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
       });
     }
 
-    // Extrair projetos únicos
-    const projectsSet = new Set(filteredFichas.map(f => f.Projetos_Comerciais).filter(Boolean));
+    // Extrair projetos únicos e filtrar valores vazios/inválidos
+    const projectsSet = new Set(
+      filteredFichas
+        .map(f => f.Projetos_Comerciais)
+        .filter(projeto => projeto && projeto.trim() !== '')
+    );
     return Array.from(projectsSet).sort();
   }, [fichas, selectedPeriod]);
 
@@ -259,7 +267,7 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
                   <SelectValue placeholder="Selecione o projeto..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os projetos</SelectItem>
+                  <SelectItem value="all">Todos os projetos</SelectItem>
                   {availableProjects.map(projeto => (
                     <SelectItem key={projeto} value={projeto}>
                       {projeto}
@@ -297,7 +305,7 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
       </Card>
 
       {/* Configuração de Ajuda de Custo */}
-      {selectedProject && (
+      {selectedProject && selectedProject !== "all" && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
