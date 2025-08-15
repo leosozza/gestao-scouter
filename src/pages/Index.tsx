@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { ConfigPanel } from "@/components/dashboard/ConfigPanel";
@@ -11,7 +11,9 @@ const Index: React.FC = () => {
   const [showConfigPanel, setShowConfigPanel] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [showSavedViews, setShowSavedViews] = useState(false);
-  const [selectedTheme, setSelectedTheme] = useState('classico-corporativo');
+  const [selectedTheme, setSelectedTheme] = useState(() => 
+    localStorage.getItem('maxfama_theme') || 'classico-corporativo'
+  );
   const [activePanel, setActivePanel] = useState<'overview' | 'performance' | 'financial'>('overview');
   
   const [config, setConfig] = useState({
@@ -21,6 +23,19 @@ const Index: React.FC = () => {
   });
 
   const { processedData, isLoading, handleLoadView } = useDashboardData();
+
+  // Apply theme on component mount and when theme changes
+  useEffect(() => {
+    const applyTheme = (theme: string) => {
+      const root = document.documentElement;
+      // Remove existing theme classes
+      root.className = root.className.replace(/theme-\w+(-\w+)*/g, '');
+      // Apply new theme
+      root.classList.add(`theme-${theme}`);
+    };
+
+    applyTheme(selectedTheme);
+  }, [selectedTheme]);
 
   const handleLogin = () => {
     setIsAuthenticated(true);
@@ -36,6 +51,7 @@ const Index: React.FC = () => {
 
   const handleThemeChange = (theme: string) => {
     setSelectedTheme(theme);
+    localStorage.setItem('maxfama_theme', theme);
   };
 
   const handlePanelChange = (panel: string) => {

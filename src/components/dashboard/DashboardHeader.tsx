@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,9 +33,20 @@ export const DashboardHeader = ({
   onPanelChange
 }: DashboardHeaderProps) => {
   const [logoDialogOpen, setLogoDialogOpen] = useState(false);
-  const [currentLogo, setCurrentLogo] = useState("/lovable-uploads/c7328f04-9e37-4cd5-b5a5-260721fcaa72.png");
-  const [currentTheme, setCurrentTheme] = useState(() => selectedTheme || localStorage.getItem('maxfama_theme') || 'classico-corporativo');
+  const [currentLogo, setCurrentLogo] = useState(() => 
+    localStorage.getItem('maxfama_logo') || "/lovable-uploads/c7328f04-9e37-4cd5-b5a5-260721fcaa72.png"
+  );
+  const [currentTheme, setCurrentTheme] = useState(() => 
+    selectedTheme || localStorage.getItem('maxfama_theme') || 'classico-corporativo'
+  );
   const { toast } = useToast();
+
+  // Update currentTheme when selectedTheme prop changes
+  useEffect(() => {
+    if (selectedTheme) {
+      setCurrentTheme(selectedTheme);
+    }
+  }, [selectedTheme]);
 
   const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -59,7 +70,7 @@ export const DashboardHeader = ({
     const root = document.documentElement;
     
     // Remove existing theme classes
-    root.className = root.className.replace(/theme-\w+/g, '');
+    root.className = root.className.replace(/theme-\w+(-\w+)*/g, '');
     
     // Apply new theme
     root.classList.add(`theme-${theme}`);
@@ -74,7 +85,7 @@ export const DashboardHeader = ({
     
     toast({
       title: "Tema aplicado",
-      description: `Tema ${theme.replace('-', ' ')} foi aplicado com sucesso`
+      description: `Tema ${theme.replace(/-/g, ' ')} foi aplicado com sucesso`
     });
   };
 
@@ -93,7 +104,7 @@ export const DashboardHeader = ({
 
   return (
     <>
-      <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+      <header className="bg-card border-b border-border px-6 py-4 sticky top-0 z-40">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <img 
@@ -104,10 +115,10 @@ export const DashboardHeader = ({
               title="Clique para trocar o logo"
             />
             <div>
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+              <h1 className="text-xl font-semibold text-foreground">
                 Dashboard MaxFama
               </h1>
-              <p className="text-sm text-gray-600 dark:text-gray-300">
+              <p className="text-sm text-muted-foreground">
                 Sistema de Gestão de Scouters
               </p>
             </div>
@@ -115,7 +126,7 @@ export const DashboardHeader = ({
 
           {/* Panel Navigation */}
           {onPanelChange && (
-            <div className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border rounded-lg p-1">
+            <div className="flex items-center gap-2 bg-secondary/50 backdrop-blur-sm border rounded-lg p-1">
               <Button
                 variant={activePanel === 'overview' ? 'default' : 'ghost'}
                 size="sm"
@@ -149,7 +160,7 @@ export const DashboardHeader = ({
           <div className="flex items-center gap-4">
             {/* Seletor de Tema */}
             <div className="flex items-center gap-2">
-              <Palette className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+              <Palette className="h-4 w-4 text-muted-foreground" />
               <Select value={currentTheme} onValueChange={applyTheme}>
                 <SelectTrigger className="w-48">
                   <SelectValue />
@@ -165,7 +176,7 @@ export const DashboardHeader = ({
             </div>
 
             {/* Fixed Control Buttons */}
-            <div className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border rounded-lg p-1">
+            <div className="flex items-center gap-2 bg-secondary/50 backdrop-blur-sm border rounded-lg p-1">
               {/* Settings button */}
               {onOpenConfig && (
                 <Button 
@@ -173,6 +184,7 @@ export const DashboardHeader = ({
                   size="sm" 
                   className="h-8 w-8 p-0"
                   onClick={onOpenConfig}
+                  title="Configurações"
                 >
                   <Settings className="h-4 w-4" />
                 </Button>
@@ -185,6 +197,7 @@ export const DashboardHeader = ({
                   size="sm"
                   onClick={onToggleSavedViews}
                   className="h-8 w-8 p-0"
+                  title="Visões Salvas"
                 >
                   <Bookmark className="h-4 w-4" />
                 </Button>
@@ -197,6 +210,7 @@ export const DashboardHeader = ({
                   size="sm"
                   onClick={onToggleEditMode}
                   className="h-8 w-8 p-0"
+                  title="Editar Dashboard"
                 >
                   <Edit className="h-4 w-4" />
                 </Button>
