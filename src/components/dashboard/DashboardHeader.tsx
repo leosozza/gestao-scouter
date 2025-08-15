@@ -13,6 +13,8 @@ interface DashboardHeaderProps {
   onToggleEditMode?: () => void;
   showSavedViews?: boolean;
   onToggleSavedViews?: () => void;
+  selectedTheme?: string;
+  onThemeChange?: (theme: string) => void;
 }
 
 export const DashboardHeader = ({ 
@@ -20,11 +22,13 @@ export const DashboardHeader = ({
   isEditMode, 
   onToggleEditMode,
   showSavedViews,
-  onToggleSavedViews 
+  onToggleSavedViews,
+  selectedTheme,
+  onThemeChange 
 }: DashboardHeaderProps) => {
   const [logoDialogOpen, setLogoDialogOpen] = useState(false);
   const [currentLogo, setCurrentLogo] = useState("/lovable-uploads/c7328f04-9e37-4cd5-b5a5-260721fcaa72.png");
-  const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('maxfama_theme') || 'classico-corporativo');
+  const [currentTheme, setCurrentTheme] = useState(() => selectedTheme || localStorage.getItem('maxfama_theme') || 'classico-corporativo');
   const { toast } = useToast();
 
   const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,6 +60,11 @@ export const DashboardHeader = ({
     
     setCurrentTheme(theme);
     localStorage.setItem('maxfama_theme', theme);
+    
+    // Call parent callback if provided
+    if (onThemeChange) {
+      onThemeChange(theme);
+    }
     
     toast({
       title: "Tema aplicado",
