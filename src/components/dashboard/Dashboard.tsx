@@ -1,9 +1,9 @@
+
 import { useState, useCallback } from "react";
 import { DashboardHeader } from "./DashboardHeader";
 import { PanelLayout } from "./PanelLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useDashboardData } from "@/hooks/useDashboardData";
-import { DashboardFilters } from "./FilterPanel";
+import { useDashboardData, DashboardFilters } from "@/hooks/useDashboardData";
 import { Button } from "@/components/ui/button";
 
 export const Dashboard = () => {
