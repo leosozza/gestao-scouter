@@ -1,3 +1,4 @@
+import { parseFichaDateTimeBR } from '../utils/formatters';
 
 // Serviço para buscar dados das planilhas públicas do Google Sheets
 export class GoogleSheetsService {
@@ -96,7 +97,7 @@ export class GoogleSheetsService {
   }
 
   // Parse de coordenadas lat,lon
-  private static parseLatLon(value: string): { lat: number; lon: number } | null {
+  private static parseLatLon(value: string): { lat: number; lon: number } | null => {
     if (!value || !value.includes(',')) return null;
     
     const parts = value.split(',').map(p => parseFloat(p.trim()));
@@ -107,7 +108,7 @@ export class GoogleSheetsService {
   }
 
   // Parse de moeda brasileira
-  private static parseMoneyBR(value: string): number {
+  private static parseMoneyBR(value: string): number => {
     if (!value) return 0;
     
     // Remove caracteres não numéricos exceto vírgula e ponto
@@ -131,12 +132,20 @@ export class GoogleSheetsService {
       console.log('Headers fichas:', data.length > 0 ? Object.keys(data[0]) : 'Nenhum');
       
       return data.map(row => {
+        // Parse da data usando a coluna "Data de criação da Ficha" como padrão
+        const fichaDateTime = row['Data de criação da Ficha'] || row['Data_de_Criacao_da_Ficha'] || row['Criado'] || '';
+        const parsedDate = parseFichaDateTimeBR(fichaDateTime);
+        
+        if (!parsedDate) {
+          console.warn('Data inválida encontrada:', fichaDateTime, 'na ficha ID:', row.ID);
+        }
+
         const processedRow = {
           ID: parseInt(row.ID) || Math.random() * 1000000,
           Projetos_Comerciais: row['Projetos Cormeciais'] || row['Projetos_Comerciais'] || row['Projeto'] || '',
           Gestao_de_Scouter: row['Gestão de Scouter'] || row['Gestao_de_Scouter'] || row['Scouter'] || row['Nome'] || '',
           Criado: row.Criado || row['Data_Criacao'] || '',
-          Data_de_Criacao_da_Ficha: row['Data de criação da Ficha'] || row['Data_de_Criacao_da_Ficha'] || row['Data'] || row.Criado || '',
+          Data_de_Criacao_da_Ficha: fichaDateTime,
           MaxScouterApp_Verificacao: row['MaxScouterApp_Verificacao'] || row['Verificacao'] || '',
           Valor_por_Fichas: row['Valor por Fichas'] || row['Valor_por_Fichas'] || row['Valor'] || 'R$ 2,50',
           Campo_Local: row['Campo_Local'] || row['Local'] || row['Endereco'] || '',
@@ -147,7 +156,11 @@ export class GoogleSheetsService {
           valor_por_ficha_num: this.parseMoneyBR(row['Valor por Fichas'] || row['Valor_por_Fichas'] || row['Valor'] || '2.50'),
           geo: this.parseLatLon(row['Campo_Local'] || row['Local'] || ''),
           tem_foto: this.normalizeYesNo(row['Tem_Foto'] || row['Foto'] || ''),
-          status_normalizado: (row['Status_Confirmacao'] || row['Status'] || 'Aguardando').trim()
+          status_normalizado: (row['Status_Confirmacao'] || row['Status'] || 'Aguardando').trim(),
+          
+          // Novos campos normalizados de data
+          created_at_iso: parsedDate?.created_at_iso || new Date().toISOString(),
+          created_day: parsedDate?.created_day || new Date().toISOString().split('T')[0]
         };
         
         return processedRow;

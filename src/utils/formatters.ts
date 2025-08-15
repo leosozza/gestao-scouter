@@ -86,3 +86,74 @@ export const formatPercentage = (value: number, decimals: number = 1): string =>
     maximumFractionDigits: decimals
   }).format(value / 100);
 };
+
+// Função especializada para parsing de "Data de criação da Ficha" formato brasileiro
+export const parseFichaDateTimeBR = (value: string): { created_at_iso: string; created_day: string } | null => {
+  if (!value || typeof value !== 'string') return null;
+
+  try {
+    const trimmed = value.trim();
+    
+    // Se já é ISO format, usa direto
+    if (trimmed.includes('T') || trimmed.includes('Z')) {
+      const isoDate = parseISO(trimmed);
+      if (isValid(isoDate)) {
+        return {
+          created_at_iso: isoDate.toISOString(),
+          created_day: format(isoDate, 'yyyy-MM-dd')
+        };
+      }
+    }
+
+    // Parse formato brasileiro dd/MM/yyyy HH:mm
+    const brDateRegex = /(\d{2})\/(\d{2})\/(\d{4})\s*(\d{2}):(\d{2})/;
+    const match = trimmed.match(brDateRegex);
+    
+    if (match) {
+      const [, day, month, year, hour, minute] = match;
+      // Criar data no timezone de São Paulo
+      const dateObj = new Date(
+        parseInt(year), 
+        parseInt(month) - 1, // JavaScript months are 0-indexed
+        parseInt(day),
+        parseInt(hour),
+        parseInt(minute)
+      );
+
+      if (isValid(dateObj)) {
+        return {
+          created_at_iso: dateObj.toISOString(),
+          created_day: format(dateObj, 'yyyy-MM-dd')
+        };
+      }
+    }
+
+    // Fallback: tentar apenas data dd/MM/yyyy
+    const dateOnlyRegex = /(\d{2})\/(\d{2})\/(\d{4})/;
+    const dateMatch = trimmed.match(dateOnlyRegex);
+    
+    if (dateMatch) {
+      const [, day, month, year] = dateMatch;
+      const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      
+      if (isValid(dateObj)) {
+        return {
+          created_at_iso: dateObj.toISOString(),
+          created_day: format(dateObj, 'yyyy-MM-dd')
+        };
+      }
+    }
+
+    console.warn('Formato de data não reconhecido:', value);
+    return null;
+
+  } catch (error) {
+    console.error('Erro ao fazer parse da data da ficha:', error, 'valor:', value);
+    return null;
+  }
+};
+
+// Helper para verificar se uma data é válida
+const isValid = (date: Date): boolean => {
+  return date instanceof Date && !isNaN(date.getTime());
+};

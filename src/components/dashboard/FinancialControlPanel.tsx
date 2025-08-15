@@ -18,6 +18,8 @@ interface Ficha {
   MaxScouterApp_Verificacao: string;
   Valor_por_Fichas: string;
   valor_por_ficha_num?: number;
+  created_at_iso: string;
+  created_day: string;
 }
 
 interface Projeto {
@@ -77,14 +79,13 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
       filteredFichas = filteredFichas.filter(f => f.Projetos_Comerciais === selectedProject);
     }
 
-    // Filtrar por período se selecionado
+    // Filtrar por período se selecionado - usando created_day normalizado
     if (selectedPeriod) {
-      const startDate = new Date(selectedPeriod.start);
-      const endDate = new Date(selectedPeriod.end);
+      const startDate = selectedPeriod.start; // já está em formato yyyy-MM-dd
+      const endDate = selectedPeriod.end;
       
       filteredFichas = filteredFichas.filter(f => {
-        const fichaDate = new Date(f.Criado);
-        return fichaDate >= startDate && fichaDate <= endDate;
+        return f.created_day >= startDate && f.created_day <= endDate;
       });
     }
 
@@ -101,14 +102,13 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
   const availableProjects = useMemo(() => {
     let filteredFichas = fichas;
 
-    // Filtrar por período se selecionado
+    // Filtrar por período se selecionado - usando created_day normalizado
     if (selectedPeriod) {
-      const startDate = new Date(selectedPeriod.start);
-      const endDate = new Date(selectedPeriod.end);
+      const startDate = selectedPeriod.start;
+      const endDate = selectedPeriod.end;
       
       filteredFichas = filteredFichas.filter(f => {
-        const fichaDate = new Date(f.Criado);
-        return fichaDate >= startDate && fichaDate <= endDate;
+        return f.created_day >= startDate && f.created_day <= endDate;
       });
     }
 
@@ -144,12 +144,11 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
     }
 
     if (selectedPeriod) {
-      const startDate = new Date(selectedPeriod.start);
-      const endDate = new Date(selectedPeriod.end);
+      const startDate = selectedPeriod.start;
+      const endDate = selectedPeriod.end;
       
       scouterFichas = scouterFichas.filter(f => {
-        const fichaDate = new Date(f.Criado);
-        return fichaDate >= startDate && fichaDate <= endDate;
+        return f.created_day >= startDate && f.created_day <= endDate;
       });
     }
 
@@ -157,7 +156,7 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
       totalFichas: scouterFichas.length,
       projetos: [...new Set(scouterFichas.map(f => f.Projetos_Comerciais))],
       fichasPorDia: scouterFichas.reduce((acc, ficha) => {
-        const date = ficha.Criado;
+        const date = ficha.created_day; // usando created_day normalizado
         acc[date] = (acc[date] || 0) + 1;
         return acc;
       }, {} as { [key: string]: number })
@@ -176,7 +175,7 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
     const allDays = eachDayOfInterval({ start: startDate, end: endDate });
     
     return allDays.map(date => {
-      const dateStr = format(date, 'yyyy-MM-dd');
+      const dateStr = format(date, 'yyyy-MM-dd'); // formato normalizado
       const fichasCount = scouterData?.fichasPorDia[dateStr] || 0;
       
       const classification = dayClassifications[dateStr] || {
