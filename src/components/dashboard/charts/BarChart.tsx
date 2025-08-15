@@ -1,6 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from "recharts";
+import { useTheme } from "@/hooks/useTheme";
 
 interface BarChartProps {
   title: string;
@@ -10,7 +11,11 @@ interface BarChartProps {
   showValues?: boolean;
 }
 
-export const CustomBarChart = ({ title, data, color = "hsl(var(--primary))", isLoading, showValues = false }: BarChartProps) => {
+export const CustomBarChart = ({ title, data, color, isLoading, showValues = false }: BarChartProps) => {
+  const { currentTheme, getChartColors } = useTheme();
+  const chartColors = getChartColors(currentTheme);
+  const barColor = color || chartColors[0];
+
   if (isLoading) {
     return (
       <Card>
@@ -43,7 +48,7 @@ export const CustomBarChart = ({ title, data, color = "hsl(var(--primary))", isL
   };
 
   return (
-    <Card>
+    <Card className="transition-all duration-300 hover:shadow-lg">
       <CardHeader>
         <CardTitle className="text-lg font-semibold">{title}</CardTitle>
       </CardHeader>
@@ -70,7 +75,7 @@ export const CustomBarChart = ({ title, data, color = "hsl(var(--primary))", isL
             />
             <Bar 
               dataKey="value" 
-              fill={color}
+              fill={barColor}
               radius={[4, 4, 0, 0]}
               className="hover:opacity-80 transition-opacity"
             >

@@ -38,28 +38,72 @@ export const DashboardHeader = ({ onLogout }: DashboardHeaderProps) => {
   const applyTheme = (theme: string) => {
     const root = document.documentElement;
     
+    // Remove todas as classes de tema existentes
+    root.className = root.className.replace(/theme-\w+/g, '');
+    
+    // Aplica o novo tema
     switch (theme) {
       case 'dark':
-        root.className = 'dark';
+        root.classList.add('dark');
         break;
       case 'blue':
-        root.style.setProperty('--primary', '214 94% 58%');
-        root.style.setProperty('--primary-foreground', '0 0% 98%');
+        root.classList.add('theme-blue');
         break;
       case 'green':
-        root.style.setProperty('--primary', '142 76% 36%');
-        root.style.setProperty('--primary-foreground', '0 0% 98%');
+        root.classList.add('theme-green');
+        break;
+      case 'purple':
+        root.classList.add('theme-purple');
+        break;
+      case 'pink':
+        root.classList.add('theme-pink');
+        break;
+      case 'orange':
+        root.classList.add('theme-orange');
+        break;
+      case 'red':
+        root.classList.add('theme-red');
+        break;
+      case 'cyan':
+        root.classList.add('theme-cyan');
+        break;
+      case 'yellow':
+        root.classList.add('theme-yellow');
+        break;
+      case 'dark-blue':
+        root.classList.add('theme-dark-blue');
         break;
       case 'light':
       default:
-        root.className = '';
-        root.style.removeProperty('--primary');
-        root.style.removeProperty('--primary-foreground');
+        // Remove dark class se existir
+        root.classList.remove('dark');
         break;
     }
     
     setCurrentTheme(theme);
     localStorage.setItem('maxfama_theme', theme);
+    
+    toast({
+      title: "Tema alterado",
+      description: `Tema ${getThemeName(theme)} aplicado com sucesso`
+    });
+  };
+
+  const getThemeName = (theme: string) => {
+    const themeNames: Record<string, string> = {
+      light: 'Claro',
+      dark: 'Escuro',
+      blue: 'Azul',
+      green: 'Verde',
+      purple: 'Roxo',
+      pink: 'Rosa',
+      orange: 'Laranja',
+      red: 'Vermelho',
+      cyan: 'Ciano',
+      yellow: 'Amarelo',
+      'dark-blue': 'Azul Escuro'
+    };
+    return themeNames[theme] || theme;
   };
 
   return (
@@ -89,7 +133,7 @@ export const DashboardHeader = ({ onLogout }: DashboardHeaderProps) => {
             <div className="flex items-center gap-2">
               <Palette className="h-4 w-4 text-gray-600 dark:text-gray-300" />
               <Select value={currentTheme} onValueChange={applyTheme}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-40">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -97,6 +141,13 @@ export const DashboardHeader = ({ onLogout }: DashboardHeaderProps) => {
                   <SelectItem value="dark">Escuro</SelectItem>
                   <SelectItem value="blue">Azul</SelectItem>
                   <SelectItem value="green">Verde</SelectItem>
+                  <SelectItem value="purple">Roxo</SelectItem>
+                  <SelectItem value="pink">Rosa</SelectItem>
+                  <SelectItem value="orange">Laranja</SelectItem>
+                  <SelectItem value="red">Vermelho</SelectItem>
+                  <SelectItem value="cyan">Ciano</SelectItem>
+                  <SelectItem value="yellow">Amarelo</SelectItem>
+                  <SelectItem value="dark-blue">Azul Escuro</SelectItem>
                 </SelectContent>
               </Select>
             </div>
