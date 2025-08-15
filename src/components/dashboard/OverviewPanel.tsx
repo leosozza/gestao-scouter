@@ -5,9 +5,21 @@ import { BeatLoader } from 'react-spinners';
 
 interface OverviewPanelProps {
   isLoading: boolean;
+  processedData?: {
+    kpis: {
+      totalFichas: number;
+      receitaTotal: number;
+      scoutersAtivos: number;
+      projetosAtivos: number;
+      trendFichas?: { value: string; isPositive: boolean };
+      trendReceita?: { value: string; isPositive: boolean };
+      trendScouters?: { value: string; isPositive: boolean };
+      trendProjetos?: { value: string; isPositive: boolean };
+    };
+  } | null;
 }
 
-export const OverviewPanel = ({ isLoading }: OverviewPanelProps) => {
+export const OverviewPanel = ({ isLoading, processedData }: OverviewPanelProps) => {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -15,6 +27,17 @@ export const OverviewPanel = ({ isLoading }: OverviewPanelProps) => {
       </div>
     );
   }
+
+  const kpis = processedData?.kpis || {
+    totalFichas: 0,
+    receitaTotal: 0,
+    scoutersAtivos: 0,
+    projetosAtivos: 0,
+    trendFichas: { value: '0%', isPositive: true },
+    trendReceita: { value: '0%', isPositive: true },
+    trendScouters: { value: '0%', isPositive: true },
+    trendProjetos: { value: '0%', isPositive: true }
+  };
 
   return (
     <div className="space-y-6">
@@ -25,10 +48,10 @@ export const OverviewPanel = ({ isLoading }: OverviewPanelProps) => {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,234</div>
+            <div className="text-2xl font-bold">{kpis.totalFichas.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               <TrendingUp className="h-3 w-3 inline mr-1" />
-              +12.5% este mês
+              {kpis.trendFichas?.value || '0%'} este mês
             </p>
           </CardContent>
         </Card>
@@ -39,10 +62,10 @@ export const OverviewPanel = ({ isLoading }: OverviewPanelProps) => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ 45,231</div>
+            <div className="text-2xl font-bold">R$ {kpis.receitaTotal.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               <TrendingUp className="h-3 w-3 inline mr-1" />
-              +8.3% este mês
+              {kpis.trendReceita?.value || '0%'} este mês
             </p>
           </CardContent>
         </Card>
@@ -53,10 +76,10 @@ export const OverviewPanel = ({ isLoading }: OverviewPanelProps) => {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">28</div>
+            <div className="text-2xl font-bold">{kpis.scoutersAtivos}</div>
             <p className="text-xs text-muted-foreground">
               <TrendingUp className="h-3 w-3 inline mr-1" />
-              +5.2% este mês
+              {kpis.trendScouters?.value || '0%'} este mês
             </p>
           </CardContent>
         </Card>
@@ -67,9 +90,9 @@ export const OverviewPanel = ({ isLoading }: OverviewPanelProps) => {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
+            <div className="text-2xl font-bold">{kpis.projetosAtivos}</div>
             <p className="text-xs text-muted-foreground">
-              Sem alteração
+              {kpis.trendProjetos?.value || '0%'} este mês
             </p>
           </CardContent>
         </Card>
