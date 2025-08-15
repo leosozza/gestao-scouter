@@ -2,15 +2,26 @@
 import { useState, useEffect } from 'react';
 
 export type Theme = 
-  | 'modern-blue'
-  | 'vibrant-purple' 
-  | 'nature-green'
-  | 'sunset-orange'
-  | 'elegant-dark';
+  | 'light' 
+  | 'dark' 
+  | 'blue' 
+  | 'green' 
+  | 'purple' 
+  | 'pink' 
+  | 'orange' 
+  | 'red' 
+  | 'cyan' 
+  | 'yellow' 
+  | 'dark-blue'
+  | 'corporate'
+  | 'analytics'
+  | 'medical'
+  | 'presentation'
+  | 'dark-pro';
 
 export const useTheme = () => {
   const [currentTheme, setCurrentTheme] = useState<Theme>(() => {
-    return (localStorage.getItem('maxfama_theme') as Theme) || 'modern-blue';
+    return (localStorage.getItem('maxfama_theme') as Theme) || 'light';
   });
 
   const applyTheme = (theme: Theme) => {
@@ -21,7 +32,23 @@ export const useTheme = () => {
     root.classList.remove('dark');
     
     // Aplica o novo tema
-    root.classList.add(`theme-${theme}`);
+    switch (theme) {
+      case 'dark':
+        root.classList.add('dark');
+        break;
+      case 'light':
+        // Não adiciona classe adicional para light theme
+        break;
+      case 'dark-blue':
+        root.classList.add('theme-dark-blue');
+        break;
+      case 'dark-pro':
+        root.classList.add('theme-dark-pro');
+        break;
+      default:
+        root.classList.add(`theme-${theme}`);
+        break;
+    }
     
     setCurrentTheme(theme);
     localStorage.setItem('maxfama_theme', theme);
@@ -29,92 +56,143 @@ export const useTheme = () => {
 
   const getThemeName = (theme: Theme): string => {
     const themeNames: Record<Theme, string> = {
-      'modern-blue': 'Azul Moderno',
-      'vibrant-purple': 'Roxo Vibrante',
-      'nature-green': 'Verde Natural',
-      'sunset-orange': 'Laranja Pôr do Sol',
-      'elegant-dark': 'Escuro Elegante'
+      light: 'Claro',
+      dark: 'Escuro',
+      blue: 'Azul',
+      green: 'Verde',
+      purple: 'Roxo',
+      pink: 'Rosa',
+      orange: 'Laranja',
+      red: 'Vermelho',
+      cyan: 'Ciano',
+      yellow: 'Amarelo',
+      'dark-blue': 'Azul Escuro',
+      corporate: 'Corporate',
+      analytics: 'Analytics',
+      medical: 'Medical',
+      presentation: 'Apresentação',
+      'dark-pro': 'Dark Pro'
     };
     return themeNames[theme] || theme;
   };
 
   const getChartColors = (theme: Theme): string[] => {
     const chartColorsByTheme: Record<Theme, string[]> = {
-      'modern-blue': [
-        'hsl(213, 94%, 68%)',  // Azul principal
-        'hsl(195, 100%, 50%)', // Azul claro
-        'hsl(204, 100%, 60%)', // Azul médio
-        'hsl(224, 76%, 48%)',  // Azul escuro
-        'hsl(234, 89%, 64%)'   // Azul violeta
+      light: [
+        'hsl(213, 94%, 68%)',
+        'hsl(142, 71%, 45%)',
+        'hsl(25, 95%, 53%)',
+        'hsl(0, 84%, 60%)',
+        'hsl(280, 100%, 70%)'
       ],
-      'vibrant-purple': [
-        'hsl(280, 100%, 70%)', // Roxo vibrante
-        'hsl(270, 100%, 60%)', // Roxo médio
-        'hsl(290, 100%, 65%)', // Magenta
-        'hsl(260, 100%, 55%)', // Roxo escuro
-        'hsl(300, 100%, 75%)'  // Rosa roxo
+      dark: [
+        'hsl(220, 70%, 50%)',
+        'hsl(160, 60%, 45%)',
+        'hsl(30, 80%, 55%)',
+        'hsl(340, 75%, 55%)',
+        'hsl(280, 65%, 60%)'
       ],
-      'nature-green': [
-        'hsl(142, 76%, 36%)',  // Verde principal
-        'hsl(120, 100%, 25%)', // Verde escuro
-        'hsl(134, 61%, 41%)',  // Verde médio
-        'hsl(158, 64%, 52%)',  // Verde água
-        'hsl(173, 58%, 39%)'   // Verde azulado
+      blue: [
+        'hsl(214, 94%, 58%)',
+        'hsl(195, 100%, 50%)',
+        'hsl(204, 100%, 60%)',
+        'hsl(224, 76%, 48%)',
+        'hsl(234, 89%, 64%)'
       ],
-      'sunset-orange': [
-        'hsl(25, 95%, 53%)',   // Laranja principal
-        'hsl(35, 91%, 65%)',   // Laranja claro
-        'hsl(15, 100%, 50%)',  // Laranja avermelhado
-        'hsl(45, 93%, 58%)',   // Amarelo laranja
-        'hsl(55, 91%, 64%)'    // Amarelo
+      green: [
+        'hsl(142, 76%, 36%)',
+        'hsl(120, 100%, 25%)',
+        'hsl(134, 61%, 41%)',
+        'hsl(158, 64%, 52%)',
+        'hsl(173, 58%, 39%)'
       ],
-      'elegant-dark': [
-        'hsl(180, 100%, 50%)', // Ciano
-        'hsl(280, 100%, 70%)', // Magenta
-        'hsl(120, 100%, 60%)', // Verde neon
-        'hsl(60, 100%, 65%)',  // Amarelo neon
-        'hsl(0, 100%, 70%)'    // Vermelho neon
+      purple: [
+        'hsl(280, 100%, 70%)',
+        'hsl(270, 100%, 60%)',
+        'hsl(290, 100%, 65%)',
+        'hsl(260, 100%, 55%)',
+        'hsl(300, 100%, 75%)'
+      ],
+      pink: [
+        'hsl(330, 81%, 60%)',
+        'hsl(340, 82%, 52%)',
+        'hsl(320, 85%, 65%)',
+        'hsl(350, 89%, 60%)',
+        'hsl(310, 78%, 70%)'
+      ],
+      orange: [
+        'hsl(25, 95%, 53%)',
+        'hsl(35, 91%, 65%)',
+        'hsl(15, 100%, 50%)',
+        'hsl(45, 93%, 58%)',
+        'hsl(55, 91%, 64%)'
+      ],
+      red: [
+        'hsl(0, 84%, 60%)',
+        'hsl(10, 91%, 59%)',
+        'hsl(350, 89%, 60%)',
+        'hsl(20, 83%, 65%)',
+        'hsl(340, 82%, 52%)'
+      ],
+      cyan: [
+        'hsl(180, 100%, 40%)',
+        'hsl(170, 100%, 35%)',
+        'hsl(190, 100%, 45%)',
+        'hsl(160, 100%, 30%)',
+        'hsl(200, 100%, 50%)'
+      ],
+      yellow: [
+        'hsl(45, 93%, 47%)',
+        'hsl(35, 91%, 65%)',
+        'hsl(55, 91%, 64%)',
+        'hsl(25, 95%, 53%)',
+        'hsl(65, 92%, 76%)'
+      ],
+      'dark-blue': [
+        'hsl(217, 91%, 60%)',
+        'hsl(200, 91%, 60%)',
+        'hsl(230, 91%, 60%)',
+        'hsl(250, 91%, 60%)',
+        'hsl(270, 91%, 60%)'
+      ],
+      corporate: [
+        'hsl(220, 50%, 55%)',
+        'hsl(210, 45%, 60%)',
+        'hsl(200, 40%, 65%)',
+        'hsl(190, 35%, 70%)',
+        'hsl(180, 30%, 75%)'
+      ],
+      analytics: [
+        'hsl(260, 100%, 65%)',
+        'hsl(200, 100%, 60%)',
+        'hsl(120, 100%, 50%)',
+        'hsl(30, 100%, 55%)',
+        'hsl(0, 100%, 65%)'
+      ],
+      medical: [
+        'hsl(250, 80%, 65%)',
+        'hsl(270, 75%, 60%)',
+        'hsl(290, 70%, 65%)',
+        'hsl(310, 65%, 70%)',
+        'hsl(200, 70%, 60%)'
+      ],
+      presentation: [
+        'hsl(210, 85%, 60%)',
+        'hsl(160, 80%, 50%)',
+        'hsl(40, 90%, 55%)',
+        'hsl(320, 75%, 65%)',
+        'hsl(20, 85%, 60%)'
+      ],
+      'dark-pro': [
+        'hsl(180, 100%, 50%)',
+        'hsl(280, 100%, 70%)',
+        'hsl(120, 100%, 60%)',
+        'hsl(60, 100%, 65%)',
+        'hsl(0, 100%, 70%)'
       ]
     };
     
-    return chartColorsByTheme[theme] || chartColorsByTheme['modern-blue'];
-  };
-
-  const getThemeConfig = (theme: Theme) => {
-    const configs = {
-      'modern-blue': {
-        cardStyle: 'clean',
-        shadowIntensity: 'light',
-        borderRadius: 'medium',
-        gradient: false
-      },
-      'vibrant-purple': {
-        cardStyle: 'vibrant',
-        shadowIntensity: 'medium',
-        borderRadius: 'large',
-        gradient: true
-      },
-      'nature-green': {
-        cardStyle: 'organic',
-        shadowIntensity: 'soft',
-        borderRadius: 'large',
-        gradient: false
-      },
-      'sunset-orange': {
-        cardStyle: 'warm',
-        shadowIntensity: 'medium',
-        borderRadius: 'medium',
-        gradient: true
-      },
-      'elegant-dark': {
-        cardStyle: 'futuristic',
-        shadowIntensity: 'strong',
-        borderRadius: 'small',
-        gradient: true
-      }
-    };
-    
-    return configs[theme];
+    return chartColorsByTheme[theme] || chartColorsByTheme.light;
   };
 
   // Aplica o tema inicial quando o hook é montado
@@ -126,7 +204,6 @@ export const useTheme = () => {
     currentTheme,
     applyTheme,
     getThemeName,
-    getChartColors,
-    getThemeConfig
+    getChartColors
   };
 };
