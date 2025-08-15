@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { LogOut, Upload, Palette } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/hooks/useTheme";
 
 interface DashboardHeaderProps {
   onLogout: () => void;
@@ -14,7 +15,7 @@ interface DashboardHeaderProps {
 export const DashboardHeader = ({ onLogout }: DashboardHeaderProps) => {
   const [logoDialogOpen, setLogoDialogOpen] = useState(false);
   const [currentLogo, setCurrentLogo] = useState("/lovable-uploads/c7328f04-9e37-4cd5-b5a5-260721fcaa72.png");
-  const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('maxfama_theme') || 'light');
+  const { currentTheme, applyTheme, getThemeName } = useTheme();
   const { toast } = useToast();
 
   const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,75 +36,12 @@ export const DashboardHeader = ({ onLogout }: DashboardHeaderProps) => {
     }
   };
 
-  const applyTheme = (theme: string) => {
-    const root = document.documentElement;
-    
-    // Remove todas as classes de tema existentes
-    root.className = root.className.replace(/theme-\w+/g, '');
-    
-    // Aplica o novo tema
-    switch (theme) {
-      case 'dark':
-        root.classList.add('dark');
-        break;
-      case 'blue':
-        root.classList.add('theme-blue');
-        break;
-      case 'green':
-        root.classList.add('theme-green');
-        break;
-      case 'purple':
-        root.classList.add('theme-purple');
-        break;
-      case 'pink':
-        root.classList.add('theme-pink');
-        break;
-      case 'orange':
-        root.classList.add('theme-orange');
-        break;
-      case 'red':
-        root.classList.add('theme-red');
-        break;
-      case 'cyan':
-        root.classList.add('theme-cyan');
-        break;
-      case 'yellow':
-        root.classList.add('theme-yellow');
-        break;
-      case 'dark-blue':
-        root.classList.add('theme-dark-blue');
-        break;
-      case 'light':
-      default:
-        // Remove dark class se existir
-        root.classList.remove('dark');
-        break;
-    }
-    
-    setCurrentTheme(theme);
-    localStorage.setItem('maxfama_theme', theme);
-    
+  const handleThemeChange = (theme: string) => {
+    applyTheme(theme as any);
     toast({
       title: "Tema alterado",
-      description: `Tema ${getThemeName(theme)} aplicado com sucesso`
+      description: `Tema ${getThemeName(theme as any)} aplicado com sucesso`
     });
-  };
-
-  const getThemeName = (theme: string) => {
-    const themeNames: Record<string, string> = {
-      light: 'Claro',
-      dark: 'Escuro',
-      blue: 'Azul',
-      green: 'Verde',
-      purple: 'Roxo',
-      pink: 'Rosa',
-      orange: 'Laranja',
-      red: 'Vermelho',
-      cyan: 'Ciano',
-      yellow: 'Amarelo',
-      'dark-blue': 'Azul Escuro'
-    };
-    return themeNames[theme] || theme;
   };
 
   return (
@@ -132,7 +70,7 @@ export const DashboardHeader = ({ onLogout }: DashboardHeaderProps) => {
             {/* Seletor de Tema */}
             <div className="flex items-center gap-2">
               <Palette className="h-4 w-4 text-gray-600 dark:text-gray-300" />
-              <Select value={currentTheme} onValueChange={applyTheme}>
+              <Select value={currentTheme} onValueChange={handleThemeChange}>
                 <SelectTrigger className="w-40">
                   <SelectValue />
                 </SelectTrigger>
@@ -148,6 +86,11 @@ export const DashboardHeader = ({ onLogout }: DashboardHeaderProps) => {
                   <SelectItem value="cyan">Ciano</SelectItem>
                   <SelectItem value="yellow">Amarelo</SelectItem>
                   <SelectItem value="dark-blue">Azul Escuro</SelectItem>
+                  <SelectItem value="corporate">Corporate</SelectItem>
+                  <SelectItem value="analytics">Analytics</SelectItem>
+                  <SelectItem value="medical">Medical</SelectItem>
+                  <SelectItem value="presentation">Apresentação</SelectItem>
+                  <SelectItem value="dark-pro">Dark Pro</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -1,5 +1,7 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { useTheme } from "@/hooks/useTheme";
 
 interface LineChartProps {
   title: string;
@@ -13,6 +15,9 @@ interface LineChartProps {
 }
 
 export const CustomLineChart = ({ title, data, isLoading }: LineChartProps) => {
+  const { currentTheme, getChartColors } = useTheme();
+  const chartColors = getChartColors(currentTheme);
+
   if (isLoading) {
     return (
       <Card>
@@ -72,9 +77,9 @@ export const CustomLineChart = ({ title, data, isLoading }: LineChartProps) => {
             <Line 
               type="monotone" 
               dataKey="real" 
-              stroke="hsl(var(--primary))"
+              stroke={chartColors[0]}
               strokeWidth={3}
-              dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+              dot={{ fill: chartColors[0], strokeWidth: 2, r: 4 }}
               name="Fichas Reais"
             />
           </LineChart>

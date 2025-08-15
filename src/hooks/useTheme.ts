@@ -12,7 +12,12 @@ export type Theme =
   | 'red' 
   | 'cyan' 
   | 'yellow' 
-  | 'dark-blue';
+  | 'dark-blue'
+  | 'corporate'
+  | 'analytics'
+  | 'medical'
+  | 'presentation'
+  | 'dark-pro';
 
 export const useTheme = () => {
   const [currentTheme, setCurrentTheme] = useState<Theme>(() => {
@@ -33,6 +38,12 @@ export const useTheme = () => {
         break;
       case 'light':
         // Não adiciona classe adicional para light theme
+        break;
+      case 'dark-blue':
+        root.classList.add('theme-dark-blue');
+        break;
+      case 'dark-pro':
+        root.classList.add('theme-dark-pro');
         break;
       default:
         root.classList.add(`theme-${theme}`);
@@ -55,7 +66,12 @@ export const useTheme = () => {
       red: 'Vermelho',
       cyan: 'Ciano',
       yellow: 'Amarelo',
-      'dark-blue': 'Azul Escuro'
+      'dark-blue': 'Azul Escuro',
+      corporate: 'Corporate',
+      analytics: 'Analytics',
+      medical: 'Medical',
+      presentation: 'Apresentação',
+      'dark-pro': 'Dark Pro'
     };
     return themeNames[theme] || theme;
   };
@@ -138,6 +154,41 @@ export const useTheme = () => {
         'hsl(230, 91%, 60%)',
         'hsl(250, 91%, 60%)',
         'hsl(270, 91%, 60%)'
+      ],
+      corporate: [
+        'hsl(220, 50%, 55%)',
+        'hsl(210, 45%, 60%)',
+        'hsl(200, 40%, 65%)',
+        'hsl(190, 35%, 70%)',
+        'hsl(180, 30%, 75%)'
+      ],
+      analytics: [
+        'hsl(260, 100%, 65%)',
+        'hsl(200, 100%, 60%)',
+        'hsl(120, 100%, 50%)',
+        'hsl(30, 100%, 55%)',
+        'hsl(0, 100%, 65%)'
+      ],
+      medical: [
+        'hsl(250, 80%, 65%)',
+        'hsl(270, 75%, 60%)',
+        'hsl(290, 70%, 65%)',
+        'hsl(310, 65%, 70%)',
+        'hsl(200, 70%, 60%)'
+      ],
+      presentation: [
+        'hsl(210, 85%, 60%)',
+        'hsl(160, 80%, 50%)',
+        'hsl(40, 90%, 55%)',
+        'hsl(320, 75%, 65%)',
+        'hsl(20, 85%, 60%)'
+      ],
+      'dark-pro': [
+        'hsl(180, 100%, 50%)',
+        'hsl(280, 100%, 70%)',
+        'hsl(120, 100%, 60%)',
+        'hsl(60, 100%, 65%)',
+        'hsl(0, 100%, 70%)'
       ]
     };
     
