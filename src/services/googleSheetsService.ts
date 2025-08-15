@@ -1,3 +1,4 @@
+
 import { parseFichaDateTimeBR } from '../utils/formatters';
 
 // Serviço para buscar dados das planilhas públicas do Google Sheets
@@ -97,7 +98,7 @@ export class GoogleSheetsService {
   }
 
   // Parse de coordenadas lat,lon
-  private static parseLatLon(value: string): { lat: number; lon: number } | null => {
+  private static parseLatLon(value: string): { lat: number; lon: number } | null {
     if (!value || !value.includes(',')) return null;
     
     const parts = value.split(',').map(p => parseFloat(p.trim()));
@@ -108,7 +109,7 @@ export class GoogleSheetsService {
   }
 
   // Parse de moeda brasileira
-  private static parseMoneyBR(value: string): number => {
+  private static parseMoneyBR(value: string): number {
     if (!value) return 0;
     
     // Remove caracteres não numéricos exceto vírgula e ponto
@@ -278,3 +279,4 @@ export class GoogleSheetsService {
     return { fichas: templateFichas, projetos: templateProjetos };
   }
 }
+
