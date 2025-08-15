@@ -40,11 +40,15 @@ export const ScouterTable = ({ data, isLoading }: ScouterTableProps) => {
   }
 
   const getScoreBadge = (score: number) => {
-    if (score >= 80) return <Badge className="bg-success text-success-foreground">Excelente</Badge>;
-    if (score >= 60) return <Badge variant="secondary">Bom</Badge>;
-    if (score >= 40) return <Badge variant="outline">Regular</Badge>;
+    const safeScore = score || 0;
+    if (safeScore >= 80) return <Badge className="bg-success text-success-foreground">Excelente</Badge>;
+    if (safeScore >= 60) return <Badge variant="secondary">Bom</Badge>;
+    if (safeScore >= 40) return <Badge variant="outline">Regular</Badge>;
     return <Badge variant="destructive">Atenção</Badge>;
   };
+
+  // Ensure data is an array and filter out invalid entries
+  const safeData = Array.isArray(data) ? data.filter(scouter => scouter && scouter.scouter) : [];
 
   return (
     <Card>
@@ -71,23 +75,23 @@ export const ScouterTable = ({ data, isLoading }: ScouterTableProps) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.map((scouter) => (
+            {safeData.map((scouter) => (
               <TableRow key={scouter.scouter}>
-                <TableCell className="font-medium">{scouter.scouter}</TableCell>
-                <TableCell className="text-right">{scouter.fichas}</TableCell>
-                <TableCell className="text-right">{scouter.mediaDia.toFixed(1)}</TableCell>
-                <TableCell className="text-right">{scouter.diasPagos}</TableCell>
+                <TableCell className="font-medium">{scouter.scouter || 'N/A'}</TableCell>
+                <TableCell className="text-right">{scouter.fichas || 0}</TableCell>
+                <TableCell className="text-right">{(scouter.mediaDia || 0).toFixed(1)}</TableCell>
+                <TableCell className="text-right">{scouter.diasPagos || 0}</TableCell>
                 <TableCell className="text-right">
-                  R$ {scouter.ajudaCusto.toLocaleString('pt-BR')}
+                  R$ {(scouter.ajudaCusto || 0).toLocaleString('pt-BR')}
                 </TableCell>
                 <TableCell className="text-right">
-                  R$ {scouter.pagamentoFichas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {(scouter.pagamentoFichas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </TableCell>
                 <TableCell className="text-right font-semibold">
-                  R$ {scouter.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {(scouter.total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </TableCell>
-                <TableCell className="text-right">{scouter.percentFoto.toFixed(1)}%</TableCell>
-                <TableCell className="text-right">{scouter.percentConfirmacao.toFixed(1)}%</TableCell>
+                <TableCell className="text-right">{(scouter.percentFoto || 0).toFixed(1)}%</TableCell>
+                <TableCell className="text-right">{(scouter.percentConfirmacao || 0).toFixed(1)}%</TableCell>
                 <TableCell>{getScoreBadge(scouter.score)}</TableCell>
               </TableRow>
             ))}
