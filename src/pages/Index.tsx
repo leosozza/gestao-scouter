@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from "react";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { ConfigPanel } from "@/components/dashboard/ConfigPanel";
@@ -43,6 +44,11 @@ const Index: React.FC = () => {
     localStorage.setItem('maxfama_theme', theme);
   };
 
+  // Placeholder logout function (will be replaced with Bitrix24 auth later)
+  const handleLogout = () => {
+    console.log('Logout clicked - will integrate with Bitrix24 later');
+  };
+
   // Create mock filters for the PanelLayout
   const currentFilters = {
     dateRange: { start: '', end: '' },
@@ -53,6 +59,7 @@ const Index: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       <DashboardHeader
+        onLogout={handleLogout}
         isEditMode={isEditMode}
         onToggleEditMode={() => setIsEditMode(!isEditMode)}
         showSavedViews={showSavedViews}
@@ -67,6 +74,8 @@ const Index: React.FC = () => {
         isLoading={isLoading}
         currentFilters={currentFilters}
         onLoadView={handleLoadView}
+        isEditMode={isEditMode}
+        showSavedViews={showSavedViews}
       />
       
       <ConfigPanel
@@ -80,3 +89,4 @@ const Index: React.FC = () => {
 };
 
 export default Index;
+
