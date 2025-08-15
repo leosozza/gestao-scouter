@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -11,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { DollarSign, FileText, Download, AlertTriangle, Check, X, CreditCard, Calendar as CalendarIcon, Settings, CalendarDays } from "lucide-react";
+import { DollarSign, FileText, Download, AlertTriangle, Check, X, CreditCard, Calendar as CalendarIcon, Settings, CalendarDays, RefreshCw, HandCoins } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DashboardFilters } from "./FilterPanel";
 import { format, parseISO, isWithinInterval } from "date-fns";
@@ -72,6 +71,7 @@ export const FinancialControlPanel = ({
   const [paymentItems, setPaymentItems] = useState<PaymentItem[]>([]);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'paid'>('all');
   const [confirmPayment, setConfirmPayment] = useState(false);
+  const [confirmAjudaPayment, setConfirmAjudaPayment] = useState(false);
   const [showProjectValues, setShowProjectValues] = useState(false);
   const [projectValues, setProjectValues] = useState<ProjectValues>({});
   const [dayOffDialog, setDayOffDialog] = useState<{ open: boolean; dates: string[] }>({ open: false, dates: [] });
@@ -382,6 +382,20 @@ export const FinancialControlPanel = ({
     };
   };
 
+  const handleResetScouter = () => {
+    setSelectedScouter("");
+    setPaymentItems([]);
+    setFilterStatus('all');
+    setDateFilter({ start: undefined, end: undefined });
+    setSelectedDayOffTypes({});
+    
+    toast({
+      title: "Scouter redefinido",
+      description: "Seleção de scouter foi limpa com sucesso",
+      variant: "default"
+    });
+  };
+
   const handlePayment = () => {
     if (!selectedScouter) return;
 
@@ -394,7 +408,7 @@ export const FinancialControlPanel = ({
         : item
     ));
 
-    console.log('Pagamento processado:', {
+    console.log('Pagamento geral processado:', {
       scouter: selectedScouter,
       lote: loteId,
       data: paymentDate,
@@ -408,6 +422,37 @@ export const FinancialControlPanel = ({
     });
 
     setConfirmPayment(false);
+  };
+
+  const handleAjudaPayment = () => {
+    if (!selectedScouter) return;
+
+    const loteId = crypto.randomUUID();
+    const paymentDate = new Date().toISOString();
+    const ajudaPendente = paymentItems.filter(item => 
+      item.status === 'PENDENTE' && (item.type === 'ajuda' || item.type === 'folga')
+    );
+
+    setPaymentItems(prev => prev.map(item => 
+      item.status === 'PENDENTE' && (item.type === 'ajuda' || item.type === 'folga')
+        ? { ...item, status: 'PAGO' as const, lote: loteId, paymentDate }
+        : item
+    ));
+
+    console.log('Pagamento de ajuda de custo processado:', {
+      scouter: selectedScouter,
+      lote: loteId,
+      data: paymentDate,
+      items: ajudaPendente
+    });
+
+    toast({
+      title: "Ajuda de custo paga",
+      description: `Lote ${loteId.slice(0, 8)} - ${ajudaPendente.length} itens pagos`,
+      variant: "default"
+    });
+
+    setConfirmAjudaPayment(false);
   };
 
   const exportReport = (exportFormat: 'csv' | 'pdf') => {
@@ -433,6 +478,10 @@ export const FinancialControlPanel = ({
 
   const totals = calculateTotals();
   const filteredItems = getFilteredItems();
+  const ajudaPendente = paymentItems.filter(item => 
+    item.status === 'PENDENTE' && (item.type === 'ajuda' || item.type === 'folga')
+  );
+  const valorAjudaPendente = ajudaPendente.reduce((sum, item) => sum + item.value, 0);
 
   return (
     <>
@@ -557,21 +606,32 @@ export const FinancialControlPanel = ({
                   </Card>
                 )}
 
-                {/* Seleção de Scouter */}
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Scouter (obrigatório)</label>
-                  <Select value={selectedScouter} onValueChange={setSelectedScouter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione um scouter para continuar..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableScouters.map(scouter => (
-                        <SelectItem key={scouter} value={scouter}>
-                          {scouter}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                {/* Seleção de Scouter com botão de redefinir */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Scouter (obrigatório)</label>
+                  <div className="flex gap-2">
+                    <Select value={selectedScouter} onValueChange={setSelectedScouter}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Selecione um scouter para continuar..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableScouters.map(scouter => (
+                          <SelectItem key={scouter} value={scouter}>
+                            {scouter}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      onClick={handleResetScouter}
+                      disabled={!selectedScouter}
+                      title="Redefinir seleção de scouter"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 {selectedScouter && (
@@ -669,13 +729,27 @@ export const FinancialControlPanel = ({
                           <Download className="h-4 w-4 mr-2" />
                           PDF
                         </Button>
+                        
+                        {/* Botão específico para pagar ajuda de custo */}
+                        {valorAjudaPendente > 0 && (
+                          <Button 
+                            onClick={() => setConfirmAjudaPayment(true)}
+                            variant="outline"
+                            className="border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white"
+                          >
+                            <HandCoins className="h-4 w-4 mr-2" />
+                            Pagar Ajuda (R$ {valorAjudaPendente.toFixed(2)})
+                          </Button>
+                        )}
+                        
+                        {/* Botão para pagar tudo */}
                         {totals.totalAPagar > 0 && (
                           <Button 
                             onClick={() => setConfirmPayment(true)}
                             className="bg-success hover:bg-success/90"
                           >
                             <Check className="h-4 w-4 mr-2" />
-                            Pagar (R$ {totals.totalAPagar.toFixed(2)})
+                            Pagar Tudo (R$ {totals.totalAPagar.toFixed(2)})
                           </Button>
                         )}
                       </div>
@@ -825,12 +899,44 @@ export const FinancialControlPanel = ({
         </DialogContent>
       </Dialog>
 
+      <Dialog open={confirmAjudaPayment} onOpenChange={setConfirmAjudaPayment}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HandCoins className="h-5 w-5 text-blue-500" />
+              Confirmar Pagamento - Ajuda de Custo
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p>
+              Confirma o pagamento de <strong>R$ {valorAjudaPendente.toFixed(2)}</strong> em ajuda de custo para{' '}
+              <strong>{selectedScouter}</strong>?
+            </p>
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>• {ajudaPendente.filter(i => i.type === 'ajuda').length} dias de ajuda de custo</p>
+              <p>• {ajudaPendente.filter(i => i.type === 'folga').length} folgas remuneradas</p>
+              <p>• Total de {ajudaPendente.length} itens de ajuda de custo</p>
+              <p>• Apenas os itens de ajuda de custo serão marcados como PAGOS</p>
+              <p>• Um lote de pagamento será gerado para controle</p>
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button onClick={handleAjudaPayment} className="flex-1 bg-blue-500 hover:bg-blue-600">
+                Confirmar Pagamento de Ajuda
+              </Button>
+              <Button variant="outline" onClick={() => setConfirmAjudaPayment(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={confirmPayment} onOpenChange={setConfirmPayment}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-warning" />
-              Confirmar Pagamento
+              Confirmar Pagamento Completo
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
@@ -844,12 +950,12 @@ export const FinancialControlPanel = ({
               {totals.folgasPendentes > 0 && (
                 <p>• {totals.folgasPendentes} folgas remuneradas: R$ {totals.valorFolgasPendentes.toFixed(2)}</p>
               )}
-              <p>• Todos os itens pendentes serão marcados como PAGOS</p>
+              <p>• <strong>TODOS</strong> os itens pendentes serão marcados como PAGOS</p>
               <p>• Um lote de pagamento será gerado para controle</p>
             </div>
             <div className="flex gap-3 pt-4">
               <Button onClick={handlePayment} className="flex-1">
-                Confirmar Pagamento
+                Confirmar Pagamento Completo
               </Button>
               <Button variant="outline" onClick={() => setConfirmPayment(false)}>
                 Cancelar
