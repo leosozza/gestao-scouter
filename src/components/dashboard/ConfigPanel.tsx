@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { GoogleSheetsService } from "@/services/googleSheetsService";
 import { TemplateModal } from "./TemplateModal";
 import { IntegrationsPanel } from "./integrations/IntegrationsPanel";
+import { AjudaCustoSettings } from "./AjudaCustoSettings";
 
 interface ConfigPanelProps {
   isOpen: boolean;
@@ -235,7 +236,10 @@ export const ConfigPanel = ({ isOpen, onClose, onConfigUpdate, currentConfig }: 
                       </p>
                     </div>
                   </div>
-                  
+
+                  {/* NOVO BLOCO: Ajuda de Custo - Seletivas */}
+                  <AjudaCustoSettings />
+
                   <div className="bg-muted p-4 rounded-lg">
                     <h4 className="font-medium mb-2">Informações:</h4>
                     <ul className="text-sm space-y-1 list-disc list-inside">

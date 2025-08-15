@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Calendar, CheckCircle, XCircle, DollarSign, Edit2, Check, X } from "lucide-react";
 import { format, eachDayOfInterval, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getAjudaCustoConfig } from "@/utils/ajudaCustoSettings";
+import { Button } from "@/components/ui/button"; // ensure Button is imported (already present above)
+import { Badge } from "@/components/ui/badge";   // ensure Badge is imported (already present above)
 
 interface DailyBreakdownPanelProps {
   startDate: string;
@@ -15,6 +17,8 @@ interface DailyBreakdownPanelProps {
   selectedProject?: string;
 }
 
+type DistanciaSeletiva = 'proxima' | 'longe';
+
 interface DayInfo {
   date: Date;
   fichasCount: number;
@@ -23,6 +27,7 @@ interface DayInfo {
   dayType: 'work' | 'folga' | 'falta';
   valor: number;
   ajudaCusto: number;
+  // não persistimos a distância aqui, usamos overrides por data
 }
 
 export const DailyBreakdownPanel: React.FC<DailyBreakdownPanelProps> = ({
@@ -34,9 +39,13 @@ export const DailyBreakdownPanel: React.FC<DailyBreakdownPanelProps> = ({
 }) => {
   const [editingDay, setEditingDay] = useState<string | null>(null);
   const [dayTypeOverrides, setDayTypeOverrides] = useState<{ [key: string]: 'folga' | 'falta' }>({});
+  // NOVO: distância por dia (Próxima | Longe)
+  const [dayDistanceOverrides, setDayDistanceOverrides] = useState<{ [key: string]: DistanciaSeletiva }>({});
 
   const dailyBreakdown = useMemo(() => {
     if (!startDate || !endDate) return [];
+
+    const ajuda = getAjudaCustoConfig();
 
     console.log('=== DAILY BREAKDOWN DEBUG ===');
     console.log('Período:', startDate, 'até', endDate);
@@ -108,10 +117,9 @@ export const DailyBreakdownPanel: React.FC<DailyBreakdownPanelProps> = ({
       const fichasCount = dayFichas.length;
       const valor = dayFichas.reduce((sum, ficha) => sum + (ficha.valor_por_ficha_num || 0), 0);
       
-      // Calcular ajuda de custo (R$ 50 se tem fichas ou é folga remunerada)
       let ajudaCusto = 0;
       let dayType: 'work' | 'folga' | 'falta' = 'work';
-      
+
       if (fichasCount === 0) {
         // Verificar se tem override manual
         if (dayTypeOverrides[dateKey]) {
@@ -121,14 +129,18 @@ export const DailyBreakdownPanel: React.FC<DailyBreakdownPanelProps> = ({
           const dayOfWeek = date.getDay();
           dayType = (dayOfWeek === 0 || dayOfWeek === 6) ? 'folga' : 'falta';
         }
-        
-        // Ajuda de custo para folga remunerada
-        if (dayType === 'folga') {
-          ajudaCusto = 50;
+
+        // Folga remunerada apenas quando marcado como Longe
+        const distancia = dayDistanceOverrides[dateKey];
+        if (dayType === 'folga' && distancia === 'longe') {
+          ajudaCusto = ajuda.folgaLonge;
+        } else {
+          ajudaCusto = 0;
         }
       } else {
-        // Tem fichas = dia trabalhado, ajuda de custo de R$ 50
-        ajudaCusto = 50;
+        // Dia trabalhado: Próxima ou Longe define ajuda
+        const distancia: DistanciaSeletiva = dayDistanceOverrides[dateKey] ?? 'proxima';
+        ajudaCusto = distancia === 'longe' ? ajuda.longe : ajuda.proxima;
       }
 
       return {
@@ -144,7 +156,7 @@ export const DailyBreakdownPanel: React.FC<DailyBreakdownPanelProps> = ({
 
     console.log('Breakdown gerado:', breakdown.length, 'dias');
     return breakdown;
-  }, [startDate, endDate, fichas, selectedScouter, selectedProject, dayTypeOverrides]);
+  }, [startDate, endDate, fichas, selectedScouter, selectedProject, dayTypeOverrides, dayDistanceOverrides]);
 
   const summary = useMemo(() => {
     const totalFichas = dailyBreakdown.reduce((sum, day) => sum + day.fichasCount, 0);
@@ -167,6 +179,10 @@ export const DailyBreakdownPanel: React.FC<DailyBreakdownPanelProps> = ({
 
   const cancelEdit = () => {
     setEditingDay(null);
+  };
+
+  const setDistancia = (dateKey: string, distancia: DistanciaSeletiva) => {
+    setDayDistanceOverrides(prev => ({ ...prev, [dateKey]: distancia }));
   };
 
   if (!startDate || !endDate) {
@@ -239,7 +255,8 @@ export const DailyBreakdownPanel: React.FC<DailyBreakdownPanelProps> = ({
             {dailyBreakdown.map((day, index) => {
               const dateKey = format(day.date, 'yyyy-MM-dd');
               const isEditing = editingDay === dateKey;
-              
+              const distancia = dayDistanceOverrides[dateKey] ?? (day.isWorkDay ? 'proxima' : undefined);
+
               return (
                 <div 
                   key={index}
@@ -255,6 +272,26 @@ export const DailyBreakdownPanel: React.FC<DailyBreakdownPanelProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {/* Seletor Próxima/Longe sempre disponível para marcar a distância */}
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="sm"
+                        variant={distancia === 'proxima' ? "default" : "outline"}
+                        className="h-6 px-2 text-xs"
+                        onClick={() => setDistancia(dateKey, 'proxima')}
+                      >
+                        Próx
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={distancia === 'longe' ? "default" : "outline"}
+                        className="h-6 px-2 text-xs"
+                        onClick={() => setDistancia(dateKey, 'longe')}
+                      >
+                        Longe
+                      </Button>
+                    </div>
+
                     {day.isWorkDay ? (
                       <>
                         <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
@@ -265,6 +302,7 @@ export const DailyBreakdownPanel: React.FC<DailyBreakdownPanelProps> = ({
                           <DollarSign className="h-3 w-3 mr-1" />
                           R$ {day.valor.toFixed(2)}
                         </Badge>
+                        {/* Ajuda de custo baseada na distância */}
                         <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
                           Ajuda: R$ {day.ajudaCusto.toFixed(2)}
                         </Badge>
@@ -311,6 +349,7 @@ export const DailyBreakdownPanel: React.FC<DailyBreakdownPanelProps> = ({
                               <XCircle className="h-3 w-3 mr-1" />
                               {day.dayType === 'folga' ? 'Folga' : 'Falta'}
                             </Badge>
+                            {/* Se folga e marcado Longe, mostra remuneração */}
                             {day.dayType === 'folga' && (
                               <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
                                 R$ {day.ajudaCusto.toFixed(2)}
