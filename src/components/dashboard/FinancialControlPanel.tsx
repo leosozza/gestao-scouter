@@ -58,6 +58,16 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
   const [dayClassifications, setDayClassifications] = useState<{ [key: string]: DayClassification }>({});
   const [editingDay, setEditingDay] = useState<string | null>(null);
 
+  // Função para obter valor da ajuda de custo - movida para antes dos useMemos
+  const getHelpCostValue = (date: string, type: 'trabalho' | 'folga' | 'falta'): number => {
+    if (type === 'falta') return 0;
+    
+    const projectConfig = helpCostConfig[selectedProject];
+    if (!projectConfig) return type === 'trabalho' ? 30 : 50; // valores padrão
+    
+    return type === 'trabalho' ? projectConfig.valor_normal : projectConfig.valor_folga;
+  };
+
   // Função para filtrar scouters baseado na seletiva escolhida e período
   const availableScouters = useMemo(() => {
     let filteredFichas = fichas;
@@ -184,15 +194,6 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
       };
     });
   }, [selectedPeriod, selectedScouter, scouterData, dayClassifications, helpCostConfig, selectedProject]);
-
-  const getHelpCostValue = (date: string, type: 'trabalho' | 'folga' | 'falta'): number => {
-    if (type === 'falta') return 0;
-    
-    const projectConfig = helpCostConfig[selectedProject];
-    if (!projectConfig) return type === 'trabalho' ? 30 : 50; // valores padrão
-    
-    return type === 'trabalho' ? projectConfig.valor_normal : projectConfig.valor_folga;
-  };
 
   const updateDayClassification = (date: string, newType: 'trabalho' | 'folga' | 'falta') => {
     const fichasCount = scouterData?.fichasPorDia[date] || 0;
