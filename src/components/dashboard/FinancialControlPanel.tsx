@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -512,16 +511,14 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
                             {day.type === 'trabalho' ? 'Trabalho' : 
                              day.type === 'folga' ? 'Folga' : 'Falta'}
                           </Badge>
-                          {(day.type === 'folga' || day.type === 'falta') && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setEditingDay(day.date)}
-                              className="p-1 h-6 w-6"
-                            >
-                              <Edit2 className="w-3 h-3" />
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setEditingDay(day.date)}
+                            className="p-1 h-6 w-6"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </Button>
                         </>
                       )}
                     </div>
