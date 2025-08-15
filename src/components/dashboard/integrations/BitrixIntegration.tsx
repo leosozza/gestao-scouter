@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +21,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useBitrixIntegration } from "@/hooks/useBitrixIntegration";
 import { useToast } from "@/hooks/use-toast";
+import { BitrixOAuthHelper } from "./BitrixOAuthHelper";
 
 interface BitrixConfig {
   enabled: boolean;
@@ -136,8 +136,9 @@ export const BitrixIntegration = () => {
       </div>
 
       <Tabs defaultValue="config" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="config">Configuração</TabsTrigger>
+          <TabsTrigger value="oauth-helper">Assistente OAuth</TabsTrigger>
           <TabsTrigger value="fields">Mapeamento de Campos</TabsTrigger>
           <TabsTrigger value="help">Guia de Integração</TabsTrigger>
         </TabsList>
@@ -375,6 +376,10 @@ export const BitrixIntegration = () => {
           </Card>
         </TabsContent>
 
+        <TabsContent value="oauth-helper" className="space-y-4">
+          <BitrixOAuthHelper />
+        </TabsContent>
+
         <TabsContent value="fields" className="space-y-4">
           <Card>
             <CardHeader>
@@ -440,13 +445,13 @@ export const BitrixIntegration = () => {
                 <h4 className="font-semibold mb-2">1. Configuração de Webhook (Recomendado)</h4>
                 <ol className="list-decimal list-inside space-y-2 text-sm">
                   <li>Acesse seu Bitrix24 como administrador</li>
-                  <li>Vá em "Configurações" → "Configurações para desenvolvedores"</li>
-                  <li>Clique em "Webhook de entrada"</li>
-                  <li>Crie um novo webhook com as permissões necessárias:
+                  <li>Vá em "Aplicativos" → "Desenvolvedor" → "Outros" → "Webhook de entrada"</li>
+                  <li>Clique em "Criar webhook"</li>
+                  <li>Selecione as permissões necessárias:
                     <ul className="list-disc list-inside ml-4 mt-1">
-                      <li>CRM (crm)</li>
-                      <li>Leitura e escrita em Leads</li>
-                      <li>Leitura e escrita em Smart Process Apps</li>
+                      <li><strong>CRM</strong> - para acessar leads</li>
+                      <li><strong>Leitura (crm)</strong> - para ler dados</li>
+                      <li><strong>Escrita (crm)</strong> - para atualizar dados</li>
                     </ul>
                   </li>
                   <li>Copie a URL gerada e extraia o User ID e Token</li>
@@ -455,30 +460,43 @@ export const BitrixIntegration = () => {
                 <div className="mt-3 p-3 bg-muted rounded-lg">
                   <p className="text-sm font-medium">Exemplo de URL do Webhook:</p>
                   <code className="text-xs bg-background p-1 rounded">
-                    https://sua-empresa.bitrix24.com/rest/1/abc123def456/
+                    https://maxsystem.bitrix24.com.br/rest/7/ig7ptt69ey9sbbyl/
                   </code>
-                  <p className="text-xs mt-1">User ID = 1, Token = abc123def456</p>
+                  <p className="text-xs mt-1">User ID = 7, Token = ig7ptt69ey9sbbyl</p>
                 </div>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">2. Descobrir IDs dos SPAs</h4>
-                <p className="text-sm mb-2">Para encontrar os IDs dos Smart Process Apps:</p>
+                <h4 className="font-semibold mb-2">2. Configuração OAuth (Mais Complexa)</h4>
                 <ol className="list-decimal list-inside space-y-2 text-sm">
-                  <li>Acesse "CRM" → "Configurações" → "Automação"</li>
-                  <li>Encontre seus SPAs de "Projetos Comerciais" e "Scouters"</li>
-                  <li>O ID aparece na URL quando você acessa o SPA</li>
+                  <li>Acesse "Aplicativos" → "Desenvolvedor" → "Criar aplicativo"</li>
+                  <li>Escolha "Aplicativo local" para uso interno</li>
+                  <li>Configure as permissões necessárias (CRM)</li>
+                  <li>Defina a URL de callback: <code className="text-xs bg-muted p-1 rounded">{window.location.origin}/bitrix-callback</code></li>
+                  <li>Anote o Client ID e Client Secret gerados</li>
+                  <li>Use o <strong>Assistente OAuth</strong> nesta integração para obter o Refresh Token</li>
                 </ol>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-2">3. Campos Customizados</h4>
-                <p className="text-sm mb-2">Para descobrir os códigos dos campos customizados:</p>
+                <h4 className="font-semibold mb-2">3. Descobrir IDs dos SPAs</h4>
+                <p className="text-sm mb-2">Para encontrar os IDs dos Smart Process Apps:</p>
                 <ol className="list-decimal list-inside space-y-2 text-sm">
-                  <li>Use a API: <code className="text-xs">crm.lead.userfield.list</code></li>
-                  <li>Ou acesse "CRM" → "Configurações" → "Campos personalizados"</li>
-                  <li>Os códigos geralmente começam com "UF_CRM_"</li>
+                  <li>Acesse "CRM" → "Configurações" → "Automação"</li>
+                  <li>Encontre seus SPAs de "Projetos Comerciais" e "Scouters"</li>
+                  <li>O ID aparece na URL quando você acessa o SPA ou nas configurações</li>
+                  <li>Os IDs fornecidos foram: Projetos = 1120, Scouters = 1096</li>
                 </ol>
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-2">4. Problemas Comuns</h4>
+                <ul className="list-disc list-inside space-y-2 text-sm">
+                  <li><strong>Failed to fetch:</strong> Use webhook ao invés de OAuth inicialmente</li>
+                  <li><strong>Non-2xx status:</strong> Verifique URL base (sem barra no final)</li>
+                  <li><strong>Unauthorized:</strong> Confirme User ID e Token do webhook</li>
+                  <li><strong>CORS errors:</strong> O proxy Edge Function resolve isso automaticamente</li>
+                </ul>
               </div>
 
               <div className="flex gap-2">
