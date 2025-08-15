@@ -1,4 +1,3 @@
-
 import { DraggablePanel } from './DraggablePanel';
 import { usePanelLayout } from '@/hooks/usePanelLayout';
 import { KPICard } from './KPICard';
@@ -13,7 +12,7 @@ import { AuditTable } from './tables/AuditTable';
 import { LocationTable } from './tables/LocationTable';
 import { IntervalTable } from './tables/IntervalTable';
 import { Button } from '@/components/ui/button';
-import { RotateCcw, Settings, Plus } from 'lucide-react';
+import { RotateCcw, Settings, Plus, Edit, Bookmark } from 'lucide-react';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -22,13 +21,18 @@ import {
   DropdownMenuSeparator 
 } from '@/components/ui/dropdown-menu';
 import { Target, DollarSign, Camera, CheckCircle, Clock, Zap, TrendingUp, FileCheck, FileX } from 'lucide-react';
+import { SavedViews } from './SavedViews';
+import { DashboardFilters } from './FilterPanel';
+import { useState } from 'react';
 
 interface PanelLayoutProps {
   processedData: any;
   isLoading: boolean;
+  currentFilters?: DashboardFilters;
+  onLoadView?: (filters: DashboardFilters) => void;
 }
 
-export const PanelLayout = ({ processedData, isLoading }: PanelLayoutProps) => {
+export const PanelLayout = ({ processedData, isLoading, currentFilters, onLoadView }: PanelLayoutProps) => {
   const {
     panels,
     allPanels,
@@ -44,11 +48,13 @@ export const PanelLayout = ({ processedData, isLoading }: PanelLayoutProps) => {
     alignPanels
   } = usePanelLayout();
 
+  const [showSavedViews, setShowSavedViews] = useState(false);
+
   const renderPanelContent = (component: string) => {
     switch (component) {
       case 'kpis-fichas':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 h-full">
             <KPICard
               title="Total de Fichas"
               value={processedData.kpis?.totalFichas || 0}
@@ -69,12 +75,19 @@ export const PanelLayout = ({ processedData, isLoading }: PanelLayoutProps) => {
               variant="warning"
               isLoading={isLoading}
             />
+            <KPICard
+              title="Valor das Fichas"
+              value={`R$ ${(processedData.kpis?.valorFichas || 0).toLocaleString('pt-BR')}`}
+              icon={DollarSign}
+              variant="success"
+              isLoading={isLoading}
+            />
           </div>
         );
 
       case 'kpis-ajuda':
         return (
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-4 h-full">
             <KPICard
               title="Ajuda de Custo"
               value={`R$ ${(processedData.kpis?.ajudaCusto || 0).toLocaleString('pt-BR')}`}
@@ -186,7 +199,7 @@ export const PanelLayout = ({ processedData, isLoading }: PanelLayoutProps) => {
 
       case 'kpis-secondary':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 h-full">
             <KPICard
               title="% com Foto"
               value={`${(processedData.kpis?.percentFoto || 0).toFixed(1)}%`}
@@ -218,6 +231,18 @@ export const PanelLayout = ({ processedData, isLoading }: PanelLayoutProps) => {
           </div>
         );
 
+      case 'saved-views':
+        return currentFilters && onLoadView ? (
+          <SavedViews 
+            currentFilters={currentFilters}
+            onLoadView={onLoadView}
+          />
+        ) : (
+          <div className="p-4 text-center text-muted-foreground">
+            Filtros não disponíveis
+          </div>
+        );
+
       default:
         return <div className="p-4 text-center text-muted-foreground">Componente não encontrado: {component}</div>;
     }
@@ -230,31 +255,46 @@ export const PanelLayout = ({ processedData, isLoading }: PanelLayoutProps) => {
     { id: 'project-table', title: 'Tabela de Projetos', component: 'project-table' },
     { id: 'audit-table', title: 'Auditoria', component: 'audit-table' },
     { id: 'location-table', title: 'Tabela de Locais', component: 'location-table' },
-    { id: 'interval-table', title: 'Tabela de Intervalos', component: 'interval-table' }
+    { id: 'interval-table', title: 'Tabela de Intervalos', component: 'interval-table' },
+    { id: 'saved-views', title: 'Visões Salvas', component: 'saved-views' }
   ];
 
   const hiddenPanels = allPanels.filter(p => !p.visible);
 
   return (
     <div className="relative w-full min-h-screen bg-background/50">
-      {/* Control bar */}
+      {/* Control bar - Fixed position */}
       <div className="fixed top-20 right-6 z-50 flex gap-2 bg-background/95 backdrop-blur-sm border rounded-lg p-2 shadow-lg">
+        {/* Settings button */}
+        <Button variant="outline" size="sm">
+          <Settings className="h-4 w-4" />
+        </Button>
+
+        {/* Saved Views button */}
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => setShowSavedViews(!showSavedViews)}
+        >
+          <Bookmark className="h-4 w-4" />
+        </Button>
+
+        {/* Edit Dashboard button */}
         <Button 
           variant={isEditMode ? "default" : "outline"} 
           size="sm"
           onClick={() => setIsEditMode(!isEditMode)}
         >
-          <Settings className="h-4 w-4 mr-2" />
-          {isEditMode ? 'Sair da Edição' : 'Editar Dashboard'}
+          <Edit className="h-4 w-4" />
         </Button>
 
+        {/* Edit mode controls */}
         {isEditMode && (
           <>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Painel
+                  <Plus className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -280,7 +320,6 @@ export const PanelLayout = ({ processedData, isLoading }: PanelLayoutProps) => {
                           isCollapsed: false,
                           visible: true
                         };
-                        // Add to panels manually since we need to create a complete config
                       }}
                     >
                       {available.title}
@@ -319,17 +358,25 @@ export const PanelLayout = ({ processedData, isLoading }: PanelLayoutProps) => {
             </DropdownMenu>
 
             <Button variant="outline" size="sm" onClick={autoOrganize}>
-              <Zap className="h-4 w-4 mr-2" />
-              Auto Organizar
+              <Zap className="h-4 w-4" />
             </Button>
 
             <Button variant="outline" size="sm" onClick={resetLayout}>
-              <RotateCcw className="h-4 w-4 mr-2" />
-              Resetar Layout
+              <RotateCcw className="h-4 w-4" />
             </Button>
           </>
         )}
       </div>
+
+      {/* Saved Views Panel - conditionally rendered */}
+      {showSavedViews && currentFilters && onLoadView && (
+        <div className="fixed top-20 left-6 z-40 w-80">
+          <SavedViews 
+            currentFilters={currentFilters}
+            onLoadView={onLoadView}
+          />
+        </div>
+      )}
 
       {/* Panels */}
       {panels.map(panel => (

@@ -45,14 +45,18 @@ export const DraggablePanel = ({
   
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // Constrain position to viewport bounds
+  // Constrain position to viewport bounds with improved bounds checking
   const constrainPosition = (pos: { x: number; y: number }) => {
-    const maxX = Math.max(0, window.innerWidth - size.width);
-    const maxY = Math.max(0, window.innerHeight - size.height);
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const headerHeight = 100; // Account for header
+    
+    const maxX = Math.max(0, viewportWidth - size.width - 20);
+    const maxY = Math.max(headerHeight, viewportHeight - size.height - 20);
     
     return {
-      x: Math.max(0, Math.min(pos.x, maxX)),
-      y: Math.max(0, Math.min(pos.y, maxY))
+      x: Math.max(20, Math.min(pos.x, maxX)),
+      y: Math.max(headerHeight, Math.min(pos.y, maxY))
     };
   };
 
@@ -95,8 +99,8 @@ export const DraggablePanel = ({
       if (isResizing) {
         const deltaX = e.clientX - resizeStart.x;
         const deltaY = e.clientY - resizeStart.y;
-        const newWidth = Math.max(minWidth, Math.min(resizeStart.width + deltaX, window.innerWidth - position.x));
-        const newHeight = Math.max(minHeight, Math.min(resizeStart.height + deltaY, window.innerHeight - position.y));
+        const newWidth = Math.max(minWidth, Math.min(resizeStart.width + deltaX, window.innerWidth - position.x - 20));
+        const newHeight = Math.max(minHeight, Math.min(resizeStart.height + deltaY, window.innerHeight - position.y - 20));
         onResize(id, { width: newWidth, height: newHeight });
       }
     };
@@ -156,7 +160,7 @@ export const DraggablePanel = ({
           <CardTitle className="text-sm font-medium">{title}</CardTitle>
         </div>
         
-        <div className={cn("flex items-center gap-1", !isEditMode && "opacity-50")}>
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
@@ -185,8 +189,10 @@ export const DraggablePanel = ({
 
       {!isCollapsed && (
         <>
-          <CardContent className="pt-0 overflow-auto" style={{ maxHeight: 'calc(100% - 60px)' }}>
-            {children}
+          <CardContent className="pt-0 p-4 h-full overflow-auto" style={{ height: 'calc(100% - 60px)' }}>
+            <div className="w-full h-full">
+              {children}
+            </div>
           </CardContent>
           
           {/* Resize handle - only visible in edit mode */}

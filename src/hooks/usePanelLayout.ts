@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 
 export interface PanelConfig {
@@ -11,14 +10,14 @@ export interface PanelConfig {
   visible: boolean;
 }
 
-const STORAGE_KEY = 'maxfama_panel_layout_v2';
+const STORAGE_KEY = 'maxfama_panel_layout_v3';
 
 const DEFAULT_PANELS: PanelConfig[] = [
   {
     id: 'kpis-fichas',
-    title: 'KPIs - Fichas',
-    position: { x: 20, y: 20 },
-    size: { width: 600, height: 200 },
+    title: 'KPIs - Fichas e Valores',
+    position: { x: 20, y: 120 },
+    size: { width: 800, height: 200 },
     isCollapsed: false,
     component: 'kpis-fichas',
     visible: true
@@ -26,7 +25,7 @@ const DEFAULT_PANELS: PanelConfig[] = [
   {
     id: 'kpis-ajuda',
     title: 'KPIs - Ajuda de Custo',
-    position: { x: 640, y: 20 },
+    position: { x: 840, y: 120 },
     size: { width: 400, height: 200 },
     isCollapsed: false,
     component: 'kpis-ajuda',
@@ -35,8 +34,8 @@ const DEFAULT_PANELS: PanelConfig[] = [
   {
     id: 'charts-scouter',
     title: 'Fichas por Scouter',
-    position: { x: 20, y: 240 },
-    size: { width: 400, height: 300 },
+    position: { x: 20, y: 340 },
+    size: { width: 600, height: 350 },
     isCollapsed: false,
     component: 'chart-scouter',
     visible: true
@@ -44,8 +43,8 @@ const DEFAULT_PANELS: PanelConfig[] = [
   {
     id: 'charts-project',
     title: 'Fichas por Projeto',
-    position: { x: 440, y: 240 },
-    size: { width: 400, height: 300 },
+    position: { x: 640, y: 340 },
+    size: { width: 600, height: 350 },
     isCollapsed: false,
     component: 'chart-project',
     visible: true
@@ -53,7 +52,7 @@ const DEFAULT_PANELS: PanelConfig[] = [
   {
     id: 'line-chart',
     title: 'Projeção vs Real',
-    position: { x: 20, y: 560 },
+    position: { x: 20, y: 710 },
     size: { width: 820, height: 300 },
     isCollapsed: false,
     component: 'line-chart',
@@ -62,8 +61,8 @@ const DEFAULT_PANELS: PanelConfig[] = [
   {
     id: 'funnel-chart',
     title: 'Funil de Status',
-    position: { x: 860, y: 20 },
-    size: { width: 350, height: 400 },
+    position: { x: 860, y: 340 },
+    size: { width: 380, height: 400 },
     isCollapsed: false,
     component: 'funnel-chart',
     visible: true
@@ -71,13 +70,49 @@ const DEFAULT_PANELS: PanelConfig[] = [
   {
     id: 'scouter-table',
     title: 'Tabela de Scouters',
-    position: { x: 20, y: 880 },
-    size: { width: 800, height: 400 },
+    position: { x: 20, y: 1030 },
+    size: { width: 1220, height: 400 },
     isCollapsed: false,
     component: 'scouter-table',
     visible: true
   }
 ];
+
+// Detect overlaps and auto-adjust positions
+const avoidOverlaps = (panels: PanelConfig[]): PanelConfig[] => {
+  const adjusted = [...panels];
+  const gridSize = 20;
+  
+  for (let i = 0; i < adjusted.length; i++) {
+    for (let j = i + 1; j < adjusted.length; j++) {
+      const panelA = adjusted[i];
+      const panelB = adjusted[j];
+      
+      if (!panelA.visible || !panelB.visible) continue;
+      
+      // Check for overlap
+      const overlapX = panelA.position.x < panelB.position.x + panelB.size.width &&
+                     panelA.position.x + panelA.size.width > panelB.position.x;
+      const overlapY = panelA.position.y < panelB.position.y + panelB.size.height &&
+                     panelA.position.y + panelA.size.height > panelB.position.y;
+      
+      if (overlapX && overlapY) {
+        // Move panel B to avoid overlap
+        const moveRight = panelA.position.x + panelA.size.width + gridSize;
+        const moveDown = panelA.position.y + panelA.size.height + gridSize;
+        
+        // Choose the direction that keeps the panel more in view
+        if (moveRight + panelB.size.width <= window.innerWidth - gridSize) {
+          adjusted[j].position.x = moveRight;
+        } else {
+          adjusted[j].position.y = moveDown;
+        }
+      }
+    }
+  }
+  
+  return adjusted;
+};
 
 export const usePanelLayout = () => {
   const [panels, setPanels] = useState<PanelConfig[]>([]);
@@ -94,13 +129,13 @@ export const usePanelLayout = () => {
           const savedPanel = parsedPanels.find((p: PanelConfig) => p.id === defaultPanel.id);
           return savedPanel ? { ...defaultPanel, ...savedPanel } : defaultPanel;
         });
-        setPanels(mergedPanels);
+        setPanels(avoidOverlaps(mergedPanels));
       } catch (error) {
         console.error('Error loading panel layout:', error);
-        setPanels(DEFAULT_PANELS);
+        setPanels(avoidOverlaps(DEFAULT_PANELS));
       }
     } else {
-      setPanels(DEFAULT_PANELS);
+      setPanels(avoidOverlaps(DEFAULT_PANELS));
     }
   }, []);
 
@@ -112,9 +147,12 @@ export const usePanelLayout = () => {
   }, [panels]);
 
   const updatePanel = useCallback((id: string, updates: Partial<PanelConfig>) => {
-    setPanels(prev => prev.map(panel => 
-      panel.id === id ? { ...panel, ...updates } : panel
-    ));
+    setPanels(prev => {
+      const updated = prev.map(panel => 
+        panel.id === id ? { ...panel, ...updates } : panel
+      );
+      return avoidOverlaps(updated);
+    });
   }, []);
 
   const movePanel = useCallback((id: string, position: { x: number; y: number }) => {
@@ -140,7 +178,7 @@ export const usePanelLayout = () => {
   }, [updatePanel]);
 
   const resetLayout = useCallback(() => {
-    setPanels(DEFAULT_PANELS);
+    setPanels(avoidOverlaps(DEFAULT_PANELS));
     localStorage.removeItem(STORAGE_KEY);
   }, []);
 
@@ -151,13 +189,13 @@ export const usePanelLayout = () => {
       id,
       visible: true
     };
-    setPanels(prev => [...prev, newPanel]);
+    setPanels(prev => avoidOverlaps([...prev, newPanel]));
   }, []);
 
   const autoOrganize = useCallback(() => {
     const visiblePanels = panels.filter(p => p.visible);
+    const cols = Math.ceil(Math.sqrt(visiblePanels.length));
     const organized = visiblePanels.map((panel, index) => {
-      const cols = Math.ceil(Math.sqrt(visiblePanels.length));
       const row = Math.floor(index / cols);
       const col = index % cols;
       const margin = 20;
@@ -168,7 +206,7 @@ export const usePanelLayout = () => {
         ...panel,
         position: {
           x: margin + col * (defaultWidth + margin),
-          y: margin + row * (defaultHeight + margin)
+          y: 120 + row * (defaultHeight + margin)
         },
         size: { width: defaultWidth, height: defaultHeight }
       };
@@ -198,7 +236,7 @@ export const usePanelLayout = () => {
           newPosition.x = window.innerWidth - panel.size.width - 20;
           break;
         case 'top':
-          newPosition.y = 20;
+          newPosition.y = 120;
           break;
         case 'middle':
           newPosition.y = (window.innerHeight - panel.size.height) / 2;
