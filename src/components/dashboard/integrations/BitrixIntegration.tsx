@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,13 +13,14 @@ import {
   Settings, 
   Database, 
   TestTube, 
-  RefreshCw, 
+  Sync, 
   Send, 
   AlertCircle, 
   CheckCircle, 
   Clock, 
   Eye,
   EyeOff,
+  RefreshCw,
   Webhook
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -323,7 +325,7 @@ export const BitrixIntegration = () => {
 
   const getLogIcon = (type: string) => {
     switch (type) {
-      case 'sync': return <RefreshCw className="h-4 w-4 text-blue-500" />;
+      case 'sync': return <Sync className="h-4 w-4 text-blue-500" />;
       case 'test': return <TestTube className="h-4 w-4 text-green-500" />;
       case 'payment': return <Send className="h-4 w-4 text-purple-500" />;
       case 'error': return <AlertCircle className="h-4 w-4 text-red-500" />;
@@ -757,7 +759,7 @@ export const BitrixIntegration = () => {
                   {isLoading ? (
                     <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
-                    <RefreshCw className="h-4 w-4 mr-2" />
+                    <Sync className="h-4 w-4 mr-2" />
                   )}
                   Sincronizar Agora
                 </Button>
