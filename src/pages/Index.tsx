@@ -1,25 +1,12 @@
-import { useState } from "react";
-import { LoginForm } from "@/components/auth/LoginForm";
+
 import { Dashboard } from "@/components/dashboard/Dashboard";
 
 const Index = () => {
-  const [authToken, setAuthToken] = useState<string | null>(
-    localStorage.getItem('maxfama_auth_token')
-  );
-
-  const handleLogin = (token: string) => {
-    localStorage.setItem('maxfama_auth_token', token);
-    setAuthToken(token);
-  };
-
+  // Função vazia para manter compatibilidade com o Dashboard
   const handleLogout = () => {
-    localStorage.removeItem('maxfama_auth_token');
-    setAuthToken(null);
+    // No futuro, será implementado o logout do Bitrix24
+    console.log("Logout será implementado com integração Bitrix24");
   };
-
-  if (!authToken) {
-    return <LoginForm onLogin={handleLogin} />;
-  }
 
   return <Dashboard onLogout={handleLogout} />;
 };
