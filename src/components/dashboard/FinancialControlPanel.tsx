@@ -9,9 +9,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DollarSign, FileText, Download, AlertTriangle, Check, X, CreditCard, Calendar, Settings } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DollarSign, FileText, Download, AlertTriangle, Check, X, CreditCard, Calendar as CalendarIcon, Settings, CalendarDays } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DashboardFilters } from "./FilterPanel";
+import { format, parseISO, isWithinInterval } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface PaymentItem {
   id: string;
@@ -32,6 +37,20 @@ interface ProjectValues {
     ajudaCustoFolga: number;
     isDistante: boolean;
   };
+}
+
+interface DateFilter {
+  start: Date | undefined;
+  end: Date | undefined;
+}
+
+interface ProjectInfo {
+  name: string;
+  startDate: string;
+  endDate: string;
+  meta: number;
+  metaIndividual: number;
+  totalScouters: number;
 }
 
 interface FinancialControlPanelProps {
@@ -57,19 +76,81 @@ export const FinancialControlPanel = ({
   const [projectValues, setProjectValues] = useState<ProjectValues>({});
   const [dayOffDialog, setDayOffDialog] = useState<{ open: boolean; dates: string[] }>({ open: false, dates: [] });
   const [selectedDayOffTypes, setSelectedDayOffTypes] = useState<{ [date: string]: 'folga' | 'falta' }>({});
+  const [dateFilter, setDateFilter] = useState<DateFilter>({ start: undefined, end: undefined });
+  const [projectsInfo, setProjectsInfo] = useState<ProjectInfo[]>([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (data?.projetos && data?.filteredFichas) {
+      calculateProjectsInfo();
+    }
+  }, [data]);
 
   useEffect(() => {
     if (selectedScouter && data?.filteredFichas) {
       generatePaymentItems();
     }
-  }, [selectedScouter, data, projectValues]);
+  }, [selectedScouter, data, projectValues, dateFilter]);
+
+  const calculateProjectsInfo = () => {
+    if (!data?.projetos || !data?.filteredFichas) return;
+
+    const projectsMap = new Map<string, ProjectInfo>();
+
+    // Primeiro, mapeamos as informações dos projetos
+    data.projetos.forEach((projeto: any) => {
+      const projectName = projeto.agencia_e_seletiva;
+      if (!projectName) return;
+
+      // Conta quantos scouters únicos trabalham neste projeto
+      const scoutersInProject = new Set(
+        data.filteredFichas
+          .filter((f: any) => f.Projetos_Comerciais === projectName)
+          .map((f: any) => f.Gestao_de_Scouter)
+      ).size;
+
+      const metaIndividual = scoutersInProject > 0 ? Math.ceil(projeto.meta_de_fichas / scoutersInProject) : projeto.meta_de_fichas;
+
+      projectsMap.set(projectName, {
+        name: projectName,
+        startDate: projeto.inicio_captacao_fichas || '',
+        endDate: projeto.termino_captacao_fichas || '',
+        meta: projeto.meta_de_fichas || 0,
+        metaIndividual,
+        totalScouters: scoutersInProject
+      });
+    });
+
+    setProjectsInfo(Array.from(projectsMap.values()));
+  };
+
+  const getProjectInfo = (projectName: string): ProjectInfo | undefined => {
+    return projectsInfo.find(p => p.name === projectName);
+  };
+
+  const isDateInProjectRange = (date: string, projectName: string): boolean => {
+    const projectInfo = getProjectInfo(projectName);
+    if (!projectInfo || !projectInfo.startDate || !projectInfo.endDate) return true;
+
+    try {
+      const checkDate = parseISO(date);
+      const startDate = parseISO(projectInfo.startDate.split('/').reverse().join('-')); // DD/MM/YYYY para YYYY-MM-DD
+      const endDate = parseISO(projectInfo.endDate.split('/').reverse().join('-'));
+      
+      return isWithinInterval(checkDate, { start: startDate, end: endDate });
+    } catch (error) {
+      console.warn('Erro ao verificar data do projeto:', error);
+      return true;
+    }
+  };
 
   const getProjectAjudaValue = (projectName: string, isWorkDay: boolean = true): number => {
     const config = projectValues[projectName];
     if (!config) {
-      // Valores padrão: 30 para próximas, 70 para distantes
-      return isWorkDay ? 30 : 50;
+      // Valores padrão baseados se é distante ou não
+      const projectInfo = getProjectInfo(projectName);
+      const isDistante = projectInfo?.name?.toLowerCase().includes('distante') || false;
+      return isWorkDay ? (isDistante ? 70 : 30) : (isDistante ? 70 : 50);
     }
     return isWorkDay ? config.ajudaCustoNormal : config.ajudaCustoFolga;
   };
@@ -77,9 +158,30 @@ export const FinancialControlPanel = ({
   const generatePaymentItems = () => {
     if (!selectedScouter || !data?.filteredFichas) return;
 
-    const scouterFichas = data.filteredFichas.filter(
+    let scouterFichas = data.filteredFichas.filter(
       (ficha: any) => ficha.Gestao_de_Scouter === selectedScouter
     );
+
+    // Aplicar filtro de data se definido
+    if (dateFilter.start || dateFilter.end) {
+      scouterFichas = scouterFichas.filter((ficha: any) => {
+        try {
+          const fichaDate = parseISO(ficha.Data_de_Criacao_da_Ficha);
+          
+          if (dateFilter.start && dateFilter.end) {
+            return isWithinInterval(fichaDate, { start: dateFilter.start, end: dateFilter.end });
+          } else if (dateFilter.start) {
+            return fichaDate >= dateFilter.start;
+          } else if (dateFilter.end) {
+            return fichaDate <= dateFilter.end;
+          }
+          
+          return true;
+        } catch {
+          return true;
+        }
+      });
+    }
 
     const items: PaymentItem[] = [];
 
@@ -107,7 +209,7 @@ export const FinancialControlPanel = ({
 
     // Adicionar ajudas de custo para dias trabalhados
     Object.entries(fichasPorDia).forEach(([date, info]: [string, any]) => {
-      if (info.count > 20) {
+      if (info.count > 20 && isDateInProjectRange(date, info.project)) {
         items.push({
           id: `ajuda-${date}`,
           type: 'ajuda',
@@ -119,12 +221,11 @@ export const FinancialControlPanel = ({
       }
     });
 
-    // Simular dias sem trabalho (para exemplo - em produção viria dos dados)
+    // Verificar dias não trabalhados dentro do período dos projetos
     const workDates = Object.keys(fichasPorDia);
-    const allDatesInRange = generateDateRange(filters.dateRange.start, filters.dateRange.end);
-    const nonWorkDays = allDatesInRange.filter(date => !workDates.includes(date));
+    const projectDates = getProjectWorkingDates();
+    const nonWorkDays = projectDates.filter(date => !workDates.includes(date));
     
-    // Verificar se há dias não trabalhados que podem ser folgas remuneradas
     if (nonWorkDays.length > 0 && !dayOffDialog.open) {
       setDayOffDialog({ open: true, dates: nonWorkDays });
     }
@@ -132,18 +233,36 @@ export const FinancialControlPanel = ({
     setPaymentItems(items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
   };
 
-  const generateDateRange = (start: string, end: string): string[] => {
+  const getProjectWorkingDates = (): string[] => {
     const dates: string[] = [];
-    const startDate = new Date(start);
-    const endDate = new Date(end);
+    const scouterProjects = data?.filteredFichas
+      .filter((f: any) => f.Gestao_de_Scouter === selectedScouter)
+      .map((f: any) => f.Projetos_Comerciais);
     
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      const weekday = d.getDay();
-      // Apenas dias úteis (segunda a sexta)
-      if (weekday >= 1 && weekday <= 5) {
-        dates.push(d.toISOString().split('T')[0]);
+    const uniqueProjects = [...new Set(scouterProjects)];
+    
+    uniqueProjects.forEach(projectName => {
+      const projectInfo = getProjectInfo(projectName);
+      if (projectInfo?.startDate && projectInfo?.endDate) {
+        try {
+          const startDate = parseISO(projectInfo.startDate.split('/').reverse().join('-'));
+          const endDate = parseISO(projectInfo.endDate.split('/').reverse().join('-'));
+          
+          for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            const weekday = d.getDay();
+            if (weekday >= 1 && weekday <= 5) { // Apenas dias úteis
+              const dateStr = d.toISOString().split('T')[0];
+              if (!dates.includes(dateStr)) {
+                dates.push(dateStr);
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('Erro ao calcular datas do projeto:', error);
+        }
       }
-    }
+    });
+    
     return dates;
   };
 
@@ -152,7 +271,6 @@ export const FinancialControlPanel = ({
     
     Object.entries(selectedDayOffTypes).forEach(([date, type]) => {
       if (type === 'folga') {
-        // Buscar o projeto mais recente do scouter para determinar o valor da folga
         const recentFicha = data.filteredFichas
           .filter((f: any) => f.Gestao_de_Scouter === selectedScouter)
           .sort((a: any, b: any) => new Date(b.Data_de_Criacao_da_Ficha).getTime() - new Date(a.Data_de_Criacao_da_Ficha).getTime())[0];
@@ -169,7 +287,6 @@ export const FinancialControlPanel = ({
           isDayOff: true
         });
       }
-      // Faltas não geram pagamento
     });
 
     setPaymentItems(prev => [...prev, ...newItems].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
@@ -190,7 +307,6 @@ export const FinancialControlPanel = ({
     }));
   };
 
-  // Corrigindo a tipagem do availableProjects
   const availableProjects: string[] = data?.filteredFichas 
     ? Array.from(new Set(
         data.filteredFichas
@@ -214,7 +330,6 @@ export const FinancialControlPanel = ({
     const pendingItems = paymentItems.filter(item => item.status === 'PENDENTE');
     const paidItems = paymentItems.filter(item => item.status === 'PAGO');
     
-    // Fichas
     const fichasPendentes = pendingItems.filter(item => item.type === 'ficha').length;
     const valorFichasPendentes = pendingItems
       .filter(item => item.type === 'ficha')
@@ -225,7 +340,6 @@ export const FinancialControlPanel = ({
       .filter(item => item.type === 'ficha')
       .reduce((sum, item) => sum + item.value, 0);
     
-    // Ajuda de custo - dias trabalhados
     const diasAjudaPendente = pendingItems.filter(item => item.type === 'ajuda').length;
     const valorAjudaPendente = pendingItems
       .filter(item => item.type === 'ajuda')
@@ -236,7 +350,6 @@ export const FinancialControlPanel = ({
       .filter(item => item.type === 'ajuda')
       .reduce((sum, item) => sum + item.value, 0);
 
-    // Folgas remuneradas
     const folgasPendentes = pendingItems.filter(item => item.type === 'folga').length;
     const valorFolgasPendentes = pendingItems
       .filter(item => item.type === 'folga')
@@ -301,7 +414,9 @@ export const FinancialControlPanel = ({
     const totals = calculateTotals();
     const reportData = {
       scouter: selectedScouter,
-      periodo: `${filters.dateRange.start} a ${filters.dateRange.end}`,
+      periodo: dateFilter.start && dateFilter.end 
+        ? `${format(dateFilter.start, 'dd/MM/yyyy')} a ${format(dateFilter.end, 'dd/MM/yyyy')}`
+        : 'Todos os períodos',
       ...totals,
       items: getFilteredItems()
     };
@@ -344,6 +459,104 @@ export const FinancialControlPanel = ({
             
             <CardContent>
               <div className="space-y-6">
+                {/* Filtros de Data */}
+                <Card>
+                  <CardContent className="p-4">
+                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                      <CalendarDays className="h-4 w-4" />
+                      Filtro de Período
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Data Inicial</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !dateFilter.start && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {dateFilter.start ? format(dateFilter.start, "dd/MM/yyyy") : "Selecionar data"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={dateFilter.start}
+                              onSelect={(date) => setDateFilter(prev => ({ ...prev, start: date }))}
+                              initialFocus
+                              className="pointer-events-auto"
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      <div>
+                        <Label>Data Final</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !dateFilter.end && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {dateFilter.end ? format(dateFilter.end, "dd/MM/yyyy") : "Selecionar data"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={dateFilter.end}
+                              onSelect={(date) => setDateFilter(prev => ({ ...prev, end: date }))}
+                              initialFocus
+                              className="pointer-events-auto"
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setDateFilter({ start: undefined, end: undefined })}
+                      >
+                        Limpar Filtros
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Informações dos Projetos */}
+                {projectsInfo.length > 0 && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <h4 className="font-medium mb-3">Projetos Ativos</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {projectsInfo.map((project) => (
+                          <Card key={project.name} className="border-muted">
+                            <CardContent className="p-3">
+                              <h5 className="font-medium text-sm mb-2">{project.name}</h5>
+                              <div className="text-xs text-muted-foreground space-y-1">
+                                <p>Início: {project.startDate}</p>
+                                <p>Término: {project.endDate}</p>
+                                <p>Meta: {project.meta.toLocaleString()}</p>
+                                <p>Meta Individual: {project.metaIndividual.toLocaleString()}</p>
+                                <p>Scouters: {project.totalScouters}</p>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Seleção de Scouter */}
                 <div>
                   <label className="text-sm font-medium mb-2 block">Scouter (obrigatório)</label>
@@ -363,9 +576,7 @@ export const FinancialControlPanel = ({
 
                 {selectedScouter && (
                   <>
-                    {/* KPIs Detalhados */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {/* Fichas */}
                       <Card className="border-warning">
                         <CardContent className="p-4">
                           <div className="flex items-center gap-2">
@@ -414,99 +625,19 @@ export const FinancialControlPanel = ({
                         </CardContent>
                       </Card>
 
-                      {/* Ajuda de Custo */}
                       <Card className="border-blue-500">
                         <CardContent className="p-4">
                           <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-blue-500" />
+                            <CalendarIcon className="h-4 w-4 text-blue-500" />
                             <div>
-                              <p className="text-xs text-muted-foreground">Ajuda Dias a Pagar</p>
-                              <p className="text-xl font-bold text-blue-500">{totals.diasAjudaPendente}</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="border-green-500">
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-green-500" />
-                            <div>
-                              <p className="text-xs text-muted-foreground">Ajuda Dias Pagos</p>
-                              <p className="text-xl font-bold text-green-500">{totals.diasAjudaPaga}</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="border-blue-500">
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-2">
-                            <DollarSign className="h-4 w-4 text-blue-500" />
-                            <div>
-                              <p className="text-xs text-muted-foreground">Ajuda - Valor a Pagar</p>
-                              <p className="text-xl font-bold text-blue-500">R$ {totals.valorAjudaPendente.toFixed(2)}</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="border-green-500">
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-2">
-                            <DollarSign className="h-4 w-4 text-green-500" />
-                            <div>
-                              <p className="text-xs text-muted-foreground">Ajuda - Valor Pago</p>
-                              <p className="text-xl font-bold text-green-500">R$ {totals.valorAjudaPaga.toFixed(2)}</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Folgas */}
-                      {(totals.folgasPendentes > 0 || totals.folgasPagas > 0) && (
-                        <>
-                          <Card className="border-purple-500">
-                            <CardContent className="p-4">
-                              <div className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4 text-purple-500" />
-                                <div>
-                                  <p className="text-xs text-muted-foreground">Folgas a Pagar</p>
-                                  <p className="text-xl font-bold text-purple-500">{totals.folgasPendentes}</p>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-
-                          <Card className="border-purple-300">
-                            <CardContent className="p-4">
-                              <div className="flex items-center gap-2">
-                                <DollarSign className="h-4 w-4 text-purple-300" />
-                                <div>
-                                  <p className="text-xs text-muted-foreground">Folgas - Valor a Pagar</p>
-                                  <p className="text-xl font-bold text-purple-300">R$ {totals.valorFolgasPendentes.toFixed(2)}</p>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </>
-                      )}
-
-                      {/* Total Geral */}
-                      <Card className="border-primary col-span-full md:col-span-2">
-                        <CardContent className="p-4">
-                          <div className="flex items-center gap-2">
-                            <DollarSign className="h-4 w-4 text-primary" />
-                            <div>
-                              <p className="text-sm text-muted-foreground">Total a Receber</p>
-                              <p className="text-2xl font-bold text-primary">R$ {totals.totalAPagar.toFixed(2)}</p>
+                              <p className="text-xs text-muted-foreground">Total a Receber</p>
+                              <p className="text-2xl font-bold text-blue-500">R$ {totals.totalAPagar.toFixed(2)}</p>
                             </div>
                           </div>
                         </CardContent>
                       </Card>
                     </div>
 
-                    {/* Filtros e Ações */}
                     <div className="flex justify-between items-center">
                       <div className="flex gap-2">
                         <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
@@ -550,7 +681,6 @@ export const FinancialControlPanel = ({
                       </div>
                     </div>
 
-                    {/* Tabela de Itens */}
                     <Card>
                       <CardContent className="p-0">
                         <Table>
@@ -603,7 +733,6 @@ export const FinancialControlPanel = ({
         </div>
       </div>
 
-      {/* Dialog de Configuração de Valores por Projeto */}
       <Dialog open={showProjectValues} onOpenChange={setShowProjectValues}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
@@ -653,7 +782,6 @@ export const FinancialControlPanel = ({
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de Dias Não Trabalhados */}
       <Dialog open={dayOffDialog.open} onOpenChange={(open) => setDayOffDialog({ ...dayOffDialog, open })}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -697,7 +825,6 @@ export const FinancialControlPanel = ({
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de Confirmação de Pagamento */}
       <Dialog open={confirmPayment} onOpenChange={setConfirmPayment}>
         <DialogContent>
           <DialogHeader>
