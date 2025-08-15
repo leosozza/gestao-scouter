@@ -74,21 +74,21 @@ export const ScouterTable = ({ data, isLoading }: ScouterTableProps) => {
             {data.map((scouter) => (
               <TableRow key={scouter.scouter}>
                 <TableCell className="font-medium">{scouter.scouter}</TableCell>
-                <TableCell className="text-right">{scouter.fichas}</TableCell>
-                <TableCell className="text-right">{scouter.mediaDia.toFixed(1)}</TableCell>
-                <TableCell className="text-right">{scouter.diasPagos}</TableCell>
+                <TableCell className="text-right">{scouter.fichas || 0}</TableCell>
+                <TableCell className="text-right">{(scouter.mediaDia || 0).toFixed(1)}</TableCell>
+                <TableCell className="text-right">{scouter.diasPagos || 0}</TableCell>
                 <TableCell className="text-right">
-                  R$ {scouter.ajudaCusto.toLocaleString('pt-BR')}
+                  R$ {(scouter.ajudaCusto || 0).toLocaleString('pt-BR')}
                 </TableCell>
                 <TableCell className="text-right">
-                  R$ {scouter.pagamentoFichas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {(scouter.pagamentoFichas || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </TableCell>
                 <TableCell className="text-right font-semibold">
-                  R$ {scouter.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {(scouter.total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </TableCell>
-                <TableCell className="text-right">{scouter.percentFoto.toFixed(1)}%</TableCell>
-                <TableCell className="text-right">{scouter.percentConfirmacao.toFixed(1)}%</TableCell>
-                <TableCell>{getScoreBadge(scouter.score)}</TableCell>
+                <TableCell className="text-right">{(scouter.percentFoto || 0).toFixed(1)}%</TableCell>
+                <TableCell className="text-right">{(scouter.percentConfirmacao || 0).toFixed(1)}%</TableCell>
+                <TableCell>{getScoreBadge(scouter.score || 0)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
