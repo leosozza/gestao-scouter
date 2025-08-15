@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -81,11 +82,11 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
 
     // Filtrar por período se selecionado - usando created_day normalizado
     if (selectedPeriod) {
-      const startDate = selectedPeriod.start; // já está em formato yyyy-MM-dd
+      const startDate = selectedPeriod.start;
       const endDate = selectedPeriod.end;
       
       filteredFichas = filteredFichas.filter(f => {
-        return f.created_day >= startDate && f.created_day <= endDate;
+        return f.created_day && f.created_day >= startDate && f.created_day <= endDate;
       });
     }
 
@@ -108,7 +109,7 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
       const endDate = selectedPeriod.end;
       
       filteredFichas = filteredFichas.filter(f => {
-        return f.created_day >= startDate && f.created_day <= endDate;
+        return f.created_day && f.created_day >= startDate && f.created_day <= endDate;
       });
     }
 
@@ -148,7 +149,7 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
       const endDate = selectedPeriod.end;
       
       scouterFichas = scouterFichas.filter(f => {
-        return f.created_day >= startDate && f.created_day <= endDate;
+        return f.created_day && f.created_day >= startDate && f.created_day <= endDate;
       });
     }
 
@@ -156,8 +157,10 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
       totalFichas: scouterFichas.length,
       projetos: [...new Set(scouterFichas.map(f => f.Projetos_Comerciais))],
       fichasPorDia: scouterFichas.reduce((acc, ficha) => {
-        const date = ficha.created_day; // usando created_day normalizado
-        acc[date] = (acc[date] || 0) + 1;
+        const date = ficha.created_day;
+        if (date) {
+          acc[date] = (acc[date] || 0) + 1;
+        }
         return acc;
       }, {} as { [key: string]: number })
     };
@@ -260,12 +263,31 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
 
   return (
     <div className="space-y-6">
+      {/* Indicador de Período Ativo */}
+      {selectedPeriod && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-blue-600" />
+              <span className="text-sm font-medium text-blue-800">
+                Período Ativo: {format(new Date(selectedPeriod.start), 'dd/MM/yyyy')} até {format(new Date(selectedPeriod.end), 'dd/MM/yyyy')}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Controles Dinâmicos */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <DollarSign className="w-5 h-5" />
             Controle Financeiro
+            {selectedPeriod && (
+              <Badge variant="secondary" className="ml-2">
+                Filtrado por período
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -293,6 +315,11 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
               <Label className="flex items-center gap-2">
                 <Users className="w-4 h-4" />
                 Scouters ({availableScouters.length} disponíveis)
+                {selectedPeriod && (
+                  <Badge variant="outline" className="text-xs">
+                    no período
+                  </Badge>
+                )}
               </Label>
               <div className="max-h-32 overflow-y-auto border rounded-md p-2">
                 <div className="flex flex-wrap gap-2">
@@ -317,6 +344,11 @@ export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeri
 
           {/* Status da Seleção */}
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {selectedPeriod && (
+              <Badge variant="outline">
+                Período: {format(new Date(selectedPeriod.start), 'dd/MM')} - {format(new Date(selectedPeriod.end), 'dd/MM')}
+              </Badge>
+            )}
             {selectedProject && selectedProject !== "all" && (
               <Badge variant="secondary">Projeto: {selectedProject}</Badge>
             )}
