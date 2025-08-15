@@ -157,30 +157,40 @@ export const FinancialControlPanel = ({
 
   const parseFichaDate = (dateString: string): Date | null => {
     try {
-      // Log para debug
       console.log('Parseando data da ficha:', dateString);
       
       if (!dateString) return null;
       
-      // Tenta diferentes formatos de data
       let parsedDate: Date | null = null;
       
       // Formato ISO (YYYY-MM-DD ou YYYY-MM-DDTHH:mm:ss)
-      if (dateString.includes('-')) {
+      if (dateString.includes('-') && dateString.match(/^\d{4}-\d{2}-\d{2}/)) {
         parsedDate = parseISO(dateString);
       }
       // Formato brasileiro (DD/MM/YYYY)
       else if (dateString.includes('/')) {
-        const parts = dateString.split(' ')[0].split('/'); // Remove hora se existir
+        const dateOnly = dateString.split(' ')[0]; // Remove hora se existir
+        const parts = dateOnly.split('/');
         if (parts.length === 3) {
-          // DD/MM/YYYY -> YYYY-MM-DD
-          const isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-          parsedDate = parseISO(isoDate);
+          const day = parts[0].padStart(2, '0');
+          const month = parts[1].padStart(2, '0');
+          const year = parts[2];
+          
+          // Valida se são números válidos
+          if (!isNaN(Number(day)) && !isNaN(Number(month)) && !isNaN(Number(year))) {
+            // DD/MM/YYYY -> YYYY-MM-DD
+            const isoDate = `${year}-${month}-${day}`;
+            parsedDate = parseISO(isoDate);
+          }
         }
+      }
+      // Tenta parseISO direto como fallback
+      else {
+        parsedDate = parseISO(dateString);
       }
       
       if (parsedDate && !isNaN(parsedDate.getTime())) {
-        console.log('Data parseada com sucesso:', parsedDate);
+        console.log('Data parseada com sucesso:', format(parsedDate, 'dd/MM/yyyy'));
         return parsedDate;
       }
       
@@ -195,9 +205,10 @@ export const FinancialControlPanel = ({
   const generatePaymentItems = () => {
     if (!selectedScouter || !data?.filteredFichas) return;
 
-    console.log('Gerando itens de pagamento para:', selectedScouter);
-    console.log('Filtro de data:', dateFilter);
-    console.log('Total de fichas antes do filtro de scouter:', data.filteredFichas.length);
+    console.log('=== INÍCIO DA GERAÇÃO DE ITENS ===');
+    console.log('Scouter selecionado:', selectedScouter);
+    console.log('Filtro de data ativo:', dateFilter);
+    console.log('Total de fichas no data:', data.filteredFichas.length);
 
     let scouterFichas = data.filteredFichas.filter(
       (ficha: any) => ficha.Gestao_de_Scouter === selectedScouter
@@ -205,45 +216,55 @@ export const FinancialControlPanel = ({
 
     console.log('Fichas do scouter antes do filtro de data:', scouterFichas.length);
 
+    // Debug das primeiras fichas para ver o formato das datas
+    if (scouterFichas.length > 0) {
+      console.log('Exemplos de datas das fichas:');
+      scouterFichas.slice(0, 3).forEach((ficha: any, index: number) => {
+        console.log(`Ficha ${index + 1}: ${ficha.Data_de_Criacao_da_Ficha}`);
+      });
+    }
+
     // Aplicar filtro de data se definido
     if (dateFilter.start || dateFilter.end) {
+      console.log('Aplicando filtro de data...');
+      console.log('Data início:', dateFilter.start ? format(dateFilter.start, 'dd/MM/yyyy') : 'não definida');
+      console.log('Data fim:', dateFilter.end ? format(dateFilter.end, 'dd/MM/yyyy') : 'não definida');
+      
       const originalCount = scouterFichas.length;
       
       scouterFichas = scouterFichas.filter((ficha: any) => {
         const fichaDate = parseFichaDate(ficha.Data_de_Criacao_da_Ficha);
         
         if (!fichaDate) {
-          console.warn('Data inválida na ficha:', ficha.Data_de_Criacao_da_Ficha);
+          console.log('Data inválida rejeitada:', ficha.Data_de_Criacao_da_Ficha);
           return false;
         }
         
         const fichaDay = startOfDay(fichaDate);
+        let isInRange = true;
         
         if (dateFilter.start && dateFilter.end) {
           const startDay = startOfDay(dateFilter.start);
           const endDay = endOfDay(dateFilter.end);
-          const isInRange = isWithinInterval(fichaDay, { start: startDay, end: endDay });
+          isInRange = isWithinInterval(fichaDay, { start: startDay, end: endDay });
           
-          console.log('Verificando ficha:', {
-            fichaDate: format(fichaDay, 'dd/MM/yyyy'),
-            startDate: format(startDay, 'dd/MM/yyyy'),
-            endDate: format(endDay, 'dd/MM/yyyy'),
-            isInRange
-          });
-          
-          return isInRange;
+          console.log(`Ficha ${ficha.ID}: ${format(fichaDay, 'dd/MM/yyyy')} está entre ${format(startDay, 'dd/MM/yyyy')} e ${format(endDay, 'dd/MM/yyyy')}? ${isInRange}`);
         } else if (dateFilter.start) {
           const startDay = startOfDay(dateFilter.start);
-          return fichaDay >= startDay;
+          isInRange = fichaDay >= startDay;
+          
+          console.log(`Ficha ${ficha.ID}: ${format(fichaDay, 'dd/MM/yyyy')} >= ${format(startDay, 'dd/MM/yyyy')}? ${isInRange}`);
         } else if (dateFilter.end) {
           const endDay = endOfDay(dateFilter.end);
-          return fichaDay <= endDay;
+          isInRange = fichaDay <= endDay;
+          
+          console.log(`Ficha ${ficha.ID}: ${format(fichaDay, 'dd/MM/yyyy')} <= ${format(endDay, 'dd/MM/yyyy')}? ${isInRange}`);
         }
         
-        return true;
+        return isInRange;
       });
       
-      console.log(`Fichas após filtro de data: ${scouterFichas.length} (eram ${originalCount})`);
+      console.log(`Resultado do filtro: ${scouterFichas.length} fichas (eram ${originalCount})`);
     }
 
     const items: PaymentItem[] = [];
@@ -273,7 +294,7 @@ export const FinancialControlPanel = ({
       return acc;
     }, {});
 
-    console.log('Fichas por dia:', fichasPorDia);
+    console.log('Fichas por dia após filtro:', fichasPorDia);
 
     // Adicionar ajudas de custo para dias trabalhados
     Object.entries(fichasPorDia).forEach(([date, info]: [string, any]) => {
@@ -298,7 +319,14 @@ export const FinancialControlPanel = ({
       setDayOffDialog({ open: true, dates: nonWorkDays });
     }
 
-    console.log('Total de itens de pagamento gerados:', items.length);
+    console.log('=== FINAL DA GERAÇÃO ===');
+    console.log('Total de itens gerados:', items.length);
+    console.log('Itens por tipo:', {
+      fichas: items.filter(i => i.type === 'ficha').length,
+      ajudas: items.filter(i => i.type === 'ajuda').length,
+      folgas: items.filter(i => i.type === 'folga').length
+    });
+
     setPaymentItems(items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
   };
 
