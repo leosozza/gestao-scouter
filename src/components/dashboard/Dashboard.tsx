@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { DashboardHeader } from './DashboardHeader';
 import { OverviewPanel } from './OverviewPanel';
@@ -38,6 +39,29 @@ export const Dashboard = () => {
 
   const handleFiltersChange = (newFilters: DashboardFilters) => {
     setFilters(newFilters);
+  };
+
+  const handleApplyFilters = () => {
+    loadDashboardData();
+  };
+
+  const handleClearFilters = () => {
+    const defaultFilters: DashboardFilters = {
+      dateRange: { start: '', end: '' },
+      scouters: [],
+      projects: [],
+    };
+    setFilters(defaultFilters);
+  };
+
+  const handleResetAll = () => {
+    const defaultFilters: DashboardFilters = {
+      dateRange: { start: '', end: '' },
+      scouters: [],
+      projects: [],
+    };
+    setFilters(defaultFilters);
+    setActivePanel('overview');
   };
 
   const loadDashboardData = async () => {
@@ -133,7 +157,11 @@ export const Dashboard = () => {
 
   return (
     <div className="container mx-auto py-10">
-      <DashboardHeader activePanel={activePanel} onPanelChange={handlePanelChange} />
+      <DashboardHeader 
+        onLogout={() => console.log('Logout')}
+        onPanelChange={handlePanelChange}
+        activePanel={activePanel}
+      />
 
       <div className="grid grid-cols-4 gap-4 mt-4">
         <div className="col-span-1">
@@ -142,6 +170,9 @@ export const Dashboard = () => {
             availableScouters={availableScouters}
             availableProjects={availableProjects}
             onFiltersChange={handleFiltersChange}
+            onApplyFilters={handleApplyFilters}
+            onClearFilters={handleClearFilters}
+            onResetAll={handleResetAll}
           />
         </div>
 

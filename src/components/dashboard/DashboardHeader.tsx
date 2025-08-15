@@ -1,9 +1,10 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { LogOut, Upload, Palette, Settings, Edit, Bookmark } from "lucide-react";
+import { LogOut, Upload, Palette, Settings, Edit, Bookmark, BarChart3, TrendingUp, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface DashboardHeaderProps {
@@ -15,6 +16,8 @@ interface DashboardHeaderProps {
   selectedTheme?: string;
   onThemeChange?: (theme: string) => void;
   onOpenConfig?: () => void;
+  activePanel?: 'overview' | 'performance' | 'financial';
+  onPanelChange?: (panel: string) => void;
 }
 
 export const DashboardHeader = ({ 
@@ -25,7 +28,9 @@ export const DashboardHeader = ({
   onToggleSavedViews,
   selectedTheme,
   onThemeChange,
-  onOpenConfig 
+  onOpenConfig,
+  activePanel,
+  onPanelChange
 }: DashboardHeaderProps) => {
   const [logoDialogOpen, setLogoDialogOpen] = useState(false);
   const [currentLogo, setCurrentLogo] = useState("/lovable-uploads/c7328f04-9e37-4cd5-b5a5-260721fcaa72.png");
@@ -107,6 +112,39 @@ export const DashboardHeader = ({
               </p>
             </div>
           </div>
+
+          {/* Panel Navigation */}
+          {onPanelChange && (
+            <div className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border rounded-lg p-1">
+              <Button
+                variant={activePanel === 'overview' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => onPanelChange('overview')}
+                className="flex items-center gap-2"
+              >
+                <BarChart3 className="h-4 w-4" />
+                Visão Geral
+              </Button>
+              <Button
+                variant={activePanel === 'performance' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => onPanelChange('performance')}
+                className="flex items-center gap-2"
+              >
+                <TrendingUp className="h-4 w-4" />
+                Performance
+              </Button>
+              <Button
+                variant={activePanel === 'financial' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => onPanelChange('financial')}
+                className="flex items-center gap-2"
+              >
+                <DollarSign className="h-4 w-4" />
+                Financeiro
+              </Button>
+            </div>
+          )}
           
           <div className="flex items-center gap-4">
             {/* Seletor de Tema */}
@@ -129,14 +167,16 @@ export const DashboardHeader = ({
             {/* Fixed Control Buttons */}
             <div className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border rounded-lg p-1">
               {/* Settings button */}
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-8 w-8 p-0"
-                onClick={onOpenConfig}
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
+              {onOpenConfig && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 w-8 p-0"
+                  onClick={onOpenConfig}
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+              )}
 
               {/* Saved Views button */}
               {onToggleSavedViews && (
