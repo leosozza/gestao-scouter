@@ -1,5 +1,6 @@
 import { DraggablePanel } from './DraggablePanel';
 import { usePanelLayout } from '@/hooks/usePanelLayout';
+import { FilterPanel, DashboardFilters } from './FilterPanel';
 import { KPICard } from './KPICard';
 import { CustomBarChart } from './charts/BarChart';
 import { CustomLineChart } from './charts/LineChart';
@@ -22,7 +23,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Target, DollarSign, Camera, CheckCircle, Clock, TrendingUp, FileCheck, FileX, BarChart3 } from 'lucide-react';
 import { SavedViews } from './SavedViews';
-import { DashboardFilters } from './FilterPanel';
 
 interface PanelLayoutProps {
   processedData: any;
@@ -84,6 +84,35 @@ export const PanelLayout = ({
       locations: [],
       intervals: []
     }
+  };
+
+  // Mock data for filters - this will be replaced with real data later
+  const mockFilters: DashboardFilters = currentFilters || {
+    dateRange: {
+      start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      end: new Date().toISOString().split('T')[0]
+    },
+    scouters: [],
+    projects: []
+  };
+
+  const handleFiltersChange = (newFilters: DashboardFilters) => {
+    console.log('Filters changed:', newFilters);
+    if (onLoadView) {
+      onLoadView(newFilters);
+    }
+  };
+
+  const handleApplyFilters = () => {
+    console.log('Applying filters...');
+  };
+
+  const handleClearFilters = () => {
+    console.log('Clearing filters...');
+  };
+
+  const handleResetAll = () => {
+    console.log('Resetting all filters...');
   };
 
   const renderPanelContent = (component: string) => {
@@ -334,6 +363,19 @@ export const PanelLayout = ({
 
   return (
     <div className="relative w-full min-h-screen bg-background/50">
+      {/* Filter Panel - Fixed position at top left */}
+      <div className="fixed top-20 left-6 z-40 w-80">
+        <FilterPanel
+          filters={mockFilters}
+          onFiltersChange={handleFiltersChange}
+          availableScouters={['João Silva', 'Maria Santos', 'Pedro Oliveira', 'Ana Costa']}
+          availableProjects={['Projeto Alpha', 'Projeto Beta', 'Projeto Gamma', 'Projeto Delta']}
+          onApplyFilters={handleApplyFilters}
+          onClearFilters={handleClearFilters}
+          onResetAll={handleResetAll}
+        />
+      </div>
+
       {/* Edit mode controls - Fixed position at top right */}
       {isEditMode && (
         <div className="fixed top-28 right-6 z-50 flex gap-2 bg-background/95 backdrop-blur-sm border rounded-lg p-2 shadow-lg">
@@ -415,7 +457,7 @@ export const PanelLayout = ({
 
       {/* Saved Views Panel - conditionally rendered */}
       {showSavedViews && currentFilters && onLoadView && (
-        <div className="fixed top-20 left-6 z-40 w-80">
+        <div className="fixed top-20 right-6 z-40 w-80">
           <SavedViews 
             currentFilters={currentFilters}
             onLoadView={onLoadView}
@@ -423,24 +465,26 @@ export const PanelLayout = ({
         </div>
       )}
 
-      {/* Panels */}
-      {panels.map(panel => (
-        <DraggablePanel
-          key={panel.id}
-          id={panel.id}
-          title={panel.title}
-          position={panel.position}
-          size={panel.size}
-          isCollapsed={panel.isCollapsed}
-          isEditMode={isEditMode}
-          onMove={movePanel}
-          onResize={resizePanel}
-          onToggleCollapse={togglePanelCollapse}
-          onRemove={isEditMode ? removePanel : undefined}
-        >
-          {renderPanelContent(panel.component)}
-        </DraggablePanel>
-      ))}
+      {/* Panels - adjusted to start after filter panel */}
+      <div className="ml-96"> {/* Leave space for filter panel */}
+        {panels.map(panel => (
+          <DraggablePanel
+            key={panel.id}
+            id={panel.id}
+            title={panel.title}
+            position={panel.position}
+            size={panel.size}
+            isCollapsed={panel.isCollapsed}
+            isEditMode={isEditMode}
+            onMove={movePanel}
+            onResize={resizePanel}
+            onToggleCollapse={togglePanelCollapse}
+            onRemove={isEditMode ? removePanel : undefined}
+          >
+            {renderPanelContent(panel.component)}
+          </DraggablePanel>
+        ))}
+      </div>
     </div>
   );
 };
