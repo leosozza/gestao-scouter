@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +14,7 @@ interface DashboardHeaderProps {
   onToggleSavedViews?: () => void;
   selectedTheme?: string;
   onThemeChange?: (theme: string) => void;
+  onOpenConfig?: () => void;
 }
 
 export const DashboardHeader = ({ 
@@ -24,7 +24,8 @@ export const DashboardHeader = ({
   showSavedViews,
   onToggleSavedViews,
   selectedTheme,
-  onThemeChange 
+  onThemeChange,
+  onOpenConfig 
 }: DashboardHeaderProps) => {
   const [logoDialogOpen, setLogoDialogOpen] = useState(false);
   const [currentLogo, setCurrentLogo] = useState("/lovable-uploads/c7328f04-9e37-4cd5-b5a5-260721fcaa72.png");
@@ -128,7 +129,12 @@ export const DashboardHeader = ({
             {/* Fixed Control Buttons */}
             <div className="flex items-center gap-2 bg-background/95 backdrop-blur-sm border rounded-lg p-1">
               {/* Settings button */}
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 w-8 p-0"
+                onClick={onOpenConfig}
+              >
                 <Settings className="h-4 w-4" />
               </Button>
 
