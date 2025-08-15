@@ -12,11 +12,13 @@ import {
   ExternalLink,
   CheckCircle,
   XCircle,
-  Shuffle
+  Shuffle,
+  FileSpreadsheet
 } from "lucide-react";
 import { BitrixIntegration } from "./BitrixIntegration";
 import { N8NIntegration } from "./N8NIntegration";
 import { DataSourceSelector } from "./DataSourceSelector";
+import GoogleSheetsIntegration from "./GoogleSheetsIntegration";
 
 interface Integration {
   id: string;
@@ -28,6 +30,14 @@ interface Integration {
 }
 
 const availableIntegrations: Integration[] = [
+  {
+    id: 'google-sheets',
+    name: 'Google Sheets',
+    description: 'Conexão direta com planilhas públicas do Google',
+    icon: <FileSpreadsheet className="h-6 w-6" />,
+    status: 'disconnected',
+    enabled: true,
+  },
   {
     id: 'bitrix24',
     name: 'Bitrix24',
@@ -84,10 +94,14 @@ export const IntegrationsPanel = () => {
       </div>
 
       <Tabs value={selectedIntegration} onValueChange={setSelectedIntegration}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="data-source" className="flex items-center gap-2">
             <Shuffle className="h-4 w-4" />
             Fonte de Dados
+          </TabsTrigger>
+          <TabsTrigger value="google-sheets" className="flex items-center gap-2">
+            <FileSpreadsheet className="h-4 w-4" />
+            Google Sheets
           </TabsTrigger>
           <TabsTrigger value="bitrix24" className="flex items-center gap-2">
             <Database className="h-4 w-4" />
@@ -105,6 +119,10 @@ export const IntegrationsPanel = () => {
 
         <TabsContent value="data-source">
           <DataSourceSelector />
+        </TabsContent>
+
+        <TabsContent value="google-sheets">
+          <GoogleSheetsIntegration />
         </TabsContent>
 
         <TabsContent value="bitrix24">
@@ -161,6 +179,12 @@ export const IntegrationsPanel = () => {
             </CardHeader>
             <CardContent>
               <div className="grid gap-3">
+                <Button variant="outline" size="sm" asChild>
+                  <a href="https://docs.google.com/" target="_blank">
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Google Sheets
+                  </a>
+                </Button>
                 <Button variant="outline" size="sm" asChild>
                   <a href="https://apidocs.bitrix24.com/api-reference/index.html" target="_blank">
                     <ExternalLink className="h-4 w-4 mr-2" />
