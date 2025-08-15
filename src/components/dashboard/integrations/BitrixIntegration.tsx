@@ -1,4 +1,5 @@
 
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,8 +52,8 @@ export const BitrixIntegration = () => {
     baseUrl: 'https://maxsystem.bitrix24.com.br',
     webhookUserId: '7',
     webhookToken: 'ig7ptt69ey9sbbyl',
-    clientId: '',
-    clientSecret: '',
+    clientId: 'local.689f3e46a14f92.86357412',
+    clientSecret: 'lyVHt4dqH7QRpRxdXyVnY56sKzLnEnJDrdXMiR7B9iy6Y8tnPb',
     refreshToken: '',
     enabledEntities: {
       leads: true,
@@ -523,3 +524,4 @@ export const BitrixIntegration = () => {
     </div>
   );
 };
+
