@@ -7,13 +7,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Plug, 
   Database, 
-  Webhook, 
+  Workflow, 
   Settings, 
   ExternalLink,
   CheckCircle,
-  XCircle
+  XCircle,
+  Shuffle
 } from "lucide-react";
 import { BitrixIntegration } from "./BitrixIntegration";
+import { N8NIntegration } from "./N8NIntegration";
+import { DataSourceSelector } from "./DataSourceSelector";
 
 interface Integration {
   id: string;
@@ -34,17 +37,17 @@ const availableIntegrations: Integration[] = [
     enabled: false,
   },
   {
-    id: 'webhook',
-    name: 'Webhooks',
-    description: 'Receba notificações em tempo real de eventos do sistema',
-    icon: <Webhook className="h-6 w-6" />,
+    id: 'n8n',
+    name: 'N8N',
+    description: 'Automação de workflows e processamento de dados',
+    icon: <Workflow className="h-6 w-6" />,
     status: 'disconnected',
     enabled: false,
   },
 ];
 
 export const IntegrationsPanel = () => {
-  const [selectedIntegration, setSelectedIntegration] = useState<string>('bitrix24');
+  const [selectedIntegration, setSelectedIntegration] = useState<string>('data-source');
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -75,91 +78,106 @@ export const IntegrationsPanel = () => {
         <div>
           <h1 className="text-2xl font-bold">Integrações</h1>
           <p className="text-muted-foreground">
-            Conecte o MaxFama com outros sistemas e serviços
+            Conecte o MaxFama com outros sistemas e configure a fonte de dados
           </p>
         </div>
       </div>
 
       <Tabs value={selectedIntegration} onValueChange={setSelectedIntegration}>
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="data-source" className="flex items-center gap-2">
+            <Shuffle className="h-4 w-4" />
+            Fonte de Dados
+          </TabsTrigger>
           <TabsTrigger value="bitrix24" className="flex items-center gap-2">
             <Database className="h-4 w-4" />
             Bitrix24
           </TabsTrigger>
-          <TabsTrigger value="webhooks" className="flex items-center gap-2">
-            <Webhook className="h-4 w-4" />
-            Webhooks
+          <TabsTrigger value="n8n" className="flex items-center gap-2">
+            <Workflow className="h-4 w-4" />
+            N8N
+          </TabsTrigger>
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Visão Geral
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="data-source">
+          <DataSourceSelector />
+        </TabsContent>
 
         <TabsContent value="bitrix24">
           <BitrixIntegration />
         </TabsContent>
 
-        <TabsContent value="webhooks" className="space-y-4">
+        <TabsContent value="n8n">
+          <N8NIntegration />
+        </TabsContent>
+
+        <TabsContent value="overview" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Webhook className="h-5 w-5" />
-                Configuração de Webhooks
-              </CardTitle>
+              <CardTitle className="text-base">Integrações Disponíveis</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8">
-                <Webhook className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-medium mb-2">Webhooks em Desenvolvimento</h3>
-                <p className="text-muted-foreground mb-4">
-                  A funcionalidade de webhooks será disponibilizada em breve.
-                </p>
-                <Button variant="outline" disabled>
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Documentação (em breve)
+              <div className="grid gap-4">
+                {availableIntegrations.map((integration) => (
+                  <div
+                    key={integration.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      {integration.icon}
+                      <div>
+                        <h4 className="font-medium">{integration.name}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {integration.description}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      {getStatusIcon(integration.status)}
+                      {getStatusBadge(integration.status)}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedIntegration(integration.id)}
+                      >
+                        <Settings className="h-4 w-4 mr-2" />
+                        Configurar
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Links Úteis</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3">
+                <Button variant="outline" size="sm" asChild>
+                  <a href="https://apidocs.bitrix24.com/api-reference/index.html" target="_blank">
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Documentação Bitrix24 API
+                  </a>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <a href="https://docs.n8n.io/" target="_blank">
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Documentação N8N
+                  </a>
                 </Button>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Integrações Disponíveis</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4">
-            {availableIntegrations.map((integration) => (
-              <div
-                key={integration.id}
-                className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  {integration.icon}
-                  <div>
-                    <h4 className="font-medium">{integration.name}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {integration.description}
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                  {getStatusIcon(integration.status)}
-                  {getStatusBadge(integration.status)}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedIntegration(integration.id)}
-                    disabled={integration.id === 'webhook'}
-                  >
-                    <Settings className="h-4 w-4 mr-2" />
-                    Configurar
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
