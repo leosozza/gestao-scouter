@@ -15,12 +15,21 @@ const STORAGE_KEY = 'maxfama_panel_layout_v2';
 
 const DEFAULT_PANELS: PanelConfig[] = [
   {
-    id: 'kpis-main',
-    title: 'KPIs Principais',
+    id: 'kpis-fichas',
+    title: 'KPIs - Fichas',
     position: { x: 20, y: 20 },
-    size: { width: 800, height: 200 },
+    size: { width: 600, height: 200 },
     isCollapsed: false,
-    component: 'kpis-main',
+    component: 'kpis-fichas',
+    visible: true
+  },
+  {
+    id: 'kpis-ajuda',
+    title: 'KPIs - Ajuda de Custo',
+    position: { x: 640, y: 20 },
+    size: { width: 400, height: 200 },
+    isCollapsed: false,
+    component: 'kpis-ajuda',
     visible: true
   },
   {
@@ -72,6 +81,7 @@ const DEFAULT_PANELS: PanelConfig[] = [
 
 export const usePanelLayout = () => {
   const [panels, setPanels] = useState<PanelConfig[]>([]);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Load saved layout on mount
   useEffect(() => {
@@ -144,9 +154,74 @@ export const usePanelLayout = () => {
     setPanels(prev => [...prev, newPanel]);
   }, []);
 
+  const autoOrganize = useCallback(() => {
+    const visiblePanels = panels.filter(p => p.visible);
+    const organized = visiblePanels.map((panel, index) => {
+      const cols = Math.ceil(Math.sqrt(visiblePanels.length));
+      const row = Math.floor(index / cols);
+      const col = index % cols;
+      const margin = 20;
+      const defaultWidth = 400;
+      const defaultHeight = 300;
+      
+      return {
+        ...panel,
+        position: {
+          x: margin + col * (defaultWidth + margin),
+          y: margin + row * (defaultHeight + margin)
+        },
+        size: { width: defaultWidth, height: defaultHeight }
+      };
+    });
+    
+    setPanels(prev => prev.map(panel => {
+      const organizedPanel = organized.find(p => p.id === panel.id);
+      return organizedPanel || panel;
+    }));
+  }, [panels]);
+
+  const alignPanels = useCallback((alignment: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => {
+    const visiblePanels = panels.filter(p => p.visible);
+    if (visiblePanels.length === 0) return;
+
+    const aligned = visiblePanels.map(panel => {
+      let newPosition = { ...panel.position };
+      
+      switch (alignment) {
+        case 'left':
+          newPosition.x = 20;
+          break;
+        case 'center':
+          newPosition.x = (window.innerWidth - panel.size.width) / 2;
+          break;
+        case 'right':
+          newPosition.x = window.innerWidth - panel.size.width - 20;
+          break;
+        case 'top':
+          newPosition.y = 20;
+          break;
+        case 'middle':
+          newPosition.y = (window.innerHeight - panel.size.height) / 2;
+          break;
+        case 'bottom':
+          newPosition.y = window.innerHeight - panel.size.height - 20;
+          break;
+      }
+      
+      return { ...panel, position: newPosition };
+    });
+    
+    setPanels(prev => prev.map(panel => {
+      const alignedPanel = aligned.find(p => p.id === panel.id);
+      return alignedPanel || panel;
+    }));
+  }, [panels]);
+
   return {
     panels: panels.filter(p => p.visible),
     allPanels: panels,
+    isEditMode,
+    setIsEditMode,
     movePanel,
     resizePanel,
     togglePanelCollapse,
@@ -154,6 +229,8 @@ export const usePanelLayout = () => {
     removePanel,
     resetLayout,
     addPanel,
-    updatePanel
+    updatePanel,
+    autoOrganize,
+    alignPanels
   };
 };

@@ -32,19 +32,23 @@ export const PanelLayout = ({ processedData, isLoading }: PanelLayoutProps) => {
   const {
     panels,
     allPanels,
+    isEditMode,
+    setIsEditMode,
     movePanel,
     resizePanel,
     togglePanelCollapse,
     togglePanelVisibility,
     removePanel,
-    resetLayout
+    resetLayout,
+    autoOrganize,
+    alignPanels
   } = usePanelLayout();
 
   const renderPanelContent = (component: string) => {
     switch (component) {
-      case 'kpis-main':
+      case 'kpis-fichas':
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <KPICard
               title="Total de Fichas"
               value={processedData.kpis?.totalFichas || 0}
@@ -65,6 +69,12 @@ export const PanelLayout = ({ processedData, isLoading }: PanelLayoutProps) => {
               variant="warning"
               isLoading={isLoading}
             />
+          </div>
+        );
+
+      case 'kpis-ajuda':
+        return (
+          <div className="grid grid-cols-1 gap-4">
             <KPICard
               title="Ajuda de Custo"
               value={`R$ ${(processedData.kpis?.ajudaCusto || 0).toLocaleString('pt-BR')}`}
@@ -229,49 +239,96 @@ export const PanelLayout = ({ processedData, isLoading }: PanelLayoutProps) => {
     <div className="relative w-full min-h-screen bg-background/50">
       {/* Control bar */}
       <div className="fixed top-20 right-6 z-50 flex gap-2 bg-background/95 backdrop-blur-sm border rounded-lg p-2 shadow-lg">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Adicionar Painel
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {hiddenPanels.map(panel => (
-              <DropdownMenuItem
-                key={panel.id}
-                onClick={() => togglePanelVisibility(panel.id)}
-              >
-                {panel.title}
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            {availablePanels
-              .filter(available => !allPanels.some(p => p.id === available.id))
-              .map(available => (
-                <DropdownMenuItem
-                  key={available.id}
-                  onClick={() => {
-                    const newPanel = {
-                      ...available,
-                      position: { x: 100 + Math.random() * 200, y: 100 + Math.random() * 200 },
-                      size: { width: 400, height: 300 },
-                      isCollapsed: false,
-                      visible: true
-                    };
-                    // Add to panels manually since we need to create a complete config
-                  }}
-                >
-                  {available.title}
-                </DropdownMenuItem>
-              ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        <Button variant="outline" size="sm" onClick={resetLayout}>
-          <RotateCcw className="h-4 w-4 mr-2" />
-          Resetar Layout
+        <Button 
+          variant={isEditMode ? "default" : "outline"} 
+          size="sm"
+          onClick={() => setIsEditMode(!isEditMode)}
+        >
+          <Settings className="h-4 w-4 mr-2" />
+          {isEditMode ? 'Sair da Edição' : 'Editar Dashboard'}
         </Button>
+
+        {isEditMode && (
+          <>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar Painel
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {hiddenPanels.map(panel => (
+                  <DropdownMenuItem
+                    key={panel.id}
+                    onClick={() => togglePanelVisibility(panel.id)}
+                  >
+                    {panel.title}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                {availablePanels
+                  .filter(available => !allPanels.some(p => p.id === available.id))
+                  .map(available => (
+                    <DropdownMenuItem
+                      key={available.id}
+                      onClick={() => {
+                        const newPanel = {
+                          ...available,
+                          position: { x: 100 + Math.random() * 200, y: 100 + Math.random() * 200 },
+                          size: { width: 400, height: 300 },
+                          isCollapsed: false,
+                          visible: true
+                        };
+                        // Add to panels manually since we need to create a complete config
+                      }}
+                    >
+                      {available.title}
+                    </DropdownMenuItem>
+                  ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Alinhar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => alignPanels('left')}>
+                  Alinhar à Esquerda
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => alignPanels('center')}>
+                  Centralizar Horizontalmente
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => alignPanels('right')}>
+                  Alinhar à Direita
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => alignPanels('top')}>
+                  Alinhar ao Topo
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => alignPanels('middle')}>
+                  Centralizar Verticalmente
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => alignPanels('bottom')}>
+                  Alinhar à Base
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button variant="outline" size="sm" onClick={autoOrganize}>
+              <Zap className="h-4 w-4 mr-2" />
+              Auto Organizar
+            </Button>
+
+            <Button variant="outline" size="sm" onClick={resetLayout}>
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Resetar Layout
+            </Button>
+          </>
+        )}
       </div>
 
       {/* Panels */}
@@ -283,10 +340,11 @@ export const PanelLayout = ({ processedData, isLoading }: PanelLayoutProps) => {
           position={panel.position}
           size={panel.size}
           isCollapsed={panel.isCollapsed}
+          isEditMode={isEditMode}
           onMove={movePanel}
           onResize={resizePanel}
           onToggleCollapse={togglePanelCollapse}
-          onRemove={removePanel}
+          onRemove={isEditMode ? removePanel : undefined}
         >
           {renderPanelContent(panel.component)}
         </DraggablePanel>

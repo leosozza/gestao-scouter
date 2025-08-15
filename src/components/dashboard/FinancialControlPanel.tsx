@@ -429,6 +429,15 @@ export const FinancialControlPanel = ({
     });
   };
 
+  const handleScouterChange = (value: string) => {
+    if (value === "none") {
+      setSelectedScouter("");
+      setPaymentItems([]);
+    } else {
+      setSelectedScouter(value);
+    }
+  };
+
   if (!isOpen) return null;
 
   const totals = calculateTotals();
@@ -559,12 +568,26 @@ export const FinancialControlPanel = ({
 
                 {/* Seleção de Scouter */}
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Scouter (obrigatório)</label>
-                  <Select value={selectedScouter} onValueChange={setSelectedScouter}>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium">Scouter (obrigatório)</label>
+                    {selectedScouter && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleScouterChange("none")}
+                      >
+                        Redefinir Scouter
+                      </Button>
+                    )}
+                  </div>
+                  <Select value={selectedScouter} onValueChange={handleScouterChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um scouter para continuar..." />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">
+                        <span className="text-muted-foreground">Nenhum scouter selecionado</span>
+                      </SelectItem>
                       {availableScouters.map(scouter => (
                         <SelectItem key={scouter} value={scouter}>
                           {scouter}
