@@ -6,8 +6,6 @@ import { Calendar, CheckCircle, XCircle, DollarSign, Edit2, Check, X } from "luc
 import { format, eachDayOfInterval, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getAjudaCustoConfig } from "@/utils/ajudaCustoSettings";
-import { Button } from "@/components/ui/button"; // ensure Button is imported (already present above)
-import { Badge } from "@/components/ui/badge";   // ensure Badge is imported (already present above)
 
 interface DailyBreakdownPanelProps {
   startDate: string;
