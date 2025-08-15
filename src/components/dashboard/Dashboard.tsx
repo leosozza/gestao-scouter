@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -34,16 +35,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     const fetchData = async () => {
       try {
         const fetchedFichas = await GoogleSheetsService.fetchFichas();
-        setFichas(fetchedFichas);
+        setFichas(fetchedFichas || []);
 
         const fetchedProjetos = await GoogleSheetsService.fetchProjetos();
-        setProjetos(fetchedProjetos);
+        setProjetos(fetchedProjetos || []);
 
         // Extrair lista de scouters únicos
-        const uniqueScouters = [...new Set(fetchedFichas.map((ficha) => ficha.Gestao_de_Scouter))];
+        const uniqueScouters = [...new Set((fetchedFichas || []).map((ficha) => ficha.Gestao_de_Scouter))].filter(Boolean);
         setScouters(["all", ...uniqueScouters]);
       } catch (error) {
         console.error("Erro ao buscar dados:", error);
+        // Definir valores padrão em caso de erro
+        setFichas([]);
+        setProjetos([]);
+        setScouters(["all"]);
       }
     };
 
@@ -93,6 +98,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
   return (
     <div className="container mx-auto py-10">
+      {/* Card de Filtros - sempre visível */}
       <Card>
         <CardHeader>
           <CardTitle>Dashboard</CardTitle>
@@ -100,7 +106,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         <CardContent className="grid gap-4 md:grid-cols-3">
           <div>
             <Label htmlFor="scouter">Scouter</Label>
-            <Select onValueChange={setSelectedScouter}>
+            <Select value={selectedScouter} onValueChange={setSelectedScouter}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Selecione um Scouter" />
               </SelectTrigger>
@@ -121,7 +127,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               id="project"
               placeholder="Nome do Projeto"
               value={selectedProject === "all" ? "" : selectedProject}
-              onChange={(e) => setSelectedProject(e.target.value)}
+              onChange={(e) => setSelectedProject(e.target.value || "all")}
             />
           </div>
 
@@ -164,8 +170,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         </CardContent>
       </Card>
 
-      {/* Painel de Breakdown Diário - só mostra se há período selecionado */}
-      {(startDate && endDate) && (
+      {/* Painel de Breakdown Diário - mostra quando há período selecionado */}
+      {startDate && endDate && (
         <div className="mt-6">
           <DailyBreakdownPanel
             startDate={startDate}
@@ -177,7 +183,52 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         </div>
       )}
 
-      {/* Painel de Controle Financeiro */}
+      {/* Botões de Ação */}
+      <div className="mt-6 flex gap-4">
+        <Button onClick={() => setShowFinancialControl(true)}>
+          Controle Financeiro
+        </Button>
+        <Button variant="outline" onClick={onLogout}>
+          Logout
+        </Button>
+      </div>
+
+      {/* Card de Resumo - sempre visível */}
+      <div className="mt-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Resumo</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">{filteredFichas.length}</div>
+                <div className="text-sm text-muted-foreground">Total de Fichas</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {scouters.length - 1}
+                </div>
+                <div className="text-sm text-muted-foreground">Scouters Ativos</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">
+                  {projetos.length}
+                </div>
+                <div className="text-sm text-muted-foreground">Projetos</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">
+                  R$ {filteredFichas.reduce((sum, ficha) => sum + (ficha.valor_por_ficha_num || 0), 0).toFixed(2)}
+                </div>
+                <div className="text-sm text-muted-foreground">Valor Total</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Painel de Controle Financeiro - modal */}
       {showFinancialControl && (
         <FinancialControlPanel
           fichas={filteredFichas}
@@ -185,25 +236,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           onClose={() => setShowFinancialControl(false)}
         />
       )}
-
-      <div className="mt-6">
-        <Button onClick={() => setShowFinancialControl(true)}>Controle Financeiro</Button>
-      </div>
-
-      <div className="mt-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Fichas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>Total de fichas: {filteredFichas.length}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="mt-6">
-        <Button onClick={onLogout}>Logout</Button>
-      </div>
     </div>
   );
 };
