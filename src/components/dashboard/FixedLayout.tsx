@@ -3,9 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KPICard } from "./KPICard";
 import { ScouterTable } from "./tables/ScouterTable";
 import { ProjectTable } from "./tables/ProjectTable";
-import { BarChart } from "./charts/BarChart";
-import { LineChart } from "./charts/LineChart";
-import { Loader2 } from "lucide-react";
+import { CustomBarChart } from "./charts/BarChart";
+import { CustomLineChart } from "./charts/LineChart";
+import { Loader2, Users, DollarSign, UserCheck, Briefcase } from "lucide-react";
 
 interface FixedLayoutProps {
   processedData: any;
@@ -50,48 +50,41 @@ export const FixedLayout = ({
         <KPICard
           title="Total de Fichas"
           value={kpis.totalFichas || 0}
-          icon="Users"
+          icon={Users}
           trend={kpis.trendFichas}
         />
         <KPICard
           title="Receita Total"
           value={`R$ ${(kpis.receitaTotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-          icon="DollarSign"
+          icon={DollarSign}
           trend={kpis.trendReceita}
         />
         <KPICard
           title="Scouters Ativos"
           value={kpis.scoutersAtivos || 0}
-          icon="UserCheck"
+          icon={UserCheck}
           trend={kpis.trendScouters}
         />
         <KPICard
           title="Projetos Ativos"
           value={kpis.projetosAtivos || 0}
-          icon="Briefcase"
+          icon={Briefcase}
           trend={kpis.trendProjetos}
         />
       </div>
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Fichas por Scouter</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <BarChart data={charts.fichasPorScouter || []} />
-          </CardContent>
-        </Card>
+        <CustomBarChart
+          title="Fichas por Scouter"
+          data={charts.fichasPorScouter || []}
+          showValues={true}
+        />
         
-        <Card>
-          <CardHeader>
-            <CardTitle>Evolução Temporal</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <LineChart data={charts.evolucaoTemporal || []} />
-          </CardContent>
-        </Card>
+        <CustomLineChart
+          title="Evolução Temporal"
+          data={charts.evolucaoTemporal || []}
+        />
       </div>
 
       {/* Tables Row */}
