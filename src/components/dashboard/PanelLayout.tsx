@@ -1,4 +1,3 @@
-
 import { DraggablePanel } from './DraggablePanel';
 import { usePanelLayout } from '@/hooks/usePanelLayout';
 import { KPICard } from './KPICard';
@@ -56,6 +55,37 @@ export const PanelLayout = ({
     addPanel
   } = usePanelLayout();
 
+  // Provide safe defaults for processedData
+  const safeProcessedData = processedData || {
+    kpis: {
+      totalFichas: 0,
+      fichasPagas: 0,
+      fichasAPagar: 0,
+      valorFichas: 0,
+      ajudaCusto: 0,
+      diasPagos: 0,
+      percentFoto: 0,
+      taxaConfirmacao: 0,
+      intervaloMedio: 0,
+      roiProjeto: 0
+    },
+    charts: {
+      fichasPorScouter: [],
+      fichasPorProjeto: [],
+      projecaoVsReal: [],
+      funnelData: [],
+      histogramData: [],
+      mapData: []
+    },
+    tables: {
+      scouters: [],
+      projects: [],
+      audit: [],
+      locations: [],
+      intervals: []
+    }
+  };
+
   const renderPanelContent = (component: string) => {
     switch (component) {
       case 'kpis-fichas':
@@ -63,27 +93,27 @@ export const PanelLayout = ({
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 p-2">
             <KPICard
               title="Total de Fichas"
-              value={processedData.kpis?.totalFichas || 0}
+              value={safeProcessedData.kpis?.totalFichas || 0}
               icon={Target}
               isLoading={isLoading}
             />
             <KPICard
               title="Fichas Pagas"
-              value={processedData.kpis?.fichasPagas || 0}
+              value={safeProcessedData.kpis?.fichasPagas || 0}
               icon={FileCheck}
               variant="success"
               isLoading={isLoading}
             />
             <KPICard
               title="Fichas a Pagar"
-              value={processedData.kpis?.fichasAPagar || 0}
+              value={safeProcessedData.kpis?.fichasAPagar || 0}
               icon={FileX}
               variant="warning"
               isLoading={isLoading}
             />
             <KPICard
               title="Valor das Fichas"
-              value={`R$ ${(processedData.kpis?.valorFichas || 0).toLocaleString('pt-BR')}`}
+              value={`R$ ${(safeProcessedData.kpis?.valorFichas || 0).toLocaleString('pt-BR')}`}
               icon={DollarSign}
               variant="success"
               isLoading={isLoading}
@@ -96,8 +126,8 @@ export const PanelLayout = ({
           <div className="p-4">
             <KPICard
               title="Ajuda de Custo"
-              value={`R$ ${(processedData.kpis?.ajudaCusto || 0).toLocaleString('pt-BR')}`}
-              subtitle={`${processedData.kpis?.diasPagos || 0} dias pagos`}
+              value={`R$ ${(safeProcessedData.kpis?.ajudaCusto || 0).toLocaleString('pt-BR')}`}
+              subtitle={`${safeProcessedData.kpis?.diasPagos || 0} dias pagos`}
               icon={DollarSign}
               variant="success"
               isLoading={isLoading}
@@ -110,7 +140,7 @@ export const PanelLayout = ({
           <div className="p-2 h-full">
             <CustomBarChart
               title=""
-              data={processedData.charts?.fichasPorScouter || []}
+              data={safeProcessedData.charts?.fichasPorScouter || []}
               color="hsl(var(--primary))"
               isLoading={isLoading}
               showValues={true}
@@ -123,7 +153,7 @@ export const PanelLayout = ({
           <div className="p-2 h-full">
             <CustomBarChart
               title=""
-              data={processedData.charts?.fichasPorProjeto || []}
+              data={safeProcessedData.charts?.fichasPorProjeto || []}
               color="hsl(var(--success))"
               isLoading={isLoading}
               showValues={true}
@@ -136,7 +166,7 @@ export const PanelLayout = ({
           <div className="p-2 h-full">
             <CustomLineChart
               title=""
-              data={processedData.charts?.projecaoVsReal || []}
+              data={safeProcessedData.charts?.projecaoVsReal || []}
               isLoading={isLoading}
             />
           </div>
@@ -147,7 +177,7 @@ export const PanelLayout = ({
           <div className="p-2 h-full">
             <FunnelChart
               title=""
-              data={processedData.charts?.funnelData || []}
+              data={safeProcessedData.charts?.funnelData || []}
               isLoading={isLoading}
             />
           </div>
@@ -158,7 +188,7 @@ export const PanelLayout = ({
           <div className="p-2 h-full">
             <HistogramChart
               title=""
-              data={processedData.charts?.histogramData || []}
+              data={safeProcessedData.charts?.histogramData || []}
               isLoading={isLoading}
             />
           </div>
@@ -169,7 +199,7 @@ export const PanelLayout = ({
           <div className="p-2 h-full">
             <MapChart
               title=""
-              data={processedData.charts?.mapData || []}
+              data={safeProcessedData.charts?.mapData || []}
               isLoading={isLoading}
             />
           </div>
@@ -179,7 +209,7 @@ export const PanelLayout = ({
         return (
           <div className="p-2 h-full overflow-auto">
             <ScouterTable
-              data={processedData.tables?.scouters || []}
+              data={safeProcessedData.tables?.scouters || []}
               isLoading={isLoading}
             />
           </div>
@@ -189,7 +219,7 @@ export const PanelLayout = ({
         return (
           <div className="p-2 h-full overflow-auto">
             <ProjectTable
-              data={processedData.tables?.projects || []}
+              data={safeProcessedData.tables?.projects || []}
               isLoading={isLoading}
             />
           </div>
@@ -199,7 +229,7 @@ export const PanelLayout = ({
         return (
           <div className="p-2 h-full overflow-auto">
             <AuditTable
-              data={processedData.tables?.audit || []}
+              data={safeProcessedData.tables?.audit || []}
               isLoading={isLoading}
             />
           </div>
@@ -209,7 +239,7 @@ export const PanelLayout = ({
         return (
           <div className="p-2 h-full overflow-auto">
             <LocationTable
-              data={processedData.tables?.locations || []}
+              data={safeProcessedData.tables?.locations || []}
               isLoading={isLoading}
             />
           </div>
@@ -219,7 +249,7 @@ export const PanelLayout = ({
         return (
           <div className="p-2 h-full overflow-auto">
             <IntervalTable
-              data={processedData.tables?.intervals || []}
+              data={safeProcessedData.tables?.intervals || []}
               isLoading={isLoading}
             />
           </div>
@@ -230,30 +260,30 @@ export const PanelLayout = ({
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 p-2">
             <KPICard
               title="% com Foto"
-              value={`${(processedData.kpis?.percentFoto || 0).toFixed(1)}%`}
+              value={`${(safeProcessedData.kpis?.percentFoto || 0).toFixed(1)}%`}
               icon={Camera}
-              variant={processedData.kpis?.percentFoto >= 80 ? "success" : "warning"}
+              variant={safeProcessedData.kpis?.percentFoto >= 80 ? "success" : "warning"}
               isLoading={isLoading}
             />
             <KPICard
               title="Taxa de Confirmação"
-              value={`${(processedData.kpis?.taxaConfirmacao || 0).toFixed(1)}%`}
+              value={`${(safeProcessedData.kpis?.taxaConfirmacao || 0).toFixed(1)}%`}
               icon={CheckCircle}
-              variant={processedData.kpis?.taxaConfirmacao >= 70 ? "success" : "warning"}
+              variant={safeProcessedData.kpis?.taxaConfirmacao >= 70 ? "success" : "warning"}
               isLoading={isLoading}
             />
             <KPICard
               title="Intervalo Médio"
-              value={`${(processedData.kpis?.intervaloMedio || 0).toFixed(1)} min`}
+              value={`${(safeProcessedData.kpis?.intervaloMedio || 0).toFixed(1)} min`}
               icon={Clock}
-              variant={processedData.kpis?.intervaloMedio <= 8 ? "success" : "warning"}
+              variant={safeProcessedData.kpis?.intervaloMedio <= 8 ? "success" : "warning"}
               isLoading={isLoading}
             />
             <KPICard
               title="ROI do Projeto"
-              value={`${(processedData.kpis?.roiProjeto || 0).toFixed(2)}x`}
+              value={`${(safeProcessedData.kpis?.roiProjeto || 0).toFixed(2)}x`}
               icon={TrendingUp}
-              variant={processedData.kpis?.roiProjeto >= 2 ? "success" : "warning"}
+              variant={safeProcessedData.kpis?.roiProjeto >= 2 ? "success" : "warning"}
               isLoading={isLoading}
             />
           </div>
