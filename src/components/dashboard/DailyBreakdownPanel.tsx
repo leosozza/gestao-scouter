@@ -1,8 +1,9 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, CheckCircle, XCircle, DollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar, CheckCircle, XCircle, DollarSign, Edit2, Check, X } from "lucide-react";
 import { format, eachDayOfInterval, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -21,6 +22,7 @@ interface DayInfo {
   isWorkDay: boolean;
   dayType: 'work' | 'folga' | 'falta';
   valor: number;
+  ajudaCusto: number;
 }
 
 export const DailyBreakdownPanel: React.FC<DailyBreakdownPanelProps> = ({
@@ -30,6 +32,9 @@ export const DailyBreakdownPanel: React.FC<DailyBreakdownPanelProps> = ({
   selectedScouter,
   selectedProject
 }) => {
+  const [editingDay, setEditingDay] = useState<string | null>(null);
+  const [dayTypeOverrides, setDayTypeOverrides] = useState<{ [key: string]: 'folga' | 'falta' }>({});
+
   const dailyBreakdown = useMemo(() => {
     if (!startDate || !endDate) return [];
 
@@ -102,14 +107,28 @@ export const DailyBreakdownPanel: React.FC<DailyBreakdownPanelProps> = ({
 
       const fichasCount = dayFichas.length;
       const valor = dayFichas.reduce((sum, ficha) => sum + (ficha.valor_por_ficha_num || 0), 0);
-
-      // Lógica para determinar tipo do dia
+      
+      // Calcular ajuda de custo (R$ 50 se tem fichas ou é folga remunerada)
+      let ajudaCusto = 0;
       let dayType: 'work' | 'folga' | 'falta' = 'work';
       
       if (fichasCount === 0) {
-        // Se não tem fichas, verificar se é fim de semana (folga) ou dia útil (falta)
-        const dayOfWeek = date.getDay();
-        dayType = (dayOfWeek === 0 || dayOfWeek === 6) ? 'folga' : 'falta';
+        // Verificar se tem override manual
+        if (dayTypeOverrides[dateKey]) {
+          dayType = dayTypeOverrides[dateKey];
+        } else {
+          // Se não tem fichas, verificar se é fim de semana (folga) ou dia útil (falta)
+          const dayOfWeek = date.getDay();
+          dayType = (dayOfWeek === 0 || dayOfWeek === 6) ? 'folga' : 'falta';
+        }
+        
+        // Ajuda de custo para folga remunerada
+        if (dayType === 'folga') {
+          ajudaCusto = 50;
+        }
+      } else {
+        // Tem fichas = dia trabalhado, ajuda de custo de R$ 50
+        ajudaCusto = 50;
       }
 
       return {
@@ -118,23 +137,37 @@ export const DailyBreakdownPanel: React.FC<DailyBreakdownPanelProps> = ({
         fichas: dayFichas,
         isWorkDay: fichasCount > 0,
         dayType,
-        valor
+        valor,
+        ajudaCusto
       };
     });
 
     console.log('Breakdown gerado:', breakdown.length, 'dias');
     return breakdown;
-  }, [startDate, endDate, fichas, selectedScouter, selectedProject]);
+  }, [startDate, endDate, fichas, selectedScouter, selectedProject, dayTypeOverrides]);
 
   const summary = useMemo(() => {
     const totalFichas = dailyBreakdown.reduce((sum, day) => sum + day.fichasCount, 0);
     const totalValor = dailyBreakdown.reduce((sum, day) => sum + day.valor, 0);
+    const totalAjudaCusto = dailyBreakdown.reduce((sum, day) => sum + day.ajudaCusto, 0);
     const diasTrabalhados = dailyBreakdown.filter(day => day.isWorkDay).length;
     const folgas = dailyBreakdown.filter(day => day.dayType === 'folga').length;
     const faltas = dailyBreakdown.filter(day => day.dayType === 'falta').length;
 
-    return { totalFichas, totalValor, diasTrabalhados, folgas, faltas };
+    return { totalFichas, totalValor, totalAjudaCusto, diasTrabalhados, folgas, faltas };
   }, [dailyBreakdown]);
+
+  const handleEditDayType = (dateKey: string, newType: 'folga' | 'falta') => {
+    setDayTypeOverrides(prev => ({
+      ...prev,
+      [dateKey]: newType
+    }));
+    setEditingDay(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingDay(null);
+  };
 
   if (!startDate || !endDate) {
     return (
@@ -163,7 +196,7 @@ export const DailyBreakdownPanel: React.FC<DailyBreakdownPanelProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-primary">{summary.totalFichas}</div>
               <div className="text-sm text-muted-foreground">Total Fichas</div>
@@ -172,10 +205,16 @@ export const DailyBreakdownPanel: React.FC<DailyBreakdownPanelProps> = ({
               <div className="text-2xl font-bold text-green-600">
                 R$ {summary.totalValor.toFixed(2)}
               </div>
-              <div className="text-sm text-muted-foreground">Valor Total</div>
+              <div className="text-sm text-muted-foreground">Valor Fichas</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{summary.diasTrabalhados}</div>
+              <div className="text-2xl font-bold text-blue-600">
+                R$ {summary.totalAjudaCusto.toFixed(2)}
+              </div>
+              <div className="text-sm text-muted-foreground">Ajuda de Custo</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-cyan-600">{summary.diasTrabalhados}</div>
               <div className="text-sm text-muted-foreground">Dias Trabalhados</div>
             </div>
             <div className="text-center">
@@ -197,48 +236,102 @@ export const DailyBreakdownPanel: React.FC<DailyBreakdownPanelProps> = ({
         </CardHeader>
         <CardContent>
           <div className="grid gap-2 max-h-96 overflow-y-auto">
-            {dailyBreakdown.map((day, index) => (
-              <div 
-                key={index}
-                className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="text-sm font-medium min-w-[100px]">
-                    {format(day.date, 'dd/MM/yyyy', { locale: ptBR })}
+            {dailyBreakdown.map((day, index) => {
+              const dateKey = format(day.date, 'yyyy-MM-dd');
+              const isEditing = editingDay === dateKey;
+              
+              return (
+                <div 
+                  key={index}
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="text-sm font-medium min-w-[100px]">
+                      {format(day.date, 'dd/MM/yyyy', { locale: ptBR })}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      ({format(day.date, 'EEEE', { locale: ptBR })})
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    ({format(day.date, 'EEEE', { locale: ptBR })})
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  {day.isWorkDay ? (
-                    <>
-                      <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        {day.fichasCount} fichas
-                      </Badge>
-                      <Badge variant="outline" className="text-green-600">
-                        <DollarSign className="h-3 w-3 mr-1" />
-                        R$ {day.valor.toFixed(2)}
-                      </Badge>
-                    </>
-                  ) : (
-                    <Badge 
-                      variant="outline" 
-                      className={
-                        day.dayType === 'folga' 
-                          ? "bg-orange-100 text-orange-800 border-orange-200" 
-                          : "bg-red-100 text-red-800 border-red-200"
-                      }
-                    >
-                      <XCircle className="h-3 w-3 mr-1" />
-                      {day.dayType === 'folga' ? 'Folga' : 'Falta'}
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {day.isWorkDay ? (
+                      <>
+                        <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          {day.fichasCount} fichas
+                        </Badge>
+                        <Badge variant="outline" className="text-green-600">
+                          <DollarSign className="h-3 w-3 mr-1" />
+                          R$ {day.valor.toFixed(2)}
+                        </Badge>
+                        <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
+                          Ajuda: R$ {day.ajudaCusto.toFixed(2)}
+                        </Badge>
+                      </>
+                    ) : (
+                      <>
+                        {isEditing ? (
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-2 text-xs bg-orange-100 text-orange-800 border-orange-200"
+                              onClick={() => handleEditDayType(dateKey, 'folga')}
+                            >
+                              Folga
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-2 text-xs bg-red-100 text-red-800 border-red-200"
+                              onClick={() => handleEditDayType(dateKey, 'falta')}
+                            >
+                              Falta
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0"
+                              onClick={cancelEdit}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <Badge 
+                              variant="outline" 
+                              className={
+                                day.dayType === 'folga' 
+                                  ? "bg-orange-100 text-orange-800 border-orange-200" 
+                                  : "bg-red-100 text-red-800 border-red-200"
+                              }
+                            >
+                              <XCircle className="h-3 w-3 mr-1" />
+                              {day.dayType === 'folga' ? 'Folga' : 'Falta'}
+                            </Badge>
+                            {day.dayType === 'folga' && (
+                              <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
+                                R$ {day.ajudaCusto.toFixed(2)}
+                              </Badge>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0"
+                              onClick={() => setEditingDay(dateKey)}
+                            >
+                              <Edit2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
