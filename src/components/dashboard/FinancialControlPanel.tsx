@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,10 +40,10 @@ export const FinancialControlPanel = ({
 
   // Função melhorada para calcular valor seguro
   const calcularValorSeguro = (valorString: any, fichaId?: string) => {
-    console.log(`[VALOR DEBUG] Ficha ${fichaId} - Valor original:`, valorString, 'Tipo:', typeof valorString);
+    console.log(`[FINANCIAL VALOR DEBUG] Ficha ${fichaId} - Valor original:`, valorString, 'Tipo:', typeof valorString);
     
-    if (!valorString) {
-      console.log(`[VALOR DEBUG] Ficha ${fichaId} - Valor vazio ou null`);
+    if (valorString === null || valorString === undefined || valorString === '') {
+      console.log(`[FINANCIAL VALOR DEBUG] Ficha ${fichaId} - Valor vazio ou null`);
       return 0;
     }
     
@@ -51,13 +52,14 @@ export const FinancialControlPanel = ({
     // Se for número, usar diretamente
     if (typeof valorString === 'number') {
       valorLimpo = valorString;
+      console.log(`[FINANCIAL VALOR DEBUG] Ficha ${fichaId} - Valor numérico:`, valorLimpo);
     } else {
       // Converter para string e limpar
       const str = String(valorString).trim();
-      console.log(`[VALOR DEBUG] Ficha ${fichaId} - String limpa:`, str);
+      console.log(`[FINANCIAL VALOR DEBUG] Ficha ${fichaId} - String limpa:`, str);
       
-      if (str === '' || str === 'null' || str === 'undefined') {
-        console.log(`[VALOR DEBUG] Ficha ${fichaId} - String vazia após limpeza`);
+      if (str === '' || str === 'null' || str === 'undefined' || str === '0' || str === 'N/A') {
+        console.log(`[FINANCIAL VALOR DEBUG] Ficha ${fichaId} - String vazia ou inválida após limpeza`);
         return 0;
       }
       
@@ -67,14 +69,14 @@ export const FinancialControlPanel = ({
         .replace(/\s/g, '')
         .replace(',', '.');
       
-      console.log(`[VALOR DEBUG] Ficha ${fichaId} - Valor após limpeza:`, valorLimpo);
+      console.log(`[FINANCIAL VALOR DEBUG] Ficha ${fichaId} - Valor após limpeza:`, valorLimpo);
       
       // Tentar converter para número
       valorLimpo = parseFloat(valorLimpo);
     }
     
-    const resultado = isNaN(valorLimpo) ? 0 : valorLimpo;
-    console.log(`[VALOR DEBUG] Ficha ${fichaId} - Valor final:`, resultado);
+    const resultado = isNaN(valorLimpo) ? 0 : Math.max(0, valorLimpo);
+    console.log(`[FINANCIAL VALOR DEBUG] Ficha ${fichaId} - Valor final:`, resultado);
     
     return resultado;
   };
@@ -115,11 +117,13 @@ export const FinancialControlPanel = ({
   
   const valorTotalPago = fichasPagas.reduce((total, ficha) => {
     const valor = calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID);
+    console.log(`[FINANCIAL DEBUG] Ficha paga ${ficha.ID}: valor=${valor}, total acumulado=${total + valor}`);
     return total + valor;
   }, 0);
 
   const valorTotalAPagar = fichasAPagar.reduce((total, ficha) => {
     const valor = calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID);
+    console.log(`[FINANCIAL DEBUG] Ficha a pagar ${ficha.ID}: valor=${valor}, total acumulado=${total + valor}`);
     return total + valor;
   }, 0);
 
@@ -130,9 +134,10 @@ export const FinancialControlPanel = ({
 
   // Amostra dos primeiros 5 registros para debug
   if (fichasFiltradas.length > 0) {
-    console.log('AMOSTRA DOS PRIMEIROS 5 REGISTROS:');
+    console.log('AMOSTRA DOS PRIMEIROS 5 REGISTROS (FINANCIAL):');
     fichasFiltradas.slice(0, 5).forEach(ficha => {
-      console.log(`ID: ${ficha.ID}, Valor por Fichas:`, ficha['Valor por Fichas'], 'Todas as chaves:', Object.keys(ficha));
+      const valor = calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID);
+      console.log(`ID: ${ficha.ID}, Valor por Fichas original:`, ficha['Valor por Fichas'], 'Valor processado:', valor);
     });
   }
 
