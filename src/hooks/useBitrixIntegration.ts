@@ -139,7 +139,7 @@ export const useBitrixIntegration = () => {
         console.log("Fetched", leads.length, "leads from Bitrix24");
 
         // Sincronizar para Supabase
-        const syncStats = await syncLeadsToSupabase(leads);
+        const syncStats = await syncLeadsToSupabase(leads, authData.user.id);
         
         result.leadsProcessed = syncStats.processed;
         result.leadsCreated = syncStats.created;

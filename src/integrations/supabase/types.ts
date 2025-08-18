@@ -44,6 +44,7 @@ export type Database = {
           synced_at: string | null
           telefone_de_trabalho: string | null
           updated_at: string | null
+          user_id: string | null
           valor_da_ficha: string | null
         }
         Insert: {
@@ -75,6 +76,7 @@ export type Database = {
           synced_at?: string | null
           telefone_de_trabalho?: string | null
           updated_at?: string | null
+          user_id?: string | null
           valor_da_ficha?: string | null
         }
         Update: {
@@ -106,6 +108,7 @@ export type Database = {
           synced_at?: string | null
           telefone_de_trabalho?: string | null
           updated_at?: string | null
+          user_id?: string | null
           valor_da_ficha?: string | null
         }
         Relationships: []

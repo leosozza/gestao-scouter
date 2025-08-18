@@ -86,7 +86,7 @@ function mapBitrixLeadToSupabase(raw: BitrixRawLead) {
   return mapped;
 }
 
-export async function syncLeadsToSupabase(rawLeads: BitrixRawLead[]): Promise<{
+export async function syncLeadsToSupabase(rawLeads: BitrixRawLead[], userId?: string): Promise<{
   processed: number;
   created: number;
   updated: number;
@@ -133,9 +133,10 @@ export async function syncLeadsToSupabase(rawLeads: BitrixRawLead[]): Promise<{
 
     // Inserir novos leads
     if (newLeads.length > 0) {
+      const leadsWithUserId = userId ? newLeads.map(lead => ({ ...lead, user_id: userId })) : newLeads;
       const { error: insertError } = await supabase
         .from("bitrix_leads")
-        .insert(newLeads);
+        .insert(leadsWithUserId);
 
       if (insertError) {
         console.error("Error inserting new leads:", insertError);
@@ -149,12 +150,13 @@ export async function syncLeadsToSupabase(rawLeads: BitrixRawLead[]): Promise<{
     // Atualizar leads existentes
     if (updateLeads.length > 0) {
       for (const lead of updateLeads) {
+        const leadUpdate: any = { ...lead, updated_at: new Date().toISOString() };
+        if (userId) {
+          leadUpdate.user_id = userId;
+        }
         const { error: updateError } = await supabase
           .from("bitrix_leads")
-          .update({
-            ...lead,
-            updated_at: new Date().toISOString()
-          })
+          .update(leadUpdate)
           .eq("bitrix_id", lead.bitrix_id);
 
         if (updateError) {
