@@ -17,6 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { PDFReportService } from "@/services/pdfReportService";
 
 interface PaymentBatchActionsProps {
   fichasFiltradas: any[];
@@ -108,6 +109,125 @@ export const PaymentBatchActions = ({
 
   const valorAjudaCusto = calcularAjudaDeCusto();
   const valorTotalCompleto = valorTotalAPagar + valorAjudaCusto;
+
+  // Função para calcular detalhes por scouter
+  const calcularDetalhesPorScouter = (fichas: any[]) => {
+    const scouterData: Record<string, {
+      nome: string;
+      quantidadeFichas: number;
+      valorFichas: number;
+      diasTrabalhados: Set<string>;
+      folgaRemunerada: number;
+      valorAjudaCusto: number;
+    }> = {};
+
+    fichas.forEach(ficha => {
+      const scouter = ficha['Gestão de Scouter'] || 'Sem Scouter';
+      if (!scouterData[scouter]) {
+        scouterData[scouter] = {
+          nome: scouter,
+          quantidadeFichas: 0,
+          valorFichas: 0,
+          diasTrabalhados: new Set(),
+          folgaRemunerada: 0,
+          valorAjudaCusto: 0
+        };
+      }
+
+      scouterData[scouter].quantidadeFichas++;
+      scouterData[scouter].valorFichas += parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
+
+      // Adicionar dia trabalhado
+      const dataCriado = ficha.Criado;
+      if (dataCriado && typeof dataCriado === 'string' && dataCriado.includes('/')) {
+        const [day, month, year] = dataCriado.split('/');
+        const dateKey = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        scouterData[scouter].diasTrabalhados.add(dateKey);
+      }
+    });
+
+    // Calcular ajuda de custo por scouter
+    if (selectedPeriod) {
+      Object.keys(scouterData).forEach(scouterNome => {
+        const projetoScouter = fichas.find(f => f['Gestão de Scouter'] === scouterNome)?.['Projetos Cormeciais'];
+        const projeto = projetos?.find(p => p.nome === projetoScouter);
+        
+        if (projeto) {
+          const valorDiaria = parseFloat(projeto.valorAjudaCusto || 0);
+          const valorFolgaRemunerada = parseFloat(projeto.valorFolgaRemunerada || 0);
+          
+          const startDate = new Date(selectedPeriod.start);
+          const endDate = new Date(selectedPeriod.end);
+          const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+          const diasTrabalhados = scouterData[scouterNome].diasTrabalhados.size;
+          const diasNaoTrabalhados = totalDays - diasTrabalhados;
+          
+          scouterData[scouterNome].folgaRemunerada = diasNaoTrabalhados;
+          scouterData[scouterNome].valorAjudaCusto = 
+            (diasTrabalhados * valorDiaria) + (diasNaoTrabalhados * valorFolgaRemunerada);
+        }
+      });
+    }
+
+    return Object.values(scouterData).map(scouter => ({
+      ...scouter,
+      diasTrabalhados: scouter.diasTrabalhados.size
+    }));
+  };
+
+  const generatePDFReport = async (fichasParaPagar: any[], tipoRelatorio: 'resumo' | 'completo', incluirAjudaCusto = false) => {
+    setIsGeneratingReport(true);
+    
+    try {
+      const scouterDetails = calcularDetalhesPorScouter(fichasParaPagar);
+      const valorTotalAjudaCusto = scouterDetails.reduce((total, s) => total + s.valorAjudaCusto, 0);
+      
+      const reportData = {
+        titulo: 'RELATÓRIO DE PAGAMENTO',
+        periodo: selectedPeriod ? `${selectedPeriod.start} a ${selectedPeriod.end}` : 'Sem período definido',
+        filtro: filterType ? `${filterType}: ${filterValue}` : 'Sem filtro',
+        scouter: filters.scouter || 'Todos',
+        projeto: filters.projeto || 'Todos',
+        fichas: fichasParaPagar.map(ficha => ({
+          id: ficha.ID,
+          scouter: ficha['Gestão de Scouter'] || 'N/A',
+          projeto: ficha['Projetos Cormeciais'] || 'N/A',
+          nome: ficha['Primeiro nome'] || 'N/A',
+          valor: parseFichaValue(ficha['Valor por Fichas'], ficha.ID),
+          data: ficha.Criado || 'N/A'
+        })),
+        resumo: {
+          totalFichas: fichasParaPagar.length,
+          valorFichas: fichasParaPagar.reduce((total, f) => total + parseFichaValue(f['Valor por Fichas'], f.ID), 0),
+          valorAjudaCusto: incluirAjudaCusto ? valorTotalAjudaCusto : 0,
+          valorTotal: fichasParaPagar.reduce((total, f) => total + parseFichaValue(f['Valor por Fichas'], f.ID), 0) + 
+                     (incluirAjudaCusto ? valorTotalAjudaCusto : 0)
+        },
+        scouterDetails: scouterDetails
+      };
+
+      if (tipoRelatorio === 'resumo') {
+        PDFReportService.generateResumo(reportData);
+      } else {
+        PDFReportService.generateCompleto(reportData);
+      }
+
+      toast({
+        title: `Relatório ${tipoRelatorio} gerado`,
+        description: "O PDF foi baixado com sucesso"
+      });
+
+    } catch (error) {
+      console.error('Erro ao gerar relatório PDF:', error);
+      toast({
+        title: "Erro na geração do PDF",
+        description: "Não foi possível gerar o relatório",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
 
   const generatePaymentReport = async (fichasParaPagar: any[], incluirAjudaCusto = false) => {
     setIsGeneratingReport(true);
@@ -366,48 +486,85 @@ ${reportData.fichas.map(f => `ID: ${f.id} | ${f.scouter} | ${f.nome} | ${formatC
             </div>
           )}
 
-          {/* Botões de relatório */}
+          {/* Botões de relatório PDF */}
           <div className="flex flex-wrap gap-3 p-3 bg-blue-50 rounded-lg">
-            <h4 className="w-full text-sm font-medium text-blue-800 mb-2">Gerar Relatórios (antes de pagar)</h4>
+            <h4 className="w-full text-sm font-medium text-blue-800 mb-2">Gerar Relatórios PDF (antes de pagar)</h4>
             
-            {/* Relatório das fichas selecionadas */}
+            {/* Relatório resumo das fichas selecionadas */}
             <Button
               variant="outline"
               size="sm"
               disabled={selectedFichas.length === 0 || isGeneratingReport}
-              onClick={() => generatePaymentReport(fichasSelecionadas)}
+              onClick={() => generatePDFReport(fichasSelecionadas, 'resumo')}
               className="flex items-center gap-2"
             >
               <FileText className="h-4 w-4" />
-              Relatório Selecionadas ({selectedFichas.length})
+              PDF Resumo - Selecionadas ({selectedFichas.length})
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={selectedFichas.length === 0 || isGeneratingReport}
+              onClick={() => generatePDFReport(fichasSelecionadas, 'completo')}
+              className="flex items-center gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              PDF Completo - Selecionadas ({selectedFichas.length})
             </Button>
 
             {/* Relatório de todas as fichas a pagar */}
             {fichasAPagar.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isGeneratingReport}
-                onClick={() => generatePaymentReport(fichasAPagar)}
-                className="flex items-center gap-2"
-              >
-                <FileText className="h-4 w-4" />
-                Relatório Todas ({fichasAPagar.length})
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isGeneratingReport}
+                  onClick={() => generatePDFReport(fichasAPagar, 'resumo')}
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  PDF Resumo - Todas ({fichasAPagar.length})
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isGeneratingReport}
+                  onClick={() => generatePDFReport(fichasAPagar, 'completo')}
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  PDF Completo - Todas ({fichasAPagar.length})
+                </Button>
+              </>
             )}
 
-            {/* Relatório completo (fichas + ajuda de custo) */}
+            {/* Relatório completo com ajuda de custo */}
             {filters.scouter && selectedPeriod && valorAjudaCusto > 0 && fichasAPagar.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isGeneratingReport}
-                onClick={() => generatePaymentReport(fichasAPagar, true)}
-                className="flex items-center gap-2"
-              >
-                <FileText className="h-4 w-4" />
-                Relatório Completo (Fichas + Ajuda)
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isGeneratingReport}
+                  onClick={() => generatePDFReport(fichasAPagar, 'resumo', true)}
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  PDF Resumo - Com Ajuda de Custo
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isGeneratingReport}
+                  onClick={() => generatePDFReport(fichasAPagar, 'completo', true)}
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  PDF Completo - Com Ajuda de Custo
+                </Button>
+              </>
             )}
           </div>
 
