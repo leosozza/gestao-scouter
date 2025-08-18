@@ -2,6 +2,8 @@
 import { useState, useCallback } from 'react';
 import { BitrixService } from '@/services/bitrixService';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { createSyncRun, completeSyncRun, failSyncRun, upsertLeads } from '@/services/bitrixSupabaseSync';
 
 interface BitrixConfig {
   enabled: boolean;
@@ -96,26 +98,52 @@ export const useBitrixIntegration = () => {
       return { success: false, error: "Not connected" };
     }
 
+    // Verifica autenticação para persistir dados (RLS exige usuário)
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData?.user) {
+      console.warn("User not authenticated. Skipping persistence to Supabase.");
+      toast({
+        title: "Login necessário",
+        description: "Entre na aplicação para salvar os dados da sincronização.",
+        variant: "destructive",
+      });
+      // Ainda assim podemos buscar e retornar contagens, mas sem persistir
+    }
+
     setIsLoading(true);
+    const result: SyncResult = { success: true };
+    let runId: string | null = null;
+
     try {
       const service = createService(config);
-      const result: SyncResult = { success: true };
 
-      // Sync leads if enabled
+      // Cria o registro do sync run se houver usuário autenticado
+      if (authData?.user) {
+        const run = await createSyncRun(authData.user.id, (config.enabledEntities.leads ? 'leads' : 'none'));
+        runId = run?.id ?? null;
+      }
+
+      // Sync leads se habilitado
       if (config.enabledEntities.leads) {
         const leads = await service.getLeads({
           startDate: '2024-01-01',
         });
+
         result.leadsImported = leads.length;
+
+        // Persistência somente se logado
+        if (authData?.user) {
+          const processed = await upsertLeads(leads);
+          console.log("Leads upserted:", processed);
+        }
       }
 
-      // Sync projetos if enabled
+      // Coleta contagens para SPAs (sem persistir neste passo)
       if (config.enabledEntities.projetos && config.spaIds.projetos) {
         const projetos = await service.getSPAItems(parseInt(config.spaIds.projetos));
         result.projetosImported = projetos.length;
       }
 
-      // Sync scouters if enabled
       if (config.enabledEntities.scouters && config.spaIds.scouters) {
         const scouters = await service.getSPAItems(parseInt(config.spaIds.scouters));
         result.scoutersImported = scouters.length;
@@ -127,6 +155,13 @@ export const useBitrixIntegration = () => {
         description: `Dados importados com sucesso`
       });
 
+      // Finaliza o sync run se criado
+      if (runId) {
+        await completeSyncRun(runId, {
+          records_processed: result.leadsImported ?? 0,
+        });
+      }
+
       return result;
     } catch (error) {
       console.error('Sync failed:', error);
@@ -135,6 +170,11 @@ export const useBitrixIntegration = () => {
         description: error instanceof Error ? error.message : "Erro desconhecido",
         variant: "destructive"
       });
+
+      if (runId) {
+        await failSyncRun(runId, error instanceof Error ? error.message : "Unknown error");
+      }
+
       return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
     } finally {
       setIsLoading(false);
