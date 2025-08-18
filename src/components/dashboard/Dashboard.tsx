@@ -824,7 +824,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
     return Object.entries(projetos).map(([projeto, stats]: [string, any]) => {
       const totalEtapas = Object.values(stats.etapas).reduce((a: number, b: number) => a + b, 0);
-      const total = stats.confirmadas + stats.naoConfirmadas + (totalEtapas - stats.confirmadas - stats.naoConfirmadas);
+      const total = stats.confirmadas + stats.naoConfirmadas + Math.max(0, totalEtapas - stats.confirmadas - stats.naoConfirmadas);
       const taxaConversao = total > 0 ? (stats.confirmadas / total) * 100 : 0;
       const tempoMedio = stats.tempos.length > 0 ? 
         stats.tempos.reduce((a: number, b: number) => a + b, 0) / stats.tempos.length : 0;

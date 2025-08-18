@@ -60,7 +60,14 @@ export const FinancialControlPanel = ({
   }, 0);
 
   // Agrupar por scouter para relatório de pagamentos
-  const pagamentosPorScouter = fichasFiltradas.reduce((acc, ficha) => {
+  const pagamentosPorScouter: Record<string, {
+    totalFichas: number;
+    fichasPagas: number;
+    fichasAPagar: number;
+    valorPago: number;
+    valorAPagar: number;
+    diasTrabalhados: Set<string>;
+  }> = fichasFiltradas.reduce((acc, ficha) => {
     const scouter = ficha['Gestão de Scouter'] || 'Sem Scouter';
     if (!acc[scouter]) {
       acc[scouter] = {
