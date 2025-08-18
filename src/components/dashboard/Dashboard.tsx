@@ -125,6 +125,36 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     }
   };
 
+  // Função para atualizar campo "Ficha paga" na planilha
+  const updateFichaPagaStatus = async (fichaIds: string[], status: 'Sim' | 'Não' = 'Sim') => {
+    try {
+      console.log('Dashboard: Atualizando status de Ficha paga para fichas:', fichaIds);
+      // Aqui seria implementada a atualização na planilha via API do Google Sheets
+      // Por enquanto, apenas simulamos a atualização localmente
+      
+      const updatedFichas = data.fichas.map((ficha: any) => {
+        if (fichaIds.includes(ficha.ID?.toString())) {
+          return { ...ficha, 'Ficha paga': status };
+        }
+        return ficha;
+      });
+      
+      setData({ ...data, fichas: updatedFichas });
+      
+      toast({
+        title: "Status atualizado",
+        description: `${fichaIds.length} fichas marcadas como ${status === 'Sim' ? 'pagas' : 'não pagas'}`
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar status de Ficha paga:', error);
+      toast({
+        title: "Erro na atualização",
+        description: "Não foi possível atualizar o status das fichas",
+        variant: "destructive"
+      });
+    }
+  };
+
   const processData = () => {
     try {
       console.log('Dashboard: Iniciando processamento de dados...');
@@ -139,37 +169,31 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
         console.log('Dashboard: Aplicando filtros específicos...');
         filteredFichas = filteredFichas.filter((ficha: any) => {
           const scouterMatch = filters.scouters.length === 0 || 
-            filters.scouters.includes(ficha['Gestão de Scouter'] || ficha.scouter || ficha.Gestao_de_Scouter);
+            filters.scouters.includes(ficha['Gestão de Scouter']);
           const projectMatch = filters.projects.length === 0 || 
-            filters.projects.includes(ficha['Projetos Cormeciais'] || ficha.projeto || ficha.Projetos_Comerciais);
+            filters.projects.includes(ficha['Projetos Cormeciais']);
           
           return scouterMatch && projectMatch;
         });
       }
       
-      // Aplicar filtro de data sempre
+      // Aplicar filtro de data usando a coluna "Criado"
       if (filters.dateRange.start && filters.dateRange.end) {
-        console.log('Dashboard: Aplicando filtro de data...');
+        console.log('Dashboard: Aplicando filtro de data na coluna "Criado"...');
         const startDate = new Date(filters.dateRange.start);
         const endDate = new Date(filters.dateRange.end + 'T23:59:59');
         
         filteredFichas = filteredFichas.filter((ficha: any) => {
-          const dataFicha = ficha['Data de criação da Ficha'] || ficha.data_criacao || ficha.created_at || ficha.Criado;
-          if (!dataFicha) return true; // Se não tem data, inclui
+          const dataCriado = ficha.Criado;
+          if (!dataCriado) return true; // Se não tem data, inclui
           
+          // Parse da data no formato DD/MM/YYYY
           let fichaDate;
-          if (typeof dataFicha === 'string') {
-            // Tenta diferentes formatos de data
-            if (dataFicha.includes('/')) {
-              const [day, month, year] = dataFicha.split('/');
-              fichaDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-            } else if (dataFicha.includes('-')) {
-              fichaDate = new Date(dataFicha);
-            } else {
-              fichaDate = new Date(dataFicha);
-            }
+          if (typeof dataCriado === 'string' && dataCriado.includes('/')) {
+            const [day, month, year] = dataCriado.split('/');
+            fichaDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
           } else {
-            fichaDate = new Date(dataFicha);
+            fichaDate = new Date(dataCriado);
           }
           
           return fichaDate >= startDate && fichaDate <= endDate;
@@ -185,7 +209,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       const pagamentoPorFichas = calcularPagamentoPorFichas(filteredFichas);
       const metaProgress = calcularProgressoMeta(filteredFichas);
 
-      // Novos KPIs - Fichas pagas e a pagar
+      // KPIs baseados na coluna "Ficha paga"
       const fichasPagas = calcularFichasPagas(filteredFichas);
       const fichasAPagar = calcularFichasAPagar(filteredFichas);
       const valorFichasPagas = calcularValorFichasPagas(filteredFichas);
@@ -235,7 +259,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
           fichasPorProjeto,
           projecaoVsReal: processarProjecaoVsReal(filteredFichas),
           histogramData: processarHistogramIntervalos(filteredFichas),
-          funnelData: processarFunnelStatus(filteredFichas),
+          funnelData: processarFunnelEtapas(filteredFichas), // Usar coluna "Etapa"
           mapData: processarMapData(filteredFichas)
         },
         tables: {
@@ -246,11 +270,14 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
           intervals: intervalTableData,
           pipeline: pipelineTableData
         },
-        filteredFichas
+        filteredFichas,
+        updateFichaPagaStatus // Disponibilizar função para outros componentes
       };
 
       console.log('Dashboard: Dados processados com sucesso:', {
         totalFichas: newProcessedData.kpis.totalFichas,
+        fichasPagas: newProcessedData.kpis.fichasPagas,
+        fichasAPagar: newProcessedData.kpis.fichasAPagar,
         fichasPorScouter: newProcessedData.charts.fichasPorScouter.length,
         fichasPorProjeto: newProcessedData.charts.fichasPorProjeto.length
       });
@@ -266,71 +293,102 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     }
   };
 
+  // Atualizado para usar a coluna "Ficha paga"
   const calcularFichasPagas = (fichas: any[]) => {
-    return Math.floor(fichas.length * 0.7);
+    return fichas.filter(f => f['Ficha paga'] === 'Sim').length;
   };
 
   const calcularFichasAPagar = (fichas: any[]) => {
-    return Math.ceil(fichas.length * 0.3);
+    return fichas.filter(f => f['Ficha paga'] !== 'Sim').length;
   };
 
   const calcularValorFichasPagas = (fichas: any[]) => {
-    const fichasPagas = calcularFichasPagas(fichas);
-    const valorMedio = fichas.reduce((total, ficha) => {
-      const valor = parseFloat(ficha['Valor por Fichas'] || ficha.valor_por_ficha_num || config.valorPorFicha);
+    const fichasPagas = fichas.filter(f => f['Ficha paga'] === 'Sim');
+    return fichasPagas.reduce((total, ficha) => {
+      const valor = parseFloat(ficha['Valor por Fichas'] || config.valorPorFicha);
       return total + (isNaN(valor) ? config.valorPorFicha : valor);
-    }, 0) / Math.max(1, fichas.length);
-    return fichasPagas * valorMedio;
+    }, 0);
   };
 
   const calcularValorFichasAPagar = (fichas: any[]) => {
-    const fichasAPagar = calcularFichasAPagar(fichas);
-    const valorMedio = fichas.reduce((total, ficha) => {
-      const valor = parseFloat(ficha['Valor por Fichas'] || ficha.valor_por_ficha_num || config.valorPorFicha);
+    const fichasAPagar = fichas.filter(f => f['Ficha paga'] !== 'Sim');
+    return fichasAPagar.reduce((total, ficha) => {
+      const valor = parseFloat(ficha['Valor por Fichas'] || config.valorPorFicha);
       return total + (isNaN(valor) ? config.valorPorFicha : valor);
-    }, 0) / Math.max(1, fichas.length);
-    return fichasAPagar * valorMedio;
+    }, 0);
   };
 
   const calcularPercentFoto = (fichas: any[]) => {
     if (fichas.length === 0) return 0;
-    const comFoto = fichas.filter(f => 
-      f['Cadastro Existe Foto?'] === 'SIM' || 
-      f.tem_foto === true || 
-      f.Tem_Foto === 'Sim'
-    ).length;
+    const comFoto = fichas.filter(f => f['Cadastro Existe Foto?'] === 'SIM').length;
     return (comFoto / fichas.length) * 100;
   };
 
   const calcularTaxaConfirmacao = (fichas: any[]) => {
     if (fichas.length === 0) return 0;
-    const confirmadas = fichas.filter(f => 
-      f['Ficha confirmada'] === 'Confirmado' ||
-      f.status_normalizado === 'Confirmado' || 
-      f.Status_Confirmacao === 'Confirmado'
-    ).length;
+    const confirmadas = fichas.filter(f => f['Ficha confirmada'] === 'Confirmado').length;
     return (confirmadas / fichas.length) * 100;
   };
 
   const calcularIntervaloMedio = (fichas: any[]) => {
-    return Math.random() * 10 + 5;
+    if (fichas.length <= 1) return 0;
+    
+    // Calcular intervalos baseado na coluna "Data de criação da Ficha"
+    const fichasComData = fichas.filter(f => f['Data de criação da Ficha']).sort((a, b) => {
+      const dateA = new Date(a['Data de criação da Ficha']);
+      const dateB = new Date(b['Data de criação da Ficha']);
+      return dateA.getTime() - dateB.getTime();
+    });
+    
+    if (fichasComData.length <= 1) return 0;
+    
+    let totalIntervalos = 0;
+    let countIntervalos = 0;
+    
+    for (let i = 1; i < fichasComData.length; i++) {
+      const dataAtual = new Date(fichasComData[i]['Data de criação da Ficha']);
+      const dataAnterior = new Date(fichasComData[i-1]['Data de criação da Ficha']);
+      const intervalMinutos = (dataAtual.getTime() - dataAnterior.getTime()) / (1000 * 60);
+      
+      if (intervalMinutos > 0 && intervalMinutos < 1440) { // Máximo 24h
+        totalIntervalos += intervalMinutos;
+        countIntervalos++;
+      }
+    }
+    
+    return countIntervalos > 0 ? totalIntervalos / countIntervalos : 0;
   };
 
   const calcularCustoFichaConfirmada = (fichas: any[], ajudaCusto: number, pagamentoPorFichas: number) => {
-    const confirmadas = fichas.filter(f => 
-      f['Ficha confirmada'] === 'Confirmado' ||
-      f.status_normalizado === 'Confirmado' || 
-      f.Status_Confirmacao === 'Confirmado'
-    ).length;
+    const confirmadas = fichas.filter(f => f['Ficha confirmada'] === 'Confirmado').length;
     if (confirmadas === 0) return 0;
     return (ajudaCusto + pagamentoPorFichas) / confirmadas;
   };
 
   const calcularPercentIntervalosCurtos = (fichas: any[]) => {
     if (fichas.length <= 1) return 0;
-    const intervalos = fichas.map(() => Math.random() * 30);
+    
+    const fichasComData = fichas.filter(f => f['Data de criação da Ficha']).sort((a, b) => {
+      const dateA = new Date(a['Data de criação da Ficha']);
+      const dateB = new Date(b['Data de criação da Ficha']);
+      return dateA.getTime() - dateB.getTime();
+    });
+    
+    if (fichasComData.length <= 1) return 0;
+    
+    let intervalos = [];
+    for (let i = 1; i < fichasComData.length; i++) {
+      const dataAtual = new Date(fichasComData[i]['Data de criação da Ficha']);
+      const dataAnterior = new Date(fichasComData[i-1]['Data de criação da Ficha']);
+      const intervalMinutos = (dataAtual.getTime() - dataAnterior.getTime()) / (1000 * 60);
+      
+      if (intervalMinutos > 0 && intervalMinutos < 1440) {
+        intervalos.push(intervalMinutos);
+      }
+    }
+    
     const curtos = intervalos.filter(i => i < 5).length;
-    return (curtos / intervalos.length) * 100;
+    return intervalos.length > 0 ? (curtos / intervalos.length) * 100 : 0;
   };
 
   const calcularROIProjeto = (fichas: any[], ajudaCusto: number, pagamentoPorFichas: number) => {
@@ -341,21 +399,18 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const calcularDiasPagos = (fichas: any[]) => {
     const fichasPorScouterPorDia = fichas.reduce((acc, ficha) => {
-      const dataStr = ficha['Data de criação da Ficha'] || ficha.data_criacao || ficha.created_at || ficha.Criado;
+      // Usar a coluna "Criado" para calcular dias pagos
+      const dataStr = ficha.Criado;
       let date;
       
-      if (dataStr && typeof dataStr === 'string') {
-        if (dataStr.includes('/')) {
-          const [day, month, year] = dataStr.split('/');
-          date = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-        } else {
-          date = new Date(dataStr).toISOString().split('T')[0];
-        }
+      if (dataStr && typeof dataStr === 'string' && dataStr.includes('/')) {
+        const [day, month, year] = dataStr.split('/');
+        date = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
       } else {
         date = new Date().toISOString().split('T')[0];
       }
       
-      const scouter = ficha['Gestão de Scouter'] || ficha.scouter || ficha.Gestao_de_Scouter || 'Sem Scouter';
+      const scouter = ficha['Gestão de Scouter'] || 'Sem Scouter';
       const key = `${date}-${scouter}`;
       acc[key] = (acc[key] || 0) + 1;
       return acc;
@@ -366,7 +421,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const calcularPagamentoPorFichas = (fichas: any[]) => {
     return fichas.reduce((total, ficha) => {
-      const valor = parseFloat(ficha['Valor por Fichas'] || ficha.valor_por_ficha_num || config.valorPorFicha);
+      const valor = parseFloat(ficha['Valor por Fichas'] || config.valorPorFicha);
       return total + (isNaN(valor) ? config.valorPorFicha : valor);
     }, 0);
   };
@@ -374,11 +429,10 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   const calcularProgressoMeta = (fichas: any[]) => {
     if (filters.projects.length === 1) {
       const projeto = data.projetos.find((p: any) => 
-        p['agencia e seletiva'] === filters.projects[0] || 
-        p.Agencia_e_Seletiva === filters.projects[0]
+        p['agencia e seletiva'] === filters.projects[0]
       );
       if (projeto) {
-        const meta = projeto['Meta de fichas'] || projeto.Meta_de_Fichas || 1000;
+        const meta = projeto['Meta de fichas'] || 1000;
         return Math.round((fichas.length / meta) * 100);
       }
     }
@@ -388,12 +442,11 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   const calcularRitmoNecessario = (fichas: any[]) => {
     if (filters.projects.length === 1) {
       const projeto = data.projetos.find((p: any) => 
-        p['agencia e seletiva'] === filters.projects[0] || 
-        p.Agencia_e_Seletiva === filters.projects[0]
+        p['agencia e seletiva'] === filters.projects[0]
       );
       if (projeto) {
-        const termino = projeto['Termino Captação fichas'] || projeto.Termino_Captacao_Fichas;
-        const meta = projeto['Meta de fichas'] || projeto.Meta_de_Fichas || 1000;
+        const termino = projeto['Termino Captação fichas'];
+        const meta = projeto['Meta de fichas'] || 1000;
         
         if (termino) {
           let terminoDate;
@@ -415,7 +468,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const processarFichasPorScouter = (fichas: any[]) => {
     const counts = fichas.reduce((acc, ficha) => {
-      const scouter = ficha['Gestão de Scouter'] || ficha.scouter || ficha.Gestao_de_Scouter || 'Sem Scouter';
+      const scouter = ficha['Gestão de Scouter'] || 'Sem Scouter';
       acc[scouter] = (acc[scouter] || 0) + 1;
       return acc;
     }, {});
@@ -428,7 +481,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const processarFichasPorProjeto = (fichas: any[]) => {
     const counts = fichas.reduce((acc, ficha) => {
-      const projeto = ficha['Projetos Cormeciais'] || ficha.projeto || ficha.Projetos_Comerciais || 'Sem Projeto';
+      const projeto = ficha['Projetos Cormeciais'] || 'Sem Projeto';
       acc[projeto] = (acc[projeto] || 0) + 1;
       return acc;
     }, {});
@@ -443,15 +496,15 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       const date = new Date(2025, 7, i + 1);
       const esperado = (i + 1) * 32;
       const real = fichas.filter(f => {
-        const dataFicha = f['Data de criação da Ficha'] || f.data_criacao || f.created_at || f.Criado;
-        if (!dataFicha) return false;
+        const dataCriado = f.Criado;
+        if (!dataCriado) return false;
         
         let fichaDate;
-        if (typeof dataFicha === 'string' && dataFicha.includes('/')) {
-          const [day, month, year] = dataFicha.split('/');
+        if (typeof dataCriado === 'string' && dataCriado.includes('/')) {
+          const [day, month, year] = dataCriado.split('/');
           fichaDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
         } else {
-          fichaDate = new Date(dataFicha);
+          fichaDate = new Date(dataCriado);
         }
         
         return fichaDate <= date;
@@ -469,52 +522,71 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   };
 
   const processarHistogramIntervalos = (fichas: any[]) => {
-    const buckets = ['<5min', '5-10min', '10-20min', '20-40min', '>40min'];
-    const counts = [45, 30, 15, 8, 2];
-    const total = counts.reduce((a, b) => a + b, 0);
+    if (fichas.length <= 1) return [];
     
-    return buckets.map((bucket, index) => ({
-      bucket,
-      count: counts[index],
-      percentage: (counts[index] / total) * 100
-    }));
+    const fichasComData = fichas.filter(f => f['Data de criação da Ficha']).sort((a, b) => {
+      const dateA = new Date(a['Data de criação da Ficha']);
+      const dateB = new Date(b['Data de criação da Ficha']);
+      return dateA.getTime() - dateB.getTime();
+    });
+    
+    const intervalos = [];
+    for (let i = 1; i < fichasComData.length; i++) {
+      const dataAtual = new Date(fichasComData[i]['Data de criação da Ficha']);
+      const dataAnterior = new Date(fichasComData[i-1]['Data de criação da Ficha']);
+      const intervalMinutos = (dataAtual.getTime() - dataAnterior.getTime()) / (1000 * 60);
+      
+      if (intervalMinutos > 0 && intervalMinutos < 1440) {
+        intervalos.push(intervalMinutos);
+      }
+    }
+    
+    const buckets = [
+      { bucket: '<5min', min: 0, max: 5 },
+      { bucket: '5-10min', min: 5, max: 10 },
+      { bucket: '10-20min', min: 10, max: 20 },
+      { bucket: '20-40min', min: 20, max: 40 },
+      { bucket: '>40min', min: 40, max: Infinity }
+    ];
+    
+    return buckets.map(({ bucket, min, max }) => {
+      const count = intervalos.filter(i => i >= min && i < max).length;
+      const percentage = intervalos.length > 0 ? (count / intervalos.length) * 100 : 0;
+      return { bucket, count, percentage };
+    });
   };
 
-  const processarFunnelStatus = (fichas: any[]) => {
-    const aguardando = fichas.filter(f => 
-      f['Ficha confirmada'] === 'Aguardando' ||
-      f.status_normalizado === 'Aguardando'
-    ).length;
-    const confirmadas = fichas.filter(f => 
-      f['Ficha confirmada'] === 'Confirmado' ||
-      f.status_normalizado === 'Confirmado'
-    ).length;
-    const naoConfirmadas = fichas.filter(f => 
-      f['Ficha confirmada'] === 'Não Confirmado' ||
-      f.status_normalizado === 'Não Confirmado'
-    ).length;
+  // Atualizado para usar a coluna "Etapa"
+  const processarFunnelEtapas = (fichas: any[]) => {
+    const etapas = fichas.reduce((acc, ficha) => {
+      const etapa = ficha.Etapa || 'Sem Etapa';
+      acc[etapa] = (acc[etapa] || 0) + 1;
+      return acc;
+    }, {});
+    
     const total = fichas.length;
     
-    return [
-      {
-        name: 'Total de Fichas',
-        value: total,
-        percentage: 100,
-        color: 'hsl(var(--primary))'
-      },
-      {
-        name: 'Aguardando',
-        value: aguardando,
-        percentage: total > 0 ? (aguardando / total) * 100 : 0,
-        color: 'hsl(var(--warning))'
-      },
-      {
-        name: 'Confirmadas',
-        value: confirmadas,
-        percentage: total > 0 ? (confirmadas / total) * 100 : 0,
-        color: 'hsl(var(--success))'
-      }
-    ];
+    return Object.entries(etapas)
+      .map(([name, value]) => ({
+        name,
+        value: value as number,
+        percentage: total > 0 ? ((value as number) / total) * 100 : 0,
+        color: getEtapaColor(name)
+      }))
+      .sort((a, b) => b.value - a.value);
+  };
+
+  const getEtapaColor = (etapa: string) => {
+    const colorMap: Record<string, string> = {
+      'Lead a Qualificar': 'hsl(var(--warning))',
+      'Qualificado': 'hsl(var(--primary))',
+      'Agendado': 'hsl(var(--info))',
+      'Confirmado': 'hsl(var(--success))',
+      'Cancelado': 'hsl(var(--destructive))',
+      'Não Qualificado': 'hsl(var(--muted))'
+    };
+    
+    return colorMap[etapa] || 'hsl(var(--primary))';
   };
 
   const processarMapData = (fichas: any[]) => {
@@ -528,22 +600,23 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const processarDadosScouters = (fichas: any[]) => {
     const scouterStats = fichas.reduce((acc, ficha) => {
-      const scouter = ficha['Gestão de Scouter'] || ficha.scouter || ficha.Gestao_de_Scouter || 'Sem Scouter';
+      const scouter = ficha['Gestão de Scouter'] || 'Sem Scouter';
       if (!acc[scouter]) {
         acc[scouter] = {
           fichas: 0,
           valor: 0,
           diasTrabalhados: new Set(),
           comFoto: 0,
-          confirmadas: 0
+          confirmadas: 0,
+          pagas: 0
         };
       }
       
       acc[scouter].fichas++;
-      const valor = parseFloat(ficha['Valor por Fichas'] || ficha.valor_por_ficha_num || 0);
+      const valor = parseFloat(ficha['Valor por Fichas'] || 0);
       acc[scouter].valor += isNaN(valor) ? 0 : valor;
       
-      const dataStr = ficha['Data de criação da Ficha'] || ficha.data_criacao || ficha.created_at;
+      const dataStr = ficha.Criado;
       if (dataStr) {
         let date;
         if (typeof dataStr === 'string' && dataStr.includes('/')) {
@@ -555,8 +628,9 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
         acc[scouter].diasTrabalhados.add(date);
       }
       
-      if (ficha['Cadastro Existe Foto?'] === 'SIM' || ficha.tem_foto) acc[scouter].comFoto++;
-      if (ficha['Ficha confirmada'] === 'Confirmado' || ficha.status_normalizado === 'Confirmado') acc[scouter].confirmadas++;
+      if (ficha['Cadastro Existe Foto?'] === 'SIM') acc[scouter].comFoto++;
+      if (ficha['Ficha confirmada'] === 'Confirmado') acc[scouter].confirmadas++;
+      if (ficha['Ficha paga'] === 'Sim') acc[scouter].pagas++;
       
       return acc;
     }, {});
@@ -568,6 +642,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       return {
         scouter,
         fichas: stats.fichas,
+        fichasPagas: stats.pagas,
         mediaDia: stats.fichas / Math.max(1, stats.diasTrabalhados.size),
         diasPagos,
         ajudaCusto,
@@ -575,6 +650,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
         total: ajudaCusto + stats.valor,
         percentFoto: stats.fichas > 0 ? (stats.comFoto / stats.fichas) * 100 : 0,
         percentConfirmacao: stats.fichas > 0 ? (stats.confirmadas / stats.fichas) * 100 : 0,
+        percentPagas: stats.fichas > 0 ? (stats.pagas / stats.fichas) * 100 : 0,
         score: Math.min(100, (stats.fichas / 10) + (stats.fichas > 0 ? (stats.comFoto / stats.fichas * 50) + (stats.confirmadas / stats.fichas * 30) : 0))
       };
     }).sort((a, b) => b.score - a.score);
@@ -582,13 +658,14 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const processarDadosProjetos = (fichas: any[]) => {
     const projectStats = fichas.reduce((acc, ficha) => {
-      const projeto = ficha['Projetos Cormeciais'] || ficha.projeto || ficha.Projetos_Comerciais || 'Sem Projeto';
+      const projeto = ficha['Projetos Cormeciais'] || 'Sem Projeto';
       if (!acc[projeto]) {
-        acc[projeto] = { fichas: 0, valor: 0 };
+        acc[projeto] = { fichas: 0, valor: 0, pagas: 0 };
       }
       acc[projeto].fichas++;
-      const valor = parseFloat(ficha['Valor por Fichas'] || ficha.valor_por_ficha_num || 0);
+      const valor = parseFloat(ficha['Valor por Fichas'] || 0);
       acc[projeto].valor += isNaN(valor) ? 0 : valor;
+      if (ficha['Ficha paga'] === 'Sim') acc[projeto].pagas++;
       return acc;
     }, {});
 
@@ -603,6 +680,8 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
         progresso: stats.fichas,
         esperado,
         delta,
+        pagas: stats.pagas,
+        percentPagas: stats.fichas > 0 ? (stats.pagas / stats.fichas) * 100 : 0,
         status: delta >= 0 ? 'on-track' : delta > -100 ? 'warning' : 'critical',
         roi: stats.valor / 1000,
         percentConcluido: (stats.fichas / meta) * 100
@@ -617,9 +696,9 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       if (ficha['Cadastro Existe Foto?'] !== 'SIM') {
         problemas.push({
           id: ficha.ID?.toString() || Math.random().toString(),
-          scouter: ficha['Gestão de Scouter'] || ficha.scouter || 'Sem Scouter',
-          projeto: ficha['Projetos Cormeciais'] || ficha.projeto || 'Sem Projeto',
-          dataFicha: ficha['Data de criação da Ficha'] || 'N/A',
+          scouter: ficha['Gestão de Scouter'] || 'Sem Scouter',
+          projeto: ficha['Projetos Cormeciais'] || 'Sem Projeto',
+          dataFicha: ficha.Criado || 'N/A',
           problema: 'Sem foto',
           severidade: 'medium' as const,
           detalhes: 'Ficha cadastrada sem foto anexada'
@@ -632,12 +711,13 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const processarDadosLocais = (fichas: any[]) => {
     const locais = fichas.reduce((acc: any, ficha: any) => {
-      const local = ficha['Local da Abordagem'] || ficha.Campo_Local || 'Local não informado';
+      const local = ficha['Local da Abordagem'] || 'Local não informado';
       if (!acc[local]) {
         acc[local] = {
           fichas: 0,
           comFoto: 0,
           confirmadas: 0,
+          pagas: 0,
           scouters: new Set()
         };
       }
@@ -645,7 +725,8 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       acc[local].fichas++;
       if (ficha['Cadastro Existe Foto?'] === 'SIM') acc[local].comFoto++;
       if (ficha['Ficha confirmada'] === 'Confirmado') acc[local].confirmadas++;
-      acc[local].scouters.add(ficha['Gestão de Scouter'] || ficha.scouter);
+      if (ficha['Ficha paga'] === 'Sim') acc[local].pagas++;
+      acc[local].scouters.add(ficha['Gestão de Scouter']);
       
       return acc;
     }, {});
@@ -655,13 +736,14 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       fichas: stats.fichas,
       percentFoto: stats.fichas > 0 ? (stats.comFoto / stats.fichas) * 100 : 0,
       percentConfirmacao: stats.fichas > 0 ? (stats.confirmadas / stats.fichas) * 100 : 0,
+      percentPagas: stats.fichas > 0 ? (stats.pagas / stats.fichas) * 100 : 0,
       scouters: Array.from(stats.scouters)
     })).sort((a, b) => b.fichas - a.fichas);
   };
 
   const processarDadosIntervalos = (fichas: any[]) => {
-    const scouterIntervalos = fichas.reduce((acc: any, ficha: any) => {
-      const scouter = ficha['Gestão de Scouter'] || ficha.scouter || 'Sem Scouter';
+    const scouterIntervalos = fichas.reduce((acc: any, ficha: any, index: number) => {
+      const scouter = ficha['Gestão de Scouter'] || 'Sem Scouter';
       if (!acc[scouter]) {
         acc[scouter] = {
           intervalos: [],
@@ -671,18 +753,26 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
         };
       }
       
-      const intervalo = Math.random() * 60;
-      acc[scouter].intervalos.push(intervalo);
-      
-      if (intervalo < 5) acc[scouter].curtos++;
-      else if (intervalo <= 20) acc[scouter].medios++;
-      else acc[scouter].longos++;
+      // Calcular intervalo baseado na "Data de criação da Ficha"
+      if (index > 0 && ficha['Data de criação da Ficha'] && fichas[index-1]['Data de criação da Ficha']) {
+        const dataAtual = new Date(ficha['Data de criação da Ficha']);
+        const dataAnterior = new Date(fichas[index-1]['Data de criação da Ficha']);
+        const intervalo = (dataAtual.getTime() - dataAnterior.getTime()) / (1000 * 60); // em minutos
+        
+        if (intervalo > 0 && intervalo < 1440) { // Máximo 24h
+          acc[scouter].intervalos.push(intervalo);
+          
+          if (intervalo < 5) acc[scouter].curtos++;
+          else if (intervalo <= 20) acc[scouter].medios++;
+          else acc[scouter].longos++;
+        }
+      }
       
       return acc;
     }, {});
 
     return Object.entries(scouterIntervalos).map(([scouter, data]: [string, any]) => {
-      const media = data.intervalos.reduce((a: number, b: number) => a + b, 0) / data.intervalos.length;
+      const media = data.intervalos.length > 0 ? data.intervalos.reduce((a: number, b: number) => a + b, 0) / data.intervalos.length : 0;
       const total = data.curtos + data.medios + data.longos;
       const percentCurtos = total > 0 ? (data.curtos / total) * 100 : 0;
       
@@ -702,57 +792,63 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const processarDadosPipeline = (fichas: any[]) => {
     const projetos = fichas.reduce((acc: any, ficha: any) => {
-      const projeto = ficha['Projetos Cormeciais'] || ficha.projeto || 'Sem Projeto';
+      const projeto = ficha['Projetos Cormeciais'] || 'Sem Projeto';
       if (!acc[projeto]) {
         acc[projeto] = {
-          aguardando: 0,
+          etapas: {},
           confirmadas: 0,
           naoConfirmadas: 0,
+          pagas: 0,
           tempos: []
         };
       }
       
-      const status = ficha['Ficha confirmada'] || ficha.status_normalizado;
-      switch (status) {
-        case 'Aguardando':
-          acc[projeto].aguardando++;
-          break;
-        case 'Confirmado':
-          acc[projeto].confirmadas++;
-          acc[projeto].tempos.push(Math.random() * 72);
-          break;
-        case 'Não Confirmado':
-          acc[projeto].naoConfirmadas++;
-          break;
+      // Usar coluna "Etapa" para pipeline
+      const etapa = ficha.Etapa || 'Sem Etapa';
+      acc[projeto].etapas[etapa] = (acc[projeto].etapas[etapa] || 0) + 1;
+      
+      const status = ficha['Ficha confirmada'];
+      if (status === 'Confirmado') {
+        acc[projeto].confirmadas++;
+        acc[projeto].tempos.push(Math.random() * 72); // Placeholder para tempo de confirmação
+      } else if (status === 'Não Confirmado') {
+        acc[projeto].naoConfirmadas++;
+      }
+      
+      if (ficha['Ficha paga'] === 'Sim') {
+        acc[projeto].pagas++;
       }
       
       return acc;
     }, {});
 
     return Object.entries(projetos).map(([projeto, stats]: [string, any]) => {
-      const total = stats.aguardando + stats.confirmadas + stats.naoConfirmadas;
+      const totalEtapas = Object.values(stats.etapas).reduce((a: number, b: number) => a + b, 0);
+      const total = stats.confirmadas + stats.naoConfirmadas + (totalEtapas - stats.confirmadas - stats.naoConfirmadas);
       const taxaConversao = total > 0 ? (stats.confirmadas / total) * 100 : 0;
       const tempoMedio = stats.tempos.length > 0 ? 
         stats.tempos.reduce((a: number, b: number) => a + b, 0) / stats.tempos.length : 0;
       
       return {
         projeto,
-        aguardando: stats.aguardando,
+        etapas: stats.etapas,
         confirmadas: stats.confirmadas,
         naoConfirmadas: stats.naoConfirmadas,
+        pagas: stats.pagas,
         total,
         taxaConversao,
+        percentPagas: total > 0 ? (stats.pagas / total) * 100 : 0,
         tempoMedioConfirmacao: tempoMedio
       };
     }).sort((a, b) => b.total - a.total);
   };
 
   const availableScouters = [...new Set((data.fichas || []).map((f: any) => 
-    f['Gestão de Scouter'] || f.scouter || f.Gestao_de_Scouter
+    f['Gestão de Scouter']
   ).filter(Boolean))] as string[];
   
   const availableProjects = [...new Set((data.fichas || []).map((f: any) => 
-    f['Projetos Cormeciais'] || f.projeto || f.Projetos_Comerciais
+    f['Projetos Cormeciais']
   ).filter(Boolean))] as string[];
 
   const handleConfigUpdate = (newConfig: any) => {
@@ -840,6 +936,8 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
                 <div className="text-sm text-muted-foreground">
                   <strong>Debug:</strong> Total fichas: {data.fichas?.length || 0} | 
                   Fichas filtradas: {processedData.kpis?.totalFichas || 0} | 
+                  Fichas pagas: {processedData.kpis?.fichasPagas || 0} | 
+                  Fichas a pagar: {processedData.kpis?.fichasAPagar || 0} | 
                   Scouters disponíveis: {availableScouters.length} | 
                   Projetos disponíveis: {availableProjects.length}
                 </div>
@@ -1012,7 +1110,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
             {/* Visualizações Avançadas */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <FunnelChart
-                title="Funil de Status"
+                title="Funil por Etapas"
                 data={processedData.charts?.funnelData || []}
                 isLoading={isLoading}
               />
@@ -1081,6 +1179,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
                 start: filters.dateRange.start,
                 end: filters.dateRange.end
               } : null}
+              onUpdateFichaPaga={updateFichaPagaStatus}
             />
           </TabsContent>
         </Tabs>

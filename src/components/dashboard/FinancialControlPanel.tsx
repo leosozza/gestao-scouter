@@ -1,584 +1,404 @@
-import React, { useState, useEffect, useMemo } from 'react';
+
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Calendar, DollarSign, Users, Target, Edit2, Save, X } from "lucide-react";
-import { format, parseISO, eachDayOfInterval, isValid } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-
-interface Ficha {
-  ID: number;
-  Projetos_Comerciais: string;
-  Gestao_de_Scouter: string;
-  Criado: string;
-  Data_de_Criacao_da_Ficha: string;
-  MaxScouterApp_Verificacao: string;
-  Valor_por_Fichas: string;
-  valor_por_ficha_num?: number;
-  created_at_iso: string;
-  created_day: string;
-}
-
-interface Projeto {
-  agencia_e_seletiva: string;
-  meta_de_fichas: number;
-  inicio_captacao_fichas: string;
-  termino_captacao_fichas: string;
-  meta_individual?: number;
-  dias_total?: number;
-  taxa_diaria_meta?: number;
-}
-
-interface HelpCostConfig {
-  [projeto: string]: {
-    valor_normal: number;
-    valor_folga: number;
-    is_distant: boolean;
-  };
-}
-
-interface DayClassification {
-  date: string;
-  type: 'trabalho' | 'folga' | 'falta';
-  fichas: number;
-  valor_ajuda_custo: number;
-}
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { formatCurrency } from "@/utils/formatters";
+import { CalendarDays, DollarSign, FileCheck, FileX, Users } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface FinancialControlPanelProps {
-  fichas: Ficha[];
-  projetos: Projeto[];
+  fichas: any[];
+  projetos: any[];
   selectedPeriod: { start: string; end: string } | null;
+  onUpdateFichaPaga?: (fichaIds: string[], status: 'Sim' | 'Não') => Promise<void>;
 }
 
-export const FinancialControlPanel = ({ fichas = [], projetos = [], selectedPeriod }: FinancialControlPanelProps) => {
-  const [selectedScouter, setSelectedScouter] = useState<string>("");
-  const [selectedProject, setSelectedProject] = useState<string>("");
-  const [helpCostConfig, setHelpCostConfig] = useState<HelpCostConfig>({});
-  const [dayClassifications, setDayClassifications] = useState<{ [key: string]: DayClassification }>({});
-  const [editingDay, setEditingDay] = useState<string | null>(null);
+export const FinancialControlPanel = ({ 
+  fichas, 
+  projetos, 
+  selectedPeriod,
+  onUpdateFichaPaga 
+}: FinancialControlPanelProps) => {
+  const [selectedFichas, setSelectedFichas] = useState<string[]>([]);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const { toast } = useToast();
 
-  // Função para obter valor da ajuda de custo - movida para antes dos useMemos
-  const getHelpCostValue = (date: string, type: 'trabalho' | 'folga' | 'falta'): number => {
-    if (type === 'falta') return 0;
+  // Filtrar fichas por período se selecionado
+  const fichasFiltradas = selectedPeriod ? fichas.filter(ficha => {
+    const dataCriado = ficha.Criado;
+    if (!dataCriado) return false;
     
-    const projectConfig = helpCostConfig[selectedProject];
-    if (!projectConfig) return type === 'trabalho' ? 30 : 50; // valores padrão
-    
-    return type === 'trabalho' ? projectConfig.valor_normal : projectConfig.valor_folga;
-  };
-
-  // Função para filtrar scouters baseado na seletiva escolhida e período
-  const availableScouters = useMemo(() => {
-    let filteredFichas = fichas;
-
-    // Filtrar por projeto se selecionado
-    if (selectedProject && selectedProject !== "all") {
-      filteredFichas = filteredFichas.filter(f => f.Projetos_Comerciais === selectedProject);
-    }
-
-    // Filtrar por período se selecionado - usando created_day normalizado
-    if (selectedPeriod) {
-      const startDate = selectedPeriod.start;
-      const endDate = selectedPeriod.end;
-      
-      filteredFichas = filteredFichas.filter(f => {
-        return f.created_day && f.created_day >= startDate && f.created_day <= endDate;
-      });
-    }
-
-    // Extrair scouters únicos e filtrar valores vazios/inválidos
-    const scoutersSet = new Set(
-      filteredFichas
-        .map(f => f.Gestao_de_Scouter)
-        .filter(scouter => scouter && scouter.trim() !== '')
-    );
-    return Array.from(scoutersSet).sort();
-  }, [fichas, selectedProject, selectedPeriod]);
-
-  // Função para filtrar projetos baseado no período
-  const availableProjects = useMemo(() => {
-    let filteredFichas = fichas;
-
-    // Filtrar por período se selecionado - usando created_day normalizado
-    if (selectedPeriod) {
-      const startDate = selectedPeriod.start;
-      const endDate = selectedPeriod.end;
-      
-      filteredFichas = filteredFichas.filter(f => {
-        return f.created_day && f.created_day >= startDate && f.created_day <= endDate;
-      });
-    }
-
-    // Extrair projetos únicos e filtrar valores vazios/inválidos
-    const projectsSet = new Set(
-      filteredFichas
-        .map(f => f.Projetos_Comerciais)
-        .filter(projeto => projeto && projeto.trim() !== '')
-    );
-    return Array.from(projectsSet).sort();
-  }, [fichas, selectedPeriod]);
-
-  // Função para alternar seleção de scouter (Looker Studio style)
-  const toggleScouter = (scouter: string) => {
-    if (selectedScouter === scouter) {
-      // Se já está selecionado, deseleciona
-      setSelectedScouter("");
+    let fichaDate;
+    if (typeof dataCriado === 'string' && dataCriado.includes('/')) {
+      const [day, month, year] = dataCriado.split('/');
+      fichaDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
     } else {
-      // Seleciona o novo scouter
-      setSelectedScouter(scouter);
+      fichaDate = new Date(dataCriado);
     }
-  };
-
-  // Buscar dados do scouter selecionado
-  const scouterData = useMemo(() => {
-    if (!selectedScouter) return null;
-
-    let scouterFichas = fichas.filter(f => f.Gestao_de_Scouter === selectedScouter);
-
-    // Aplicar filtros
-    if (selectedProject && selectedProject !== "all") {
-      scouterFichas = scouterFichas.filter(f => f.Projetos_Comerciais === selectedProject);
-    }
-
-    if (selectedPeriod) {
-      const startDate = selectedPeriod.start;
-      const endDate = selectedPeriod.end;
-      
-      scouterFichas = scouterFichas.filter(f => {
-        return f.created_day && f.created_day >= startDate && f.created_day <= endDate;
-      });
-    }
-
-    return {
-      totalFichas: scouterFichas.length,
-      projetos: [...new Set(scouterFichas.map(f => f.Projetos_Comerciais))],
-      fichasPorDia: scouterFichas.reduce((acc, ficha) => {
-        const date = ficha.created_day;
-        if (date) {
-          acc[date] = (acc[date] || 0) + 1;
-        }
-        return acc;
-      }, {} as { [key: string]: number })
-    };
-  }, [fichas, selectedScouter, selectedProject, selectedPeriod]);
-
-  // Gerar breakdown diário
-  const dailyBreakdown = useMemo(() => {
-    if (!selectedPeriod || !selectedScouter) return [];
-
+    
     const startDate = new Date(selectedPeriod.start);
-    const endDate = new Date(selectedPeriod.end);
+    const endDate = new Date(selectedPeriod.end + 'T23:59:59');
     
-    if (!isValid(startDate) || !isValid(endDate)) return [];
+    return fichaDate >= startDate && fichaDate <= endDate;
+  }) : fichas;
 
-    const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+  // Calcular totais baseados na coluna "Ficha paga"
+  const fichasPagas = fichasFiltradas.filter(f => f['Ficha paga'] === 'Sim');
+  const fichasAPagar = fichasFiltradas.filter(f => f['Ficha paga'] !== 'Sim');
+  
+  const valorTotalPago = fichasPagas.reduce((total, ficha) => {
+    const valor = parseFloat(ficha['Valor por Fichas'] || 0);
+    return total + (isNaN(valor) ? 0 : valor);
+  }, 0);
+
+  const valorTotalAPagar = fichasAPagar.reduce((total, ficha) => {
+    const valor = parseFloat(ficha['Valor por Fichas'] || 0);
+    return total + (isNaN(valor) ? 0 : valor);
+  }, 0);
+
+  // Agrupar por scouter para relatório de pagamentos
+  const pagamentosPorScouter = fichasFiltradas.reduce((acc, ficha) => {
+    const scouter = ficha['Gestão de Scouter'] || 'Sem Scouter';
+    if (!acc[scouter]) {
+      acc[scouter] = {
+        totalFichas: 0,
+        fichasPagas: 0,
+        fichasAPagar: 0,
+        valorPago: 0,
+        valorAPagar: 0,
+        diasTrabalhados: new Set()
+      };
+    }
     
-    return allDays.map(date => {
-      const dateStr = format(date, 'yyyy-MM-dd'); // formato normalizado
-      const fichasCount = scouterData?.fichasPorDia[dateStr] || 0;
+    acc[scouter].totalFichas++;
+    const valor = parseFloat(ficha['Valor por Fichas'] || 0);
+    const valorValido = isNaN(valor) ? 0 : valor;
+    
+    if (ficha['Ficha paga'] === 'Sim') {
+      acc[scouter].fichasPagas++;
+      acc[scouter].valorPago += valorValido;
+    } else {
+      acc[scouter].fichasAPagar++;
+      acc[scouter].valorAPagar += valorValido;
+    }
+    
+    // Adicionar dia trabalhado
+    const dataCriado = ficha.Criado;
+    if (dataCriado && typeof dataCriado === 'string' && dataCriado.includes('/')) {
+      const [day, month, year] = dataCriado.split('/');
+      const dateKey = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      acc[scouter].diasTrabalhados.add(dateKey);
+    }
+    
+    return acc;
+  }, {} as Record<string, any>);
+
+  const handleSelectFicha = (fichaId: string, isSelected: boolean) => {
+    if (isSelected) {
+      setSelectedFichas([...selectedFichas, fichaId]);
+    } else {
+      setSelectedFichas(selectedFichas.filter(id => id !== fichaId));
+    }
+  };
+
+  const handleSelectAll = (isSelected: boolean) => {
+    if (isSelected) {
+      const allUnpaidIds = fichasAPagar.map(f => f.ID?.toString()).filter(Boolean);
+      setSelectedFichas(allUnpaidIds);
+    } else {
+      setSelectedFichas([]);
+    }
+  };
+
+  const handleMarcarComoPago = async () => {
+    if (selectedFichas.length === 0) {
+      toast({
+        title: "Nenhuma ficha selecionada",
+        description: "Selecione as fichas que deseja marcar como pagas",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!onUpdateFichaPaga) {
+      toast({
+        title: "Função não disponível",
+        description: "A atualização de status não está configurada",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      await onUpdateFichaPaga(selectedFichas, 'Sim');
+      setSelectedFichas([]);
       
-      const classification = dayClassifications[dateStr] || {
-        date: dateStr,
-        type: fichasCount > 0 ? 'trabalho' : 'falta',
-        fichas: fichasCount,
-        valor_ajuda_custo: getHelpCostValue(dateStr, fichasCount > 0 ? 'trabalho' : 'falta')
-      };
-
-      return {
-        date: dateStr,
-        displayDate: format(date, 'dd/MM', { locale: ptBR }),
-        weekDay: format(date, 'EEE', { locale: ptBR }),
-        ...classification
-      };
-    });
-  }, [selectedPeriod, selectedScouter, scouterData, dayClassifications, helpCostConfig, selectedProject]);
-
-  const updateDayClassification = (date: string, newType: 'trabalho' | 'folga' | 'falta') => {
-    const fichasCount = scouterData?.fichasPorDia[date] || 0;
-    
-    setDayClassifications(prev => ({
-      ...prev,
-      [date]: {
-        date,
-        type: newType,
-        fichas: fichasCount,
-        valor_ajuda_custo: getHelpCostValue(date, newType)
-      }
-    }));
-    setEditingDay(null);
-  };
-
-  const updateHelpCostConfig = (projeto: string, config: { valor_normal: number; valor_folga: number; is_distant: boolean }) => {
-    setHelpCostConfig(prev => ({
-      ...prev,
-      [projeto]: config
-    }));
-  };
-
-  // Calcular totais
-  const totals = useMemo(() => {
-    const totalFichas = dailyBreakdown.reduce((sum, day) => sum + day.fichas, 0);
-    const totalAjudaCusto = dailyBreakdown.reduce((sum, day) => sum + day.valor_ajuda_custo, 0);
-    const diasTrabalhados = dailyBreakdown.filter(day => day.type === 'trabalho').length;
-    const diasFolga = dailyBreakdown.filter(day => day.type === 'folga').length;
-    const diasFalta = dailyBreakdown.filter(day => day.type === 'falta').length;
-
-    return {
-      totalFichas,
-      totalAjudaCusto,
-      diasTrabalhados,
-      diasFolga,
-      diasFalta
-    };
-  }, [dailyBreakdown]);
-
-  // Reset scouter quando mudar projeto
-  useEffect(() => {
-    if (selectedProject && selectedScouter && !availableScouters.includes(selectedScouter)) {
-      setSelectedScouter("");
-    }
-  }, [selectedProject, selectedScouter, availableScouters]);
-
-  const getBadgeVariant = (type: 'trabalho' | 'folga' | 'falta') => {
-    switch (type) {
-      case 'trabalho': return 'default';
-      case 'folga': return 'secondary';
-      case 'falta': return 'destructive';
-      default: return 'outline';
+      toast({
+        title: "Fichas atualizadas",
+        description: `${selectedFichas.length} fichas marcadas como pagas`
+      });
+    } catch (error) {
+      console.error('Erro ao marcar fichas como pagas:', error);
+      toast({
+        title: "Erro na atualização",
+        description: "Não foi possível atualizar as fichas",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
-  const getBadgeColor = (type: 'trabalho' | 'folga' | 'falta') => {
-    switch (type) {
-      case 'trabalho': return 'bg-blue-500 text-white';
-      case 'folga': return 'bg-green-500 text-white';
-      case 'falta': return 'bg-red-500 text-white';
-      default: return '';
+  const handleMarcarComoNaoPago = async () => {
+    if (selectedFichas.length === 0) {
+      toast({
+        title: "Nenhuma ficha selecionada",
+        description: "Selecione as fichas que deseja marcar como não pagas",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!onUpdateFichaPaga) {
+      toast({
+        title: "Função não disponível",
+        description: "A atualização de status não está configurada",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      await onUpdateFichaPaga(selectedFichas, 'Não');
+      setSelectedFichas([]);
+      
+      toast({
+        title: "Fichas atualizadas",
+        description: `${selectedFichas.length} fichas marcadas como não pagas`
+      });
+    } catch (error) {
+      console.error('Erro ao marcar fichas como não pagas:', error);
+      toast({
+        title: "Erro na atualização",
+        description: "Não foi possível atualizar as fichas",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Indicador de Período Ativo */}
-      {selectedPeriod && (
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="py-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-800">
-                Período Ativo: {format(new Date(selectedPeriod.start), 'dd/MM/yyyy')} até {format(new Date(selectedPeriod.end), 'dd/MM/yyyy')}
-              </span>
-            </div>
+      {/* Resumo Financeiro */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total de Fichas</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{fichasFiltradas.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {selectedPeriod ? 'No período selecionado' : 'Total de fichas'}
+            </p>
           </CardContent>
         </Card>
-      )}
 
-      {/* Controles Dinâmicos */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Fichas Pagas</CardTitle>
+            <FileCheck className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{fichasPagas.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {formatCurrency(valorTotalPago)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Fichas a Pagar</CardTitle>
+            <FileX className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{fichasAPagar.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {formatCurrency(valorTotalAPagar)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(valorTotalPago + valorTotalAPagar)}</div>
+            <p className="text-xs text-muted-foreground">
+              {((valorTotalPago / (valorTotalPago + valorTotalAPagar)) * 100 || 0).toFixed(1)}% pago
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Controles de Pagamento */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <DollarSign className="w-5 h-5" />
-            Controle Financeiro
-            {selectedPeriod && (
-              <Badge variant="secondary" className="ml-2">
-                Filtrado por período
-              </Badge>
-            )}
+            <FileCheck className="h-5 w-5" />
+            Controle de Pagamentos
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Seletor de Projeto */}
-          <div className="space-y-2">
-            <Label>Seletiva/Projeto</Label>
-            <Select value={selectedProject} onValueChange={setSelectedProject}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o projeto..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os projetos</SelectItem>
-                {availableProjects.map(projeto => (
-                  <SelectItem key={projeto} value={projeto}>
-                    {projeto}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <CardContent>
+          <div className="flex flex-wrap gap-2 mb-4">
+            <Button 
+              onClick={handleMarcarComoPago}
+              disabled={selectedFichas.length === 0 || isUpdating}
+              className="flex items-center gap-2"
+            >
+              <FileCheck className="h-4 w-4" />
+              Marcar como Pago ({selectedFichas.length})
+            </Button>
+            
+            <Button 
+              variant="outline"
+              onClick={handleMarcarComoNaoPago}
+              disabled={selectedFichas.length === 0 || isUpdating}
+              className="flex items-center gap-2"
+            >
+              <FileX className="h-4 w-4" />
+              Marcar como Não Pago ({selectedFichas.length})
+            </Button>
+            
+            <Button 
+              variant="outline"
+              onClick={() => setSelectedFichas([])}
+              disabled={selectedFichas.length === 0}
+            >
+              Limpar Seleção
+            </Button>
           </div>
 
-          {/* Lista de Scouters Dinâmica */}
-          {(selectedProject || selectedPeriod) && (
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                Scouters ({availableScouters.length} disponíveis)
-                {selectedPeriod && (
-                  <Badge variant="outline" className="text-xs">
-                    no período
-                  </Badge>
-                )}
-              </Label>
-              <div className="max-h-32 overflow-y-auto border rounded-md p-2">
-                <div className="flex flex-wrap gap-2">
-                  {availableScouters.map(scouter => (
-                    <Button
-                      key={scouter}
-                      variant={selectedScouter === scouter ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => toggleScouter(scouter)}
-                      className="text-xs"
-                    >
-                      {scouter}
-                      {selectedScouter === scouter && (
-                        <X className="w-3 h-3 ml-1" />
-                      )}
-                    </Button>
-                  ))}
-                </div>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={selectedFichas.length === fichasAPagar.length && fichasAPagar.length > 0}
+                      onCheckedChange={handleSelectAll}
+                      disabled={fichasAPagar.length === 0}
+                    />
+                  </TableHead>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Scouter</TableHead>
+                  <TableHead>Projeto</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {fichasAPagar.slice(0, 50).map((ficha) => {
+                  const fichaId = ficha.ID?.toString();
+                  const isSelected = selectedFichas.includes(fichaId);
+                  
+                  return (
+                    <TableRow key={fichaId}>
+                      <TableCell>
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(checked) => handleSelectFicha(fichaId, checked as boolean)}
+                        />
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{fichaId}</TableCell>
+                      <TableCell>{ficha['Gestão de Scouter'] || 'N/A'}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">
+                        {ficha['Projetos Cormeciais'] || 'N/A'}
+                      </TableCell>
+                      <TableCell>{ficha.Criado || 'N/A'}</TableCell>
+                      <TableCell>{formatCurrency(parseFloat(ficha['Valor por Fichas'] || 0))}</TableCell>
+                      <TableCell>
+                        <Badge variant={ficha['Ficha paga'] === 'Sim' ? 'default' : 'secondary'}>
+                          {ficha['Ficha paga'] || 'Não'}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+            
+            {fichasAPagar.length > 50 && (
+              <div className="p-4 text-center text-sm text-muted-foreground">
+                Mostrando 50 de {fichasAPagar.length} fichas a pagar
               </div>
-            </div>
-          )}
-
-          {/* Status da Seleção */}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            {selectedPeriod && (
-              <Badge variant="outline">
-                Período: {format(new Date(selectedPeriod.start), 'dd/MM')} - {format(new Date(selectedPeriod.end), 'dd/MM')}
-              </Badge>
-            )}
-            {selectedProject && selectedProject !== "all" && (
-              <Badge variant="secondary">Projeto: {selectedProject}</Badge>
-            )}
-            {selectedScouter && (
-              <Badge variant="default">Scouter: {selectedScouter}</Badge>
-            )}
-            {!selectedScouter && (selectedProject || selectedPeriod) && (
-              <span>Clique em um scouter para ver seus dados individuais</span>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Configuração de Ajuda de Custo */}
-      {selectedProject && selectedProject !== "all" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="w-5 h-5" />
-              Configuração de Ajuda de Custo - {selectedProject}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Valor Normal (Trabalho)</Label>
-                <Input
-                  type="number"
-                  placeholder="30"
-                  value={helpCostConfig[selectedProject]?.valor_normal || ''}
-                  onChange={(e) => updateHelpCostConfig(selectedProject, {
-                    ...helpCostConfig[selectedProject],
-                    valor_normal: Number(e.target.value),
-                    valor_folga: helpCostConfig[selectedProject]?.valor_folga || 50,
-                    is_distant: helpCostConfig[selectedProject]?.is_distant || false
-                  })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Valor Folga Remunerada</Label>
-                <Input
-                  type="number"
-                  placeholder="50"
-                  value={helpCostConfig[selectedProject]?.valor_folga || ''}
-                  onChange={(e) => updateHelpCostConfig(selectedProject, {
-                    ...helpCostConfig[selectedProject],
-                    valor_normal: helpCostConfig[selectedProject]?.valor_normal || 30,
-                    valor_folga: Number(e.target.value),
-                    is_distant: helpCostConfig[selectedProject]?.is_distant || false
-                  })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Tipo de Seletiva</Label>
-                <Select
-                  value={helpCostConfig[selectedProject]?.is_distant ? 'distant' : 'nearby'}
-                  onValueChange={(value) => updateHelpCostConfig(selectedProject, {
-                    ...helpCostConfig[selectedProject],
-                    valor_normal: value === 'distant' ? 70 : 30,
-                    valor_folga: value === 'distant' ? 50 : 30,
-                    is_distant: value === 'distant'
-                  })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="nearby">Próxima (R$ 30)</SelectItem>
-                    <SelectItem value="distant">Distante (R$ 70)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Breakdown Diário */}
-      {selectedScouter && selectedPeriod && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Breakdown Diário - {selectedScouter}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* Resumo */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{totals.totalFichas}</div>
-                <div className="text-sm text-muted-foreground">Total Fichas</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">R$ {totals.totalAjudaCusto}</div>
-                <div className="text-sm text-muted-foreground">Ajuda de Custo</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold">{totals.diasTrabalhados}</div>
-                <div className="text-sm text-muted-foreground">Dias Trabalhados</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{totals.diasFolga}</div>
-                <div className="text-sm text-muted-foreground">Dias Folga</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-red-600">{totals.diasFalta}</div>
-                <div className="text-sm text-muted-foreground">Faltas</div>
-              </div>
-            </div>
-
-            {/* Lista de Dias */}
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {dailyBreakdown.map((day) => (
-                <div key={day.date} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="text-sm font-medium min-w-[60px]">
-                      {day.displayDate}
-                    </div>
-                    <div className="text-xs text-muted-foreground min-w-[40px]">
-                      {day.weekDay}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {editingDay === day.date ? (
-                        <div className="flex gap-1">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => updateDayClassification(day.date, 'trabalho')}
-                            className="text-xs"
-                          >
-                            Trabalho
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => updateDayClassification(day.date, 'folga')}
-                            className="text-xs"
-                          >
-                            Folga
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => updateDayClassification(day.date, 'falta')}
-                            className="text-xs"
-                          >
-                            Falta
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setEditingDay(null)}
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          <Badge className={getBadgeColor(day.type)}>
-                            {day.type === 'trabalho' ? 'Trabalho' : 
-                             day.type === 'folga' ? 'Folga' : 'Falta'}
-                          </Badge>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setEditingDay(day.date)}
-                            className="p-1 h-6 w-6"
-                          >
-                            <Edit2 className="w-3 h-3" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
+      {/* Relatório por Scouter */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Relatório por Scouter
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {Object.entries(pagamentosPorScouter).map(([scouter, dados]) => (
+              <div key={scouter} className="p-4 border rounded-lg">
+                <h4 className="font-semibold mb-2">{scouter}</h4>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Total Fichas:</span>
+                    <br />
+                    <span className="font-medium">{dados.totalFichas}</span>
                   </div>
-                  
-                  <div className="flex items-center gap-4 text-sm">
-                    <div className="min-w-[60px] text-right">
-                      {day.fichas > 0 && `${day.fichas} fichas`}
-                    </div>
-                    <div className="min-w-[80px] text-right font-medium">
-                      {day.valor_ajuda_custo > 0 && (
-                        <Badge className="bg-blue-500 text-white">
-                          R$ {day.valor_ajuda_custo}
-                        </Badge>
-                      )}
-                    </div>
+                  <div>
+                    <span className="text-muted-foreground">Fichas Pagas:</span>
+                    <br />
+                    <span className="font-medium text-green-600">{dados.fichasPagas}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">A Pagar:</span>
+                    <br />
+                    <span className="font-medium text-orange-600">{dados.fichasAPagar}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Valor Pago:</span>
+                    <br />
+                    <span className="font-medium text-green-600">{formatCurrency(dados.valorPago)}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Valor a Pagar:</span>
+                    <br />
+                    <span className="font-medium text-orange-600">{formatCurrency(dados.valorAPagar)}</span>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            {/* Botões de Pagamento */}
-            <div className="flex gap-2 mt-6 pt-4 border-t">
-              <Button className="flex-1">
-                Pagar Apenas Ajuda de Custo (R$ {totals.totalAjudaCusto})
-              </Button>
-              <Button variant="outline" className="flex-1">
-                Pagar Completo
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Mensagem quando não há scouter selecionado */}
-      {!selectedScouter && (selectedProject || selectedPeriod) && (
-        <Card>
-          <CardContent className="text-center py-12">
-            <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">
-              {availableScouters.length > 0 
-                ? "Clique em um scouter acima para ver seu controle financeiro individual"
-                : "Nenhum scouter encontrado para os filtros selecionados"
-              }
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Mensagem inicial */}
-      {!selectedProject && !selectedPeriod && (
-        <Card>
-          <CardContent className="text-center py-12">
-            <Target className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">
-              Selecione um projeto ou defina um período para começar
-            </p>
-          </CardContent>
-        </Card>
-      )}
+                
+                <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
+                  <span>Dias trabalhados: {dados.diasTrabalhados.size}</span>
+                  <span>
+                    % Pagas: {dados.totalFichas > 0 ? ((dados.fichasPagas / dados.totalFichas) * 100).toFixed(1) : 0}%
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

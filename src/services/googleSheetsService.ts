@@ -90,11 +90,19 @@ export class GoogleSheetsService {
               }
             }
             
-            // Processamento para datas
-            if (header.toLowerCase().includes('data') || header.toLowerCase().includes('criado')) {
-              const dateValue = this.parseDate(values[index]);
+            // Processamento especial para a data "Criado" (apenas data DD/MM/YYYY)
+            if (header === 'Criado') {
+              const dateValue = this.parseDateOnly(values[index]);
               if (dateValue) {
                 row[`${header}_date`] = dateValue;
+              }
+            }
+            
+            // Processamento para datas com hora ("Data de criação da Ficha")
+            if (header === 'Data de criação da Ficha') {
+              const dateTimeValue = this.parseDateTime(values[index]);
+              if (dateTimeValue) {
+                row[`${header}_datetime`] = dateTimeValue;
               }
             }
           });
@@ -133,39 +141,95 @@ export class GoogleSheetsService {
     return result;
   }
 
-  private static parseDate(dateStr: string): Date | null {
+  // Parse apenas data no formato DD/MM/YYYY
+  private static parseDateOnly(dateStr: string): Date | null {
     if (!dateStr || dateStr.trim() === '') return null;
     
     try {
-      // Tenta diferentes formatos de data
-      const formats = [
-        /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, // DD/MM/YYYY
-        /^(\d{4})-(\d{1,2})-(\d{1,2})$/, // YYYY-MM-DD
-        /^(\d{1,2})-(\d{1,2})-(\d{4})$/, // DD-MM-YYYY
-      ];
-
-      for (const format of formats) {
-        const match = dateStr.match(format);
-        if (match) {
-          if (format === formats[1]) { // YYYY-MM-DD
-            return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
-          } else { // DD/MM/YYYY ou DD-MM-YYYY
-            return new Date(parseInt(match[3]), parseInt(match[2]) - 1, parseInt(match[1]));
-          }
+      const trimmed = dateStr.trim();
+      
+      // Parse formato brasileiro dd/MM/yyyy
+      const brDateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+      const match = trimmed.match(brDateRegex);
+      
+      if (match) {
+        const [, day, month, year] = match;
+        const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        
+        if (this.isValidDate(dateObj)) {
+          return dateObj;
         }
       }
       
-      // Fallback para Date.parse
-      const parsed = Date.parse(dateStr);
-      if (!isNaN(parsed)) {
-        return new Date(parsed);
-      }
-      
+      console.warn('GoogleSheetsService: Formato de data não reconhecido para "Criado":', dateStr);
       return null;
+
     } catch (error) {
-      console.warn(`GoogleSheetsService: Erro ao fazer parse da data "${dateStr}":`, error);
+      console.error('GoogleSheetsService: Erro ao fazer parse da data "Criado":', error, 'valor:', dateStr);
       return null;
     }
+  }
+
+  // Parse data e hora no formato DD/MM/YYYY HH:MM
+  private static parseDateTime(dateStr: string): Date | null {
+    if (!dateStr || dateStr.trim() === '') return null;
+    
+    try {
+      const trimmed = dateStr.trim();
+      
+      // Se já é ISO format, usa direto
+      if (trimmed.includes('T') || trimmed.includes('Z')) {
+        const isoDate = new Date(trimmed);
+        if (this.isValidDate(isoDate)) {
+          return isoDate;
+        }
+      }
+
+      // Parse formato brasileiro dd/MM/yyyy HH:mm
+      const brDateTimeRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{1,2})$/;
+      const match = trimmed.match(brDateTimeRegex);
+      
+      if (match) {
+        const [, day, month, year, hour, minute] = match;
+        // Criar data no timezone local
+        const dateObj = new Date(
+          parseInt(year), 
+          parseInt(month) - 1, // JavaScript months are 0-indexed
+          parseInt(day),
+          parseInt(hour),
+          parseInt(minute)
+        );
+
+        if (this.isValidDate(dateObj)) {
+          return dateObj;
+        }
+      }
+
+      // Fallback: tentar apenas data dd/MM/yyyy
+      const dateOnlyRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+      const dateMatch = trimmed.match(dateOnlyRegex);
+      
+      if (dateMatch) {
+        const [, day, month, year] = dateMatch;
+        const dateObj = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        
+        if (this.isValidDate(dateObj)) {
+          return dateObj;
+        }
+      }
+
+      console.warn('GoogleSheetsService: Formato de data/hora não reconhecido:', dateStr);
+      return null;
+
+    } catch (error) {
+      console.error('GoogleSheetsService: Erro ao fazer parse da data/hora:', error, 'valor:', dateStr);
+      return null;
+    }
+  }
+
+  // Helper para verificar se uma data é válida
+  private static isValidDate(date: Date): boolean {
+    return date instanceof Date && !isNaN(date.getTime()) && date.getFullYear() > 1900;
   }
 
   static async fetchFichas(): Promise<any[]> {
@@ -173,17 +237,42 @@ export class GoogleSheetsService {
       console.log('GoogleSheetsService: Buscando fichas...');
       const fichas = await this.fetchCsvData(this.GIDS.FICHAS);
       
-      // Adiciona campos processados
+      // Log dos campos encontrados para debug
+      if (fichas.length > 0) {
+        console.log('GoogleSheetsService: Campos disponíveis na primeira ficha:', Object.keys(fichas[0]));
+        console.log('GoogleSheetsService: Primeira ficha completa:', fichas[0]);
+      }
+      
+      // Processar fichas com campos corretos
       const processedFichas = fichas.map(ficha => ({
         ...ficha,
-        // Normaliza campos principais
-        scouter: ficha['Gestão de Scouter'] || ficha.Gestao_de_Scouter,
-        projeto: ficha['Projetos Cormeciais'] || ficha.Projetos_Comerciais,
-        data_criacao: ficha['Data de criação da Ficha'] || ficha.Data_de_Criacao_da_Ficha,
-        tem_foto: ficha['Cadastro Existe Foto?'] === 'SIM' || ficha.tem_foto === 'Sim',
-        status_normalizado: this.normalizeStatus(ficha['Ficha confirmada'] || ficha.status),
-        valor_por_ficha_num: this.parseNumber(ficha['Valor por Fichas'] || ficha.valor_por_ficha),
-        idade_num: this.parseNumber(ficha.Idade || ficha.idade),
+        // Garantir que os campos principais estão disponíveis
+        ID: ficha.ID,
+        'Projetos Cormeciais': ficha['Projetos Cormeciais'],
+        'Gestão de Scouter': ficha['Gestão de Scouter'],
+        'Criado': ficha.Criado, // Data apenas
+        'Data de criação da Ficha': ficha['Data de criação da Ficha'], // Data e hora
+        'Valor por Fichas': ficha['Valor por Fichas'],
+        'Etapa': ficha.Etapa, // Para o funil
+        'Ficha paga': ficha['Ficha paga'], // Status de pagamento
+        'Primeiro nome': ficha['Primeiro nome'],
+        'Nome do Modelo': ficha['Nome do Modelo'],
+        'Ficha confirmada': ficha['Ficha confirmada'],
+        'Idade': ficha.Idade,
+        'Local da Abordagem': ficha['Local da Abordagem'],
+        'Cadastro Existe Foto?': ficha['Cadastro Existe Foto?'],
+        'Presença Confirmada': ficha['Presença Confirmada'],
+        'Supervisor do Scouter': ficha['Supervisor do Scouter'],
+        
+        // Campos processados
+        valor_por_ficha_num: this.parseNumber(ficha['Valor por Fichas']),
+        idade_num: this.parseNumber(ficha.Idade),
+        tem_foto: ficha['Cadastro Existe Foto?'] === 'SIM',
+        esta_paga: ficha['Ficha paga'] === 'Sim',
+        
+        // Normalização de status
+        status_normalizado: this.normalizeStatus(ficha['Ficha confirmada']),
+        etapa_normalizada: this.normalizeEtapa(ficha.Etapa)
       }));
 
       console.log(`GoogleSheetsService: ${processedFichas.length} fichas processadas`);
@@ -205,8 +294,8 @@ export class GoogleSheetsService {
         // Normaliza campos
         nome: projeto['agencia e seletiva'] || projeto.nome,
         meta_fichas: this.parseNumber(projeto['Meta de fichas'] || projeto.meta_fichas),
-        inicio_captacao: this.parseDate(projeto['Inicio Captação fichas'] || projeto.inicio_captacao),
-        termino_captacao: this.parseDate(projeto['Termino Captação fichas'] || projeto.termino_captacao),
+        inicio_captacao: this.parseDateOnly(projeto['Inicio Captação fichas'] || projeto.inicio_captacao),
+        termino_captacao: this.parseDateOnly(projeto['Termino Captação fichas'] || projeto.termino_captacao),
         meta_individual: this.parseNumber(projeto['Meta Individual'] || projeto.meta_individual),
       }));
 
@@ -244,6 +333,25 @@ export class GoogleSheetsService {
     }
   }
 
+  private static normalizeEtapa(etapa: string): string {
+    if (!etapa) return 'Sem Etapa';
+    
+    const etapaLower = etapa.toLowerCase().trim();
+    
+    // Mapeamento de etapas conhecidas
+    const etapaMap: Record<string, string> = {
+      'lead a qualificar': 'Lead a Qualificar',
+      'qualificado': 'Qualificado',
+      'agendado': 'Agendado',
+      'confirmado': 'Confirmado',
+      'cancelado': 'Cancelado',
+      'não qualificado': 'Não Qualificado',
+      'nao qualificado': 'Não Qualificado'
+    };
+    
+    return etapaMap[etapaLower] || etapa;
+  }
+
   private static parseNumber(value: string | number): number {
     if (typeof value === 'number') return value;
     if (!value || typeof value !== 'string') return 0;
@@ -277,7 +385,8 @@ export class GoogleSheetsService {
           : 'Conexão estabelecida, mas nenhum dado foi encontrado.',
         data: {
           fichas: fichas.length,
-          projetos: projetos.length
+          projetos: projetos.length,
+          camposDisponiveis: fichas.length > 0 ? Object.keys(fichas[0]) : []
         }
       };
     } catch (error) {
@@ -287,5 +396,22 @@ export class GoogleSheetsService {
         message: `Erro na conexão: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
       };
     }
+  }
+
+  // Método para atualizar campo "Ficha paga" (simulação - implementação real requer API write do Google Sheets)
+  static async updateFichaPagaStatus(fichaIds: string[], status: 'Sim' | 'Não'): Promise<void> {
+    console.log(`GoogleSheetsService: Simulando atualização de "Ficha paga" para ${status}:`, fichaIds);
+    
+    // Aqui seria implementada a atualização real via Google Sheets API
+    // Por enquanto, apenas simula o delay de uma operação real
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    console.log(`GoogleSheetsService: Atualização simulada concluída para ${fichaIds.length} fichas`);
+    
+    // Em uma implementação real, seria necessário:
+    // 1. Configurar autenticação OAuth2 do Google
+    // 2. Usar a Google Sheets API v4 para atualizar as células
+    // 3. Encontrar as linhas corretas baseadas no ID
+    // 4. Atualizar a coluna "Ficha paga" com o novo status
   }
 }
