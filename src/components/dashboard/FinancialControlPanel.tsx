@@ -13,23 +13,23 @@ import { FinancialFilters, FinancialFilterState } from "./FinancialFilters";
 import { PaymentBatchActions } from "./PaymentBatchActions";
 import { DailyFichasFilter } from "./DailyFichasFilter";
 import { CostAllowanceManager } from "./CostAllowanceManager";
+import { DatePeriodFilter } from "./DatePeriodFilter";
 import { GoogleSheetsUpdateService } from "@/services/googleSheetsUpdateService";
 
 interface FinancialControlPanelProps {
   fichas: any[];
   projetos: any[];
-  selectedPeriod: { start: string; end: string } | null;
   onUpdateFichaPaga?: (fichaIds: string[], status: 'Sim' | 'Não') => Promise<void>;
 }
 
 export const FinancialControlPanel = ({ 
   fichas, 
   projetos, 
-  selectedPeriod,
   onUpdateFichaPaga 
 }: FinancialControlPanelProps) => {
   const [selectedFichas, setSelectedFichas] = useState<string[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState<{ start: string; end: string } | null>(null);
   const [filters, setFilters] = useState<FinancialFilterState>({
     scouter: null,
     projeto: null
@@ -66,7 +66,7 @@ export const FinancialControlPanel = ({
     return true;
   });
 
-  // Calcular totais baseados nas fichas filtradas
+  // Calcular totais baseados nas fichas filtradas usando "Valor por Fichas"
   const fichasPagas = fichasFiltradas.filter(f => f['Ficha paga'] === 'Sim');
   const fichasAPagar = fichasFiltradas.filter(f => f['Ficha paga'] !== 'Sim');
   
@@ -188,6 +188,12 @@ export const FinancialControlPanel = ({
 
   return (
     <div className="space-y-6">
+      {/* Filtro por Período */}
+      <DatePeriodFilter
+        selectedPeriod={selectedPeriod}
+        onPeriodChange={setSelectedPeriod}
+      />
+
       {/* Filtros Financeiros */}
       <FinancialFilters
         fichas={fichas}
