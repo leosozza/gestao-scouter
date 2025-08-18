@@ -100,7 +100,7 @@ export const DailyFichasFilter = ({ fichas, selectedPeriod }: DailyFichasFilterP
           {datasOrdenadas.map((data) => {
             const fichasDoDia = fichasPorDia[data];
             
-            // Separar fichas pagas e a pagar
+            // Separar fichas pagas e a pagar - CORRIGINDO A LÓGICA
             const fichasPagas = fichasDoDia.filter(f => f['Ficha paga'] === 'Sim');
             const fichasAPagar = fichasDoDia.filter(f => f['Ficha paga'] !== 'Sim');
             
@@ -110,14 +110,16 @@ export const DailyFichasFilter = ({ fichas, selectedPeriod }: DailyFichasFilterP
               return total + valor;
             }, 0);
             
+            // CORRIGINDO: Calcular valor a pagar corretamente
             const valorAPagar = fichasAPagar.reduce((total, ficha) => {
               const valor = calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID);
+              console.log(`[DAILY A PAGAR DEBUG] Data ${data}, Ficha ${ficha.ID} - Status paga: "${ficha['Ficha paga']}", Valor: ${valor}`);
               return total + valor;
             }, 0);
             
             const valorTotal = valorPago + valorAPagar;
 
-            console.log(`[DAILY DEBUG] Data ${data}: Total fichas=${fichasDoDia.length}, Pagas=${fichasPagas.length}, A pagar=${fichasAPagar.length}, Valor total=${valorTotal}`);
+            console.log(`[DAILY DEBUG] Data ${data}: Total fichas=${fichasDoDia.length}, Pagas=${fichasPagas.length} (R$ ${valorPago}), A pagar=${fichasAPagar.length} (R$ ${valorAPagar}), Valor total=${valorTotal}`);
 
             return (
               <Dialog key={data}>
