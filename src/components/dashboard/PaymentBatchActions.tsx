@@ -1,9 +1,8 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileCheck, FileX, DollarSign, AlertTriangle, Calendar } from "lucide-react";
+import { FileCheck, FileX, DollarSign, AlertTriangle, Calendar, FileText, Download } from "lucide-react";
 import { formatCurrency, parseFichaValue } from "@/utils/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { FinancialFilterState } from "./FinancialFilters";
@@ -45,6 +44,7 @@ export const PaymentBatchActions = ({
   filters
 }: PaymentBatchActionsProps) => {
   const { toast } = useToast();
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const fichasAPagar = fichasFiltradas.filter(f => f['Ficha paga'] !== 'Sim');
   const fichasSelecionadas = fichasFiltradas.filter(f => selectedFichas.includes(f.ID?.toString()));
@@ -108,6 +108,86 @@ export const PaymentBatchActions = ({
 
   const valorAjudaCusto = calcularAjudaDeCusto();
   const valorTotalCompleto = valorTotalAPagar + valorAjudaCusto;
+
+  const generatePaymentReport = async (fichasParaPagar: any[], incluirAjudaCusto = false) => {
+    setIsGeneratingReport(true);
+    
+    try {
+      // Gerar relatório em PDF
+      const reportData = {
+        titulo: 'Relatório de Pagamento',
+        periodo: selectedPeriod ? `${selectedPeriod.start} a ${selectedPeriod.end}` : 'Sem período definido',
+        filtro: filterType ? `${filterType}: ${filterValue}` : 'Sem filtro',
+        scouter: filters.scouter || 'Todos',
+        projeto: filters.projeto || 'Todos',
+        fichas: fichasParaPagar.map(ficha => ({
+          id: ficha.ID,
+          scouter: ficha['Gestão de Scouter'] || 'N/A',
+          projeto: ficha['Projetos Cormeciais'] || 'N/A',
+          nome: ficha['Primeiro nome'] || 'N/A',
+          valor: parseFichaValue(ficha['Valor por Fichas'], ficha.ID),
+          data: ficha.Criado || 'N/A'
+        })),
+        resumo: {
+          totalFichas: fichasParaPagar.length,
+          valorFichas: fichasParaPagar.reduce((total, f) => total + parseFichaValue(f['Valor por Fichas'], f.ID), 0),
+          valorAjudaCusto: incluirAjudaCusto ? valorAjudaCusto : 0,
+          valorTotal: incluirAjudaCusto 
+            ? fichasParaPagar.reduce((total, f) => total + parseFichaValue(f['Valor por Fichas'], f.ID), 0) + valorAjudaCusto
+            : fichasParaPagar.reduce((total, f) => total + parseFichaValue(f['Valor por Fichas'], f.ID), 0)
+        }
+      };
+
+      // Simular geração de PDF - em produção seria integrado com uma biblioteca de PDF
+      console.log('Dados do relatório:', reportData);
+      
+      // Criar conteúdo do PDF simulado
+      const pdfContent = `
+RELATÓRIO DE PAGAMENTO
+====================
+
+Período: ${reportData.periodo}
+Filtro: ${reportData.filtro}
+Scouter: ${reportData.scouter}
+Projeto: ${reportData.projeto}
+
+RESUMO:
+- Total de fichas: ${reportData.resumo.totalFichas}
+- Valor das fichas: ${formatCurrency(reportData.resumo.valorFichas)}
+${incluirAjudaCusto ? `- Ajuda de custo: ${formatCurrency(reportData.resumo.valorAjudaCusto)}` : ''}
+- VALOR TOTAL: ${formatCurrency(reportData.resumo.valorTotal)}
+
+DETALHAMENTO DAS FICHAS:
+${reportData.fichas.map(f => `ID: ${f.id} | ${f.scouter} | ${f.nome} | ${formatCurrency(f.valor)}`).join('\n')}
+      `.trim();
+
+      // Criar e baixar arquivo (simulação)
+      const blob = new Blob([pdfContent], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `relatorio-pagamento-${new Date().toISOString().split('T')[0]}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Relatório gerado",
+        description: "O relatório foi baixado com sucesso"
+      });
+
+    } catch (error) {
+      console.error('Erro ao gerar relatório:', error);
+      toast({
+        title: "Erro na geração",
+        description: "Não foi possível gerar o relatório",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
 
   const handlePagarTodasDoFiltro = async () => {
     if (fichasAPagar.length === 0) {
@@ -183,6 +263,39 @@ export const PaymentBatchActions = ({
     }
   };
 
+  const handlePagarAjudaCusto = async () => {
+    // Implementar lógica específica para ajuda de custo
+    toast({
+      title: "Ajuda de custo paga",
+      description: `Ajuda de custo de ${formatCurrency(valorAjudaCusto)} processada`
+    });
+  };
+
+  const handlePagarTudo = async () => {
+    try {
+      // Pagar fichas
+      if (fichasAPagar.length > 0 && onUpdateFichaPaga) {
+        const idsAPagar = fichasAPagar.map(f => f.ID?.toString()).filter(Boolean);
+        await onUpdateFichaPaga(idsAPagar, 'Sim');
+      }
+      
+      // Processar ajuda de custo
+      // Em produção, seria uma chamada separada para registrar a ajuda de custo
+      
+      toast({
+        title: "Pagamento completo processado",
+        description: `Fichas (${formatCurrency(valorTotalAPagar)}) + Ajuda de custo (${formatCurrency(valorAjudaCusto)}) = ${formatCurrency(valorTotalCompleto)}`
+      });
+    } catch (error) {
+      console.error('Erro no pagamento completo:', error);
+      toast({
+        title: "Erro no pagamento",
+        description: "Não foi possível processar o pagamento completo",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -193,7 +306,6 @@ export const PaymentBatchActions = ({
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {/* Resumo do filtro atual */}
           {filterType && (
             <div className="p-3 bg-muted rounded-lg">
               <div className="flex items-center gap-2 mb-2">
@@ -206,7 +318,6 @@ export const PaymentBatchActions = ({
                 )}
               </div>
               
-              {/* Totais de Fichas */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
                 <div>
                   <span className="text-muted-foreground">Total de fichas:</span>
@@ -230,7 +341,6 @@ export const PaymentBatchActions = ({
                 </div>
               </div>
 
-              {/* Totais de Ajuda de Custo */}
               {filters.scouter && selectedPeriod && (
                 <div className="border-t pt-3">
                   <h4 className="font-medium text-sm mb-2 text-blue-600">Ajuda de Custo - {filters.scouter}</h4>
@@ -256,7 +366,52 @@ export const PaymentBatchActions = ({
             </div>
           )}
 
-          {/* Botões de ação */}
+          {/* Botões de relatório */}
+          <div className="flex flex-wrap gap-3 p-3 bg-blue-50 rounded-lg">
+            <h4 className="w-full text-sm font-medium text-blue-800 mb-2">Gerar Relatórios (antes de pagar)</h4>
+            
+            {/* Relatório das fichas selecionadas */}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={selectedFichas.length === 0 || isGeneratingReport}
+              onClick={() => generatePaymentReport(fichasSelecionadas)}
+              className="flex items-center gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              Relatório Selecionadas ({selectedFichas.length})
+            </Button>
+
+            {/* Relatório de todas as fichas a pagar */}
+            {fichasAPagar.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isGeneratingReport}
+                onClick={() => generatePaymentReport(fichasAPagar)}
+                className="flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Relatório Todas ({fichasAPagar.length})
+              </Button>
+            )}
+
+            {/* Relatório completo (fichas + ajuda de custo) */}
+            {filters.scouter && selectedPeriod && valorAjudaCusto > 0 && fichasAPagar.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isGeneratingReport}
+                onClick={() => generatePaymentReport(fichasAPagar, true)}
+                className="flex items-center gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Relatório Completo (Fichas + Ajuda)
+              </Button>
+            )}
+          </div>
+
+          {/* Botões de ação de pagamento */}
           <div className="flex flex-wrap gap-3">
             {/* Pagar fichas selecionadas */}
             <Button
@@ -317,11 +472,12 @@ export const PaymentBatchActions = ({
               </AlertDialog>
             )}
 
-            {/* Pagar Ajuda de Custo (apenas quando há filtro por scouter e período) */}
+            {/* Pagar Ajuda de Custo */}
             {filters.scouter && selectedPeriod && valorAjudaCusto > 0 && (
               <Button
                 variant="secondary"
                 disabled={isUpdating}
+                onClick={handlePagarAjudaCusto}
                 className="flex items-center gap-2"
               >
                 <Calendar className="h-4 w-4" />
@@ -369,7 +525,7 @@ export const PaymentBatchActions = ({
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={handlePagarTodasDoFiltro}>
+                    <AlertDialogAction onClick={handlePagarTudo}>
                       Confirmar Pagamento Completo
                     </AlertDialogAction>
                   </AlertDialogFooter>

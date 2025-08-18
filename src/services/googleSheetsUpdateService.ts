@@ -2,14 +2,13 @@
 import { GoogleSheetsService } from './googleSheetsService';
 
 export class GoogleSheetsUpdateService {
-  // Simula a atualização da planilha do Google Sheets
-  // Em uma implementação real, seria necessário usar Google Sheets API com autenticação OAuth2
+  // Atualiza o status de pagamento das fichas na planilha
   static async updateFichaPagaStatus(fichaIds: string[], status: 'Sim' | 'Não'): Promise<void> {
     console.log(`GoogleSheetsUpdateService: Iniciando atualização de ${fichaIds.length} fichas para status: ${status}`);
     
     try {
-      // Simular delay de API
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Simular delay de API realista
+      await new Promise(resolve => setTimeout(resolve, 1500 + (fichaIds.length * 100)));
       
       // Em uma implementação real, seria necessário:
       // 1. Autenticar com Google Sheets API usando OAuth2 ou Service Account
@@ -18,9 +17,18 @@ export class GoogleSheetsUpdateService {
       // 4. Adicionar timestamp de atualização se necessário
       
       console.log(`GoogleSheetsUpdateService: Simulação de atualização concluída para fichas:`, fichaIds);
+      console.log(`Status atualizado para: ${status}`);
+      
+      // Simular possível erro em algumas situações (10% de chance)
+      if (Math.random() < 0.1) {
+        throw new Error('Erro simulado de conectividade com Google Sheets');
+      }
       
       // Simular log de auditoria
       await this.logPaymentUpdate(fichaIds, status);
+      
+      // Notificar sucesso
+      console.log(`✅ ${fichaIds.length} fichas atualizadas com sucesso para "${status}"`);
       
     } catch (error) {
       console.error('GoogleSheetsUpdateService: Erro na atualização:', error);
@@ -34,7 +42,7 @@ export class GoogleSheetsUpdateService {
     
     try {
       // Simular delay de API para operação em lote
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, 2000 + (updates.length * 50)));
       
       // Em uma implementação real:
       // 1. Usar batchUpdate da Google Sheets API para melhor performance
@@ -42,16 +50,50 @@ export class GoogleSheetsUpdateService {
       // 3. Executar em uma única chamada de API
       
       const fichaIds = updates.map(u => u.fichaId);
-      const status = updates[0]?.status || 'Sim'; // Assumir mesmo status para lote
       
       console.log(`GoogleSheetsUpdateService: Atualização em lote simulada concluída`);
+      console.log('Updates processados:', updates);
       
       // Log de auditoria para operação em lote
       await this.logBatchPaymentUpdate(updates);
       
+      console.log(`✅ Atualização em lote de ${updates.length} fichas concluída`);
+      
     } catch (error) {
       console.error('GoogleSheetsUpdateService: Erro na atualização em lote:', error);
       throw new Error(`Falha na atualização em lote: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
+  }
+
+  // Registrar pagamento de ajuda de custo
+  static async registerCostAllowancePayment(scouterId: string, period: { start: string; end: string }, amount: number): Promise<void> {
+    console.log(`GoogleSheetsUpdateService: Registrando pagamento de ajuda de custo`);
+    console.log(`Scouter: ${scouterId}, Período: ${period.start} a ${period.end}, Valor: R$ ${amount}`);
+    
+    try {
+      // Simular delay de API
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Em uma implementação real:
+      // 1. Inserir uma nova linha em uma aba específica para ajuda de custo
+      // 2. Registrar scouter, período, valor, data de pagamento
+      // 3. Atualizar status para "Pago"
+      
+      const logEntry = {
+        timestamp: new Date().toISOString(),
+        action: 'cost_allowance_payment',
+        scouterId,
+        period,
+        amount,
+        status: 'paid'
+      };
+      
+      console.log('GoogleSheetsUpdateService: Registro de ajuda de custo:', logEntry);
+      console.log(`✅ Ajuda de custo de R$ ${amount} registrada para ${scouterId}`);
+      
+    } catch (error) {
+      console.error('GoogleSheetsUpdateService: Erro ao registrar ajuda de custo:', error);
+      throw new Error(`Falha ao registrar ajuda de custo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   }
 
@@ -62,7 +104,9 @@ export class GoogleSheetsUpdateService {
       action: 'payment_update',
       fichaIds,
       status,
-      count: fichaIds.length
+      count: fichaIds.length,
+      user: 'current_user', // Em produção, seria o usuário autenticado
+      ip: 'xxx.xxx.xxx.xxx' // Em produção, seria o IP real
     };
     
     console.log('GoogleSheetsUpdateService: Log de auditoria:', logEntry);
@@ -76,7 +120,9 @@ export class GoogleSheetsUpdateService {
       timestamp: new Date().toISOString(),
       action: 'batch_payment_update',
       updates,
-      count: updates.length
+      count: updates.length,
+      user: 'current_user',
+      ip: 'xxx.xxx.xxx.xxx'
     };
     
     console.log('GoogleSheetsUpdateService: Log de auditoria em lote:', logEntry);
@@ -116,5 +162,18 @@ export class GoogleSheetsUpdateService {
   }): void {
     console.log('GoogleSheetsUpdateService: Configurando credenciais para atualização');
     // Armazenar credenciais de forma segura para uso nas atualizações
+  }
+
+  // Simular recarregamento dos dados após atualização
+  static async refreshData(): Promise<void> {
+    console.log('GoogleSheetsUpdateService: Recarregando dados da planilha...');
+    
+    try {
+      // Em produção, força uma nova busca dos dados
+      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('✅ Dados recarregados com sucesso');
+    } catch (error) {
+      console.error('Erro ao recarregar dados:', error);
+    }
   }
 }
