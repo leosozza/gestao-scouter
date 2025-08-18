@@ -17,6 +17,49 @@ interface DailyFichasFilterProps {
 export const DailyFichasFilter = ({ fichas, selectedPeriod }: DailyFichasFilterProps) => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
+  // Função para calcular valor seguro (mesma lógica do FinancialControlPanel)
+  const calcularValorSeguro = (valorString: any, fichaId?: string) => {
+    console.log(`[DAILY VALOR DEBUG] Ficha ${fichaId} - Valor original:`, valorString, 'Tipo:', typeof valorString);
+    
+    if (valorString === null || valorString === undefined || valorString === '') {
+      console.log(`[DAILY VALOR DEBUG] Ficha ${fichaId} - Valor vazio ou null`);
+      return 0;
+    }
+    
+    let valorLimpo;
+    
+    // Se for número, usar diretamente
+    if (typeof valorString === 'number') {
+      valorLimpo = valorString;
+      console.log(`[DAILY VALOR DEBUG] Ficha ${fichaId} - Valor numérico:`, valorLimpo);
+    } else {
+      // Converter para string e limpar
+      const str = String(valorString).trim();
+      console.log(`[DAILY VALOR DEBUG] Ficha ${fichaId} - String limpa:`, str);
+      
+      if (str === '' || str === 'null' || str === 'undefined' || str === '0' || str === 'N/A') {
+        console.log(`[DAILY VALOR DEBUG] Ficha ${fichaId} - String vazia ou inválida após limpeza`);
+        return 0;
+      }
+      
+      // Remover R$, espaços, e trocar vírgula por ponto
+      valorLimpo = str
+        .replace(/R\$\s*/g, '')
+        .replace(/\s/g, '')
+        .replace(',', '.');
+      
+      console.log(`[DAILY VALOR DEBUG] Ficha ${fichaId} - Valor após limpeza:`, valorLimpo);
+      
+      // Tentar converter para número
+      valorLimpo = parseFloat(valorLimpo);
+    }
+    
+    const resultado = isNaN(valorLimpo) ? 0 : Math.max(0, valorLimpo);
+    console.log(`[DAILY VALOR DEBUG] Ficha ${fichaId} - Valor final:`, resultado);
+    
+    return resultado;
+  };
+
   // Agrupar fichas por data
   const fichasPorDia = fichas.reduce((acc, ficha) => {
     const dataCriado = ficha.Criado;
@@ -56,10 +99,25 @@ export const DailyFichasFilter = ({ fichas, selectedPeriod }: DailyFichasFilterP
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-60 overflow-y-auto">
           {datasOrdenadas.map((data) => {
             const fichasDoDia = fichasPorDia[data];
-            const valorTotal = fichasDoDia.reduce((total, ficha) => {
-              const valor = parseFloat(ficha['Valor por Fichas'] || 0);
-              return total + (isNaN(valor) ? 0 : valor);
+            
+            // Separar fichas pagas e a pagar
+            const fichasPagas = fichasDoDia.filter(f => f['Ficha paga'] === 'Sim');
+            const fichasAPagar = fichasDoDia.filter(f => f['Ficha paga'] !== 'Sim');
+            
+            // Calcular valores usando a função correta
+            const valorPago = fichasPagas.reduce((total, ficha) => {
+              const valor = calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID);
+              return total + valor;
             }, 0);
+            
+            const valorAPagar = fichasAPagar.reduce((total, ficha) => {
+              const valor = calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID);
+              return total + valor;
+            }, 0);
+            
+            const valorTotal = valorPago + valorAPagar;
+
+            console.log(`[DAILY DEBUG] Data ${data}: Total fichas=${fichasDoDia.length}, Pagas=${fichasPagas.length}, A pagar=${fichasAPagar.length}, Valor total=${valorTotal}`);
 
             return (
               <Dialog key={data}>
@@ -77,12 +135,28 @@ export const DailyFichasFilter = ({ fichas, selectedPeriod }: DailyFichasFilterP
                     <div className="text-xs text-muted-foreground">
                       {formatCurrency(valorTotal)}
                     </div>
+                    <div className="text-xs space-y-0.5">
+                      <div className="text-green-600">
+                        Pagas: {formatCurrency(valorPago)}
+                      </div>
+                      <div className="text-orange-600">
+                        A pagar: {formatCurrency(valorAPagar)}
+                      </div>
+                    </div>
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>
-                      Fichas de {format(new Date(data), 'dd/MM/yyyy')} - {fichasDoDia.length} fichas
+                    <DialogTitle className="flex items-center justify-between">
+                      <span>Fichas de {format(new Date(data), 'dd/MM/yyyy')}</span>
+                      <div className="flex gap-4 text-sm">
+                        <span className="text-green-600">
+                          {fichasPagas.length} pagas ({formatCurrency(valorPago)})
+                        </span>
+                        <span className="text-orange-600">
+                          {fichasAPagar.length} a pagar ({formatCurrency(valorAPagar)})
+                        </span>
+                      </div>
                     </DialogTitle>
                   </DialogHeader>
                   <div className="mt-4">
@@ -106,7 +180,7 @@ export const DailyFichasFilter = ({ fichas, selectedPeriod }: DailyFichasFilterP
                               {ficha['Projetos Cormeciais'] || 'N/A'}
                             </TableCell>
                             <TableCell>{ficha['Primeiro nome'] || 'N/A'}</TableCell>
-                            <TableCell>{formatCurrency(parseFloat(ficha['Valor por Fichas'] || 0))}</TableCell>
+                            <TableCell>{formatCurrency(calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID))}</TableCell>
                             <TableCell>
                               <Badge variant={ficha['Ficha paga'] === 'Sim' ? 'default' : 'secondary'}>
                                 {ficha['Ficha paga'] || 'Não'}
