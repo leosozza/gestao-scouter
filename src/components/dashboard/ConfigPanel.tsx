@@ -1,10 +1,11 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Settings, Database, DollarSign, Download, Upload, RefreshCw, FileSpreadsheet, Plug } from "lucide-react";
+import { Settings, Database, Download, Upload, RefreshCw, FileSpreadsheet, Plug } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { GoogleSheetsService } from "@/services/googleSheetsService";
 import { TemplateModal } from "./TemplateModal";
@@ -94,9 +95,8 @@ export const ConfigPanel = ({ isOpen, onClose, onConfigUpdate, currentConfig }: 
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="database" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="database">Fonte de Dados</TabsTrigger>
-                  <TabsTrigger value="values">Valores</TabsTrigger>
                   <TabsTrigger value="integrations">Integrações</TabsTrigger>
                   <TabsTrigger value="reports">Relatórios</TabsTrigger>
                 </TabsList>
@@ -167,6 +167,15 @@ export const ConfigPanel = ({ isOpen, onClose, onConfigUpdate, currentConfig }: 
                             <li>Cole o link no campo acima</li>
                           </ol>
                         </div>
+
+                        <div className="bg-muted p-4 rounded-lg">
+                          <h4 className="font-medium mb-2">Informações sobre Valores:</h4>
+                          <ul className="text-sm space-y-1 list-disc list-inside">
+                            <li>Os valores das fichas são lidos da coluna "Valor por Fichas" na planilha</li>
+                            <li>A ajuda de custo é configurada na aba "Ajuda de Custo" do painel</li>
+                            <li>Os cálculos são atualizados em tempo real conforme os filtros aplicados</li>
+                          </ul>
+                        </div>
                       </CardContent>
                     </Card>
 
@@ -195,54 +204,6 @@ export const ConfigPanel = ({ isOpen, onClose, onConfigUpdate, currentConfig }: 
                         </div>
                       </CardContent>
                     </Card>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="values" className="space-y-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <DollarSign className="h-4 w-4" />
-                    <h3 className="text-lg font-semibold">Configuração de Valores</h3>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="ajuda-custo">Ajuda de Custo por Dia (R$)</Label>
-                      <Input
-                        id="ajuda-custo"
-                        type="number"
-                        step="0.01"
-                        value={config.ajudaCustoDiaria}
-                        onChange={(e) => setConfig(prev => ({ ...prev, ajudaCustoDiaria: parseFloat(e.target.value) || 0 }))}
-                        className="mt-1"
-                      />
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Valor pago por dia trabalhado
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="valor-ficha">Valor por Ficha Padrão (R$)</Label>
-                      <Input
-                        id="valor-ficha"
-                        type="number"
-                        step="0.01"
-                        value={config.valorPorFicha}
-                        onChange={(e) => setConfig(prev => ({ ...prev, valorPorFicha: parseFloat(e.target.value) || 0 }))}
-                        className="mt-1"
-                      />
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Valor padrão por ficha quando não especificado
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-muted p-4 rounded-lg">
-                    <h4 className="font-medium mb-2">Informações:</h4>
-                    <ul className="text-sm space-y-1 list-disc list-inside">
-                      <li>A ajuda de custo é calculada automaticamente baseada no número de dias trabalhados</li>
-                      <li>O valor por ficha pode ser sobrescrito individualmente na planilha</li>
-                      <li>Os cálculos são atualizados em tempo real conforme os filtros aplicados</li>
-                    </ul>
                   </div>
                 </TabsContent>
 
