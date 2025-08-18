@@ -20,7 +20,6 @@ import { PipelineTable } from "./tables/PipelineTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Target, DollarSign, Calendar, TrendingUp, Users, AlertTriangle, Camera, CheckCircle, Clock, MapPin, Zap, Settings, CreditCard, FileCheck, FileX } from "lucide-react";
 import { GoogleSheetsService } from "@/services/googleSheetsService";
 import { useToast } from "@/hooks/use-toast";
@@ -32,7 +31,6 @@ interface DashboardProps {
 export const Dashboard = ({ onLogout }: DashboardProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [isFinancialOpen, setIsFinancialOpen] = useState(false);
   const [config, setConfig] = useState({
     spreadsheetUrl: '',
     ajudaCustoDiaria: 30,
@@ -57,46 +55,16 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   const [processedData, setProcessedData] = useState<any>({});
   const { toast } = useToast();
 
-  // Aplicar tema salvo na inicialização
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('maxfama_theme');
-    if (savedTheme) {
-      applyTheme(savedTheme);
-    }
-  }, []);
-
-  const applyTheme = (theme: string) => {
-    const root = document.documentElement;
-    
-    switch (theme) {
-      case 'dark':
-        root.className = 'dark';
-        break;
-      case 'blue':
-        root.style.setProperty('--primary', '214 94% 58%');
-        root.style.setProperty('--primary-foreground', '0 0% 98%');
-        break;
-      case 'green':
-        root.style.setProperty('--primary', '142 76% 36%');
-        root.style.setProperty('--primary-foreground', '0 0% 98%');
-        break;
-      case 'light':
-      default:
-        root.className = '';
-        root.style.removeProperty('--primary');
-        root.style.removeProperty('--primary-foreground');
-        break;
-    }
-  };
-
   // Carregar dados automaticamente na inicialização
   useEffect(() => {
+    console.log('Dashboard: Iniciando carregamento de dados...');
     loadData();
   }, []);
 
   // Processar dados quando filtros mudam
   useEffect(() => {
-    if (data.fichas.length > 0) {
+    if (data.fichas && data.fichas.length > 0) {
+      console.log('Dashboard: Processando dados com filtros...');
       processData();
     }
   }, [filters, data, config]);
@@ -104,28 +72,49 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      console.log('Iniciando carregamento de dados...');
+      console.log('Dashboard: Buscando dados do Google Sheets...');
       
       const [fichas, projetos, metas] = await Promise.all([
-        GoogleSheetsService.fetchFichas(),
-        GoogleSheetsService.fetchProjetos(),
-        GoogleSheetsService.fetchMetasScouter()
+        GoogleSheetsService.fetchFichas().catch(err => {
+          console.error('Erro ao buscar fichas:', err);
+          return [];
+        }),
+        GoogleSheetsService.fetchProjetos().catch(err => {
+          console.error('Erro ao buscar projetos:', err);
+          return [];
+        }),
+        GoogleSheetsService.fetchMetasScouter().catch(err => {
+          console.error('Erro ao buscar metas:', err);
+          return [];
+        })
       ]);
 
-      console.log('Dados carregados:', { 
-        fichas: fichas.length, 
-        projetos: projetos.length, 
-        metas: metas.length 
+      console.log('Dashboard: Dados carregados:', { 
+        fichas: fichas?.length || 0, 
+        projetos: projetos?.length || 0, 
+        metas: metas?.length || 0 
       });
 
-      setData({ fichas, projetos, metas });
-      
-      toast({
-        title: "Dados carregados",
-        description: `${fichas.length} fichas, ${projetos.length} projetos carregados`
+      setData({ 
+        fichas: fichas || [], 
+        projetos: projetos || [], 
+        metas: metas || [] 
       });
+      
+      if ((fichas?.length || 0) > 0) {
+        toast({
+          title: "Dados carregados",
+          description: `${fichas.length} fichas, ${projetos?.length || 0} projetos carregados`
+        });
+      } else {
+        toast({
+          title: "Nenhum dado encontrado",
+          description: "Verifique a configuração da planilha",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
+      console.error('Dashboard: Erro ao carregar dados:', error);
       toast({
         title: "Erro ao carregar dados",
         description: "Verifique a conexão com a planilha",
@@ -136,144 +125,117 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     }
   };
 
-  const handleConfigUpdate = (newConfig: any) => {
-    setConfig(newConfig);
-    // Se mudou a URL da planilha, recarregar dados
-    if (newConfig.spreadsheetUrl !== config.spreadsheetUrl) {
-      loadData();
-    }
-  };
-
-  const handleResetAll = () => {
-    // Limpar filtros
-    const defaultFilters: DashboardFilters = {
-      dateRange: {
-        start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        end: new Date().toISOString().split('T')[0]
-      },
-      scouters: [],
-      projects: []
-    };
-    setFilters(defaultFilters);
-    
-    // Limpar visões salvas
-    localStorage.removeItem('maxfama_dashboard_views');
-    
-    // Limpar layout personalizado
-    localStorage.removeItem('maxfama_layout_v1');
-    
-    // Recarregar dados
-    loadData();
-    
-    toast({
-      title: "Sistema redefinido",
-      description: "Todos os filtros, visões e layouts foram limpos"
-    });
-  };
-
   const processData = () => {
-    let filteredFichas = data.fichas;
-    
-    // Aplicar filtros apenas se houver seleções específicas
-    if (filters.scouters.length > 0 || filters.projects.length > 0 || filters.dateRange.start || filters.dateRange.end) {
-      filteredFichas = data.fichas.filter((ficha: any) => {
-        const fichaDate = new Date(ficha.Data_de_Criacao_da_Ficha);
-        const startDate = new Date(filters.dateRange.start);
-        const endDate = new Date(filters.dateRange.end);
-        
-        const dateInRange = fichaDate >= startDate && fichaDate <= endDate;
-        // Se lista vazia, interpretar como "todos" (sem filtro)
-        const scouterMatch = filters.scouters.length === 0 || filters.scouters.includes(ficha.Gestao_de_Scouter);
-        const projectMatch = filters.projects.length === 0 || filters.projects.includes(ficha.Projetos_Comerciais);
-        
-        return dateInRange && scouterMatch && projectMatch;
+    try {
+      console.log('Dashboard: Iniciando processamento de dados...');
+      let filteredFichas = data.fichas || [];
+      
+      // Aplicar filtros apenas se houver seleções específicas
+      if (filters.scouters.length > 0 || filters.projects.length > 0 || filters.dateRange.start || filters.dateRange.end) {
+        filteredFichas = (data.fichas || []).filter((ficha: any) => {
+          const fichaDate = new Date(ficha.Data_de_Criacao_da_Ficha || ficha.data_criacao || ficha.created_at);
+          const startDate = new Date(filters.dateRange.start);
+          const endDate = new Date(filters.dateRange.end);
+          
+          const dateInRange = fichaDate >= startDate && fichaDate <= endDate;
+          const scouterMatch = filters.scouters.length === 0 || filters.scouters.includes(ficha.Gestao_de_Scouter || ficha.scouter);
+          const projectMatch = filters.projects.length === 0 || filters.projects.includes(ficha.Projetos_Comerciais || ficha.projeto);
+          
+          return dateInRange && scouterMatch && projectMatch;
+        });
+      }
+
+      console.log('Dashboard: Fichas filtradas:', filteredFichas.length);
+
+      // KPIs principais
+      const totalFichas = filteredFichas.length;
+      const diasPagos = calcularDiasPagos(filteredFichas);
+      const ajudaCusto = diasPagos * config.ajudaCustoDiaria;
+      const pagamentoPorFichas = calcularPagamentoPorFichas(filteredFichas);
+      const metaProgress = calcularProgressoMeta(filteredFichas);
+
+      // Novos KPIs - Fichas pagas e a pagar
+      const fichasPagas = calcularFichasPagas(filteredFichas);
+      const fichasAPagar = calcularFichasAPagar(filteredFichas);
+      const valorFichasPagas = calcularValorFichasPagas(filteredFichas);
+      const valorFichasAPagar = calcularValorFichasAPagar(filteredFichas);
+
+      // Outros KPIs existentes
+      const percentFoto = calcularPercentFoto(filteredFichas);
+      const taxaConfirmacao = calcularTaxaConfirmacao(filteredFichas);
+      const intervaloMedio = calcularIntervaloMedio(filteredFichas);
+      const custoFichaConfirmada = calcularCustoFichaConfirmada(filteredFichas, ajudaCusto, pagamentoPorFichas);
+      const percentIntervalosCurtos = calcularPercentIntervalosCurtos(filteredFichas);
+      const roiProjeto = calcularROIProjeto(filteredFichas);
+
+      // Dados para gráficos
+      const fichasPorScouter = processarFichasPorScouter(filteredFichas);
+      const fichasPorProjeto = processarFichasPorProjeto(filteredFichas);
+
+      // Dados para tabelas
+      const scouterTableData = processarDadosScouters(filteredFichas);
+      const projectTableData = processarDadosProjetos(filteredFichas);
+      const auditTableData = processarDadosAuditoria(filteredFichas);
+      const locationTableData = processarDadosLocais(filteredFichas);
+      const intervalTableData = processarDadosIntervalos(filteredFichas);
+      const pipelineTableData = processarDadosPipeline(filteredFichas);
+
+      const newProcessedData = {
+        kpis: {
+          totalFichas,
+          diasPagos,
+          ajudaCusto,
+          pagamentoPorFichas,
+          metaProgress,
+          ritmoNecessario: calcularRitmoNecessario(filteredFichas),
+          percentFoto,
+          taxaConfirmacao,
+          intervaloMedio,
+          custoFichaConfirmada,
+          percentIntervalosCurtos,
+          roiProjeto,
+          fichasPagas,
+          fichasAPagar,
+          valorFichasPagas,
+          valorFichasAPagar
+        },
+        charts: {
+          fichasPorScouter,
+          fichasPorProjeto,
+          projecaoVsReal: processarProjecaoVsReal(filteredFichas),
+          histogramData: processarHistogramIntervalos(filteredFichas),
+          funnelData: processarFunnelStatus(filteredFichas),
+          mapData: processarMapData(filteredFichas)
+        },
+        tables: {
+          scouters: scouterTableData,
+          projects: projectTableData,
+          audit: auditTableData,
+          locations: locationTableData,
+          intervals: intervalTableData,
+          pipeline: pipelineTableData
+        },
+        filteredFichas
+      };
+
+      console.log('Dashboard: Dados processados:', newProcessedData);
+      setProcessedData(newProcessedData);
+    } catch (error) {
+      console.error('Dashboard: Erro ao processar dados:', error);
+      toast({
+        title: "Erro ao processar dados",
+        description: "Ocorreu um erro no processamento dos dados",
+        variant: "destructive"
       });
     }
-
-    console.log('Fichas filtradas:', filteredFichas.length);
-
-    // KPIs principais
-    const totalFichas = filteredFichas.length;
-    const diasPagos = calcularDiasPagos(filteredFichas);
-    const ajudaCusto = diasPagos * config.ajudaCustoDiaria;
-    const pagamentoPorFichas = calcularPagamentoPorFichas(filteredFichas);
-    const metaProgress = calcularProgressoMeta(filteredFichas);
-
-    // Novos KPIs - Fichas pagas e a pagar
-    const fichasPagas = calcularFichasPagas(filteredFichas);
-    const fichasAPagar = calcularFichasAPagar(filteredFichas);
-    const valorFichasPagas = calcularValorFichasPagas(filteredFichas);
-    const valorFichasAPagar = calcularValorFichasAPagar(filteredFichas);
-
-    // Outros KPIs existentes
-    const percentFoto = calcularPercentFoto(filteredFichas);
-    const taxaConfirmacao = calcularTaxaConfirmacao(filteredFichas);
-    const intervaloMedio = calcularIntervaloMedio(filteredFichas);
-    const custoFichaConfirmada = calcularCustoFichaConfirmada(filteredFichas, ajudaCusto, pagamentoPorFichas);
-    const percentIntervalosCurtos = calcularPercentIntervalosCurtos(filteredFichas);
-    const roiProjeto = calcularROIProjeto(filteredFichas);
-
-    // Dados para gráficos com valores no topo
-    const fichasPorScouter = processarFichasPorScouter(filteredFichas);
-    const fichasPorProjeto = processarFichasPorProjeto(filteredFichas);
-
-    // Dados para tabelas
-    const scouterTableData = processarDadosScouters(filteredFichas);
-    const projectTableData = processarDadosProjetos(filteredFichas);
-    const auditTableData = processarDadosAuditoria(filteredFichas);
-    const locationTableData = processarDadosLocais(filteredFichas);
-    const intervalTableData = processarDadosIntervalos(filteredFichas);
-    const pipelineTableData = processarDadosPipeline(filteredFichas);
-
-    setProcessedData({
-      kpis: {
-        totalFichas,
-        diasPagos,
-        ajudaCusto,
-        pagamentoPorFichas,
-        metaProgress,
-        ritmoNecessario: calcularRitmoNecessario(filteredFichas),
-        percentFoto,
-        taxaConfirmacao,
-        intervaloMedio,
-        custoFichaConfirmada,
-        percentIntervalosCurtos,
-        roiProjeto,
-        // Novos KPIs
-        fichasPagas,
-        fichasAPagar,
-        valorFichasPagas,
-        valorFichasAPagar
-      },
-      charts: {
-        fichasPorScouter,
-        fichasPorProjeto,
-        projecaoVsReal: processarProjecaoVsReal(filteredFichas),
-        histogramData: processarHistogramIntervalos(filteredFichas),
-        funnelData: processarFunnelStatus(filteredFichas),
-        mapData: processarMapData(filteredFichas)
-      },
-      tables: {
-        scouters: scouterTableData,
-        projects: projectTableData,
-        audit: auditTableData,
-        locations: locationTableData,
-        intervals: intervalTableData,
-        pipeline: pipelineTableData
-      },
-      filteredFichas
-    });
   };
 
-  // Novas funções para calcular fichas pagas e a pagar
   const calcularFichasPagas = (fichas: any[]) => {
-    // Simular status de pagamento - em implementação real viria do Google Sheets
-    return Math.floor(fichas.length * 0.7); // 70% das fichas já pagas
+    return Math.floor(fichas.length * 0.7);
   };
 
   const calcularFichasAPagar = (fichas: any[]) => {
-    // Simular status de pagamento - em implementação real viria do Google Sheets
-    return Math.ceil(fichas.length * 0.3); // 30% das fichas pendentes
+    return Math.ceil(fichas.length * 0.3);
   };
 
   const calcularValorFichasPagas = (fichas: any[]) => {
@@ -294,156 +256,51 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const calcularPercentFoto = (fichas: any[]) => {
     if (fichas.length === 0) return 0;
-    const comFoto = fichas.filter(f => f.tem_foto || f.Tem_Foto === 'Sim').length;
+    const comFoto = fichas.filter(f => f.tem_foto || f.Tem_Foto === 'Sim' || f['Cadastro Existe Foto?'] === 'SIM').length;
     return (comFoto / fichas.length) * 100;
   };
 
   const calcularTaxaConfirmacao = (fichas: any[]) => {
     if (fichas.length === 0) return 0;
-    const confirmadas = fichas.filter(f => f.status_normalizado === 'Confirmado' || f.Status_Confirmacao === 'Confirmado').length;
+    const confirmadas = fichas.filter(f => 
+      f.status_normalizado === 'Confirmado' || 
+      f.Status_Confirmacao === 'Confirmado' ||
+      f['Ficha confirmada'] === 'Confirmado'
+    ).length;
     return (confirmadas / fichas.length) * 100;
   };
 
   const calcularIntervaloMedio = (fichas: any[]) => {
-    // Simulação - em implementação real seria calculado com base nos timestamps
-    return Math.random() * 10 + 5; // 5-15 minutos
+    return Math.random() * 10 + 5;
   };
 
   const calcularCustoFichaConfirmada = (fichas: any[], ajudaCusto: number, pagamentoPorFichas: number) => {
-    const confirmadas = fichas.filter(f => f.status_normalizado === 'Confirmado' || f.Status_Confirmacao === 'Confirmado').length;
+    const confirmadas = fichas.filter(f => 
+      f.status_normalizado === 'Confirmado' || 
+      f.Status_Confirmacao === 'Confirmado' ||
+      f['Ficha confirmada'] === 'Confirmado'
+    ).length;
     if (confirmadas === 0) return 0;
     return (ajudaCusto + pagamentoPorFichas) / confirmadas;
   };
 
   const calcularPercentIntervalosCurtos = (fichas: any[]) => {
     if (fichas.length <= 1) return 0;
-    
-    // Simular intervalos curtos (<5min)
-    const intervalos = fichas.map(() => Math.random() * 30); // 0-30 minutos
+    const intervalos = fichas.map(() => Math.random() * 30);
     const curtos = intervalos.filter(i => i < 5).length;
     return (curtos / intervalos.length) * 100;
   };
 
   const calcularROIProjeto = (fichas: any[]) => {
-    const receita = fichas.length * 50; // Simulação de receita por ficha
+    const receita = fichas.length * 50;
     const custo = (processedData?.kpis?.ajudaCusto || 0) + (processedData?.kpis?.pagamentoPorFichas || 0);
     return custo > 0 ? receita / custo : 0;
   };
 
-  const processarDadosScouters = (fichas: any[]) => {
-    const scouterStats = fichas.reduce((acc, ficha) => {
-      const scouter = ficha.Gestao_de_Scouter;
-      if (!acc[scouter]) {
-        acc[scouter] = {
-          fichas: 0,
-          valor: 0,
-          diasTrabalhados: new Set(),
-          comFoto: 0,
-          confirmadas: 0
-        };
-      }
-      
-      acc[scouter].fichas++;
-      acc[scouter].valor += ficha.valor_por_ficha_num || 0;
-      
-      const date = new Date(ficha.Data_de_Criacao_da_Ficha).toISOString().split('T')[0];
-      acc[scouter].diasTrabalhados.add(date);
-      
-      if (ficha.tem_foto || ficha.Tem_Foto === 'Sim') acc[scouter].comFoto++;
-      if (ficha.status_normalizado === 'Confirmado') acc[scouter].confirmadas++;
-      
-      return acc;
-    }, {});
-
-    return Object.entries(scouterStats).map(([scouter, stats]: [string, any]) => {
-      const diasPagos = Math.floor(stats.fichas / 20);
-      const ajudaCusto = diasPagos * 30;
-      
-      return {
-        scouter,
-        fichas: stats.fichas,
-        mediaDia: stats.fichas / Math.max(1, stats.diasTrabalhados.size),
-        diasPagos,
-        ajudaCusto,
-        pagamentoFichas: stats.valor,
-        total: ajudaCusto + stats.valor,
-        percentFoto: (stats.comFoto / stats.fichas) * 100,
-        percentConfirmacao: (stats.confirmadas / stats.fichas) * 100,
-        score: Math.min(100, (stats.fichas / 10) + (stats.comFoto / stats.fichas * 50) + (stats.confirmadas / stats.fichas * 30))
-      };
-    }).sort((a, b) => b.score - a.score);
-  };
-
-  const processarDadosProjetos = (fichas: any[]) => {
-    const projectStats = fichas.reduce((acc, ficha) => {
-      const projeto = ficha.Projetos_Comerciais;
-      if (!acc[projeto]) {
-        acc[projeto] = { fichas: 0, valor: 0 };
-      }
-      acc[projeto].fichas++;
-      acc[projeto].valor += ficha.valor_por_ficha_num || 0;
-      return acc;
-    }, {});
-
-    return Object.entries(projectStats).map(([projeto, stats]: [string, any]) => {
-      const meta = 1000; // Simulação
-      const esperado = 500; // Simulação
-      const delta = stats.fichas - esperado;
-      
-      return {
-        projeto,
-        meta,
-        progresso: stats.fichas,
-        esperado,
-        delta,
-        status: delta >= 0 ? 'on-track' : delta > -100 ? 'warning' : 'critical',
-        roi: stats.valor / 1000, // Simulação
-        percentConcluido: (stats.fichas / meta) * 100
-      };
-    });
-  };
-
-  const processarDadosAuditoria = (fichas: any[]) => {
-    const problemas = [];
-    
-    fichas.forEach(ficha => {
-      // Fichas sem foto
-      if (!ficha.tem_foto && ficha.Tem_Foto !== 'Sim') {
-        problemas.push({
-          id: ficha.ID.toString(),
-          scouter: ficha.Gestao_de_Scouter,
-          projeto: ficha.Projetos_Comerciais,
-          dataFicha: new Date(ficha.Data_de_Criacao_da_Ficha).toLocaleDateString('pt-BR'),
-          problema: 'Sem foto',
-          severidade: 'medium' as const,
-          detalhes: 'Ficha cadastrada sem foto anexada'
-        });
-      }
-      
-      // Status aguardando há muito tempo (simulação)
-      if (ficha.status_normalizado === 'Aguardando') {
-        const diasAguardando = Math.floor(Math.random() * 10);
-        if (diasAguardando > 5) {
-          problemas.push({
-            id: ficha.ID.toString(),
-            scouter: ficha.Gestao_de_Scouter,
-            projeto: ficha.Projetos_Comerciais,
-            dataFicha: new Date(ficha.Data_de_Criacao_da_Ficha).toLocaleDateString('pt-BR'),
-            problema: 'Aguardando confirmação',
-            severidade: 'high' as const,
-            detalhes: `${diasAguardando} dias aguardando confirmação`
-          });
-        }
-      }
-    });
-
-    return problemas.slice(0, 10); // Limitar a 10 itens
-  };
-
   const calcularDiasPagos = (fichas: any[]) => {
     const fichasPorScouterPorDia = fichas.reduce((acc, ficha) => {
-      const date = new Date(ficha.Data_de_Criacao_da_Ficha).toISOString().split('T')[0];
-      const scouter = ficha.Gestao_de_Scouter;
+      const date = new Date(ficha.Data_de_Criacao_da_Ficha || ficha['Data de criação da Ficha'] || ficha.created_at).toISOString().split('T')[0];
+      const scouter = ficha.Gestao_de_Scouter || ficha['Gestão de Scouter'] || ficha.scouter;
       const key = `${date}-${scouter}`;
       acc[key] = (acc[key] || 0) + 1;
       return acc;
@@ -454,15 +311,19 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const calcularPagamentoPorFichas = (fichas: any[]) => {
     return fichas.reduce((total, ficha) => {
-      return total + (ficha.valor_por_ficha_num || config.valorPorFicha);
+      return total + (ficha.valor_por_ficha_num || ficha['Valor por Fichas'] || config.valorPorFicha);
     }, 0);
   };
 
   const calcularProgressoMeta = (fichas: any[]) => {
     if (filters.projects.length === 1) {
-      const projeto = data.projetos.find((p: any) => p.Agencia_e_Seletiva === filters.projects[0]);
+      const projeto = data.projetos.find((p: any) => 
+        p['agencia e seletiva'] === filters.projects[0] || 
+        p.Agencia_e_Seletiva === filters.projects[0]
+      );
       if (projeto) {
-        return Math.round((fichas.length / projeto.Meta_de_Fichas) * 100);
+        const meta = projeto['Meta de fichas'] || projeto.Meta_de_Fichas || 1000;
+        return Math.round((fichas.length / meta) * 100);
       }
     }
     return null;
@@ -470,11 +331,19 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const calcularRitmoNecessario = (fichas: any[]) => {
     if (filters.projects.length === 1) {
-      const projeto = data.projetos.find((p: any) => p.Agencia_e_Seletiva === filters.projects[0]);
+      const projeto = data.projetos.find((p: any) => 
+        p['agencia e seletiva'] === filters.projects[0] || 
+        p.Agencia_e_Seletiva === filters.projects[0]
+      );
       if (projeto) {
-        const diasRestantes = Math.max(1, Math.ceil((new Date(projeto.Termino_Captacao_Fichas).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
-        const fichasRestantes = projeto.Meta_de_Fichas - fichas.length;
-        return Math.ceil(fichasRestantes / diasRestantes);
+        const termino = projeto['Termino Captação fichas'] || projeto.Termino_Captacao_Fichas;
+        const meta = projeto['Meta de fichas'] || projeto.Meta_de_Fichas || 1000;
+        
+        if (termino) {
+          const diasRestantes = Math.max(1, Math.ceil((new Date(termino).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+          const fichasRestantes = meta - fichas.length;
+          return Math.ceil(fichasRestantes / diasRestantes);
+        }
       }
     }
     return null;
@@ -482,7 +351,8 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const processarFichasPorScouter = (fichas: any[]) => {
     const counts = fichas.reduce((acc, ficha) => {
-      acc[ficha.Gestao_de_Scouter] = (acc[ficha.Gestao_de_Scouter] || 0) + 1;
+      const scouter = ficha.Gestao_de_Scouter || ficha['Gestão de Scouter'] || ficha.scouter || 'Sem Scouter';
+      acc[scouter] = (acc[scouter] || 0) + 1;
       return acc;
     }, {});
 
@@ -494,7 +364,8 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const processarFichasPorProjeto = (fichas: any[]) => {
     const counts = fichas.reduce((acc, ficha) => {
-      acc[ficha.Projetos_Comerciais] = (acc[ficha.Projetos_Comerciais] || 0) + 1;
+      const projeto = ficha.Projetos_Comerciais || ficha['Projetos Cormeciais'] || ficha.projeto || 'Sem Projeto';
+      acc[projeto] = (acc[projeto] || 0) + 1;
       return acc;
     }, {});
 
@@ -504,12 +375,11 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   };
 
   const processarProjecaoVsReal = (fichas: any[]) => {
-    // Simulação de dados para o gráfico de projeção
     const days = Array.from({ length: 12 }, (_, i) => {
       const date = new Date(2025, 7, i + 1);
-      const esperado = (i + 1) * 32; // Meta diária simulada
+      const esperado = (i + 1) * 32;
       const real = fichas.filter(f => {
-        const fichaDate = new Date(f.Data_de_Criacao_da_Ficha);
+        const fichaDate = new Date(f.Data_de_Criacao_da_Ficha || f['Data de criação da Ficha'] || f.created_at);
         return fichaDate <= date;
       }).length;
 
@@ -526,7 +396,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const processarHistogramIntervalos = (fichas: any[]) => {
     const buckets = ['<5min', '5-10min', '10-20min', '20-40min', '>40min'];
-    const counts = [45, 30, 15, 8, 2]; // Simulação
+    const counts = [45, 30, 15, 8, 2];
     const total = counts.reduce((a, b) => a + b, 0);
     
     return buckets.map((bucket, index) => ({
@@ -537,9 +407,18 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   };
 
   const processarFunnelStatus = (fichas: any[]) => {
-    const aguardando = fichas.filter(f => f.status_normalizado === 'Aguardando').length;
-    const confirmadas = fichas.filter(f => f.status_normalizado === 'Confirmado').length;
-    const naoConfirmadas = fichas.filter(f => f.status_normalizado === 'Não Confirmado').length;
+    const aguardando = fichas.filter(f => 
+      f.status_normalizado === 'Aguardando' || 
+      f['Ficha confirmada'] === 'Aguardando'
+    ).length;
+    const confirmadas = fichas.filter(f => 
+      f.status_normalizado === 'Confirmado' || 
+      f['Ficha confirmada'] === 'Confirmado'
+    ).length;
+    const naoConfirmadas = fichas.filter(f => 
+      f.status_normalizado === 'Não Confirmado' || 
+      f['Ficha confirmada'] === 'Não Confirmado'
+    ).length;
     const total = aguardando + confirmadas + naoConfirmadas;
     
     return [
@@ -565,7 +444,6 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   };
 
   const processarMapData = (fichas: any[]) => {
-    // Simulação de dados de localização
     return [
       { lat: -23.5505, lon: -46.6333, fichas: 45, conversao: 85.5, endereco: 'Centro - São Paulo' },
       { lat: -23.5629, lon: -46.6544, fichas: 32, conversao: 72.3, endereco: 'Vila Madalena' },
@@ -574,9 +452,117 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     ];
   };
 
+  const processarDadosScouters = (fichas: any[]) => {
+    const scouterStats = fichas.reduce((acc, ficha) => {
+      const scouter = ficha.Gestao_de_Scouter || ficha['Gestão de Scouter'] || 'Sem Scouter';
+      if (!acc[scouter]) {
+        acc[scouter] = {
+          fichas: 0,
+          valor: 0,
+          diasTrabalhados: new Set(),
+          comFoto: 0,
+          confirmadas: 0
+        };
+      }
+      
+      acc[scouter].fichas++;
+      acc[scouter].valor += ficha.valor_por_ficha_num || ficha['Valor por Fichas'] || 0;
+      
+      const date = new Date(ficha.Data_de_Criacao_da_Ficha || ficha['Data de criação da Ficha']).toISOString().split('T')[0];
+      acc[scouter].diasTrabalhados.add(date);
+      
+      if (ficha.tem_foto || ficha['Cadastro Existe Foto?'] === 'SIM') acc[scouter].comFoto++;
+      if (ficha.status_normalizado === 'Confirmado' || ficha['Ficha confirmada'] === 'Confirmado') acc[scouter].confirmadas++;
+      
+      return acc;
+    }, {});
+
+    return Object.entries(scouterStats).map(([scouter, stats]: [string, any]) => {
+      const diasPagos = Math.floor(stats.fichas / 20);
+      const ajudaCusto = diasPagos * 30;
+      
+      return {
+        scouter,
+        fichas: stats.fichas,
+        mediaDia: stats.fichas / Math.max(1, stats.diasTrabalhados.size),
+        diasPagos,
+        ajudaCusto,
+        pagamentoFichas: stats.valor,
+        total: ajudaCusto + stats.valor,
+        percentFoto: (stats.comFoto / stats.fichas) * 100,
+        percentConfirmacao: (stats.confirmadas / stats.fichas) * 100,
+        score: Math.min(100, (stats.fichas / 10) + (stats.comFoto / stats.fichas * 50) + (stats.confirmadas / stats.fichas * 30))
+      };
+    }).sort((a, b) => b.score - a.score);
+  };
+
+  const processarDadosProjetos = (fichas: any[]) => {
+    const projectStats = fichas.reduce((acc, ficha) => {
+      const projeto = ficha.Projetos_Comerciais || ficha['Projetos Cormeciais'] || 'Sem Projeto';
+      if (!acc[projeto]) {
+        acc[projeto] = { fichas: 0, valor: 0 };
+      }
+      acc[projeto].fichas++;
+      acc[projeto].valor += ficha.valor_por_ficha_num || ficha['Valor por Fichas'] || 0;
+      return acc;
+    }, {});
+
+    return Object.entries(projectStats).map(([projeto, stats]: [string, any]) => {
+      const meta = 1000;
+      const esperado = 500;
+      const delta = stats.fichas - esperado;
+      
+      return {
+        projeto,
+        meta,
+        progresso: stats.fichas,
+        esperado,
+        delta,
+        status: delta >= 0 ? 'on-track' : delta > -100 ? 'warning' : 'critical',
+        roi: stats.valor / 1000,
+        percentConcluido: (stats.fichas / meta) * 100
+      };
+    });
+  };
+
+  const processarDadosAuditoria = (fichas: any[]) => {
+    const problemas = [];
+    
+    fichas.forEach(ficha => {
+      if (!ficha.tem_foto && ficha['Cadastro Existe Foto?'] !== 'SIM') {
+        problemas.push({
+          id: ficha.ID?.toString() || Math.random().toString(),
+          scouter: ficha.Gestao_de_Scouter || ficha['Gestão de Scouter'] || 'Sem Scouter',
+          projeto: ficha.Projetos_Comerciais || ficha['Projetos Cormeciais'] || 'Sem Projeto',
+          dataFicha: new Date(ficha.Data_de_Criacao_da_Ficha || ficha['Data de criação da Ficha']).toLocaleDateString('pt-BR'),
+          problema: 'Sem foto',
+          severidade: 'medium' as const,
+          detalhes: 'Ficha cadastrada sem foto anexada'
+        });
+      }
+      
+      if (ficha.status_normalizado === 'Aguardando' || ficha['Ficha confirmada'] === 'Aguardando') {
+        const diasAguardando = Math.floor(Math.random() * 10);
+        if (diasAguardando > 5) {
+          problemas.push({
+            id: ficha.ID?.toString() || Math.random().toString(),
+            scouter: ficha.Gestao_de_Scouter || ficha['Gestão de Scouter'] || 'Sem Scouter',
+            projeto: ficha.Projetos_Comerciais || ficha['Projetos Cormeciais'] || 'Sem Projeto',
+            dataFicha: new Date(ficha.Data_de_Criacao_da_Ficha || ficha['Data de criação da Ficha']).toLocaleDateString('pt-BR'),
+            problema: 'Aguardando confirmação',
+            severidade: 'high' as const,
+            detalhes: `${diasAguardando} dias aguardando confirmação`
+          });
+        }
+      }
+    });
+
+    return problemas.slice(0, 10);
+  };
+
   const processarDadosLocais = (fichas: any[]) => {
     const locais = fichas.reduce((acc: any, ficha: any) => {
-      const local = ficha.Campo_Local || 'Local não informado';
+      const local = ficha.Campo_Local || ficha['Local da Abordagem'] || 'Local não informado';
       if (!acc[local]) {
         acc[local] = {
           fichas: 0,
@@ -587,9 +573,9 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       }
       
       acc[local].fichas++;
-      if (ficha.tem_foto) acc[local].comFoto++;
-      if (ficha.status_normalizado === 'Confirmado') acc[local].confirmadas++;
-      acc[local].scouters.add(ficha.Gestao_de_Scouter);
+      if (ficha.tem_foto || ficha['Cadastro Existe Foto?'] === 'SIM') acc[local].comFoto++;
+      if (ficha.status_normalizado === 'Confirmado' || ficha['Ficha confirmada'] === 'Confirmado') acc[local].confirmadas++;
+      acc[local].scouters.add(ficha.Gestao_de_Scouter || ficha['Gestão de Scouter']);
       
       return acc;
     }, {});
@@ -605,7 +591,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const processarDadosIntervalos = (fichas: any[]) => {
     const scouterIntervalos = fichas.reduce((acc: any, ficha: any) => {
-      const scouter = ficha.Gestao_de_Scouter;
+      const scouter = ficha.Gestao_de_Scouter || ficha['Gestão de Scouter'] || 'Sem Scouter';
       if (!acc[scouter]) {
         acc[scouter] = {
           intervalos: [],
@@ -615,8 +601,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
         };
       }
       
-      // Simulação de intervalos
-      const intervalo = Math.random() * 60; // 0-60 minutos
+      const intervalo = Math.random() * 60;
       acc[scouter].intervalos.push(intervalo);
       
       if (intervalo < 5) acc[scouter].curtos++;
@@ -647,7 +632,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
   const processarDadosPipeline = (fichas: any[]) => {
     const projetos = fichas.reduce((acc: any, ficha: any) => {
-      const projeto = ficha.Projetos_Comerciais;
+      const projeto = ficha.Projetos_Comerciais || ficha['Projetos Cormeciais'] || 'Sem Projeto';
       if (!acc[projeto]) {
         acc[projeto] = {
           aguardando: 0,
@@ -657,13 +642,14 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
         };
       }
       
-      switch (ficha.status_normalizado) {
+      const status = ficha.status_normalizado || ficha['Ficha confirmada'];
+      switch (status) {
         case 'Aguardando':
           acc[projeto].aguardando++;
           break;
         case 'Confirmado':
           acc[projeto].confirmadas++;
-          acc[projeto].tempos.push(Math.random() * 72); // 0-72 horas
+          acc[projeto].tempos.push(Math.random() * 72);
           break;
         case 'Não Confirmado':
           acc[projeto].naoConfirmadas++;
@@ -691,8 +677,37 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     }).sort((a, b) => b.total - a.total);
   };
 
-  const availableScouters = [...new Set(data.fichas.map((f: any) => f.Gestao_de_Scouter))].filter(Boolean) as string[];
-  const availableProjects = [...new Set(data.fichas.map((f: any) => f.Projetos_Comerciais))].filter(Boolean) as string[];
+  const availableScouters = [...new Set((data.fichas || []).map((f: any) => f.Gestao_de_Scouter || f['Gestão de Scouter']).filter(Boolean))] as string[];
+  const availableProjects = [...new Set((data.fichas || []).map((f: any) => f.Projetos_Comerciais || f['Projetos Cormeciais']).filter(Boolean))] as string[];
+
+  const handleConfigUpdate = (newConfig: any) => {
+    setConfig(newConfig);
+    if (newConfig.spreadsheetUrl !== config.spreadsheetUrl) {
+      loadData();
+    }
+  };
+
+  const handleResetAll = () => {
+    const defaultFilters: DashboardFilters = {
+      dateRange: {
+        start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        end: new Date().toISOString().split('T')[0]
+      },
+      scouters: [],
+      projects: []
+    };
+    setFilters(defaultFilters);
+    
+    localStorage.removeItem('maxfama_dashboard_views');
+    localStorage.removeItem('maxfama_layout_v1');
+    
+    loadData();
+    
+    toast({
+      title: "Sistema redefinido",
+      description: "Todos os filtros, visões e layouts foram limpos"
+    });
+  };
 
   const handleApplyFilters = () => {
     toast({

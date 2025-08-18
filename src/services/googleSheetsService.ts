@@ -1,282 +1,291 @@
 
-import { parseFichaDateTimeBR } from '../utils/formatters';
-
-// Serviço para buscar dados das planilhas públicas do Google Sheets
 export class GoogleSheetsService {
   private static readonly SPREADSHEET_ID = '14l4A_BOFZM-TwLuam-bKzUgInNAA7fOCeamdkE1nt_o';
   
-  // GIDs corretos das abas conforme funcionando nos logs
+  // GIDs das abas da planilha
   private static readonly GIDS = {
-    fichas: '452792639', // Aba com dados das fichas (funcionando)
-    projetos: '449483735', // Aba com dados dos projetos (funcionando)
-    metas_scouter: '0' // Aba com metas individuais dos scouters
+    FICHAS: '452792639',
+    PROJETOS: '449483735',
+    METAS: '0' // Esta aba parece não existir, vamos usar um fallback
   };
 
-  private static csvToJson(csvText: string): any[] {
-    const lines = csvText.split('\n');
-    if (lines.length < 2) return [];
+  private static readonly BASE_URL = 'https://docs.google.com/spreadsheets/d';
 
-    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-    const data: any[] = [];
+  private static buildUrl(gid: string): string {
+    return `${this.BASE_URL}/${this.SPREADSHEET_ID}/export?format=csv&gid=${gid}`;
+  }
 
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
+  private static async fetchCsvData(gid: string): Promise<any[]> {
+    try {
+      const url = this.buildUrl(gid);
+      console.log(`GoogleSheetsService: Buscando dados de ${url}`);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/csv',
+        },
+      });
 
-      const values = this.parseCSVLine(line);
-      if (values.length > 0) {
-        const row: any = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index]?.trim().replace(/"/g, '') || '';
-        });
+      if (!response.ok) {
+        console.error(`GoogleSheetsService: Erro HTTP ${response.status} para GID ${gid}`);
         
-        // Só adiciona se tem dados relevantes
-        if (Object.values(row).some(value => value && value.toString().trim())) {
+        // Se for erro 400, a aba pode não existir
+        if (response.status === 400) {
+          console.warn(`GoogleSheetsService: Aba com GID ${gid} não encontrada, retornando array vazio`);
+          return [];
+        }
+        
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const csvText = await response.text();
+      console.log(`GoogleSheetsService: Recebidos ${csvText.length} caracteres de CSV para GID ${gid}`);
+      
+      if (!csvText.trim()) {
+        console.warn(`GoogleSheetsService: CSV vazio para GID ${gid}`);
+        return [];
+      }
+
+      return this.parseCsv(csvText);
+    } catch (error) {
+      console.error(`GoogleSheetsService: Erro ao buscar dados da aba ${gid}:`, error);
+      throw error;
+    }
+  }
+
+  private static parseCsv(csvText: string): any[] {
+    try {
+      const lines = csvText.trim().split('\n');
+      
+      if (lines.length === 0) {
+        console.warn('GoogleSheetsService: CSV sem linhas');
+        return [];
+      }
+
+      // Parse da primeira linha como cabeçalhos
+      const headers = this.parseCsvLine(lines[0]);
+      console.log(`GoogleSheetsService: Cabeçalhos encontrados:`, headers);
+
+      if (lines.length === 1) {
+        console.warn('GoogleSheetsService: CSV só tem cabeçalhos');
+        return [];
+      }
+
+      // Parse das linhas de dados
+      const data = [];
+      for (let i = 1; i < lines.length; i++) {
+        if (lines[i].trim()) {
+          const values = this.parseCsvLine(lines[i]);
+          const row: any = {};
+          
+          headers.forEach((header, index) => {
+            row[header] = values[index] || '';
+            
+            // Processamento especial para campos numéricos
+            if (header.toLowerCase().includes('valor') || header.toLowerCase().includes('meta') || header.toLowerCase().includes('idade')) {
+              const numValue = parseFloat(values[index]);
+              if (!isNaN(numValue)) {
+                row[`${header}_num`] = numValue;
+              }
+            }
+            
+            // Processamento para datas
+            if (header.toLowerCase().includes('data') || header.toLowerCase().includes('criado')) {
+              const dateValue = this.parseDate(values[index]);
+              if (dateValue) {
+                row[`${header}_date`] = dateValue;
+              }
+            }
+          });
+          
           data.push(row);
         }
       }
-    }
 
-    return data;
+      console.log(`GoogleSheetsService: Processadas ${data.length} linhas de dados`);
+      return data;
+    } catch (error) {
+      console.error('GoogleSheetsService: Erro ao fazer parse do CSV:', error);
+      throw error;
+    }
   }
 
-  private static parseCSVLine(line: string): string[] {
-    const result: string[] = [];
+  private static parseCsvLine(line: string): string[] {
+    const result = [];
     let current = '';
     let inQuotes = false;
-
+    
     for (let i = 0; i < line.length; i++) {
       const char = line[i];
       
       if (char === '"') {
         inQuotes = !inQuotes;
       } else if (char === ',' && !inQuotes) {
-        result.push(current);
+        result.push(current.trim());
         current = '';
       } else {
         current += char;
       }
     }
     
-    result.push(current);
+    result.push(current.trim());
     return result;
   }
 
-  private static async fetchSheetData(gid: string): Promise<any[]> {
-    const url = `https://docs.google.com/spreadsheets/d/${this.SPREADSHEET_ID}/export?format=csv&gid=${gid}`;
+  private static parseDate(dateStr: string): Date | null {
+    if (!dateStr || dateStr.trim() === '') return null;
     
     try {
-      console.log(`Buscando dados da planilha GID ${gid}: ${url}`);
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error(`Erro HTTP: ${response.status} - Verifique se a planilha está pública e o GID ${gid} está correto`);
+      // Tenta diferentes formatos de data
+      const formats = [
+        /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, // DD/MM/YYYY
+        /^(\d{4})-(\d{1,2})-(\d{1,2})$/, // YYYY-MM-DD
+        /^(\d{1,2})-(\d{1,2})-(\d{4})$/, // DD-MM-YYYY
+      ];
+
+      for (const format of formats) {
+        const match = dateStr.match(format);
+        if (match) {
+          if (format === formats[1]) { // YYYY-MM-DD
+            return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+          } else { // DD/MM/YYYY ou DD-MM-YYYY
+            return new Date(parseInt(match[3]), parseInt(match[2]) - 1, parseInt(match[1]));
+          }
+        }
       }
       
-      const csvText = await response.text();
-      console.log(`Dados recebidos do GID ${gid}: ${csvText.length} caracteres`);
-      
-      // Verifica se o retorno é HTML de erro
-      if (csvText.includes('<!DOCTYPE html>')) {
-        throw new Error(`A aba com GID ${gid} não foi encontrada. Verifique se a planilha está publicada corretamente.`);
+      // Fallback para Date.parse
+      const parsed = Date.parse(dateStr);
+      if (!isNaN(parsed)) {
+        return new Date(parsed);
       }
       
-      const data = this.csvToJson(csvText);
-      console.log(`Processados ${data.length} registros do GID ${gid}`);
-      return data;
-      
+      return null;
     } catch (error) {
-      console.error(`Erro ao buscar dados da planilha (GID: ${gid}):`, error);
-      throw error;
+      console.warn(`GoogleSheetsService: Erro ao fazer parse da data "${dateStr}":`, error);
+      return null;
     }
-  }
-
-  // Normaliza valores yes/no para boolean
-  private static normalizeYesNo(value: string): boolean {
-    const normalized = value.toLowerCase().trim();
-    return normalized === 'sim' || normalized === 'yes' || normalized === 'true' || normalized === '1';
-  }
-
-  // Parse de coordenadas lat,lon
-  private static parseLatLon(value: string): { lat: number; lon: number } | null {
-    if (!value || !value.includes(',')) return null;
-    
-    const parts = value.split(',').map(p => parseFloat(p.trim()));
-    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-      return { lat: parts[0], lon: parts[1] };
-    }
-    return null;
-  }
-
-  // Parse de moeda brasileira
-  private static parseMoneyBR(value: string): number {
-    if (!value) return 0;
-    
-    // Remove caracteres não numéricos exceto vírgula e ponto
-    const cleaned = value.replace(/[^\d,.]/g, '');
-    
-    // Se tem vírgula, assume que é separador decimal brasileiro
-    if (cleaned.includes(',')) {
-      const parts = cleaned.split(',');
-      if (parts.length === 2) {
-        return parseFloat(parts[0].replace(/\./g, '') + '.' + parts[1]) || 0;
-      }
-    }
-    
-    return parseFloat(cleaned.replace(/,/g, '.')) || 0;
   }
 
   static async fetchFichas(): Promise<any[]> {
     try {
-      const data = await this.fetchSheetData(this.GIDS.fichas);
-      console.log(`Fichas carregadas: ${data.length} registros`);
-      console.log('Headers fichas:', data.length > 0 ? Object.keys(data[0]) : 'Nenhum');
+      console.log('GoogleSheetsService: Buscando fichas...');
+      const fichas = await this.fetchCsvData(this.GIDS.FICHAS);
       
-      return data.map(row => {
-        // Parse da data usando a coluna "Data de criação da Ficha" como padrão
-        const fichaDateTime = row['Data de criação da Ficha'] || row['Data_de_Criacao_da_Ficha'] || row['Criado'] || '';
-        const parsedDate = parseFichaDateTimeBR(fichaDateTime);
-        
-        if (!parsedDate) {
-          console.warn('Data inválida encontrada:', fichaDateTime, 'na ficha ID:', row.ID);
-        }
+      // Adiciona campos processados
+      const processedFichas = fichas.map(ficha => ({
+        ...ficha,
+        // Normaliza campos principais
+        scouter: ficha['Gestão de Scouter'] || ficha.Gestao_de_Scouter,
+        projeto: ficha['Projetos Cormeciais'] || ficha.Projetos_Comerciais,
+        data_criacao: ficha['Data de criação da Ficha'] || ficha.Data_de_Criacao_da_Ficha,
+        tem_foto: ficha['Cadastro Existe Foto?'] === 'SIM' || ficha.tem_foto === 'Sim',
+        status_normalizado: this.normalizeStatus(ficha['Ficha confirmada'] || ficha.status),
+        valor_por_ficha_num: this.parseNumber(ficha['Valor por Fichas'] || ficha.valor_por_ficha),
+        idade_num: this.parseNumber(ficha.Idade || ficha.idade),
+      }));
 
-        const processedRow = {
-          ID: parseInt(row.ID) || Math.random() * 1000000,
-          Projetos_Comerciais: row['Projetos Cormeciais'] || row['Projetos_Comerciais'] || row['Projeto'] || '',
-          Gestao_de_Scouter: row['Gestão de Scouter'] || row['Gestao_de_Scouter'] || row['Scouter'] || row['Nome'] || '',
-          Criado: row.Criado || row['Data_Criacao'] || '',
-          Data_de_Criacao_da_Ficha: fichaDateTime,
-          MaxScouterApp_Verificacao: row['MaxScouterApp_Verificacao'] || row['Verificacao'] || '',
-          Valor_por_Fichas: row['Valor por Fichas'] || row['Valor_por_Fichas'] || row['Valor'] || 'R$ 2,50',
-          Campo_Local: row['Campo_Local'] || row['Local'] || row['Endereco'] || '',
-          Tem_Foto: row['Tem_Foto'] || row['Foto'] || 'Não',
-          Status_Confirmacao: row['Status_Confirmacao'] || row['Status'] || 'Aguardando',
-          
-          // Campos processados
-          valor_por_ficha_num: this.parseMoneyBR(row['Valor por Fichas'] || row['Valor_por_Fichas'] || row['Valor'] || '2.50'),
-          geo: this.parseLatLon(row['Campo_Local'] || row['Local'] || ''),
-          tem_foto: this.normalizeYesNo(row['Tem_Foto'] || row['Foto'] || ''),
-          status_normalizado: (row['Status_Confirmacao'] || row['Status'] || 'Aguardando').trim(),
-          
-          // Novos campos normalizados de data
-          created_at_iso: parsedDate?.created_at_iso || new Date().toISOString(),
-          created_day: parsedDate?.created_day || new Date().toISOString().split('T')[0]
-        };
-        
-        return processedRow;
-      }).filter(row => row.Gestao_de_Scouter && row.Projetos_Comerciais);
+      console.log(`GoogleSheetsService: ${processedFichas.length} fichas processadas`);
+      return processedFichas;
     } catch (error) {
-      console.error('Erro ao carregar fichas:', error);
-      throw error;
+      console.error('GoogleSheetsService: Erro ao buscar fichas:', error);
+      return [];
     }
   }
 
   static async fetchProjetos(): Promise<any[]> {
     try {
-      const data = await this.fetchSheetData(this.GIDS.projetos);
-      console.log(`Projetos carregados: ${data.length} registros`);
-      console.log('Headers projetos:', data.length > 0 ? Object.keys(data[0]) : 'Nenhum');
+      console.log('GoogleSheetsService: Buscando projetos...');
+      const projetos = await this.fetchCsvData(this.GIDS.PROJETOS);
       
-      return data.map(row => ({
-        agencia_e_seletiva: row['agencia e seletiva'] || row['Agencia_e_Seletiva'] || row['Projeto'] || '',
-        meta_de_fichas: parseInt(row['Meta de fichas'] || row['meta_de_fichas'] || row['Meta']) || 1000,
-        inicio_captacao_fichas: row['Inicio Captação fichas'] || row['inicio_captacao_fichas'] || row['Inicio'] || '',
-        termino_captacao_fichas: row['Termino Captação fichas'] || row['termino_captacao_fichas'] || row['Termino'] || '',
-        meta_individual: parseInt(row['Meta Individual'] || row['meta_individual']) || 500,
-        
-        // Campos calculados
-        dias_total: this.calculateProjectDays(
-          row['Inicio Captação fichas'] || row['inicio_captacao_fichas'] || row['Inicio'], 
-          row['Termino Captação fichas'] || row['termino_captacao_fichas'] || row['Termino']
-        ),
-        taxa_diaria_meta: this.calculateDailyRate(
-          row['Meta de fichas'] || row['meta_de_fichas'] || row['Meta'], 
-          row['Inicio Captação fichas'] || row['inicio_captacao_fichas'] || row['Inicio'], 
-          row['Termino Captação fichas'] || row['termino_captacao_fichas'] || row['Termino']
-        )
-      })).filter(row => row.agencia_e_seletiva);
+      // Processa projetos
+      const processedProjetos = projetos.map(projeto => ({
+        ...projeto,
+        // Normaliza campos
+        nome: projeto['agencia e seletiva'] || projeto.nome,
+        meta_fichas: this.parseNumber(projeto['Meta de fichas'] || projeto.meta_fichas),
+        inicio_captacao: this.parseDate(projeto['Inicio Captação fichas'] || projeto.inicio_captacao),
+        termino_captacao: this.parseDate(projeto['Termino Captação fichas'] || projeto.termino_captacao),
+        meta_individual: this.parseNumber(projeto['Meta Individual'] || projeto.meta_individual),
+      }));
+
+      console.log(`GoogleSheetsService: ${processedProjetos.length} projetos processados`);
+      return processedProjetos;
     } catch (error) {
-      console.error('Erro ao carregar projetos:', error);
-      throw error;
+      console.error('GoogleSheetsService: Erro ao buscar projetos:', error);
+      return [];
     }
   }
 
   static async fetchMetasScouter(): Promise<any[]> {
     try {
-      const data = await this.fetchSheetData(this.GIDS.metas_scouter);
-      console.log(`Metas scouter carregadas: ${data.length} registros`);
-      console.log('Headers metas:', data.length > 0 ? Object.keys(data[0]) : 'Nenhum');
-      
-      return data.map(row => ({
-        scouter: (row.scouter || row.Scouter || row.Nome || '').trim(),
-        meta: parseInt(row.meta || row.Meta) || 0,
-        inicio: row.inicio || row.Inicio || '',
-        termino: row.termino || row.Termino || '',
-        projeto: (row.projeto || row.Projeto || '').trim(),
-        valor_por_ficha_override: this.parseMoneyBR(row.valor_por_ficha_override || row['Valor_Override'] || '')
-      })).filter(row => row.scouter && row.meta > 0);
+      console.log('GoogleSheetsService: Buscando metas de scouter...');
+      // Como a aba de metas não existe, retorna array vazio
+      console.log('GoogleSheetsService: Aba de metas não configurada, retornando array vazio');
+      return [];
     } catch (error) {
-      console.warn('Erro ao carregar metas scouter (usando valores padrão):', error);
+      console.error('GoogleSheetsService: Erro ao buscar metas:', error);
       return [];
     }
   }
 
-  private static calculateProjectDays(inicio: string, termino: string): number {
-    if (!inicio || !termino) return 0;
+  private static normalizeStatus(status: string): string {
+    if (!status) return 'Aguardando';
     
-    try {
-      // Converte formato brasileiro DD/MM/YYYY para Date
-      const parseDate = (dateStr: string) => {
-        const parts = dateStr.split('/');
-        if (parts.length === 3) {
-          return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
-        }
-        return new Date(dateStr);
-      };
-      
-      const startDate = parseDate(inicio);
-      const endDate = parseDate(termino);
-      const diffTime = endDate.getTime() - startDate.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return Math.max(1, diffDays + 1); // +1 para incluir o dia de início
-    } catch (error) {
-      console.warn('Erro ao calcular dias do projeto:', error);
-      return 0;
+    const statusLower = status.toLowerCase().trim();
+    
+    if (statusLower.includes('confirmado') || statusLower.includes('confirmed')) {
+      return 'Confirmado';
+    } else if (statusLower.includes('não') || statusLower.includes('nao') || statusLower.includes('not')) {
+      return 'Não Confirmado';
+    } else {
+      return 'Aguardando';
     }
   }
 
-  private static calculateDailyRate(meta: string, inicio: string, termino: string): number {
-    const metaNum = parseInt(meta.toString()) || 0;
-    const days = this.calculateProjectDays(inicio, termino);
+  private static parseNumber(value: string | number): number {
+    if (typeof value === 'number') return value;
+    if (!value || typeof value !== 'string') return 0;
     
-    return days > 0 ? metaNum / days : 0;
+    // Remove caracteres não numéricos exceto ponto e vírgula
+    const cleaned = value.replace(/[^\d.,]/g, '');
+    
+    // Substitui vírgula por ponto se for decimal brasileiro
+    const normalized = cleaned.replace(',', '.');
+    
+    const parsed = parseFloat(normalized);
+    return isNaN(parsed) ? 0 : parsed;
   }
 
-  // Método para gerar planilha modelo
-  static generateTemplateData(): { fichas: any[], projetos: any[] } {
-    const templateFichas = [
-      {
-        ID: 1,
-        'Projetos Cormeciais': 'SELETIVA EXEMPLO',
-        'Gestão de Scouter': 'Nome do Scouter',
-        Criado: '01/08/2025',
-        'Data de criação da Ficha': '01/08/2025 10:00',
-        'Valor por Fichas': 'R$ 6,00'
-      }
-    ];
+  // Método para testar a conexão
+  static async testConnection(): Promise<{ success: boolean; message: string; data?: any }> {
+    try {
+      console.log('GoogleSheetsService: Testando conexão...');
+      
+      const [fichas, projetos] = await Promise.all([
+        this.fetchFichas(),
+        this.fetchProjetos()
+      ]);
 
-    const templateProjetos = [
-      {
-        'agencia e seletiva': 'SELETIVA EXEMPLO',
-        'Meta de fichas': 3000,
-        'Inicio Captação fichas': '01/08/2025',
-        'Termino Captação fichas': '31/08/2025',
-        'Meta Individual': 1000
-      }
-    ];
-
-    return { fichas: templateFichas, projetos: templateProjetos };
+      const success = fichas.length > 0 || projetos.length > 0;
+      
+      return {
+        success,
+        message: success 
+          ? `Conexão bem-sucedida! ${fichas.length} fichas e ${projetos.length} projetos encontrados.`
+          : 'Conexão estabelecida, mas nenhum dado foi encontrado.',
+        data: {
+          fichas: fichas.length,
+          projetos: projetos.length
+        }
+      };
+    } catch (error) {
+      console.error('GoogleSheetsService: Erro no teste de conexão:', error);
+      return {
+        success: false,
+        message: `Erro na conexão: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      };
+    }
   }
 }
-
