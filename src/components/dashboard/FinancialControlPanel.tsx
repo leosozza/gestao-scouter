@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { formatCurrency } from "@/utils/formatters";
 import { CalendarDays, DollarSign, FileCheck, FileX, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { FinancialFilters, FinancialFilterState } from "./FinancialFilters";
+import { PaymentBatchActions } from "./PaymentBatchActions";
+import { GoogleSheetsUpdateService } from "@/services/googleSheetsUpdateService";
 
 interface FinancialControlPanelProps {
   fichas: any[];
@@ -24,10 +26,14 @@ export const FinancialControlPanel = ({
 }: FinancialControlPanelProps) => {
   const [selectedFichas, setSelectedFichas] = useState<string[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [filters, setFilters] = useState<FinancialFilterState>({
+    scouter: null,
+    projeto: null
+  });
   const { toast } = useToast();
 
   // Filtrar fichas por período se selecionado
-  const fichasFiltradas = selectedPeriod ? fichas.filter(ficha => {
+  const fichasPorPeriodo = selectedPeriod ? fichas.filter(ficha => {
     const dataCriado = ficha.Criado;
     if (!dataCriado) return false;
     
@@ -45,7 +51,18 @@ export const FinancialControlPanel = ({
     return fichaDate >= startDate && fichaDate <= endDate;
   }) : fichas;
 
-  // Calcular totais baseados na coluna "Ficha paga"
+  // Aplicar filtros adicionais (scouter e projeto)
+  const fichasFiltradas = fichasPorPeriodo.filter(ficha => {
+    if (filters.scouter && ficha['Gestão de Scouter'] !== filters.scouter) {
+      return false;
+    }
+    if (filters.projeto && ficha['Projetos Cormeciais'] !== filters.projeto) {
+      return false;
+    }
+    return true;
+  });
+
+  // Calcular totais baseados nas fichas filtradas
   const fichasPagas = fichasFiltradas.filter(f => f['Ficha paga'] === 'Sim');
   const fichasAPagar = fichasFiltradas.filter(f => f['Ficha paga'] !== 'Sim');
   
@@ -58,6 +75,40 @@ export const FinancialControlPanel = ({
     const valor = parseFloat(ficha['Valor por Fichas'] || 0);
     return total + (isNaN(valor) ? 0 : valor);
   }, 0);
+
+  // Função melhorada para atualizar fichas com Google Sheets
+  const handleUpdateFichaPaga = async (fichaIds: string[], status: 'Sim' | 'Não') => {
+    setIsUpdating(true);
+    try {
+      // Atualizar localmente primeiro (se a função foi fornecida)
+      if (onUpdateFichaPaga) {
+        await onUpdateFichaPaga(fichaIds, status);
+      }
+      
+      // Atualizar Google Sheets
+      toast({
+        title: "Atualizando planilha...",
+        description: "Sincronizando com Google Sheets",
+      });
+      
+      await GoogleSheetsUpdateService.updateFichaPagaStatus(fichaIds, status);
+      
+      toast({
+        title: "Atualização completa! ✅",
+        description: `${fichaIds.length} fichas atualizadas localmente e na planilha do Google Sheets`
+      });
+      
+    } catch (error) {
+      console.error('Erro na atualização:', error);
+      toast({
+        title: "Erro na atualização",
+        description: error instanceof Error ? error.message : "Não foi possível completar a atualização",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   // Agrupar por scouter para relatório de pagamentos
   const pagamentosPorScouter: Record<string, {
@@ -120,88 +171,26 @@ export const FinancialControlPanel = ({
     }
   };
 
-  const handleMarcarComoPago = async () => {
-    if (selectedFichas.length === 0) {
-      toast({
-        title: "Nenhuma ficha selecionada",
-        description: "Selecione as fichas que deseja marcar como pagas",
-        variant: "destructive"
-      });
-      return;
-    }
+  const clearSelection = () => setSelectedFichas([]);
 
-    if (!onUpdateFichaPaga) {
-      toast({
-        title: "Função não disponível",
-        description: "A atualização de status não está configurada",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      setIsUpdating(true);
-      await onUpdateFichaPaga(selectedFichas, 'Sim');
-      setSelectedFichas([]);
-      
-      toast({
-        title: "Fichas atualizadas",
-        description: `${selectedFichas.length} fichas marcadas como pagas`
-      });
-    } catch (error) {
-      console.error('Erro ao marcar fichas como pagas:', error);
-      toast({
-        title: "Erro na atualização",
-        description: "Não foi possível atualizar as fichas",
-        variant: "destructive"
-      });
-    } finally {
-      setIsUpdating(false);
-    }
+  // Determinar tipo e valor do filtro ativo para exibição
+  const getActiveFilterInfo = () => {
+    if (filters.scouter) return { type: 'Scouter', value: filters.scouter };
+    if (filters.projeto) return { type: 'Projeto', value: filters.projeto };
+    return { type: '', value: '' };
   };
 
-  const handleMarcarComoNaoPago = async () => {
-    if (selectedFichas.length === 0) {
-      toast({
-        title: "Nenhuma ficha selecionada",
-        description: "Selecione as fichas que deseja marcar como não pagas",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!onUpdateFichaPaga) {
-      toast({
-        title: "Função não disponível",
-        description: "A atualização de status não está configurada",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      setIsUpdating(true);
-      await onUpdateFichaPaga(selectedFichas, 'Não');
-      setSelectedFichas([]);
-      
-      toast({
-        title: "Fichas atualizadas",
-        description: `${selectedFichas.length} fichas marcadas como não pagas`
-      });
-    } catch (error) {
-      console.error('Erro ao marcar fichas como não pagas:', error);
-      toast({
-        title: "Erro na atualização",
-        description: "Não foi possível atualizar as fichas",
-        variant: "destructive"
-      });
-    } finally {
-      setIsUpdating(false);
-    }
-  };
+  const activeFilter = getActiveFilterInfo();
 
   return (
     <div className="space-y-6">
+      {/* Filtros Financeiros */}
+      <FinancialFilters
+        fichas={fichas}
+        projetos={projetos}
+        onFiltersChange={setFilters}
+      />
+
       {/* Resumo Financeiro */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -212,7 +201,7 @@ export const FinancialControlPanel = ({
           <CardContent>
             <div className="text-2xl font-bold">{fichasFiltradas.length}</div>
             <p className="text-xs text-muted-foreground">
-              {selectedPeriod ? 'No período selecionado' : 'Total de fichas'}
+              {activeFilter.type ? `Filtrado por ${activeFilter.type}` : selectedPeriod ? 'No período selecionado' : 'Total de fichas'}
             </p>
           </CardContent>
         </Card>
@@ -257,44 +246,31 @@ export const FinancialControlPanel = ({
         </Card>
       </div>
 
-      {/* Controles de Pagamento */}
+      {/* Ações de Pagamento em Lote */}
+      <PaymentBatchActions
+        fichasFiltradas={fichasFiltradas}
+        selectedFichas={selectedFichas}
+        isUpdating={isUpdating}
+        onUpdateFichaPaga={handleUpdateFichaPaga}
+        onClearSelection={clearSelection}
+        filterType={activeFilter.type}
+        filterValue={activeFilter.value}
+      />
+
+      {/* Tabela de Controle de Pagamentos */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileCheck className="h-5 w-5" />
-            Controle de Pagamentos
+            Fichas a Pagar
+            {activeFilter.type && (
+              <Badge variant="outline">
+                {activeFilter.type}: {activeFilter.value}
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2 mb-4">
-            <Button 
-              onClick={handleMarcarComoPago}
-              disabled={selectedFichas.length === 0 || isUpdating}
-              className="flex items-center gap-2"
-            >
-              <FileCheck className="h-4 w-4" />
-              Marcar como Pago ({selectedFichas.length})
-            </Button>
-            
-            <Button 
-              variant="outline"
-              onClick={handleMarcarComoNaoPago}
-              disabled={selectedFichas.length === 0 || isUpdating}
-              className="flex items-center gap-2"
-            >
-              <FileX className="h-4 w-4" />
-              Marcar como Não Pago ({selectedFichas.length})
-            </Button>
-            
-            <Button 
-              variant="outline"
-              onClick={() => setSelectedFichas([])}
-              disabled={selectedFichas.length === 0}
-            >
-              Limpar Seleção
-            </Button>
-          </div>
-
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -360,6 +336,11 @@ export const FinancialControlPanel = ({
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
             Relatório por Scouter
+            {activeFilter.type && (
+              <Badge variant="outline">
+                Filtrado por {activeFilter.type}
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
