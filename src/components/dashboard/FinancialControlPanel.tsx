@@ -1,14 +1,18 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/utils/formatters";
 import { CalendarDays, DollarSign, FileCheck, FileX, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { FinancialFilters, FinancialFilterState } from "./FinancialFilters";
 import { PaymentBatchActions } from "./PaymentBatchActions";
+import { DailyFichasFilter } from "./DailyFichasFilter";
+import { CostAllowanceManager } from "./CostAllowanceManager";
 import { GoogleSheetsUpdateService } from "@/services/googleSheetsUpdateService";
 
 interface FinancialControlPanelProps {
@@ -191,202 +195,227 @@ export const FinancialControlPanel = ({
         onFiltersChange={setFilters}
       />
 
-      {/* Resumo Financeiro */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Fichas</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{fichasFiltradas.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {activeFilter.type ? `Filtrado por ${activeFilter.type}` : selectedPeriod ? 'No período selecionado' : 'Total de fichas'}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Fichas Pagas</CardTitle>
-            <FileCheck className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{fichasPagas.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {formatCurrency(valorTotalPago)}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Fichas a Pagar</CardTitle>
-            <FileX className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{fichasAPagar.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {formatCurrency(valorTotalAPagar)}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(valorTotalPago + valorTotalAPagar)}</div>
-            <p className="text-xs text-muted-foreground">
-              {((valorTotalPago / (valorTotalPago + valorTotalAPagar)) * 100 || 0).toFixed(1)}% pago
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Ações de Pagamento em Lote */}
-      <PaymentBatchActions
-        fichasFiltradas={fichasFiltradas}
-        selectedFichas={selectedFichas}
-        isUpdating={isUpdating}
-        onUpdateFichaPaga={handleUpdateFichaPaga}
-        onClearSelection={clearSelection}
-        filterType={activeFilter.type}
-        filterValue={activeFilter.value}
+      {/* Filtro por Dia */}
+      <DailyFichasFilter
+        fichas={fichasFiltradas}
+        selectedPeriod={selectedPeriod}
       />
 
-      {/* Tabela de Controle de Pagamentos */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileCheck className="h-5 w-5" />
-            Fichas a Pagar
-            {activeFilter.type && (
-              <Badge variant="outline">
-                {activeFilter.type}: {activeFilter.value}
-              </Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">
-                    <Checkbox
-                      checked={selectedFichas.length === fichasAPagar.length && fichasAPagar.length > 0}
-                      onCheckedChange={handleSelectAll}
-                      disabled={fichasAPagar.length === 0}
-                    />
-                  </TableHead>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Scouter</TableHead>
-                  <TableHead>Projeto</TableHead>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {fichasAPagar.slice(0, 50).map((ficha) => {
-                  const fichaId = ficha.ID?.toString();
-                  const isSelected = selectedFichas.includes(fichaId);
-                  
-                  return (
-                    <TableRow key={fichaId}>
-                      <TableCell>
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={(checked) => handleSelectFicha(fichaId, checked as boolean)}
-                        />
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">{fichaId}</TableCell>
-                      <TableCell>{ficha['Gestão de Scouter'] || 'N/A'}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">
-                        {ficha['Projetos Cormeciais'] || 'N/A'}
-                      </TableCell>
-                      <TableCell>{ficha.Criado || 'N/A'}</TableCell>
-                      <TableCell>{formatCurrency(parseFloat(ficha['Valor por Fichas'] || 0))}</TableCell>
-                      <TableCell>
-                        <Badge variant={ficha['Ficha paga'] === 'Sim' ? 'default' : 'secondary'}>
-                          {ficha['Ficha paga'] || 'Não'}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-            
-            {fichasAPagar.length > 50 && (
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                Mostrando 50 de {fichasAPagar.length} fichas a pagar
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Tabs para separar Fichas e Ajuda de Custo */}
+      <Tabs defaultValue="fichas" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="fichas">Controle de Fichas</TabsTrigger>
+          <TabsTrigger value="ajuda-custo">Ajuda de Custo</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="fichas" className="space-y-6">
+          {/* Resumo Financeiro */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total de Fichas</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{fichasFiltradas.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  {activeFilter.type ? `Filtrado por ${activeFilter.type}` : selectedPeriod ? 'No período selecionado' : 'Total de fichas'}
+                </p>
+              </CardContent>
+            </Card>
 
-      {/* Relatório por Scouter */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Relatório por Scouter
-            {activeFilter.type && (
-              <Badge variant="outline">
-                Filtrado por {activeFilter.type}
-              </Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {Object.entries(pagamentosPorScouter).map(([scouter, dados]) => (
-              <div key={scouter} className="p-4 border rounded-lg">
-                <h4 className="font-semibold mb-2">{scouter}</h4>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Total Fichas:</span>
-                    <br />
-                    <span className="font-medium">{dados.totalFichas}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Fichas Pagas:</span>
-                    <br />
-                    <span className="font-medium text-green-600">{dados.fichasPagas}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">A Pagar:</span>
-                    <br />
-                    <span className="font-medium text-orange-600">{dados.fichasAPagar}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Valor Pago:</span>
-                    <br />
-                    <span className="font-medium text-green-600">{formatCurrency(dados.valorPago)}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Valor a Pagar:</span>
-                    <br />
-                    <span className="font-medium text-orange-600">{formatCurrency(dados.valorAPagar)}</span>
-                  </div>
-                </div>
-                
-                <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
-                  <span>Dias trabalhados: {dados.diasTrabalhados.size}</span>
-                  <span>
-                    % Pagas: {dados.totalFichas > 0 ? ((dados.fichasPagas / dados.totalFichas) * 100).toFixed(1) : 0}%
-                  </span>
-                </div>
-              </div>
-            ))}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Fichas Pagas</CardTitle>
+                <FileCheck className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">{fichasPagas.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  {formatCurrency(valorTotalPago)}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Fichas a Pagar</CardTitle>
+                <FileX className="h-4 w-4 text-orange-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">{fichasAPagar.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  {formatCurrency(valorTotalAPagar)}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatCurrency(valorTotalPago + valorTotalAPagar)}</div>
+                <p className="text-xs text-muted-foreground">
+                  {((valorTotalPago / (valorTotalPago + valorTotalAPagar)) * 100 || 0).toFixed(1)}% pago
+                </p>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
+
+          {/* Ações de Pagamento em Lote */}
+          <PaymentBatchActions
+            fichasFiltradas={fichasFiltradas}
+            selectedFichas={selectedFichas}
+            isUpdating={isUpdating}
+            onUpdateFichaPaga={handleUpdateFichaPaga}
+            onClearSelection={clearSelection}
+            filterType={activeFilter.type}
+            filterValue={activeFilter.value}
+          />
+
+          {/* Tabela de Controle de Pagamentos */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileCheck className="h-5 w-5" />
+                Fichas a Pagar
+                {activeFilter.type && (
+                  <Badge variant="outline">
+                    {activeFilter.type}: {activeFilter.value}
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={selectedFichas.length === fichasAPagar.length && fichasAPagar.length > 0}
+                          onCheckedChange={handleSelectAll}
+                          disabled={fichasAPagar.length === 0}
+                        />
+                      </TableHead>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Scouter</TableHead>
+                      <TableHead>Projeto</TableHead>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Valor</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {fichasAPagar.slice(0, 50).map((ficha) => {
+                      const fichaId = ficha.ID?.toString();
+                      const isSelected = selectedFichas.includes(fichaId);
+                      
+                      return (
+                        <TableRow key={fichaId}>
+                          <TableCell>
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={(checked) => handleSelectFicha(fichaId, checked as boolean)}
+                            />
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">{fichaId}</TableCell>
+                          <TableCell>{ficha['Gestão de Scouter'] || 'N/A'}</TableCell>
+                          <TableCell className="max-w-[200px] truncate">
+                            {ficha['Projetos Cormeciais'] || 'N/A'}
+                          </TableCell>
+                          <TableCell>{ficha.Criado || 'N/A'}</TableCell>
+                          <TableCell>{formatCurrency(parseFloat(ficha['Valor por Fichas'] || 0))}</TableCell>
+                          <TableCell>
+                            <Badge variant={ficha['Ficha paga'] === 'Sim' ? 'default' : 'secondary'}>
+                              {ficha['Ficha paga'] || 'Não'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+                
+                {fichasAPagar.length > 50 && (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    Mostrando 50 de {fichasAPagar.length} fichas a pagar
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Relatório por Scouter */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Relatório por Scouter
+                {activeFilter.type && (
+                  <Badge variant="outline">
+                    Filtrado por {activeFilter.type}
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {Object.entries(pagamentosPorScouter).map(([scouter, dados]) => (
+                  <div key={scouter} className="p-4 border rounded-lg">
+                    <h4 className="font-semibold mb-2">{scouter}</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Total Fichas:</span>
+                        <br />
+                        <span className="font-medium">{dados.totalFichas}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Fichas Pagas:</span>
+                        <br />
+                        <span className="font-medium text-green-600">{dados.fichasPagas}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">A Pagar:</span>
+                        <br />
+                        <span className="font-medium text-orange-600">{dados.fichasAPagar}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Valor Pago:</span>
+                        <br />
+                        <span className="font-medium text-green-600">{formatCurrency(dados.valorPago)}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Valor a Pagar:</span>
+                        <br />
+                        <span className="font-medium text-orange-600">{formatCurrency(dados.valorAPagar)}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
+                      <span>Dias trabalhados: {dados.diasTrabalhados.size}</span>
+                      <span>
+                        % Pagas: {dados.totalFichas > 0 ? ((dados.fichasPagas / dados.totalFichas) * 100).toFixed(1) : 0}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ajuda-custo">
+          <CostAllowanceManager
+            fichas={fichasFiltradas}
+            projetos={projetos}
+            selectedPeriod={selectedPeriod}
+            filters={filters}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
