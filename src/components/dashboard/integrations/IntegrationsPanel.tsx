@@ -87,7 +87,7 @@ export const IntegrationsPanel = () => {
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="data-source" className="flex items-center gap-2">
             <Shuffle className="h-4 w-4" />
-            Fonte de Dados
+            Google Sheets
           </TabsTrigger>
           <TabsTrigger value="bitrix24" className="flex items-center gap-2">
             <Database className="h-4 w-4" />
@@ -151,6 +151,38 @@ export const IntegrationsPanel = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Fonte de Dados Principal</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-success/10">
+                <div className="flex items-center gap-3">
+                  <Shuffle className="h-6 w-6 text-success" />
+                  <div>
+                    <h4 className="font-medium">Google Sheets</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Planilhas públicas com dados de fichas e projetos
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="h-5 w-5 text-success" />
+                  <Badge className="bg-success/20 text-success border-success/30">Ativo</Badge>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedIntegration('data-source')}
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Configurar
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
