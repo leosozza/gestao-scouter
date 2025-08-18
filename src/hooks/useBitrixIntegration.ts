@@ -3,7 +3,12 @@ import { useState, useCallback } from 'react';
 import { BitrixService } from '@/services/bitrixService';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { createSyncRun, completeSyncRun, failSyncRun, upsertLeads } from '@/services/bitrixSupabaseSync';
+import { 
+  createSyncRun, 
+  completeSyncRun, 
+  failSyncRun, 
+  syncLeadsToSupabase 
+} from '@/services/bitrixSupabaseSync';
 
 interface BitrixConfig {
   enabled: boolean;
@@ -27,10 +32,11 @@ interface BitrixConfig {
 
 interface SyncResult {
   success: boolean;
-  leadsImported?: number;
+  leadsProcessed?: number;
+  leadsCreated?: number;
   leadsUpdated?: number;
-  projetosImported?: number;
-  scoutersImported?: number;
+  projetosFound?: number;
+  scoutersFound?: number;
   error?: string;
 }
 
@@ -69,8 +75,8 @@ export const useBitrixIntegration = () => {
       
       setIsConnected(true);
       toast({
-        title: "Conexão bem-sucedida",
-        description: `${result.leads} leads, ${result.projetos} projetos, ${result.scouters} scouters encontrados`
+        title: "Conexão bem-sucedida! ✅",
+        description: `Encontrados ${result.leads} leads recentes no Bitrix24`
       });
       
       return true;
@@ -79,7 +85,7 @@ export const useBitrixIntegration = () => {
       setIsConnected(false);
       toast({
         title: "Erro na conexão",
-        description: error instanceof Error ? error.message : "Verifique as credenciais",
+        description: error instanceof Error ? error.message : "Verifique as credenciais do Bitrix24",
         variant: "destructive"
       });
       return false;
@@ -98,16 +104,15 @@ export const useBitrixIntegration = () => {
       return { success: false, error: "Not connected" };
     }
 
-    // Verifica autenticação para persistir dados (RLS exige usuário)
+    // Verificar autenticação
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData?.user) {
-      console.warn("User not authenticated. Skipping persistence to Supabase.");
       toast({
         title: "Login necessário",
-        description: "Entre na aplicação para salvar os dados da sincronização.",
+        description: "Faça login para sincronizar dados",
         variant: "destructive",
       });
-      // Ainda assim podemos buscar e retornar contagens, mas sem persistir
+      return { success: false, error: "Not authenticated" };
     }
 
     setIsLoading(true);
@@ -117,63 +122,85 @@ export const useBitrixIntegration = () => {
     try {
       const service = createService(config);
 
-      // Cria o registro do sync run se houver usuário autenticado
-      if (authData?.user) {
-        const run = await createSyncRun(authData.user.id, (config.enabledEntities.leads ? 'leads' : 'none'));
-        runId = run?.id ?? null;
-      }
+      // Criar registro de sincronização
+      const run = await createSyncRun(authData.user.id, 'leads');
+      runId = run?.id ?? null;
 
-      // Sync leads se habilitado
+      console.log("Starting Bitrix24 sync...");
+
+      // Sincronizar leads se habilitado
       if (config.enabledEntities.leads) {
+        console.log("Syncing leads...");
+        
+        // Buscar leads do Bitrix24
         const leads = await service.getLeads({
-          startDate: '2024-01-01',
+          startDate: '2024-01-01', // Buscar leads desde início do ano
+          limit: 100 // Começar com 100 registros
         });
 
-        result.leadsImported = leads.length;
+        console.log("Fetched", leads.length, "leads from Bitrix24");
 
-        // Persistência somente se logado
-        if (authData?.user) {
-          const processed = await upsertLeads(leads);
-          console.log("Leads upserted:", processed);
+        // Sincronizar para Supabase
+        const syncStats = await syncLeadsToSupabase(leads);
+        
+        result.leadsProcessed = syncStats.processed;
+        result.leadsCreated = syncStats.created;
+        result.leadsUpdated = syncStats.updated;
+
+        console.log("Sync stats:", syncStats);
+      }
+
+      // Buscar informações de SPAs (sem persistir ainda)
+      let projetosCount = 0;
+      let scoutersCount = 0;
+
+      try {
+        if (config.enabledEntities.projetos && config.spaIds.projetos) {
+          const projetos = await service.getSPAItems(parseInt(config.spaIds.projetos));
+          projetosCount = projetos.length;
+          result.projetosFound = projetosCount;
         }
-      }
 
-      // Coleta contagens para SPAs (sem persistir neste passo)
-      if (config.enabledEntities.projetos && config.spaIds.projetos) {
-        const projetos = await service.getSPAItems(parseInt(config.spaIds.projetos));
-        result.projetosImported = projetos.length;
-      }
-
-      if (config.enabledEntities.scouters && config.spaIds.scouters) {
-        const scouters = await service.getSPAItems(parseInt(config.spaIds.scouters));
-        result.scoutersImported = scouters.length;
+        if (config.enabledEntities.scouters && config.spaIds.scouters) {
+          const scouters = await service.getSPAItems(parseInt(config.spaIds.scouters));
+          scoutersCount = scouters.length;
+          result.scoutersFound = scoutersCount;
+        }
+      } catch (spaError) {
+        console.warn("Error fetching SPA data:", spaError);
+        // Não falhar a sincronização por causa dos SPAs
       }
 
       setLastSync(new Date());
-      toast({
-        title: "Sincronização concluída",
-        description: `Dados importados com sucesso`
-      });
-
-      // Finaliza o sync run se criado
+      
+      // Finalizar registro de sincronização
       if (runId) {
         await completeSyncRun(runId, {
-          records_processed: result.leadsImported ?? 0,
+          records_processed: result.leadsProcessed ?? 0,
+          records_created: result.leadsCreated ?? 0,
+          records_updated: result.leadsUpdated ?? 0,
+          records_failed: 0
         });
       }
+
+      toast({
+        title: "Sincronização concluída! 🎉",
+        description: `✅ ${result.leadsCreated || 0} leads criados, ${result.leadsUpdated || 0} atualizados`
+      });
 
       return result;
     } catch (error) {
       console.error('Sync failed:', error);
+      
+      if (runId) {
+        await failSyncRun(runId, error instanceof Error ? error.message : "Unknown error");
+      }
+
       toast({
         title: "Erro na sincronização",
         description: error instanceof Error ? error.message : "Erro desconhecido",
         variant: "destructive"
       });
-
-      if (runId) {
-        await failSyncRun(runId, error instanceof Error ? error.message : "Unknown error");
-      }
 
       return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
     } finally {
