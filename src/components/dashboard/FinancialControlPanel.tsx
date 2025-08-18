@@ -11,19 +11,21 @@ import { formatCurrency, parseFichaValue } from "@/utils/formatters";
 import { FinancialFilterState } from "./FinancialFilters";
 
 interface FinancialControlPanelProps {
-  fichasFiltradas: any[];
+  fichasFiltradas?: any[];
+  fichas?: any[]; // Add this to support the prop from Dashboard
   projetos: any[];
   selectedFichas: Set<string>;
   onSelectionChange: (ids: Set<string>) => void;
   filterType: string;
   filterValue: string;
   selectedPeriod?: { start: string; end: string } | null;
-  filters: FinancialFilterState;
+  filters?: FinancialFilterState;
   onUpdateFichaPaga?: (fichaIds: string[], status: 'Sim' | 'Não') => Promise<void>;
 }
 
 export const FinancialControlPanel = ({
-  fichasFiltradas = [],
+  fichasFiltradas,
+  fichas, // Accept both props
   projetos = [],
   selectedFichas,
   onSelectionChange,
@@ -35,9 +37,12 @@ export const FinancialControlPanel = ({
 }: FinancialControlPanelProps) => {
   const [activeTab, setActiveTab] = useState("fichas");
 
+  // Use fichasFiltradas if available, otherwise use fichas, otherwise empty array
+  const fichasData = fichasFiltradas || fichas || [];
+
   // Safely filter fichas with null checks
-  const fichasPagas = fichasFiltradas?.filter(f => f && f['Ficha paga'] === 'Sim') || [];
-  const fichasAPagar = fichasFiltradas?.filter(f => f && f['Ficha paga'] !== 'Sim') || [];
+  const fichasPagas = fichasData?.filter(f => f && f['Ficha paga'] === 'Sim') || [];
+  const fichasAPagar = fichasData?.filter(f => f && f['Ficha paga'] !== 'Sim') || [];
   
   const valorTotalFichasPagas = fichasPagas.reduce((total, ficha) => {
     const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
@@ -50,15 +55,15 @@ export const FinancialControlPanel = ({
   }, 0);
 
   const valorTotalSelecionadas = useMemo(() => {
-    if (!fichasFiltradas || !selectedFichas) return 0;
+    if (!fichasData || !selectedFichas) return 0;
     
-    return fichasFiltradas
+    return fichasData
       .filter(f => f && selectedFichas.has(f.ID?.toString()))
       .reduce((total, ficha) => {
         const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
         return total + valor;
       }, 0);
-  }, [fichasFiltradas, selectedFichas]);
+  }, [fichasData, selectedFichas]);
 
   // Convert Set to Array for PaymentBatchActions
   const selectedFichasArray = Array.from(selectedFichas || []);
@@ -68,7 +73,7 @@ export const FinancialControlPanel = ({
   };
 
   console.log("=== DEBUG FINANCIAL CONTROL PANEL ===");
-  console.log("Total fichas recebidas:", fichasFiltradas?.length || 0);
+  console.log("Total fichas recebidas:", fichasData?.length || 0);
   console.log("Fichas pagas:", fichasPagas.length);
   console.log("Fichas a pagar:", fichasAPagar.length);
 
@@ -76,7 +81,7 @@ export const FinancialControlPanel = ({
     <div className="space-y-6">
       {/* Payment Summary - Always visible */}
       <PaymentSummary 
-        fichasFiltradas={fichasFiltradas}
+        fichasFiltradas={fichasData}
         filterType={filterType}
         filterValue={filterValue}
         projetos={projetos}
@@ -92,7 +97,7 @@ export const FinancialControlPanel = ({
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{fichasFiltradas?.length || 0}</div>
+            <div className="text-2xl font-bold">{fichasData?.length || 0}</div>
             <p className="text-xs text-muted-foreground">
               fichas no período
             </p>
@@ -148,7 +153,7 @@ export const FinancialControlPanel = ({
 
         <TabsContent value="fichas" className="space-y-4">
           <PaymentBatchActions
-            fichasFiltradas={fichasFiltradas}
+            fichasFiltradas={fichasData}
             selectedFichas={selectedFichasArray}
             isUpdating={false}
             onUpdateFichaPaga={onUpdateFichaPaga}
@@ -164,7 +169,7 @@ export const FinancialControlPanel = ({
         <TabsContent value="ajuda-custo" className="space-y-4">
           <CostAllowanceManager
             projetos={projetos}
-            fichas={fichasFiltradas}
+            fichas={fichasData}
             selectedPeriod={selectedPeriod}
             filters={filters}
           />
