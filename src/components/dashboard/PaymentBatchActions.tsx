@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,7 +27,7 @@ interface PaymentBatchActionsProps {
   filterValue: string;
   projetos: any[];
   selectedPeriod?: { start: string; end: string } | null;
-  filters: FinancialFilterState;
+  filters?: FinancialFilterState;
 }
 
 export const PaymentBatchActions = ({
@@ -60,7 +59,7 @@ export const PaymentBatchActions = ({
 
   // Calcular ajuda de custo baseado no período e filtros
   const calcularAjudaDeCusto = () => {
-    if (!selectedPeriod || !filters.scouter) return 0;
+    if (!selectedPeriod || !filters?.scouter) return 0;
 
     // Buscar projeto do scouter para obter valores de ajuda de custo
     const fichasDoScouter = fichasFiltradas.filter(f => f['Gestão de Scouter'] === filters.scouter);
@@ -279,8 +278,8 @@ export const PaymentBatchActions = ({
               </AlertDialog>
             )}
 
-            {/* Pagar Ajuda de Custo */}
-            {filters.scouter && selectedPeriod && valorAjudaCusto > 0 && (
+            {/* Pagar Ajuda de Custo - Only show if we have filters and scouter */}
+            {filters?.scouter && selectedPeriod && valorAjudaCusto > 0 && (
               <Button
                 variant="secondary"
                 disabled={isUpdating}
@@ -295,8 +294,8 @@ export const PaymentBatchActions = ({
               </Button>
             )}
 
-            {/* Pagar Tudo (Fichas + Ajuda de Custo) */}
-            {filters.scouter && selectedPeriod && valorAjudaCusto > 0 && fichasAPagar.length > 0 && (
+            {/* Pagar Tudo (Fichas + Ajuda de Custo) - Only show if we have filters and scouter */}
+            {filters?.scouter && selectedPeriod && valorAjudaCusto > 0 && fichasAPagar.length > 0 && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
