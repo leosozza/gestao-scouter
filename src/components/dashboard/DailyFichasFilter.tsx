@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Calendar, Eye } from "lucide-react";
 import { format } from "date-fns";
-import { formatCurrency } from "@/utils/formatters";
+import { formatCurrency, parseFichaValue } from "@/utils/formatters";
 
 interface DailyFichasFilterProps {
   fichas: any[];
@@ -16,49 +16,6 @@ interface DailyFichasFilterProps {
 
 export const DailyFichasFilter = ({ fichas, selectedPeriod }: DailyFichasFilterProps) => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-
-  // Função para calcular valor seguro (mesma lógica do FinancialControlPanel)
-  const calcularValorSeguro = (valorString: any, fichaId?: string) => {
-    console.log(`[DAILY VALOR DEBUG] Ficha ${fichaId} - Valor original:`, valorString, 'Tipo:', typeof valorString);
-    
-    if (valorString === null || valorString === undefined || valorString === '') {
-      console.log(`[DAILY VALOR DEBUG] Ficha ${fichaId} - Valor vazio ou null`);
-      return 0;
-    }
-    
-    let valorLimpo;
-    
-    // Se for número, usar diretamente
-    if (typeof valorString === 'number') {
-      valorLimpo = valorString;
-      console.log(`[DAILY VALOR DEBUG] Ficha ${fichaId} - Valor numérico:`, valorLimpo);
-    } else {
-      // Converter para string e limpar
-      const str = String(valorString).trim();
-      console.log(`[DAILY VALOR DEBUG] Ficha ${fichaId} - String limpa:`, str);
-      
-      if (str === '' || str === 'null' || str === 'undefined' || str === '0' || str === 'N/A') {
-        console.log(`[DAILY VALOR DEBUG] Ficha ${fichaId} - String vazia ou inválida após limpeza`);
-        return 0;
-      }
-      
-      // Remover R$, espaços, e trocar vírgula por ponto
-      valorLimpo = str
-        .replace(/R\$\s*/g, '')
-        .replace(/\s/g, '')
-        .replace(',', '.');
-      
-      console.log(`[DAILY VALOR DEBUG] Ficha ${fichaId} - Valor após limpeza:`, valorLimpo);
-      
-      // Tentar converter para número
-      valorLimpo = parseFloat(valorLimpo);
-    }
-    
-    const resultado = isNaN(valorLimpo) ? 0 : Math.max(0, valorLimpo);
-    console.log(`[DAILY VALOR DEBUG] Ficha ${fichaId} - Valor final:`, resultado);
-    
-    return resultado;
-  };
 
   // Agrupar fichas por data
   const fichasPorDia = fichas.reduce((acc, ficha) => {
@@ -100,26 +57,30 @@ export const DailyFichasFilter = ({ fichas, selectedPeriod }: DailyFichasFilterP
           {datasOrdenadas.map((data) => {
             const fichasDoDia = fichasPorDia[data];
             
-            // Separar fichas pagas e a pagar - CORRIGINDO A LÓGICA
+            console.log(`[DAILY DEBUG] Processando data ${data} com ${fichasDoDia.length} fichas`);
+            
+            // Separar fichas pagas e a pagar
             const fichasPagas = fichasDoDia.filter(f => f['Ficha paga'] === 'Sim');
             const fichasAPagar = fichasDoDia.filter(f => f['Ficha paga'] !== 'Sim');
             
-            // Calcular valores usando a função correta
+            console.log(`[DAILY DEBUG] Data ${data}: ${fichasPagas.length} pagas, ${fichasAPagar.length} a pagar`);
+            
+            // Calcular valores usando a função padronizada
             const valorPago = fichasPagas.reduce((total, ficha) => {
-              const valor = calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID);
+              const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
+              console.log(`[DAILY PAGO] Ficha ${ficha.ID} - Status: "${ficha['Ficha paga']}", Valor original: "${ficha['Valor por Fichas']}", Valor processado: ${valor}`);
               return total + valor;
             }, 0);
             
-            // CORRIGINDO: Calcular valor a pagar corretamente
             const valorAPagar = fichasAPagar.reduce((total, ficha) => {
-              const valor = calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID);
-              console.log(`[DAILY A PAGAR DEBUG] Data ${data}, Ficha ${ficha.ID} - Status paga: "${ficha['Ficha paga']}", Valor: ${valor}`);
+              const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
+              console.log(`[DAILY A PAGAR] Ficha ${ficha.ID} - Status: "${ficha['Ficha paga']}", Valor original: "${ficha['Valor por Fichas']}", Valor processado: ${valor}`);
               return total + valor;
             }, 0);
             
             const valorTotal = valorPago + valorAPagar;
 
-            console.log(`[DAILY DEBUG] Data ${data}: Total fichas=${fichasDoDia.length}, Pagas=${fichasPagas.length} (R$ ${valorPago}), A pagar=${fichasAPagar.length} (R$ ${valorAPagar}), Valor total=${valorTotal}`);
+            console.log(`[DAILY RESUMO] Data ${data}: Valor pago=R$${valorPago}, Valor a pagar=R$${valorAPagar}, Total=R$${valorTotal}`);
 
             return (
               <Dialog key={data}>
@@ -182,7 +143,7 @@ export const DailyFichasFilter = ({ fichas, selectedPeriod }: DailyFichasFilterP
                               {ficha['Projetos Cormeciais'] || 'N/A'}
                             </TableCell>
                             <TableCell>{ficha['Primeiro nome'] || 'N/A'}</TableCell>
-                            <TableCell>{formatCurrency(calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID))}</TableCell>
+                            <TableCell>{formatCurrency(parseFichaValue(ficha['Valor por Fichas'], ficha.ID))}</TableCell>
                             <TableCell>
                               <Badge variant={ficha['Ficha paga'] === 'Sim' ? 'default' : 'secondary'}>
                                 {ficha['Ficha paga'] || 'Não'}

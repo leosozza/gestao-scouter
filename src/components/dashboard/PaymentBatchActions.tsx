@@ -1,9 +1,10 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileCheck, FileX, DollarSign, AlertTriangle, Calendar } from "lucide-react";
-import { formatCurrency } from "@/utils/formatters";
+import { formatCurrency, parseFichaValue } from "@/utils/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { FinancialFilterState } from "./FinancialFilters";
 import {
@@ -45,58 +46,16 @@ export const PaymentBatchActions = ({
 }: PaymentBatchActionsProps) => {
   const { toast } = useToast();
 
-  // Função melhorada para calcular valor seguro
-  const calcularValorSeguro = (valorString: any, fichaId?: string) => {
-    console.log(`[PAYMENT VALOR DEBUG] Ficha ${fichaId} - Valor original:`, valorString, 'Tipo:', typeof valorString);
-    
-    if (!valorString) {
-      console.log(`[PAYMENT VALOR DEBUG] Ficha ${fichaId} - Valor vazio ou null`);
-      return 0;
-    }
-    
-    let valorLimpo;
-    
-    // Se for número, usar diretamente
-    if (typeof valorString === 'number') {
-      valorLimpo = valorString;
-    } else {
-      // Converter para string e limpar
-      const str = String(valorString).trim();
-      console.log(`[PAYMENT VALOR DEBUG] Ficha ${fichaId} - String limpa:`, str);
-      
-      if (str === '' || str === 'null' || str === 'undefined') {
-        console.log(`[PAYMENT VALOR DEBUG] Ficha ${fichaId} - String vazia após limpeza`);
-        return 0;
-      }
-      
-      // Remover R$, espaços, e trocar vírgula por ponto
-      valorLimpo = str
-        .replace(/R\$\s*/g, '')
-        .replace(/\s/g, '')
-        .replace(',', '.');
-      
-      console.log(`[PAYMENT VALOR DEBUG] Ficha ${fichaId} - Valor após limpeza:`, valorLimpo);
-      
-      // Tentar converter para número
-      valorLimpo = parseFloat(valorLimpo);
-    }
-    
-    const resultado = isNaN(valorLimpo) ? 0 : valorLimpo;
-    console.log(`[PAYMENT VALOR DEBUG] Ficha ${fichaId} - Valor final:`, resultado);
-    
-    return resultado;
-  };
-
   const fichasAPagar = fichasFiltradas.filter(f => f['Ficha paga'] !== 'Sim');
   const fichasSelecionadas = fichasFiltradas.filter(f => selectedFichas.includes(f.ID?.toString()));
   
   const valorTotalSelecionadas = fichasSelecionadas.reduce((total, ficha) => {
-    const valor = calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID);
+    const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
     return total + valor;
   }, 0);
 
   const valorTotalAPagar = fichasAPagar.reduce((total, ficha) => {
-    const valor = calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID);
+    const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
     return total + valor;
   }, 0);
 

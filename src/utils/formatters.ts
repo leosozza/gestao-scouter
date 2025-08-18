@@ -37,6 +37,49 @@ export const parseCurrencyBR = (value: string): number => {
   return isNaN(parsed) ? 0 : parsed;
 };
 
+// NOVA FUNÇÃO PADRONIZADA para parsing de valores de fichas
+export const parseFichaValue = (valorString: any, fichaId?: string): number => {
+  console.log(`[FICHA VALUE PARSER] Ficha ${fichaId} - Valor original:`, valorString, 'Tipo:', typeof valorString);
+  
+  // Se é null, undefined ou string vazia, retorna 0
+  if (valorString === null || valorString === undefined || valorString === '') {
+    console.log(`[FICHA VALUE PARSER] Ficha ${fichaId} - Valor vazio/null`);
+    return 0;
+  }
+  
+  // Se já é um número válido, usar diretamente
+  if (typeof valorString === 'number' && !isNaN(valorString)) {
+    const resultado = Math.max(0, valorString);
+    console.log(`[FICHA VALUE PARSER] Ficha ${fichaId} - Valor numérico direto:`, resultado);
+    return resultado;
+  }
+  
+  // Converter para string e processar
+  const str = String(valorString).trim();
+  console.log(`[FICHA VALUE PARSER] Ficha ${fichaId} - String para processar:`, str);
+  
+  // Se string vazia ou valores inválidos após conversão
+  if (str === '' || str === 'null' || str === 'undefined' || str === 'N/A' || str === '-') {
+    console.log(`[FICHA VALUE PARSER] Ficha ${fichaId} - String inválida`);
+    return 0;
+  }
+  
+  // Limpar string: remover R$, espaços e converter vírgula para ponto
+  const valorLimpo = str
+    .replace(/R\$\s*/g, '')
+    .replace(/\s+/g, '')
+    .replace(',', '.');
+  
+  console.log(`[FICHA VALUE PARSER] Ficha ${fichaId} - Valor limpo:`, valorLimpo);
+  
+  // Tentar converter para número
+  const valorNumerico = parseFloat(valorLimpo);
+  const resultado = isNaN(valorNumerico) ? 0 : Math.max(0, valorNumerico);
+  
+  console.log(`[FICHA VALUE PARSER] Ficha ${fichaId} - Valor final:`, resultado);
+  return resultado;
+};
+
 export const normalizeText = (text: string): string => {
   if (!text) return '';
   

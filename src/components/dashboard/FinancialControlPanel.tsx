@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatCurrency } from "@/utils/formatters";
+import { formatCurrency, parseFichaValue } from "@/utils/formatters";
 import { CalendarDays, DollarSign, FileCheck, FileX, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { FinancialFilters, FinancialFilterState } from "./FinancialFilters";
@@ -38,49 +38,6 @@ export const FinancialControlPanel = ({
   });
   const { toast } = useToast();
 
-  // Função melhorada para calcular valor seguro
-  const calcularValorSeguro = (valorString: any, fichaId?: string) => {
-    console.log(`[FINANCIAL VALOR DEBUG] Ficha ${fichaId} - Valor original:`, valorString, 'Tipo:', typeof valorString);
-    
-    if (valorString === null || valorString === undefined || valorString === '') {
-      console.log(`[FINANCIAL VALOR DEBUG] Ficha ${fichaId} - Valor vazio ou null`);
-      return 0;
-    }
-    
-    let valorLimpo;
-    
-    // Se for número, usar diretamente
-    if (typeof valorString === 'number') {
-      valorLimpo = valorString;
-      console.log(`[FINANCIAL VALOR DEBUG] Ficha ${fichaId} - Valor numérico:`, valorLimpo);
-    } else {
-      // Converter para string e limpar
-      const str = String(valorString).trim();
-      console.log(`[FINANCIAL VALOR DEBUG] Ficha ${fichaId} - String limpa:`, str);
-      
-      if (str === '' || str === 'null' || str === 'undefined' || str === '0' || str === 'N/A') {
-        console.log(`[FINANCIAL VALOR DEBUG] Ficha ${fichaId} - String vazia ou inválida após limpeza`);
-        return 0;
-      }
-      
-      // Remover R$, espaços, e trocar vírgula por ponto
-      valorLimpo = str
-        .replace(/R\$\s*/g, '')
-        .replace(/\s/g, '')
-        .replace(',', '.');
-      
-      console.log(`[FINANCIAL VALOR DEBUG] Ficha ${fichaId} - Valor após limpeza:`, valorLimpo);
-      
-      // Tentar converter para número
-      valorLimpo = parseFloat(valorLimpo);
-    }
-    
-    const resultado = isNaN(valorLimpo) ? 0 : Math.max(0, valorLimpo);
-    console.log(`[FINANCIAL VALOR DEBUG] Ficha ${fichaId} - Valor final:`, resultado);
-    
-    return resultado;
-  };
-
   // Filtrar fichas por período se selecionado
   const fichasPorPeriodo = selectedPeriod ? fichas.filter(ficha => {
     const dataCriado = ficha.Criado;
@@ -111,19 +68,19 @@ export const FinancialControlPanel = ({
     return true;
   });
 
-  // Calcular totais baseados nas fichas filtradas usando "Valor por Fichas"
+  // Calcular totais baseados nas fichas filtradas usando a função padronizada
   const fichasPagas = fichasFiltradas.filter(f => f['Ficha paga'] === 'Sim');
   const fichasAPagar = fichasFiltradas.filter(f => f['Ficha paga'] !== 'Sim');
   
   const valorTotalPago = fichasPagas.reduce((total, ficha) => {
-    const valor = calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID);
-    console.log(`[FINANCIAL DEBUG] Ficha paga ${ficha.ID}: valor=${valor}, total acumulado=${total + valor}`);
+    const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
+    console.log(`[FINANCIAL PAGO] Ficha ${ficha.ID}: valor=${valor}, total acumulado=${total + valor}`);
     return total + valor;
   }, 0);
 
   const valorTotalAPagar = fichasAPagar.reduce((total, ficha) => {
-    const valor = calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID);
-    console.log(`[FINANCIAL DEBUG] Ficha a pagar ${ficha.ID}: valor=${valor}, total acumulado=${total + valor}`);
+    const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
+    console.log(`[FINANCIAL A PAGAR] Ficha ${ficha.ID}: valor=${valor}, total acumulado=${total + valor}`);
     return total + valor;
   }, 0);
 
@@ -136,7 +93,7 @@ export const FinancialControlPanel = ({
   if (fichasFiltradas.length > 0) {
     console.log('AMOSTRA DOS PRIMEIROS 5 REGISTROS (FINANCIAL):');
     fichasFiltradas.slice(0, 5).forEach(ficha => {
-      const valor = calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID);
+      const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
       console.log(`ID: ${ficha.ID}, Valor por Fichas original:`, ficha['Valor por Fichas'], 'Valor processado:', valor);
     });
   }
@@ -197,7 +154,7 @@ export const FinancialControlPanel = ({
     }
     
     acc[scouter].totalFichas++;
-    const valor = calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID);
+    const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
     
     if (ficha['Ficha paga'] === 'Sim') {
       acc[scouter].fichasPagas++;
@@ -396,7 +353,7 @@ export const FinancialControlPanel = ({
                             {ficha['Projetos Cormeciais'] || 'N/A'}
                           </TableCell>
                           <TableCell>{ficha.Criado || 'N/A'}</TableCell>
-                          <TableCell>{formatCurrency(calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID))}</TableCell>
+                          <TableCell>{formatCurrency(parseFichaValue(ficha['Valor por Fichas'], ficha.ID))}</TableCell>
                           <TableCell>
                             <Badge variant={ficha['Ficha paga'] === 'Sim' ? 'default' : 'secondary'}>
                               {ficha['Ficha paga'] || 'Não'}
