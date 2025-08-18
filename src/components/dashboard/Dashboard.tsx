@@ -823,21 +823,28 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     }, {});
 
     return Object.entries(projetos).map(([projeto, stats]: [string, any]) => {
-      const totalEtapas = Object.values(stats.etapas).reduce((a: number, b: number) => a + b, 0);
-      const total = stats.confirmadas + stats.naoConfirmadas + Math.max(0, totalEtapas - stats.confirmadas - stats.naoConfirmadas);
-      const taxaConversao = total > 0 ? (stats.confirmadas / total) * 100 : 0;
+      // Fix: Ensure all values are numbers before arithmetic operations
+      const totalEtapas = Object.values(stats.etapas).reduce((a: number, b: any) => {
+        const numB = typeof b === 'number' ? b : parseInt(b) || 0;
+        return a + numB;
+      }, 0);
+      
+      const confirmadas = Number(stats.confirmadas) || 0;
+      const naoConfirmadas = Number(stats.naoConfirmadas) || 0;
+      const total = confirmadas + naoConfirmadas + Math.max(0, totalEtapas - confirmadas - naoConfirmadas);
+      const taxaConversao = total > 0 ? (confirmadas / total) * 100 : 0;
       const tempoMedio = stats.tempos.length > 0 ? 
         stats.tempos.reduce((a: number, b: number) => a + b, 0) / stats.tempos.length : 0;
       
       return {
         projeto,
         etapas: stats.etapas,
-        confirmadas: stats.confirmadas,
-        naoConfirmadas: stats.naoConfirmadas,
-        pagas: stats.pagas,
+        confirmadas,
+        naoConfirmadas,
+        pagas: Number(stats.pagas) || 0,
         total,
         taxaConversao,
-        percentPagas: total > 0 ? (stats.pagas / total) * 100 : 0,
+        percentPagas: total > 0 ? ((Number(stats.pagas) || 0) / total) * 100 : 0,
         tempoMedioConfirmacao: tempoMedio
       };
     }).sort((a, b) => b.total - a.total);
