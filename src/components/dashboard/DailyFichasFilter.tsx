@@ -57,30 +57,50 @@ export const DailyFichasFilter = ({ fichas, selectedPeriod }: DailyFichasFilterP
           {datasOrdenadas.map((data) => {
             const fichasDoDia = fichasPorDia[data];
             
-            console.log(`[DAILY DEBUG] Processando data ${data} com ${fichasDoDia.length} fichas`);
+            console.log(`=== DEBUG DIA ${data} ===`);
+            console.log(`Total fichas do dia: ${fichasDoDia.length}`);
             
             // Separar fichas pagas e a pagar
             const fichasPagas = fichasDoDia.filter(f => f['Ficha paga'] === 'Sim');
             const fichasAPagar = fichasDoDia.filter(f => f['Ficha paga'] !== 'Sim');
             
-            console.log(`[DAILY DEBUG] Data ${data}: ${fichasPagas.length} pagas, ${fichasAPagar.length} a pagar`);
+            console.log(`Fichas pagas: ${fichasPagas.length}`);
+            console.log(`Fichas a pagar: ${fichasAPagar.length}`);
             
-            // Calcular valores usando a função padronizada
-            const valorPago = fichasPagas.reduce((total, ficha) => {
+            // ANÁLISE DETALHADA DOS VALORES
+            console.log('=== ANÁLISE DE VALORES ===');
+            
+            const valorPago = fichasPagas.reduce((total, ficha, index) => {
               const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
-              console.log(`[DAILY PAGO] Ficha ${ficha.ID} - Status: "${ficha['Ficha paga']}", Valor original: "${ficha['Valor por Fichas']}", Valor processado: ${valor}`);
+              if (index < 3) { // Log das primeiras 3 fichas pagas
+                console.log(`Paga ${index + 1}: ID ${ficha.ID}, Valor: ${valor}`);
+              }
               return total + valor;
             }, 0);
             
-            const valorAPagar = fichasAPagar.reduce((total, ficha) => {
+            const valorAPagar = fichasAPagar.reduce((total, ficha, index) => {
               const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
-              console.log(`[DAILY A PAGAR] Ficha ${ficha.ID} - Status: "${ficha['Ficha paga']}", Valor original: "${ficha['Valor por Fichas']}", Valor processado: ${valor}`);
+              if (index < 3) { // Log das primeiras 3 fichas a pagar
+                console.log(`A pagar ${index + 1}: ID ${ficha.ID}, Valor: ${valor}`);
+              }
               return total + valor;
             }, 0);
             
             const valorTotal = valorPago + valorAPagar;
 
-            console.log(`[DAILY RESUMO] Data ${data}: Valor pago=R$${valorPago}, Valor a pagar=R$${valorAPagar}, Total=R$${valorTotal}`);
+            console.log(`TOTAIS DO DIA ${data}:`);
+            console.log(`  Valor pago: R$ ${valorPago}`);
+            console.log(`  Valor a pagar: R$ ${valorAPagar}`);
+            console.log(`  Valor total: R$ ${valorTotal}`);
+            
+            // VERIFICAÇÃO DE CONSISTÊNCIA
+            const expectedTotal = fichasDoDia.length * 6;
+            if (Math.abs(valorTotal - expectedTotal) > 0.01) {
+              console.warn(`⚠️ INCONSISTÊNCIA NO DIA ${data}:`);
+              console.warn(`  Esperado: R$ ${expectedTotal} (${fichasDoDia.length} x R$ 6,00)`);
+              console.warn(`  Calculado: R$ ${valorTotal}`);
+              console.warn(`  Diferença: R$ ${(valorTotal - expectedTotal).toFixed(2)}`);
+            }
 
             return (
               <Dialog key={data}>

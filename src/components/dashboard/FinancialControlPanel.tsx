@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -68,34 +67,51 @@ export const FinancialControlPanel = ({
     return true;
   });
 
-  // Calcular totais baseados nas fichas filtradas usando a função padronizada
+  // DEBUGGING: Log detalhado dos cálculos de valores
+  console.log('=== DEBUG FINANCIAL CONTROL PANEL ===');
+  console.log('Total fichas recebidas:', fichas.length);
+  console.log('Fichas após filtro por período:', fichasPorPeriodo.length);
+  console.log('Fichas filtradas final:', fichasFiltradas.length);
+
+  // Calcular totais usando a função padronizada COM LOGS DETALHADOS
   const fichasPagas = fichasFiltradas.filter(f => f['Ficha paga'] === 'Sim');
   const fichasAPagar = fichasFiltradas.filter(f => f['Ficha paga'] !== 'Sim');
   
+  console.log('Fichas pagas:', fichasPagas.length);
+  console.log('Fichas a pagar:', fichasAPagar.length);
+
+  // ANÁLISE DETALHADA DAS PRIMEIRAS 10 FICHAS A PAGAR
+  console.log('=== ANÁLISE DAS PRIMEIRAS 10 FICHAS A PAGAR ===');
+  fichasAPagar.slice(0, 10).forEach((ficha, index) => {
+    const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
+    console.log(`${index + 1}. Ficha ${ficha.ID}:`);
+    console.log(`   Status: "${ficha['Ficha paga']}"`);
+    console.log(`   Valor original: "${ficha['Valor por Fichas']}"`);
+    console.log(`   Valor processado: ${valor}`);
+  });
+
   const valorTotalPago = fichasPagas.reduce((total, ficha) => {
     const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
-    console.log(`[FINANCIAL PAGO] Ficha ${ficha.ID}: valor=${valor}, total acumulado=${total + valor}`);
     return total + valor;
   }, 0);
 
   const valorTotalAPagar = fichasAPagar.reduce((total, ficha) => {
     const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
-    console.log(`[FINANCIAL A PAGAR] Ficha ${ficha.ID}: valor=${valor}, total acumulado=${total + valor}`);
     return total + valor;
   }, 0);
 
-  console.log('RESUMO FINANCEIRO DETALHADO:');
-  console.log('Total fichas filtradas:', fichasFiltradas.length);
-  console.log('Fichas pagas:', fichasPagas.length, 'Valor total pago:', valorTotalPago);
-  console.log('Fichas a pagar:', fichasAPagar.length, 'Valor total a pagar:', valorTotalAPagar);
-
-  // Amostra dos primeiros 5 registros para debug
-  if (fichasFiltradas.length > 0) {
-    console.log('AMOSTRA DOS PRIMEIROS 5 REGISTROS (FINANCIAL):');
-    fichasFiltradas.slice(0, 5).forEach(ficha => {
-      const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
-      console.log(`ID: ${ficha.ID}, Valor por Fichas original:`, ficha['Valor por Fichas'], 'Valor processado:', valor);
-    });
+  console.log('=== TOTAIS CALCULADOS ===');
+  console.log(`Valor total pago: R$ ${valorTotalPago} (${fichasPagas.length} fichas)`);
+  console.log(`Valor total a pagar: R$ ${valorTotalAPagar} (${fichasAPagar.length} fichas)`);
+  console.log(`Média por ficha a pagar: R$ ${fichasAPagar.length > 0 ? (valorTotalAPagar / fichasAPagar.length).toFixed(2) : 0}`);
+  
+  // VERIFICAÇÃO DE CONSISTÊNCIA
+  if (fichasAPagar.length > 0) {
+    const mediaPorFicha = valorTotalAPagar / fichasAPagar.length;
+    if (mediaPorFicha < 5 || mediaPorFicha > 7) {
+      console.warn('⚠️ INCONSISTÊNCIA DETECTADA: Média por ficha fora do esperado (R$ 6,00)');
+      console.warn(`Média calculada: R$ ${mediaPorFicha.toFixed(2)}`);
+    }
   }
 
   // Função melhorada para atualizar fichas com Google Sheets
