@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,17 +18,19 @@ import { GoogleSheetsUpdateService } from "@/services/googleSheetsUpdateService"
 interface FinancialControlPanelProps {
   fichas: any[];
   projetos: any[];
+  selectedPeriod?: { start: string; end: string } | null;
   onUpdateFichaPaga?: (fichaIds: string[], status: 'Sim' | 'Não') => Promise<void>;
 }
 
 export const FinancialControlPanel = ({ 
   fichas, 
   projetos, 
+  selectedPeriod: externalSelectedPeriod,
   onUpdateFichaPaga 
 }: FinancialControlPanelProps) => {
   const [selectedFichas, setSelectedFichas] = useState<string[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState<{ start: string; end: string } | null>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState<{ start: string; end: string } | null>(externalSelectedPeriod || null);
   const [filters, setFilters] = useState<FinancialFilterState>({
     scouter: null,
     projeto: null
@@ -279,6 +280,9 @@ export const FinancialControlPanel = ({
             onClearSelection={clearSelection}
             filterType={activeFilter.type}
             filterValue={activeFilter.value}
+            projetos={projetos}
+            selectedPeriod={selectedPeriod}
+            filters={filters}
           />
 
           {/* Tabela de Controle de Pagamentos */}
