@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,22 +19,25 @@ interface FinancialControlPanelProps {
   filterValue: string;
   selectedPeriod?: { start: string; end: string } | null;
   filters: FinancialFilterState;
+  onUpdateFichaPaga?: (fichaIds: string[], status: 'Sim' | 'Não') => Promise<void>;
 }
 
 export const FinancialControlPanel = ({
-  fichasFiltradas,
-  projetos,
+  fichasFiltradas = [],
+  projetos = [],
   selectedFichas,
   onSelectionChange,
   filterType,
   filterValue,
   selectedPeriod,
-  filters
+  filters,
+  onUpdateFichaPaga
 }: FinancialControlPanelProps) => {
   const [activeTab, setActiveTab] = useState("fichas");
 
-  const fichasPagas = fichasFiltradas.filter(f => f['Ficha paga'] === 'Sim');
-  const fichasAPagar = fichasFiltradas.filter(f => f['Ficha paga'] !== 'Sim');
+  // Safely filter fichas with null checks
+  const fichasPagas = fichasFiltradas?.filter(f => f && f['Ficha paga'] === 'Sim') || [];
+  const fichasAPagar = fichasFiltradas?.filter(f => f && f['Ficha paga'] !== 'Sim') || [];
   
   const valorTotalFichasPagas = fichasPagas.reduce((total, ficha) => {
     const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
@@ -46,29 +50,27 @@ export const FinancialControlPanel = ({
   }, 0);
 
   const valorTotalSelecionadas = useMemo(() => {
+    if (!fichasFiltradas || !selectedFichas) return 0;
+    
     return fichasFiltradas
-      .filter(f => selectedFichas.has(f.ID?.toString()))
+      .filter(f => f && selectedFichas.has(f.ID?.toString()))
       .reduce((total, ficha) => {
         const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
         return total + valor;
       }, 0);
   }, [fichasFiltradas, selectedFichas]);
 
+  // Convert Set to Array for PaymentBatchActions
+  const selectedFichasArray = Array.from(selectedFichas || []);
+
+  const handleClearSelection = () => {
+    onSelectionChange(new Set<string>());
+  };
+
   console.log("=== DEBUG FINANCIAL CONTROL PANEL ===");
-  console.log("Total fichas recebidas:", fichasFiltradas.length);
-  console.log("Fichas após filtro por período:", fichasFiltradas.length);
-  console.log("Fichas filtradas final:", fichasFiltradas.length);
+  console.log("Total fichas recebidas:", fichasFiltradas?.length || 0);
   console.log("Fichas pagas:", fichasPagas.length);
   console.log("Fichas a pagar:", fichasAPagar.length);
-
-  console.log("=== ANÁLISE DAS PRIMEIRAS 10 FICHAS A PAGAR ===");
-  fichasAPagar.slice(0, 10).forEach((ficha, index) => {
-    const valorProcessado = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
-    console.log(`${index + 1}. Ficha ${ficha.ID}:`);
-    console.log(`   Status: "${ficha['Ficha paga']}"`);
-    console.log(`   Valor original: "${ficha['Valor por Fichas']}"`);
-    console.log(`   Valor processado: ${valorProcessado}`);
-  });
 
   return (
     <div className="space-y-6">
@@ -90,7 +92,7 @@ export const FinancialControlPanel = ({
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{fichasFiltradas.length}</div>
+            <div className="text-2xl font-bold">{fichasFiltradas?.length || 0}</div>
             <p className="text-xs text-muted-foreground">
               fichas no período
             </p>
@@ -129,7 +131,7 @@ export const FinancialControlPanel = ({
             <Users className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{selectedFichas.size}</div>
+            <div className="text-2xl font-bold text-blue-600">{selectedFichas?.size || 0}</div>
             <p className="text-xs text-muted-foreground">
               {formatCurrency(valorTotalSelecionadas)}
             </p>
@@ -146,9 +148,11 @@ export const FinancialControlPanel = ({
 
         <TabsContent value="fichas" className="space-y-4">
           <PaymentBatchActions
-            selectedFichas={selectedFichas}
-            fichasAPagar={fichasAPagar}
-            onSelectionChange={onSelectionChange}
+            fichasFiltradas={fichasFiltradas}
+            selectedFichas={selectedFichasArray}
+            isUpdating={false}
+            onUpdateFichaPaga={onUpdateFichaPaga}
+            onClearSelection={handleClearSelection}
             filterType={filterType}
             filterValue={filterValue}
             projetos={projetos}
@@ -160,7 +164,7 @@ export const FinancialControlPanel = ({
         <TabsContent value="ajuda-custo" className="space-y-4">
           <CostAllowanceManager
             projetos={projetos}
-            fichasFiltradas={fichasFiltradas}
+            fichas={fichasFiltradas}
             selectedPeriod={selectedPeriod}
             filters={filters}
           />
