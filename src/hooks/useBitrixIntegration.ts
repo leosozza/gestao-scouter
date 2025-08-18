@@ -35,8 +35,6 @@ interface SyncResult {
   leadsProcessed?: number;
   leadsCreated?: number;
   leadsUpdated?: number;
-  projetosFound?: number;
-  scoutersFound?: number;
   error?: string;
 }
 
@@ -148,27 +146,6 @@ export const useBitrixIntegration = () => {
         result.leadsUpdated = syncStats.updated;
 
         console.log("Sync stats:", syncStats);
-      }
-
-      // Buscar informações de SPAs (sem persistir ainda)
-      let projetosCount = 0;
-      let scoutersCount = 0;
-
-      try {
-        if (config.enabledEntities.projetos && config.spaIds.projetos) {
-          const projetos = await service.getSPAItems(parseInt(config.spaIds.projetos));
-          projetosCount = projetos.length;
-          result.projetosFound = projetosCount;
-        }
-
-        if (config.enabledEntities.scouters && config.spaIds.scouters) {
-          const scouters = await service.getSPAItems(parseInt(config.spaIds.scouters));
-          scoutersCount = scouters.length;
-          result.scoutersFound = scoutersCount;
-        }
-      } catch (spaError) {
-        console.warn("Error fetching SPA data:", spaError);
-        // Não falhar a sincronização por causa dos SPAs
       }
 
       setLastSync(new Date());
