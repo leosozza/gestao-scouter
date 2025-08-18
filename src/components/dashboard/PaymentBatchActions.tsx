@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -46,18 +45,32 @@ export const PaymentBatchActions = ({
 }: PaymentBatchActionsProps) => {
   const { toast } = useToast();
 
+  // Função auxiliar para calcular valor seguro
+  const calcularValorSeguro = (valorString: any) => {
+    if (!valorString) return 0;
+    const valor = parseFloat(String(valorString).replace(/[^\d.,]/g, '').replace(',', '.'));
+    return isNaN(valor) ? 0 : valor;
+  };
+
   const fichasAPagar = fichasFiltradas.filter(f => f['Ficha paga'] !== 'Sim');
   const fichasSelecionadas = fichasFiltradas.filter(f => selectedFichas.includes(f.ID?.toString()));
   
   const valorTotalSelecionadas = fichasSelecionadas.reduce((total, ficha) => {
-    const valor = parseFloat(ficha['Valor por Fichas'] || 0);
-    return total + (isNaN(valor) ? 0 : valor);
+    const valor = calcularValorSeguro(ficha['Valor por Fichas']);
+    console.log('Ficha selecionada - ID:', ficha.ID, 'Valor por Fichas:', ficha['Valor por Fichas'], 'Valor calculado:', valor);
+    return total + valor;
   }, 0);
 
   const valorTotalAPagar = fichasAPagar.reduce((total, ficha) => {
-    const valor = parseFloat(ficha['Valor por Fichas'] || 0);
-    return total + (isNaN(valor) ? 0 : valor);
+    const valor = calcularValorSeguro(ficha['Valor por Fichas']);
+    console.log('Ficha a pagar - ID:', ficha.ID, 'Valor por Fichas:', ficha['Valor por Fichas'], 'Valor calculado:', valor);
+    return total + valor;
   }, 0);
+
+  console.log('PAYMENT BATCH ACTIONS:');
+  console.log('Fichas filtradas:', fichasFiltradas.length);
+  console.log('Fichas a pagar:', fichasAPagar.length, 'Valor total a pagar:', valorTotalAPagar);
+  console.log('Fichas selecionadas:', fichasSelecionadas.length, 'Valor total selecionadas:', valorTotalSelecionadas);
 
   // Calcular ajuda de custo baseado no período e filtros
   const calcularAjudaDeCusto = () => {

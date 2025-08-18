@@ -71,15 +71,29 @@ export const FinancialControlPanel = ({
   const fichasPagas = fichasFiltradas.filter(f => f['Ficha paga'] === 'Sim');
   const fichasAPagar = fichasFiltradas.filter(f => f['Ficha paga'] !== 'Sim');
   
+  // Função auxiliar para calcular valor seguro
+  const calcularValorSeguro = (valorString: any) => {
+    if (!valorString) return 0;
+    const valor = parseFloat(String(valorString).replace(/[^\d.,]/g, '').replace(',', '.'));
+    return isNaN(valor) ? 0 : valor;
+  };
+
   const valorTotalPago = fichasPagas.reduce((total, ficha) => {
-    const valor = parseFloat(ficha['Valor por Fichas'] || 0);
-    return total + (isNaN(valor) ? 0 : valor);
+    const valor = calcularValorSeguro(ficha['Valor por Fichas']);
+    console.log('Ficha paga - ID:', ficha.ID, 'Valor por Fichas:', ficha['Valor por Fichas'], 'Valor calculado:', valor);
+    return total + valor;
   }, 0);
 
   const valorTotalAPagar = fichasAPagar.reduce((total, ficha) => {
-    const valor = parseFloat(ficha['Valor por Fichas'] || 0);
-    return total + (isNaN(valor) ? 0 : valor);
+    const valor = calcularValorSeguro(ficha['Valor por Fichas']);
+    console.log('Ficha a pagar - ID:', ficha.ID, 'Valor por Fichas:', ficha['Valor por Fichas'], 'Valor calculado:', valor);
+    return total + valor;
   }, 0);
+
+  console.log('RESUMO FINANCEIRO:');
+  console.log('Total fichas filtradas:', fichasFiltradas.length);
+  console.log('Fichas pagas:', fichasPagas.length, 'Valor total pago:', valorTotalPago);
+  console.log('Fichas a pagar:', fichasAPagar.length, 'Valor total a pagar:', valorTotalAPagar);
 
   // Função melhorada para atualizar fichas com Google Sheets
   const handleUpdateFichaPaga = async (fichaIds: string[], status: 'Sim' | 'Não') => {
@@ -137,15 +151,14 @@ export const FinancialControlPanel = ({
     }
     
     acc[scouter].totalFichas++;
-    const valor = parseFloat(ficha['Valor por Fichas'] || 0);
-    const valorValido = isNaN(valor) ? 0 : valor;
+    const valor = calcularValorSeguro(ficha['Valor por Fichas']);
     
     if (ficha['Ficha paga'] === 'Sim') {
       acc[scouter].fichasPagas++;
-      acc[scouter].valorPago += valorValido;
+      acc[scouter].valorPago += valor;
     } else {
       acc[scouter].fichasAPagar++;
-      acc[scouter].valorAPagar += valorValido;
+      acc[scouter].valorAPagar += valor;
     }
     
     // Adicionar dia trabalhado
@@ -337,7 +350,7 @@ export const FinancialControlPanel = ({
                             {ficha['Projetos Cormeciais'] || 'N/A'}
                           </TableCell>
                           <TableCell>{ficha.Criado || 'N/A'}</TableCell>
-                          <TableCell>{formatCurrency(parseFloat(ficha['Valor por Fichas'] || 0))}</TableCell>
+                          <TableCell>{formatCurrency(calcularValorSeguro(ficha['Valor por Fichas']))}</TableCell>
                           <TableCell>
                             <Badge variant={ficha['Ficha paga'] === 'Sim' ? 'default' : 'secondary'}>
                               {ficha['Ficha paga'] || 'Não'}
