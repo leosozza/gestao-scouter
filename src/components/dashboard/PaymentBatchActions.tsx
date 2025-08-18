@@ -45,29 +45,62 @@ export const PaymentBatchActions = ({
 }: PaymentBatchActionsProps) => {
   const { toast } = useToast();
 
-  // Função auxiliar para calcular valor seguro
-  const calcularValorSeguro = (valorString: any) => {
-    if (!valorString) return 0;
-    const valor = parseFloat(String(valorString).replace(/[^\d.,]/g, '').replace(',', '.'));
-    return isNaN(valor) ? 0 : valor;
+  // Função melhorada para calcular valor seguro
+  const calcularValorSeguro = (valorString: any, fichaId?: string) => {
+    console.log(`[PAYMENT VALOR DEBUG] Ficha ${fichaId} - Valor original:`, valorString, 'Tipo:', typeof valorString);
+    
+    if (!valorString) {
+      console.log(`[PAYMENT VALOR DEBUG] Ficha ${fichaId} - Valor vazio ou null`);
+      return 0;
+    }
+    
+    let valorLimpo;
+    
+    // Se for número, usar diretamente
+    if (typeof valorString === 'number') {
+      valorLimpo = valorString;
+    } else {
+      // Converter para string e limpar
+      const str = String(valorString).trim();
+      console.log(`[PAYMENT VALOR DEBUG] Ficha ${fichaId} - String limpa:`, str);
+      
+      if (str === '' || str === 'null' || str === 'undefined') {
+        console.log(`[PAYMENT VALOR DEBUG] Ficha ${fichaId} - String vazia após limpeza`);
+        return 0;
+      }
+      
+      // Remover R$, espaços, e trocar vírgula por ponto
+      valorLimpo = str
+        .replace(/R\$\s*/g, '')
+        .replace(/\s/g, '')
+        .replace(',', '.');
+      
+      console.log(`[PAYMENT VALOR DEBUG] Ficha ${fichaId} - Valor após limpeza:`, valorLimpo);
+      
+      // Tentar converter para número
+      valorLimpo = parseFloat(valorLimpo);
+    }
+    
+    const resultado = isNaN(valorLimpo) ? 0 : valorLimpo;
+    console.log(`[PAYMENT VALOR DEBUG] Ficha ${fichaId} - Valor final:`, resultado);
+    
+    return resultado;
   };
 
   const fichasAPagar = fichasFiltradas.filter(f => f['Ficha paga'] !== 'Sim');
   const fichasSelecionadas = fichasFiltradas.filter(f => selectedFichas.includes(f.ID?.toString()));
   
   const valorTotalSelecionadas = fichasSelecionadas.reduce((total, ficha) => {
-    const valor = calcularValorSeguro(ficha['Valor por Fichas']);
-    console.log('Ficha selecionada - ID:', ficha.ID, 'Valor por Fichas:', ficha['Valor por Fichas'], 'Valor calculado:', valor);
+    const valor = calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID);
     return total + valor;
   }, 0);
 
   const valorTotalAPagar = fichasAPagar.reduce((total, ficha) => {
-    const valor = calcularValorSeguro(ficha['Valor por Fichas']);
-    console.log('Ficha a pagar - ID:', ficha.ID, 'Valor por Fichas:', ficha['Valor por Fichas'], 'Valor calculado:', valor);
+    const valor = calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID);
     return total + valor;
   }, 0);
 
-  console.log('PAYMENT BATCH ACTIONS:');
+  console.log('PAYMENT BATCH ACTIONS DETALHADO:');
   console.log('Fichas filtradas:', fichasFiltradas.length);
   console.log('Fichas a pagar:', fichasAPagar.length, 'Valor total a pagar:', valorTotalAPagar);
   console.log('Fichas selecionadas:', fichasSelecionadas.length, 'Valor total selecionadas:', valorTotalSelecionadas);

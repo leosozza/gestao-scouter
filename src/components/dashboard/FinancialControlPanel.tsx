@@ -37,6 +37,48 @@ export const FinancialControlPanel = ({
   });
   const { toast } = useToast();
 
+  // Função melhorada para calcular valor seguro
+  const calcularValorSeguro = (valorString: any, fichaId?: string) => {
+    console.log(`[VALOR DEBUG] Ficha ${fichaId} - Valor original:`, valorString, 'Tipo:', typeof valorString);
+    
+    if (!valorString) {
+      console.log(`[VALOR DEBUG] Ficha ${fichaId} - Valor vazio ou null`);
+      return 0;
+    }
+    
+    let valorLimpo;
+    
+    // Se for número, usar diretamente
+    if (typeof valorString === 'number') {
+      valorLimpo = valorString;
+    } else {
+      // Converter para string e limpar
+      const str = String(valorString).trim();
+      console.log(`[VALOR DEBUG] Ficha ${fichaId} - String limpa:`, str);
+      
+      if (str === '' || str === 'null' || str === 'undefined') {
+        console.log(`[VALOR DEBUG] Ficha ${fichaId} - String vazia após limpeza`);
+        return 0;
+      }
+      
+      // Remover R$, espaços, e trocar vírgula por ponto
+      valorLimpo = str
+        .replace(/R\$\s*/g, '')
+        .replace(/\s/g, '')
+        .replace(',', '.');
+      
+      console.log(`[VALOR DEBUG] Ficha ${fichaId} - Valor após limpeza:`, valorLimpo);
+      
+      // Tentar converter para número
+      valorLimpo = parseFloat(valorLimpo);
+    }
+    
+    const resultado = isNaN(valorLimpo) ? 0 : valorLimpo;
+    console.log(`[VALOR DEBUG] Ficha ${fichaId} - Valor final:`, resultado);
+    
+    return resultado;
+  };
+
   // Filtrar fichas por período se selecionado
   const fichasPorPeriodo = selectedPeriod ? fichas.filter(ficha => {
     const dataCriado = ficha.Criado;
@@ -71,29 +113,28 @@ export const FinancialControlPanel = ({
   const fichasPagas = fichasFiltradas.filter(f => f['Ficha paga'] === 'Sim');
   const fichasAPagar = fichasFiltradas.filter(f => f['Ficha paga'] !== 'Sim');
   
-  // Função auxiliar para calcular valor seguro
-  const calcularValorSeguro = (valorString: any) => {
-    if (!valorString) return 0;
-    const valor = parseFloat(String(valorString).replace(/[^\d.,]/g, '').replace(',', '.'));
-    return isNaN(valor) ? 0 : valor;
-  };
-
   const valorTotalPago = fichasPagas.reduce((total, ficha) => {
-    const valor = calcularValorSeguro(ficha['Valor por Fichas']);
-    console.log('Ficha paga - ID:', ficha.ID, 'Valor por Fichas:', ficha['Valor por Fichas'], 'Valor calculado:', valor);
+    const valor = calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID);
     return total + valor;
   }, 0);
 
   const valorTotalAPagar = fichasAPagar.reduce((total, ficha) => {
-    const valor = calcularValorSeguro(ficha['Valor por Fichas']);
-    console.log('Ficha a pagar - ID:', ficha.ID, 'Valor por Fichas:', ficha['Valor por Fichas'], 'Valor calculado:', valor);
+    const valor = calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID);
     return total + valor;
   }, 0);
 
-  console.log('RESUMO FINANCEIRO:');
+  console.log('RESUMO FINANCEIRO DETALHADO:');
   console.log('Total fichas filtradas:', fichasFiltradas.length);
   console.log('Fichas pagas:', fichasPagas.length, 'Valor total pago:', valorTotalPago);
   console.log('Fichas a pagar:', fichasAPagar.length, 'Valor total a pagar:', valorTotalAPagar);
+
+  // Amostra dos primeiros 5 registros para debug
+  if (fichasFiltradas.length > 0) {
+    console.log('AMOSTRA DOS PRIMEIROS 5 REGISTROS:');
+    fichasFiltradas.slice(0, 5).forEach(ficha => {
+      console.log(`ID: ${ficha.ID}, Valor por Fichas:`, ficha['Valor por Fichas'], 'Todas as chaves:', Object.keys(ficha));
+    });
+  }
 
   // Função melhorada para atualizar fichas com Google Sheets
   const handleUpdateFichaPaga = async (fichaIds: string[], status: 'Sim' | 'Não') => {
@@ -151,7 +192,7 @@ export const FinancialControlPanel = ({
     }
     
     acc[scouter].totalFichas++;
-    const valor = calcularValorSeguro(ficha['Valor por Fichas']);
+    const valor = calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID);
     
     if (ficha['Ficha paga'] === 'Sim') {
       acc[scouter].fichasPagas++;
@@ -350,7 +391,7 @@ export const FinancialControlPanel = ({
                             {ficha['Projetos Cormeciais'] || 'N/A'}
                           </TableCell>
                           <TableCell>{ficha.Criado || 'N/A'}</TableCell>
-                          <TableCell>{formatCurrency(calcularValorSeguro(ficha['Valor por Fichas']))}</TableCell>
+                          <TableCell>{formatCurrency(calcularValorSeguro(ficha['Valor por Fichas'], ficha.ID))}</TableCell>
                           <TableCell>
                             <Badge variant={ficha['Ficha paga'] === 'Sim' ? 'default' : 'secondary'}>
                               {ficha['Ficha paga'] || 'Não'}
