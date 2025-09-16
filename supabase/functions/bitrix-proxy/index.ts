@@ -1,131 +1,157 @@
 
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders: HeadersInit = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+// Restricted CORS headers
+const ALLOWED_ORIGINS = [
+  "https://nwgqynfcglcwwvibaypj.supabase.co",
+  "http://localhost:5173",
+  "http://localhost:3000"
+];
+
+const corsHeaders = {
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 };
-
-type AuthMode = "webhook" | "oauth";
 
 interface ProxyBody {
   baseUrl: string;
-  authMode: AuthMode;
-  webhookUserId?: string;
-  webhookToken?: string;
-  clientId?: string;
-  clientSecret?: string;
-  refreshToken?: string;
-  method: string; // ex: "crm.lead.list", "batch"
+  method: string;
   params?: Record<string, any>;
+  authMode?: 'webhook' | 'oauth';
+  webhookUserId?: string;
+  webhookCode?: string;
 }
 
-function cleanBaseUrl(url: string): string {
-  return url.replace(/\/+$/g, ""); // remove barra final
-}
-
-async function getAccessToken(baseUrl: string, clientId: string, clientSecret: string, refreshToken: string) {
-  const tokenUrl = `${cleanBaseUrl(baseUrl)}/oauth/token/`;
-  const body = new URLSearchParams({
-    grant_type: "refresh_token",
-    client_id: clientId,
-    client_secret: clientSecret,
-    refresh_token: refreshToken,
+async function getAccessToken(clientId: string, clientSecret: string, refreshToken: string, baseUrl: string) {
+  const response = await fetch(`${baseUrl}/oauth/token/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+    }),
   });
 
-  const res = await fetch(tokenUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`OAuth refresh failed (${res.status}): ${text || "unknown error"}`);
+  if (!response.ok) {
+    throw new Error(`Failed to refresh token: ${response.statusText}`);
   }
 
-  const data = await res.json();
-  if (!data.access_token) {
-    throw new Error("OAuth refresh did not return access_token");
-  }
-  return data.access_token as string;
+  const data = await response.json();
+  return data.access_token;
 }
 
-serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    const origin = req.headers.get("origin") ?? "";
+    if (!ALLOWED_ORIGINS.includes(origin)) {
+      return new Response("Forbidden", { status: 403 });
+    }
+    
+    return new Response(null, { 
+      headers: { 
+        ...corsHeaders, 
+        'Access-Control-Allow-Origin': origin 
+      } 
+    });
   }
 
   try {
-    const body = (await req.json()) as ProxyBody;
-    const {
-      baseUrl,
-      authMode,
-      webhookUserId,
-      webhookToken,
-      clientId,
-      clientSecret,
-      refreshToken,
-      method,
-      params = {},
-    } = body;
-
-    if (!baseUrl || !authMode || !method) {
-      return new Response(
-        JSON.stringify({ error: "Missing required fields: baseUrl, authMode, method" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    const origin = req.headers.get("origin") ?? "";
+    if (!ALLOWED_ORIGINS.includes(origin)) {
+      return new Response("Forbidden", { status: 403 });
     }
 
-    let url = "";
-    const normalizedBase = cleanBaseUrl(baseUrl);
+    // Validate JWT token
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Missing or invalid authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
+      });
+    }
 
-    if (authMode === "webhook") {
-      if (!webhookUserId || !webhookToken) {
-        return new Response(
-          JSON.stringify({ error: "Missing webhookUserId or webhookToken" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+    const body: ProxyBody = await req.json();
+    
+    // Validate baseUrl (allowlist Bitrix domains)
+    if (!body.baseUrl || !body.baseUrl.match(/^https:\/\/[a-zA-Z0-9-]+\.bitrix24\.(com|net|org|ru|br)/)) {
+      return new Response(JSON.stringify({ error: 'Invalid or unauthorized Bitrix domain' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
+      });
+    }
+
+    // Get credentials from environment (server-side secrets)
+    const CLIENT_ID = Deno.env.get('BITRIX_CLIENT_ID');
+    const CLIENT_SECRET = Deno.env.get('BITRIX_CLIENT_SECRET');
+    const REFRESH_TOKEN = Deno.env.get('BITRIX_REFRESH_TOKEN');
+    const WEBHOOK_USER_ID = Deno.env.get('BITRIX_WEBHOOK_USER_ID');
+    const WEBHOOK_CODE = Deno.env.get('BITRIX_WEBHOOK_CODE');
+
+    let bitrixUrl: string;
+
+    if (body.authMode === 'webhook') {
+      if (!WEBHOOK_USER_ID || !WEBHOOK_CODE) {
+        return new Response(JSON.stringify({ error: 'Webhook credentials not configured' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
+        });
       }
-      // ex: https://portal/rest/USER_ID/TOKEN/crm.lead.list.json
-      url = `${normalizedBase}/rest/${webhookUserId}/${webhookToken}/${method}.json`;
+      
+      bitrixUrl = `${body.baseUrl}/rest/${WEBHOOK_USER_ID}/${WEBHOOK_CODE}/${body.method}/`;
     } else {
-      if (!clientId || !clientSecret || !refreshToken) {
-        return new Response(
-          JSON.stringify({ error: "Missing clientId, clientSecret or refreshToken" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      // OAuth mode
+      if (!CLIENT_ID || !CLIENT_SECRET || !REFRESH_TOKEN) {
+        return new Response(JSON.stringify({ error: 'OAuth credentials not configured' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
+        });
       }
-      const accessToken = await getAccessToken(normalizedBase, clientId, clientSecret, refreshToken);
-      // ex: https://portal/rest/crm.lead.list.json?auth=ACCESS_TOKEN
-      url = `${normalizedBase}/rest/${method}.json?auth=${encodeURIComponent(accessToken)}`;
+
+      const accessToken = await getAccessToken(CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN, body.baseUrl);
+      bitrixUrl = `${body.baseUrl}/rest/${body.method}/?auth=${accessToken}`;
     }
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: Object.keys(params || {}).length ? JSON.stringify(params) : "{}",
+    console.log(`Making request to: ${bitrixUrl}`);
+
+    const bitrixResponse = await fetch(bitrixUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.params ? new URLSearchParams(body.params) : undefined,
     });
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      return new Response(
-        JSON.stringify({ error: `Bitrix error (${res.status}): ${text}` }),
-        { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    const bitrixData = await bitrixResponse.json();
+
+    if (!bitrixResponse.ok) {
+      console.error('Bitrix API error:', bitrixData);
+      return new Response(JSON.stringify({ 
+        error: 'Bitrix API error', 
+        details: bitrixData 
+      }), {
+        status: bitrixResponse.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
+      });
     }
 
-    const data = await res.json();
-    return new Response(JSON.stringify(data), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return new Response(JSON.stringify(bitrixData), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': origin },
     });
-  } catch (err: any) {
-    console.error("bitrix-proxy error:", err);
-    return new Response(
-      JSON.stringify({ error: err?.message || "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+
+  } catch (error) {
+    console.error('Proxy error:', error);
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error', 
+      message: error.message 
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });

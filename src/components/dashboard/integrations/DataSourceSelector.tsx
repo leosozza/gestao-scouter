@@ -1,213 +1,117 @@
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { 
-  Database, 
-  FileSpreadsheet, 
-  Shuffle,
-  CheckCircle,
-  AlertCircle,
-  Info
-} from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Database, Sheet, Globe } from 'lucide-react';
+import { getDataSource, setDataSource, type DataSource } from '@/repositories/datasource';
+import { useToast } from '@/hooks/use-toast';
 
-type DataSource = 'sheets' | 'bitrix' | 'hybrid';
-
-interface DataSourceConfig {
-  current: DataSource;
-  available: {
-    sheets: boolean;
-    bitrix: boolean;
-  };
-}
-
-export const DataSourceSelector = () => {
-  const [config, setConfig] = useState<DataSourceConfig>({
-    current: 'sheets',
-    available: {
-      sheets: true,
-      bitrix: false,
-    },
-  });
-
+export function DataSourceSelector() {
+  const [currentSource, setCurrentSource] = useState<DataSource>('sheets');
   const { toast } = useToast();
 
   useEffect(() => {
-    // Carregar configuração salva do localStorage
-    const savedSource = localStorage.getItem('maxfama_data_source') as DataSource;
-    if (savedSource) {
-      setConfig(prev => ({ ...prev, current: savedSource }));
-    }
+    setCurrentSource(getDataSource());
   }, []);
 
   const handleSourceChange = (newSource: DataSource) => {
-    setConfig(prev => ({ ...prev, current: newSource }));
-    localStorage.setItem('maxfama_data_source', newSource);
+    setDataSource(newSource);
+    setCurrentSource(newSource);
     
     toast({
       title: "Fonte de dados alterada",
-      description: `Agora usando: ${getSourceLabel(newSource)}`
+      description: `Agora utilizando ${newSource === 'sheets' ? 'Google Sheets' : 'Bitrix24'} como fonte de dados.`,
     });
-  };
 
-  const getSourceLabel = (source: DataSource) => {
-    switch (source) {
-      case 'sheets': return 'Google Sheets';
-      case 'bitrix': return 'Bitrix24';
-      case 'hybrid': return 'Híbrido (Sheets + Bitrix)';
-    }
+    // Refresh the page to apply changes
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
   };
 
   const getSourceIcon = (source: DataSource) => {
-    switch (source) {
-      case 'sheets': return <FileSpreadsheet className="h-5 w-5" />;
-      case 'bitrix': return <Database className="h-5 w-5" />;
-      case 'hybrid': return <Shuffle className="h-5 w-5" />;
-    }
+    return source === 'sheets' ? <Sheet className="h-4 w-4" /> : <Database className="h-4 w-4" />;
   };
 
-  const getSourceDescription = (source: DataSource) => {
-    switch (source) {
-      case 'sheets': 
-        return 'Usar apenas dados do Google Sheets. Ideal para começar rapidamente.';
-      case 'bitrix': 
-        return 'Usar apenas dados do Bitrix24. Requer integração configurada.';
-      case 'hybrid': 
-        return 'Combinar dados de ambas as fontes. Melhor cobertura e redundância.';
-    }
+  const getSourceLabel = (source: DataSource) => {
+    return source === 'sheets' ? 'Google Sheets' : 'Bitrix24';
+  };
+
+  const getConnectionStatus = (source: DataSource) => {
+    // Mock connection status - in real implementation, this would check actual connectivity
+    return source === 'sheets' ? 'Conectado' : 'Conectado';
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Database className="h-6 w-6" />
-        <div>
-          <h2 className="text-xl font-bold">Fonte de Dados</h2>
-          <p className="text-muted-foreground">
-            Escolha de onde o MaxFama deve carregar os dados
-          </p>
-        </div>
-        <div className="ml-auto">
-          <Badge variant="outline" className="flex items-center gap-2">
-            {getSourceIcon(config.current)}
-            Atual: {getSourceLabel(config.current)}
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Globe className="h-5 w-5" />
+          Seletor de Fonte de Dados
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Fonte atual:</span>
+          <Badge variant="outline" className="flex items-center gap-1">
+            {getSourceIcon(currentSource)}
+            {getSourceLabel(currentSource)}
           </Badge>
         </div>
-      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Selecionar Fonte de Dados</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <RadioGroup
-            value={config.current}
-            onValueChange={(value: DataSource) => handleSourceChange(value)}
+        <div className="space-y-2">
+          <label htmlFor="datasource-select" className="text-sm font-medium">
+            Selecionar fonte de dados:
+          </label>
+          <Select
+            value={currentSource}
+            onValueChange={(value) => handleSourceChange(value as DataSource)}
           >
-            <div className="space-y-3">
-              <div className="flex items-start space-x-3 p-3 border rounded-lg">
-                <RadioGroupItem value="sheets" id="sheets" className="mt-1" />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <FileSpreadsheet className="h-4 w-4" />
-                    <Label htmlFor="sheets" className="font-medium">Google Sheets</Label>
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {getSourceDescription('sheets')}
-                  </p>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione a fonte de dados" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="sheets">
+                <div className="flex items-center gap-2">
+                  <Sheet className="h-4 w-4" />
+                  Google Sheets
                 </div>
-              </div>
+              </SelectItem>
+              <SelectItem value="bitrix">
+                <div className="flex items-center gap-2">
+                  <Database className="h-4 w-4" />
+                  Bitrix24
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-              <div className="flex items-start space-x-3 p-3 border rounded-lg opacity-60">
-                <RadioGroupItem value="bitrix" id="bitrix" disabled={!config.available.bitrix} className="mt-1" />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Database className="h-4 w-4" />
-                    <Label htmlFor="bitrix" className="font-medium">Bitrix24</Label>
-                    {config.available.bitrix ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {getSourceDescription('bitrix')}
-                  </p>
-                  {!config.available.bitrix && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Configure a integração Bitrix24 primeiro
-                    </p>
-                  )}
-                </div>
+        <div className="border-t pt-4 space-y-2">
+          <h4 className="font-medium text-sm">Status de Conexão</h4>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sheet className="h-4 w-4" />
+                Google Sheets
               </div>
-
-              <div className="flex items-start space-x-3 p-3 border rounded-lg opacity-60">
-                <RadioGroupItem 
-                  value="hybrid" 
-                  id="hybrid" 
-                  disabled={!config.available.bitrix} 
-                  className="mt-1" 
-                />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Shuffle className="h-4 w-4" />
-                    <Label htmlFor="hybrid" className="font-medium">Híbrido (Recomendado)</Label>
-                    {config.available.bitrix ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {getSourceDescription('hybrid')}
-                  </p>
-                  {!config.available.bitrix && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Requer integração Bitrix24 configurada
-                    </p>
-                  )}
-                </div>
-              </div>
+              <Badge variant={currentSource === 'sheets' ? 'default' : 'secondary'}>
+                {getConnectionStatus('sheets')}
+              </Badge>
             </div>
-          </RadioGroup>
-
-          {config.current === 'hybrid' && (
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Modo Híbrido:</strong> Os dados serão mesclados usando o ID como chave. 
-                Em caso de conflito, será priorizado o registro com data de modificação mais recente.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <div className="bg-muted p-4 rounded-lg">
-            <h4 className="font-medium mb-2">Status das Fontes</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span>Google Sheets</span>
-                <Badge variant="outline" className="text-green-600">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Conectado
-                </Badge>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                Bitrix24
               </div>
-              <div className="flex items-center justify-between">
-                <span>Bitrix24</span>
-                <Badge variant="outline" className="text-muted-foreground">
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  Não configurado
-                </Badge>
-              </div>
+              <Badge variant={currentSource === 'bitrix' ? 'default' : 'secondary'}>
+                {getConnectionStatus('bitrix')}
+              </Badge>
             </div>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   );
-};
+}
