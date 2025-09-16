@@ -152,9 +152,129 @@ export type Database = {
         }
         Relationships: []
       }
+      scouter_profiles: {
+        Row: {
+          active: boolean
+          created_at: string
+          current_tier_id: string | null
+          fichas_value: number
+          id: string
+          scouter_name: string
+          updated_at: string
+          user_id: string | null
+          weekly_goal: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          current_tier_id?: string | null
+          fichas_value?: number
+          id?: string
+          scouter_name: string
+          updated_at?: string
+          user_id?: string | null
+          weekly_goal?: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          current_tier_id?: string | null
+          fichas_value?: number
+          id?: string
+          scouter_name?: string
+          updated_at?: string
+          user_id?: string | null
+          weekly_goal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scouter_profiles_current_tier_id_fkey"
+            columns: ["current_tier_id"]
+            isOneToOne: false
+            referencedRelation: "scouter_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scouter_tiers: {
+        Row: {
+          bonus_multiplier: number
+          conversion_rate_max: number
+          conversion_rate_min: number
+          created_at: string
+          id: string
+          max_fichas_per_week: number | null
+          min_fichas_per_week: number
+          tier_name: string
+          tier_order: number
+          updated_at: string
+        }
+        Insert: {
+          bonus_multiplier?: number
+          conversion_rate_max?: number
+          conversion_rate_min?: number
+          created_at?: string
+          id?: string
+          max_fichas_per_week?: number | null
+          min_fichas_per_week?: number
+          tier_name: string
+          tier_order: number
+          updated_at?: string
+        }
+        Update: {
+          bonus_multiplier?: number
+          conversion_rate_max?: number
+          conversion_rate_min?: number
+          created_at?: string
+          id?: string
+          max_fichas_per_week?: number | null
+          min_fichas_per_week?: number
+          tier_name?: string
+          tier_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      vw_funil_semana: {
+        Row: {
+          convertidos: number | null
+          semana: string | null
+          taxa_conversao: number | null
+          total_fichas: number | null
+          valor_medio_ficha: number | null
+        }
+        Relationships: []
+      }
+      vw_projecao_scouter: {
+        Row: {
+          projecao_agressiva: number | null
+          projecao_conservadora: number | null
+          projecao_historica: number | null
+          projecao_provavel: number | null
+          scouter_name: string | null
+          semana_futura: number | null
+          semana_label: string | null
+          tier_name: string | null
+          weekly_goal: number | null
+        }
+        Relationships: []
+      }
+      vw_quality_semana: {
+        Row: {
+          conversion_rate_max: number | null
+          conversion_rate_min: number | null
+          convertidos: number | null
+          performance_status: string | null
+          scouter: string | null
+          semana: string | null
+          taxa_conversao_individual: number | null
+          tier_name: string | null
+          total_fichas: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
