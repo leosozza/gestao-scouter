@@ -122,7 +122,7 @@ export const useBitrixIntegration = () => {
 
       // Criar registro de sincronização
       const run = await createSyncRun(authData.user.id, 'leads');
-      runId = run?.id ?? null;
+      runId = run?.id || null;
 
       console.log("Starting Bitrix24 sync...");
 

@@ -14,7 +14,144 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bitrix_leads: {
+        Row: {
+          altura_cm: string | null
+          bairro: string | null
+          bitrix_id: number
+          celular: string | null
+          cep: string | null
+          cidade: string | null
+          complemento: string | null
+          cor_do_cabelo: string | null
+          cor_dos_olhos: string | null
+          created_at: string
+          data_de_criacao_da_ficha: string | null
+          endereco: string | null
+          etapa: string | null
+          foto_do_modelo: string | null
+          id: string
+          lead_score: string | null
+          local_da_abordagem: string | null
+          manequim_de_roupa: string | null
+          medida_da_cintura: string | null
+          medida_do_busto: string | null
+          medida_do_quadril: string | null
+          nome_do_modelo: string | null
+          numero: string | null
+          numero_do_calcado: string | null
+          ponto_de_referencia: string | null
+          primeiro_nome: string | null
+          telefone_de_trabalho: string | null
+          uf: string | null
+          updated_at: string
+        }
+        Insert: {
+          altura_cm?: string | null
+          bairro?: string | null
+          bitrix_id: number
+          celular?: string | null
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
+          cor_do_cabelo?: string | null
+          cor_dos_olhos?: string | null
+          created_at?: string
+          data_de_criacao_da_ficha?: string | null
+          endereco?: string | null
+          etapa?: string | null
+          foto_do_modelo?: string | null
+          id?: string
+          lead_score?: string | null
+          local_da_abordagem?: string | null
+          manequim_de_roupa?: string | null
+          medida_da_cintura?: string | null
+          medida_do_busto?: string | null
+          medida_do_quadril?: string | null
+          nome_do_modelo?: string | null
+          numero?: string | null
+          numero_do_calcado?: string | null
+          ponto_de_referencia?: string | null
+          primeiro_nome?: string | null
+          telefone_de_trabalho?: string | null
+          uf?: string | null
+          updated_at?: string
+        }
+        Update: {
+          altura_cm?: string | null
+          bairro?: string | null
+          bitrix_id?: number
+          celular?: string | null
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
+          cor_do_cabelo?: string | null
+          cor_dos_olhos?: string | null
+          created_at?: string
+          data_de_criacao_da_ficha?: string | null
+          endereco?: string | null
+          etapa?: string | null
+          foto_do_modelo?: string | null
+          id?: string
+          lead_score?: string | null
+          local_da_abordagem?: string | null
+          manequim_de_roupa?: string | null
+          medida_da_cintura?: string | null
+          medida_do_busto?: string | null
+          medida_do_quadril?: string | null
+          nome_do_modelo?: string | null
+          numero?: string | null
+          numero_do_calcado?: string | null
+          ponto_de_referencia?: string | null
+          primeiro_nome?: string | null
+          telefone_de_trabalho?: string | null
+          uf?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      bitrix_sync_runs: {
+        Row: {
+          completed_at: string | null
+          error_message: string | null
+          id: string
+          records_created: number | null
+          records_failed: number | null
+          records_processed: number | null
+          records_updated: number | null
+          started_at: string
+          status: string
+          sync_type: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          error_message?: string | null
+          id?: string
+          records_created?: number | null
+          records_failed?: number | null
+          records_processed?: number | null
+          records_updated?: number | null
+          started_at?: string
+          status?: string
+          sync_type: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          error_message?: string | null
+          id?: string
+          records_created?: number | null
+          records_failed?: number | null
+          records_processed?: number | null
+          records_updated?: number | null
+          started_at?: string
+          status?: string
+          sync_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

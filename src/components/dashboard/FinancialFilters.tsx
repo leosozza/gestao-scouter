@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Filter, X } from "lucide-react";
+import { DateRange } from "react-day-picker";
 
 interface FinancialFiltersProps {
   fichas: any[];
@@ -13,14 +14,15 @@ interface FinancialFiltersProps {
 }
 
 export interface FinancialFilterState {
-  scouter: string | null;
-  projeto: string | null;
+  dateRange?: DateRange;
+  scouter: string;
+  projeto: string;
 }
 
 export const FinancialFilters = ({ fichas, projetos, onFiltersChange }: FinancialFiltersProps) => {
   const [filters, setFilters] = useState<FinancialFilterState>({
-    scouter: null,
-    projeto: null
+    scouter: '',
+    projeto: ''
   });
 
   // Extrair scouters únicos das fichas
@@ -38,13 +40,13 @@ export const FinancialFilters = ({ fichas, projetos, onFiltersChange }: Financia
   )).sort();
 
   const handleFilterChange = (type: keyof FinancialFilterState, value: string | null) => {
-    const newFilters = { ...filters, [type]: value };
+    const newFilters = { ...filters, [type]: value || '' };
     setFilters(newFilters);
     onFiltersChange(newFilters);
   };
 
   const clearAllFilters = () => {
-    const emptyFilters = { scouter: null, projeto: null };
+    const emptyFilters = { scouter: '', projeto: '' };
     setFilters(emptyFilters);
     onFiltersChange(emptyFilters);
   };
