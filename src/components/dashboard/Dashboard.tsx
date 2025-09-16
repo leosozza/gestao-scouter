@@ -7,7 +7,6 @@ import { MobileSidebar } from "@/components/mobile-sidebar";
 import { SettingsModal } from "@/components/settings-modal";
 import { DataTable } from "@/components/data-table/data-table";
 import { columns } from "@/components/data-table/columns";
-import { google } from "googleapis";
 import { Button } from "@/components/ui/button";
 import { PlusIcon } from "lucide-react";
 import { FichaForm } from "@/components/ficha-form";
@@ -15,7 +14,7 @@ import { DateRange } from "react-day-picker";
 import { ProjectFilters } from "./ProjectFilters";
 import { FinancialControlPanel } from "./FinancialControlPanel";
 import { FinancialFilters, FinancialFilterState } from "./FinancialFilters";
-import { parseFichaDateTimeBR } from "@/utils/formatters";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DashboardProps {
   onLogout: () => void;
@@ -39,83 +38,45 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const auth = await google.auth.getClient({
-        scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly']
-      });
+      // Fetch data from Supabase instead of Google Sheets
+      const { data: leadsData, error: leadsError } = await supabase
+        .from('bitrix_leads')
+        .select('*')
+        .order('data_de_criacao_da_ficha', { ascending: false });
 
-      const sheets = google.sheets({ version: 'v4', auth });
+      if (leadsError) throw leadsError;
 
-      // Function to fetch data from a specific sheet
-      const fetchDataFromSheet = async (spreadsheetId: string, range: string) => {
-        const response = await sheets.spreadsheets.values.get({
-          spreadsheetId,
-          range,
-        });
-        return response.data.values;
-      };
+      // Transform Supabase data to match expected format
+      const fichas = leadsData?.map(lead => ({
+        ID: lead.id,
+        'Gestão de Scouter': lead.primeiro_nome || '',
+        'Projetos Cormeciais': 'Bitrix24', // Default project
+        'Data de criação da Ficha': lead.data_de_criacao_da_ficha 
+          ? new Date(lead.data_de_criacao_da_ficha).toLocaleDateString('pt-BR')
+          : '',
+        'Ficha paga': lead.etapa === 'CONVERTIDO' ? 'Sim' : 'Não',
+        Criado: lead.created_at,
+        // Add other fields as needed
+        ...lead
+      })) || [];
 
-      // Fetch Fichas data
-      const fichasValues = await fetchDataFromSheet(
-        import.meta.env.VITE_SHEET_ID,
-        'Fichas!A1:BB'
-      );
+      // Mock projects data for now
+      const projetos = [
+        { 'Agencia e Seletiva': 'Bitrix24', 'Meta de Fichas': 100 }
+      ];
 
-      // Fetch Projetos data
-      const projetosValues = await fetchDataFromSheet(
-        import.meta.env.VITE_SHEET_ID,
-        'Projetos!A1:Z'
-      );
-
-      if (fichasValues && projetosValues) {
-        // Process Fichas data
-        const [fichasHeaders, ...fichasRows] = fichasValues;
-        const fichas = fichasRows.map(row => {
-          const ficha: { [key: string]: any } = {};
-          fichasHeaders.forEach((header, index) => {
-            ficha[header] = row[index] || '';
-          });
-
-          // Tenta fazer o parsing da data e hora da ficha
-          const parsedDateTime = parseFichaDateTimeBR(ficha['Data de criação da Ficha']);
-          if (parsedDateTime) {
-            ficha.Criado = parsedDateTime.created_at_iso;
-            ficha['Data de criação da Ficha'] = parsedDateTime.created_day;
-          }
-
-          return ficha;
-        });
-
-        // Process Projetos data
-        const [projetosHeaders, ...projetosRows] = projetosValues;
-        const projetos = projetosRows.map(row => {
-          const projeto: { [key: string]: any } = {};
-          projetosHeaders.forEach((header, index) => {
-            projeto[header] = row[index] || '';
-          });
-          return projeto;
-        });
-
-        setData({ fichas, projetos });
-      } else {
-        toast({
-          title: "Erro ao carregar dados",
-          description: "Não foi possível carregar os dados das planilhas.",
-          variant: "destructive",
-        });
-      }
+      setData({ fichas, projetos });
     } catch (error: any) {
       console.error("Error fetching data:", error);
       toast({
         title: "Erro ao carregar dados",
-        description: error.message || "Ocorreu um erro ao carregar os dados.",
+        description: error.message || "Ocorreu um erro ao carregar os dados do Supabase.",
         variant: "destructive",
       });
-      navigate('/login');
-      onLogout();
     } finally {
       setIsLoading(false);
     }
-  }, [navigate, onLogout, toast]);
+  }, [toast]);
 
   useEffect(() => {
     fetchData();
@@ -124,48 +85,22 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   const handleUpdateFichaPaga = async (fichaIds: string[], status: 'Sim' | 'Não') => {
     setIsLoading(true);
     try {
-      const auth = await google.auth.getClient({
-        scopes: ['https://www.googleapis.com/auth/spreadsheets']
+      // Update status in Supabase instead of Google Sheets
+      const { error } = await supabase
+        .from('bitrix_leads')
+        .update({ 
+          etapa: status === 'Sim' ? 'CONVERTIDO' : 'EM_ANDAMENTO'
+        })
+        .in('id', fichaIds);
+
+      if (error) throw error;
+
+      toast({
+        title: "Fichas atualizadas",
+        description: `${fichaIds.length} fichas marcadas como ${status === 'Sim' ? 'pagas' : 'não pagas'}.`,
       });
-      const sheets = google.sheets({ version: 'v4', auth });
-
-      // Prepare the update request
-      const values = fichaIds.map(id => [status]); // Status to update
-      const resource = {
-        values,
-      };
-
-      // Construct the ranges for the update
-      const data = fichaIds.map(id => ({
-        range: `Fichas!AA${findRowNumberById(id)}`, // Assuming 'Ficha paga' is in column AA
-        values: [[status]],
-      }));
-
-      // Batch update request
-      const batchUpdateData = {
-        valueInputOption: 'USER_ENTERED', // or 'RAW'
-        data,
-      };
-
-      // Make the update request
-      const response = await sheets.spreadsheets.values.batchUpdate({
-        spreadsheetId: import.meta.env.VITE_SHEET_ID,
-        requestBody: batchUpdateData,
-      });
-
-      if (response.status === 200) {
-        toast({
-          title: "Fichas atualizadas",
-          description: `${fichaIds.length} fichas marcadas como ${status === 'Sim' ? 'pagas' : 'não pagas'}.`,
-        });
-        fetchData(); // Refresh data
-      } else {
-        toast({
-          title: "Erro ao atualizar fichas",
-          description: "Não foi possível atualizar o status das fichas.",
-          variant: "destructive",
-        });
-      }
+      
+      fetchData(); // Refresh data
     } catch (error: any) {
       console.error("Error updating ficha status:", error);
       toast({
@@ -176,11 +111,6 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const findRowNumberById = (id: string): number => {
-    const fichaIndex = data.fichas.findIndex(ficha => ficha.ID === id);
-    return fichaIndex !== -1 ? fichaIndex + 2 : -1; // +2 because the data starts on line 2 in the sheet
   };
 
   const filteredFichas = data.fichas?.filter(ficha => {
