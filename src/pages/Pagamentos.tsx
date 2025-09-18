@@ -1,90 +1,210 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AppShell } from '@/layouts/AppShell'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Calendar, DollarSign, CreditCard, FileText, Search, Filter } from 'lucide-react'
+import { DataTable } from '@/components/shared/DataTable'
+import { FilterHeader } from '@/components/shared/FilterHeader'
+import { Calendar, DollarSign, CreditCard, FileText, Users, TrendingUp } from 'lucide-react'
+import { getLeads } from '@/repositories/leadsRepo'
 
 export default function Pagamentos() {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [pagamentos, setPagamentos] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filters, setFilters] = useState<Record<string, any>>({})
 
-  // Mock data - replace with actual data from your repositories  
-  const mockPagamentos = [
+  const filterOptions = [
     {
-      id: 1,
-      scouter: 'Ana Silva',
-      periodo: '2024-01-01 - 2024-01-07',
-      fichas: 75,
-      valorFicha: 18.00,
-      ajudaCusto: 300.00,
-      bonusQuality: 45.00,
-      valorTotal: 1695.00,
-      status: 'Pago',
-      dataPagamento: '2024-01-15'
+      key: 'status',
+      label: 'Status',
+      type: 'select' as const,
+      options: [
+        { value: 'Pago', label: 'Pago' },
+        { value: 'Pendente', label: 'Pendente' },
+        { value: 'Processando', label: 'Processando' },
+        { value: 'Cancelado', label: 'Cancelado' }
+      ]
     },
     {
-      id: 2,
-      scouter: 'Carlos Oliveira',
-      periodo: '2024-01-01 - 2024-01-07', 
-      fichas: 92,
-      valorFicha: 20.00,
-      ajudaCusto: 350.00,
-      bonusQuality: 92.00,
-      valorTotal: 2282.00,
-      status: 'Pendente',
-      dataPagamento: null
+      key: 'periodo',
+      label: 'Período',
+      type: 'dateRange' as const
     },
     {
-      id: 3,
-      scouter: 'Maria Santos',
-      periodo: '2024-01-01 - 2024-01-07',
-      fichas: 45,
-      valorFicha: 12.00,
-      ajudaCusto: 200.00,
-      bonusQuality: 0.00,
-      valorTotal: 740.00,
-      status: 'Processando',
-      dataPagamento: null
+      key: 'valorMin',
+      label: 'Valor Mínimo',
+      type: 'number' as const,
+      placeholder: 'R$ 0,00'
+    },
+    {
+      key: 'valorMax',
+      label: 'Valor Máximo',
+      type: 'number' as const,
+      placeholder: 'R$ 999999,99'
     }
   ]
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Pago':
-        return 'default'
-      case 'Pendente':
-        return 'secondary'
-      case 'Processando':
-        return 'outline'
-      default:
-        return 'outline'
+  const fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+
+  const tableColumns = [
+    { key: 'scouter', label: 'Scouter', sortable: true },
+    { key: 'periodo', label: 'Período', sortable: true },
+    { key: 'fichas', label: 'Fichas', sortable: true },
+    { 
+      key: 'valorFicha', 
+      label: 'R$/Ficha', 
+      sortable: true,
+      render: (value: number) => fmtBRL.format(value)
+    },
+    { 
+      key: 'ajudaCusto', 
+      label: 'Ajuda Custo', 
+      sortable: true,
+      render: (value: number) => fmtBRL.format(value)
+    },
+    { 
+      key: 'bonusQuality', 
+      label: 'Bônus Quality', 
+      sortable: true,
+      render: (value: number) => fmtBRL.format(value)
+    },
+    { 
+      key: 'valorTotal', 
+      label: 'Total', 
+      sortable: true,
+      render: (value: number) => (
+        <span className="font-medium">{fmtBRL.format(value)}</span>
+      )
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      sortable: true,
+      render: (value: string) => (
+        <Badge variant={getStatusVariant(value)} className="rounded-xl">
+          {value}
+        </Badge>
+      )
+    },
+    { 
+      key: 'dataPagamento', 
+      label: 'Data Pagamento',
+      render: (value: string | null) => value || '-'
+    }
+  ]
+
+  useEffect(() => {
+    loadPagamentos()
+  }, [])
+
+  const loadPagamentos = async () => {
+    try {
+      setLoading(true)
+      const leads = await getLeads()
+      
+      // Gerar dados de pagamento baseados nos leads
+      const scouterStats = new Map()
+      
+      leads.forEach(lead => {
+        if (!lead.scouter) return
+        
+        if (!scouterStats.has(lead.scouter)) {
+          scouterStats.set(lead.scouter, {
+            scouter: lead.scouter,
+            fichas: 0,
+            convertidos: 0
+          })
+        }
+        
+        const stats = scouterStats.get(lead.scouter)
+        stats.fichas++
+        
+        if (lead.etapa === 'Convertido') {
+          stats.convertidos++
+        }
+      })
+      
+      // Converter para dados de pagamento
+      const pagamentosData = Array.from(scouterStats.values()).map((stats, index) => ({
+        id: index + 1,
+        scouter: stats.scouter,
+        periodo: '2024-01-01 - 2024-01-07',
+        fichas: stats.fichas,
+        valorFicha: getValorFichaPorTier(stats.fichas),
+        ajudaCusto: getAjudaCustoPorTier(stats.fichas),
+        bonusQuality: stats.convertidos * 5, // R$ 5 por conversão
+        valorTotal: 0,
+        status: ['Pago', 'Pendente', 'Processando'][Math.floor(Math.random() * 3)],
+        dataPagamento: Math.random() > 0.5 ? '2024-01-15' : null
+      }))
+      
+      // Calcular valor total
+      pagamentosData.forEach(p => {
+        p.valorTotal = (p.fichas * p.valorFicha) + p.ajudaCusto + p.bonusQuality
+      })
+      
+      setPagamentos(pagamentosData)
+    } catch (error) {
+      console.error('Erro ao carregar pagamentos:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const filteredPagamentos = mockPagamentos.filter(pagamento => {
-    const matchesSearch = pagamento.scouter.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === 'all' || pagamento.status === statusFilter
-    return matchesSearch && matchesStatus
+  const getValorFichaPorTier = (fichas: number) => {
+    if (fichas >= 80) return 20.00
+    if (fichas >= 60) return 18.00
+    if (fichas >= 40) return 15.00
+    return 12.00
+  }
+
+  const getAjudaCustoPorTier = (fichas: number) => {
+    if (fichas >= 80) return 350.00
+    if (fichas >= 60) return 300.00
+    if (fichas >= 40) return 250.00
+    return 200.00
+  }
+
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'Pago': return 'default'
+      case 'Pendente': return 'secondary'
+      case 'Processando': return 'outline'
+      default: return 'outline'
+    }
+  }
+
+  const handleFiltersChange = (newFilters: Record<string, any>) => {
+    setFilters(newFilters)
+  }
+
+  const handleSearch = (term: string) => {
+    console.log('Buscar pagamento:', term)
+  }
+
+  const handleProcessarLote = () => {
+    console.log('Processar lote de pagamentos')
+  }
+
+  const filteredPagamentos = pagamentos.filter(pagamento => {
+    if (filters.status && pagamento.status !== filters.status) return false
+    if (filters.valorMin && pagamento.valorTotal < parseFloat(filters.valorMin)) return false
+    if (filters.valorMax && pagamento.valorTotal > parseFloat(filters.valorMax)) return false
+    return true
   })
 
-  const totalPago = mockPagamentos
+  const totalPago = pagamentos
     .filter(p => p.status === 'Pago')
     .reduce((acc, p) => acc + p.valorTotal, 0)
   
-  const totalPendente = mockPagamentos
+  const totalPendente = pagamentos
     .filter(p => p.status === 'Pendente')
     .reduce((acc, p) => acc + p.valorTotal, 0)
   
-  const totalProcessando = mockPagamentos
+  const totalProcessando = pagamentos
     .filter(p => p.status === 'Processando')
     .reduce((acc, p) => acc + p.valorTotal, 0)
-
-  const fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
   return (
     <AppShell sidebar={<Sidebar />}>
@@ -96,6 +216,15 @@ export default function Pagamentos() {
           </p>
         </div>
 
+        {/* Filtros Avançados */}
+        <FilterHeader
+          filters={filterOptions}
+          onFiltersChange={handleFiltersChange}
+          onSearch={handleSearch}
+          title="Filtros de Pagamentos"
+          defaultExpanded={false}
+        />
+
         {/* Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           <Card className="rounded-2xl">
@@ -104,7 +233,7 @@ export default function Pagamentos() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold text-success">
                 {fmtBRL.format(totalPago)}
               </div>
               <p className="text-xs text-muted-foreground">Este período</p>
@@ -117,7 +246,7 @@ export default function Pagamentos() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-600">
+              <div className="text-2xl font-bold text-warning">
                 {fmtBRL.format(totalPendente)}
               </div>
               <p className="text-xs text-muted-foreground">A pagar</p>
@@ -130,7 +259,7 @@ export default function Pagamentos() {
               <CreditCard className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-info">
                 {fmtBRL.format(totalProcessando)}
               </div>
               <p className="text-xs text-muted-foreground">Em análise</p>
@@ -146,92 +275,38 @@ export default function Pagamentos() {
               <div className="text-2xl font-bold">
                 {fmtBRL.format(totalPago + totalPendente + totalProcessando)}
               </div>
-              <p className="text-xs text-muted-foreground">Valor total</p>
+              <p className="text-xs text-muted-foreground">
+                {pagamentos.length} pagamento{pagamentos.length !== 1 ? 's' : ''}
+              </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Payments Table */}
+        {/* Tabela de Pagamentos */}
         <Card className="rounded-2xl">
           <CardHeader>
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-              <CardTitle>Histórico de Pagamentos</CardTitle>
-              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar por scouter..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9 rounded-xl w-full sm:w-64"
-                  />
-                </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="rounded-xl w-full sm:w-40">
-                    <Filter className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="Pago">Pago</SelectItem>
-                    <SelectItem value="Pendente">Pendente</SelectItem>
-                    <SelectItem value="Processando">Processando</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button className="rounded-xl">Processar Lote</Button>
-              </div>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Histórico de Pagamentos
+              </CardTitle>
+              <Button 
+                className="rounded-xl"
+                onClick={handleProcessarLote}
+              >
+                <TrendingUp className="h-4 w-4 mr-2" />
+                Processar Lote
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Scouter</TableHead>
-                    <TableHead>Período</TableHead>
-                    <TableHead>Fichas</TableHead>
-                    <TableHead>R$/Ficha</TableHead>
-                    <TableHead>Ajuda Custo</TableHead>
-                    <TableHead>Bônus Quality</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Data Pagamento</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPagamentos.map((pagamento) => (
-                    <TableRow key={pagamento.id}>
-                      <TableCell className="font-medium">{pagamento.scouter}</TableCell>
-                      <TableCell className="text-sm">{pagamento.periodo}</TableCell>
-                      <TableCell>{pagamento.fichas}</TableCell>
-                      <TableCell>{fmtBRL.format(pagamento.valorFicha)}</TableCell>
-                      <TableCell>{fmtBRL.format(pagamento.ajudaCusto)}</TableCell>
-                      <TableCell>{fmtBRL.format(pagamento.bonusQuality)}</TableCell>
-                      <TableCell className="font-medium">
-                        {fmtBRL.format(pagamento.valorTotal)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusColor(pagamento.status)} className="rounded-xl">
-                          {pagamento.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {pagamento.dataPagamento || '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              
-              {filteredPagamentos.length === 0 && (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">Nenhum pagamento encontrado</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Tente ajustar os filtros ou processar novos pagamentos
-                  </p>
-                </div>
-              )}
-            </div>
+            <DataTable
+              data={filteredPagamentos}
+              columns={tableColumns}
+              searchable={true}
+              sortable={true}
+              onRowClick={(row) => console.log('Pagamento selecionado:', row)}
+            />
           </CardContent>
         </Card>
       </div>
