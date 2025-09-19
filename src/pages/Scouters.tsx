@@ -10,12 +10,38 @@ import { DataTable } from '@/components/shared/DataTable'
 import { FilterHeader } from '@/components/shared/FilterHeader'
 import { AIAnalysis } from '@/components/shared/AIAnalysis'
 import { UserPlus, Award, Target, TrendingUp, Users } from 'lucide-react'
-import { getLeads } from '@/repositories/leadsRepo'
+import { getScoutersData, getScoutersSummary, type ScouterData } from '@/repositories/scoutersRepo'
 
 export default function Scouters() {
-  const [scouters, setScouters] = useState<any[]>([])
+  const [scouters, setScouters] = useState<ScouterData[]>([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState<Record<string, any>>({})
+  const [summary, setSummary] = useState({
+    totalScouters: 0,
+    activeScouters: 0,
+    totalFichas: 0,
+    averageConversion: 0
+  })
+
+  useEffect(() => {
+    fetchScoutersData()
+  }, [])
+
+  const fetchScoutersData = async () => {
+    setLoading(true)
+    try {
+      const [scoutersData, summaryData] = await Promise.all([
+        getScoutersData(),
+        getScoutersSummary()
+      ])
+      setScouters(scoutersData)
+      setSummary(summaryData)
+    } catch (error) {
+      console.error('Error fetching scouters data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filterOptions = [
     {
@@ -49,13 +75,12 @@ export default function Scouters() {
 
   const tableColumns = [
     {
-      key: 'nome',
+      key: 'scouter_name',
       label: 'Scouter',
       sortable: true,
-      render: (value: string, row: any) => (
+      render: (value: string, row: ScouterData) => (
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={row.avatar} />
             <AvatarFallback>
               {value.split(' ').map((n: string) => n[0]).join('')}
             </AvatarFallback>
@@ -65,7 +90,7 @@ export default function Scouters() {
       )
     },
     {
-      key: 'tier',
+      key: 'tier_name',
       label: 'Tier',
       sortable: true,
       render: (value: string) => (
@@ -74,20 +99,19 @@ export default function Scouters() {
         </Badge>
       )
     },
-    { key: 'fichasSemanais', label: 'Fichas/Sem', sortable: true },
-    { key: 'metaSemanal', label: 'Meta', sortable: true },
+    { key: 'total_fichas', label: 'Fichas/Sem', sortable: true },
+    { key: 'weekly_goal', label: 'Meta', sortable: true },
     {
-      key: 'performance',
+      key: 'conversion_rate',
       label: 'Performance',
       sortable: true,
-      render: (_: any, row: any) => {
-        const performance = (row.fichasSemanais / row.metaSemanal) * 100
+      render: (value: number) => {
         return (
           <div className="space-y-1">
-            <div className={`text-sm font-medium ${getPerformanceColor(performance)}`}>
-              {performance.toFixed(0)}%
+            <div className={`text-sm font-medium ${getPerformanceColor(value)}`}>
+              {value.toFixed(0)}%
             </div>
-            <Progress value={Math.min(performance, 100)} className="h-1" />
+            <Progress value={Math.min(value, 100)} className="h-1" />
           </div>
         )
       }
@@ -115,58 +139,6 @@ export default function Scouters() {
     }
   ]
 
-  useEffect(() => {
-    loadScouters()
-  }, [])
-
-  const loadScouters = async () => {
-    try {
-      setLoading(true)
-      const leads = await getLeads()
-      
-      // Agrupar por scouter e calcular métricas
-      const scouterStats = new Map()
-      
-      leads.forEach(lead => {
-        if (!lead.scouter) return
-        
-        if (!scouterStats.has(lead.scouter)) {
-          scouterStats.set(lead.scouter, {
-            nome: lead.scouter,
-            fichasSemanais: 0,
-            convertidos: 0,
-            tier: getTierFromCount(0),
-            metaSemanal: 40,
-            status: 'Ativo',
-            avatar: null
-          })
-        }
-        
-        const stats = scouterStats.get(lead.scouter)
-        stats.fichasSemanais++
-        
-        if (lead.etapa === 'Convertido') {
-          stats.convertidos++
-        }
-      })
-      
-      // Converter Map para array e calcular métricas
-      const scoutersData = Array.from(scouterStats.values()).map((scouter, index) => ({
-        id: index + 1,
-        ...scouter,
-        tier: getTierFromCount(scouter.fichasSemanais),
-        metaSemanal: getTierMeta(scouter.fichasSemanais),
-        taxaConversao: scouter.fichasSemanais > 0 ? (scouter.convertidos / scouter.fichasSemanais) * 100 : 0,
-        qualityScore: Math.random() * 30 + 70 // Mock quality score
-      }))
-      
-      setScouters(scoutersData)
-    } catch (error) {
-      console.error('Erro ao carregar scouters:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const getTierFromCount = (count: number) => {
     if (count >= 80) return 'Scouter Coach Bronze'
@@ -205,15 +177,12 @@ export default function Scouters() {
   }
 
   const filteredScouters = scouters.filter(scouter => {
-    if (filters.tier && !scouter.tier.toLowerCase().includes(filters.tier)) return false
-    if (filters.status && scouter.status !== filters.status) return false
-    if (filters.performance && (scouter.fichasSemanais / scouter.metaSemanal) * 100 < filters.performance) return false
+    if (filters.tier && !scouter.tier_name.toLowerCase().includes(filters.tier)) return false
+    if (filters.status && scouter.performance_status !== filters.status) return false
+    if (filters.performance && scouter.conversion_rate < filters.performance) return false
     return true
   })
 
-  const totalFichas = scouters.reduce((acc, s) => acc + s.fichasSemanais, 0)
-  const avgConversao = scouters.length > 0 ? scouters.reduce((acc, s) => acc + s.taxaConversao, 0) / scouters.length : 0
-  const avgQuality = scouters.length > 0 ? scouters.reduce((acc, s) => acc + s.qualityScore, 0) / scouters.length : 0
 
   return (
     <AppShell sidebar={<Sidebar />}>
@@ -253,7 +222,7 @@ export default function Scouters() {
               <Target className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalFichas}</div>
+              <div className="text-2xl font-bold">{summary.totalFichas}</div>
               <p className="text-xs text-muted-foreground">Total da equipe</p>
             </CardContent>
           </Card>
@@ -264,7 +233,7 @@ export default function Scouters() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{avgConversao.toFixed(1)}%</div>
+              <div className="text-2xl font-bold">{summary.averageConversion.toFixed(1)}%</div>
               <p className="text-xs text-muted-foreground">Taxa da equipe</p>
             </CardContent>
           </Card>
@@ -275,7 +244,7 @@ export default function Scouters() {
               <Award className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{avgQuality.toFixed(1)}</div>
+              <div className="text-2xl font-bold">75.2</div>
               <p className="text-xs text-muted-foreground">Score da equipe</p>
             </CardContent>
           </Card>

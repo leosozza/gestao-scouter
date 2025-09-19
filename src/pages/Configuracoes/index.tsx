@@ -9,6 +9,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { AlertCircle, CheckCircle2, Settings, Users, Plug } from 'lucide-react'
+import { DataSourceSelector } from '@/components/dashboard/integrations/DataSourceSelector'
 
 export default function ConfiguracoesPage() {
   const [activeTab, setActiveTab] = useState('parametros')
@@ -199,8 +200,17 @@ export default function ConfiguracoesPage() {
               <CardHeader>
                 <CardTitle>Fontes de Dados</CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-xl border p-4 space-y-3">
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-base font-medium">Fonte de Dados Ativa</Label>
+                    <p className="text-sm text-muted-foreground">Selecione a fonte de dados principal</p>
+                  </div>
+                  <DataSourceSelector />
+                </div>
+                
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-xl border p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="font-medium">Google Sheets</div>
                     <Badge variant="outline" className="flex items-center gap-1">
@@ -235,6 +245,7 @@ export default function ConfiguracoesPage() {
                     <Input placeholder="Redirect URL" className="rounded-xl" />
                   </div>
                   <Button className="rounded-xl w-full">Autorizar</Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

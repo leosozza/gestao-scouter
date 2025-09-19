@@ -4,20 +4,8 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip as RTooltip } from 'recharts'
-import { supabase } from '@/integrations/supabase/client'
 import { TrendingUp, Calculator, Target } from 'lucide-react'
-
-interface ProjectionData {
-  scouter_name: string
-  semana_futura: number
-  semana_label: string
-  weekly_goal: number
-  tier_name: string
-  projecao_conservadora: number
-  projecao_provavel: number
-  projecao_agressiva: number
-  projecao_historica: number
-}
+import { getProjectionData, type ProjectionData } from '@/repositories/projectionsRepo'
 
 export default function ProjecaoPage() {
   const [projectionData, setProjectionData] = useState<ProjectionData[]>([])
@@ -30,13 +18,8 @@ export default function ProjecaoPage() {
   const fetchProjectionData = async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('vw_projecao_scouter')
-        .select('*')
-        .order('scouter_name', { ascending: true })
-
-      if (error) throw error
-      setProjectionData(data || [])
+      const data = await getProjectionData()
+      setProjectionData(data)
     } catch (error) {
       console.error('Error fetching projection data:', error)
     } finally {
