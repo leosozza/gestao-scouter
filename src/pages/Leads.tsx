@@ -268,13 +268,16 @@ export default function Leads() {
                 </div>
               </CardHeader>
               <CardContent>
-                <DataTable
-                  data={filteredLeads}
-                  columns={tableColumns}
-                  searchable={true}
-                  sortable={true}
-                  onRowClick={(row) => console.log('Lead selecionado:', row)}
-                />
+            <DataTable
+              data={filteredLeads}
+              columns={tableColumns}
+              searchable={true}
+              exportable={true}
+              actions={{
+                view: (row) => console.log('Ver lead:', row),
+                edit: (row) => console.log('Editar lead:', row)
+              }}
+            />
               </CardContent>
             </Card>
           </div>

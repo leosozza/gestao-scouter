@@ -304,8 +304,11 @@ export default function Pagamentos() {
               data={filteredPagamentos}
               columns={tableColumns}
               searchable={true}
-              sortable={true}
-              onRowClick={(row) => console.log('Pagamento selecionado:', row)}
+              exportable={true}
+              actions={{
+                view: (row) => console.log('Ver pagamento:', row),
+                edit: (row) => console.log('Editar pagamento:', row)
+              }}
             />
           </CardContent>
         </Card>

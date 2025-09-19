@@ -227,7 +227,9 @@ export default function Dashboard() {
                 { key: 'etapa', label: 'Status', sortable: true },
                 { key: 'data_contato', label: 'Data', sortable: true }
               ]}
-              onRowClick={(row) => console.log('Lead clicado:', row)}
+              actions={{
+                view: (row) => console.log('Lead clicado:', row)
+              }}
             />
           </CardContent>
         </Card>

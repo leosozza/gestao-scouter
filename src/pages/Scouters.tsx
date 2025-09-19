@@ -296,13 +296,16 @@ export default function Scouters() {
                 </div>
               </CardHeader>
               <CardContent>
-                <DataTable
-                  data={filteredScouters}
-                  columns={tableColumns}
-                  searchable={true}
-                  sortable={true}
-                  onRowClick={(row) => console.log('Scouter selecionado:', row)}
-                />
+            <DataTable
+              data={filteredScouters}
+              columns={tableColumns}
+              searchable={true}
+              exportable={true}
+              actions={{
+                view: (row) => console.log('Ver scouter:', row),
+                edit: (row) => console.log('Editar scouter:', row)
+              }}
+            />
               </CardContent>
             </Card>
           </div>
