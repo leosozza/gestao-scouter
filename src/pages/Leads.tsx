@@ -79,6 +79,11 @@ export default function Leads() {
       sortable: true 
     },
     { 
+      key: 'modelo', 
+      label: 'Modelo', 
+      sortable: true 
+    },
+    { 
       key: 'etapa', 
       label: 'Status', 
       sortable: true,
@@ -93,20 +98,21 @@ export default function Leads() {
     },
     { 
       key: 'data_contato', 
-      label: 'Data Contato', 
+      label: 'Data Criação', 
       sortable: true,
-      render: (value: string) => 
-        value ? new Date(value).toLocaleDateString('pt-BR') : '-'
+      render: (value: any) => {
+        if (!value) return '-';
+        if (typeof value === 'object' && value.value?.local) {
+          return new Date(value.value.local).toLocaleDateString('pt-BR');
+        }
+        return new Date(value).toLocaleDateString('pt-BR');
+      }
     },
     { 
-      key: 'telefone', 
-      label: 'Telefone', 
-      render: (value: string) => (
-        <div className="flex items-center gap-1">
-          <Phone className="h-3 w-3" />
-          {value || '-'}
-        </div>
-      )
+      key: 'idade', 
+      label: 'Idade', 
+      sortable: true,
+      render: (value: number) => value || '-'
     },
     {
       key: 'indicadores',
@@ -118,9 +124,14 @@ export default function Leads() {
               Foto
             </Badge>
           )}
-          {row.interesse && (
+          {row.presenca_confirmada && (
             <Badge variant="outline" className="text-xs rounded-xl">
-              Interesse
+              Confirmado
+            </Badge>
+          )}
+          {row.ficha_confirmada === 'Sim' && (
+            <Badge variant="default" className="text-xs rounded-xl">
+              Validado
             </Badge>
           )}
         </div>

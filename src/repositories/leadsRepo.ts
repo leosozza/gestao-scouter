@@ -189,18 +189,24 @@ async function fetchAllLeadsFromSheets(params: any): Promise<any[]> {
     
     return fichas.map((ficha, index) => ({
       id: ficha.ID || `ficha-${index}`,
-      scouter: ficha['Gestão de Scouter'] || ficha['Primeiro nome'] || 'Desconhecido',
-      project: ficha['Projetos Cormeciais'] || 'Sem Projeto',
-      etapa: ficha.etapa_normalizada || ficha.Etapa || 'Sem Etapa',
-      valor: ficha.valor_por_ficha_num || 0,
-      data: ficha['Data de criação da Ficha'] || ficha.Criado || new Date(),
-      status: ficha.status_normalizado || 'Aguardando',
-      nome: ficha['Primeiro nome'] || 'Sem nome',
-      idade: ficha.idade_num || 0,
-      local: ficha['Local da Abordagem'] || 'Não informado',
-      temFoto: ficha.tem_foto || false,
-      fichaConfirmada: ficha.status_normalizado === 'Confirmado',
-      fichaPaga: ficha.esta_paga || false
+      nome: ficha.Nome || 'Sem nome',
+      scouter: ficha.Scouter || 'Desconhecido',
+      projeto: ficha.Projetos || 'Sem Projeto',
+      etapa: ficha.Etapa || 'Sem Etapa',
+      valor: ficha.Valor_Ficha || 0,
+      data_contato: ficha.Criado_date || ficha.Criado,
+      telefone: ficha.celular || ficha.telefone_de_trabalho || '',
+      modelo: ficha.modelo || '',
+      idade: ficha.Idade_num || ficha.Idade || 0,
+      local: ficha.Local_da_Abordagem || 'Não informado',
+      tem_foto: ficha.Cadastro_Existe_Foto === 'SIM',
+      ficha_confirmada: ficha.Ficha_confirmada || 'Aguardando',
+      presenca_confirmada: ficha.Presenca_Confirmada === 'Sim',
+      supervisor: ficha.Supervisor_do_Scouter || '',
+      localizacao: ficha.Localizacao || '',
+      gerenciamento_funil: ficha.GERENCIAMENTOFUNIL || '',
+      etapa_funil: ficha.ETAPAFUNIL || '',
+      interesse: ficha.Etapa && ficha.Etapa !== 'Lead a Qualificar'
     }));
   } catch (error) {
     console.error('Error fetching leads from Sheets:', error);
