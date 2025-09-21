@@ -1,5 +1,7 @@
 import { getDataSource } from './datasource';
 import { supabase } from '@/integrations/supabase/client';
+import type { Lead, LeadsFilters } from './types';
+import { toISO, safeNumber, toBool, normalizeText } from '@/utils/dataHelpers';
 
 export interface LeadsSummary {
   totalLeads: number;
@@ -22,6 +24,17 @@ export interface LeadsByProject {
   converted: number;
   conversionRate: number;
   value: number;
+}
+
+// Main getLeads function with proper filtering and normalization
+export async function getLeads(params?: LeadsFilters): Promise<Lead[]> {
+  const dataSource = getDataSource();
+  
+  if (dataSource === 'bitrix') {
+    return fetchAllLeadsFromBitrix(params);
+  } else {
+    return fetchAllLeadsFromSheets(params);
+  }
 }
 
 // Abstract data fetching based on selected data source
@@ -55,24 +68,136 @@ export async function getLeadsByProject(params: any): Promise<LeadsByProject[]> 
   }
 }
 
-// Bitrix data fetching functions
-async function fetchFromBitrix(params: any): Promise<LeadsSummary> {
+// Bitrix: Fetch all leads with normalization
+async function fetchAllLeadsFromBitrix(params?: LeadsFilters): Promise<Lead[]> {
   try {
-    const { data, error } = await supabase
-      .from('bitrix_leads')
-      .select('*');
+    let query = supabase.from('bitrix_leads').select('*');
+    
+    // Apply server-side filters for Bitrix
+    if (params?.dataInicio) {
+      query = query.gte('created_at', params.dataInicio);
+    }
+    if (params?.dataFim) {
+      query = query.lte('created_at', params.dataFim);
+    }
+    if (params?.scouter) {
+      query = query.ilike('primeiro_nome', `%${params.scouter}%`);
+    }
+    if (params?.etapa) {
+      query = query.eq('etapa', params.etapa);
+    }
+    
+    const { data, error } = await query;
     
     if (error) throw error;
     
-    const totalLeads = data?.length || 0;
-    const convertedLeads = data?.filter(lead => lead.etapa === 'Convertido').length || 0;
+    return (data || []).map(lead => normalizeLeadFromBitrix(lead));
+  } catch (error) {
+    console.error('Error fetching all leads from Bitrix:', error);
+    return [];
+  }
+}
+
+// Normalize Bitrix lead to canonical format
+function normalizeLeadFromBitrix(lead: any): Lead {
+  return {
+    id: lead.id || '',
+    projetos: lead.projetos_comerciais || lead.agencia_e_seletivas || 'Sem Projeto',
+    scouter: lead.primeiro_nome || lead.nome_do_modelo || 'Desconhecido',
+    criado: lead.created_at,
+    data_criacao_ficha: lead.data_de_criacao_da_ficha || lead.created_at,
+    valor_ficha: safeNumber(lead.valor_da_ficha),
+    etapa: lead.etapa || 'Sem Etapa',
+    nome: lead.nome_do_responsavel || lead.primeiro_nome || 'Sem nome',
+    gerenciamentofunil: lead.gerenciamentofunil || '',
+    etapafunil: lead.etapafunil || '',
+    modelo: lead.nome_do_modelo || lead.primeiro_nome || '',
+    localizacao: lead.localizacao || '',
+    ficha_confirmada: lead.ficha_confirmada || 'Aguardando',
+    idade: safeNumber(lead.idade),
+    local_da_abordagem: lead.local_da_abordagem || '',
+    cadastro_existe_foto: lead.cadastro_existe_foto || 'NÃO',
+    presenca_confirmada: lead.presenca_confirmada || 'Não',
+    supervisor_do_scouter: lead.supervisor_do_scouter || ''
+  };
+}
+
+// Google Sheets: Fetch all leads with normalization
+async function fetchAllLeadsFromSheets(params?: LeadsFilters): Promise<Lead[]> {
+  try {
+    const { GoogleSheetsService } = await import('@/services/googleSheetsService');
+    const fichas = await GoogleSheetsService.fetchFichas();
+    
+    let leads = fichas.map((ficha, index) => normalizeLeadFromSheets(ficha, index));
+    
+    // Apply client-side filters for Sheets
+    if (params?.scouter) {
+      leads = leads.filter(lead => 
+        lead.scouter.toLowerCase().includes(params.scouter!.toLowerCase())
+      );
+    }
+    if (params?.projeto) {
+      leads = leads.filter(lead => 
+        lead.projetos.toLowerCase().includes(params.projeto!.toLowerCase())
+      );
+    }
+    if (params?.etapa) {
+      leads = leads.filter(lead => lead.etapa === params.etapa);
+    }
+    if (params?.dataInicio && params?.dataFim) {
+      const startDate = new Date(params.dataInicio);
+      const endDate = new Date(params.dataFim);
+      leads = leads.filter(lead => {
+        const leadDate = new Date(lead.criado || '');
+        return leadDate >= startDate && leadDate <= endDate;
+      });
+    }
+    
+    return leads;
+  } catch (error) {
+    console.error('Error fetching leads from Sheets:', error);
+    return [];
+  }
+}
+
+// Normalize Sheets lead to canonical format
+function normalizeLeadFromSheets(ficha: any, index: number): Lead {
+  return {
+    id: ficha.ID || `ficha-${index}`,
+    projetos: ficha.Projetos || ficha['Projetos Cormeciais'] || ficha['Agencia e Seletivas'] || 'Sem Projeto',
+    scouter: ficha.Scouter || ficha['Gestão de Scouter'] || 'Desconhecido',
+    criado: toISO(ficha.Criado || ficha.Criado_date || ''),
+    data_criacao_ficha: toISO(ficha['Data de criação da Ficha'] || ficha.Data_criacao_Ficha || ''),
+    valor_ficha: safeNumber(ficha['Valor da Ficha'] || ficha.Valor_Ficha),
+    etapa: ficha.Etapa || ficha['ETAPA FUNIL QUALIFICAÇÃO/AGENDAMENTO'] || 'Sem Etapa',
+    nome: ficha['Nome do Responsável'] || ficha['Primeiro nome'] || ficha.Nome || 'Sem nome',
+    gerenciamentofunil: ficha['GERENCIAMENTO FUNIL DE QUALIFICAÇAO/AGENDAMENTO'] || ficha.GERENCIAMENTOFUNIL || '',
+    etapafunil: ficha['ETAPA FUNIL QUALIFICAÇÃO/AGENDAMENTO'] || ficha.ETAPAFUNIL || '',
+    modelo: ficha['Nome do Modelo'] || ficha.modelo || '',
+    localizacao: ficha.Localização || ficha.Localizacao || '',
+    ficha_confirmada: ficha['Ficha confirmada'] || ficha.Ficha_confirmada || 'Aguardando',
+    idade: safeNumber(ficha.Idade || ficha.Idade_num),
+    local_da_abordagem: ficha['Local da Abordagem'] || ficha.Local_da_Abordagem || '',
+    cadastro_existe_foto: ficha['Cadastro Existe Foto?'] || ficha.Cadastro_Existe_Foto || 'NÃO',
+    presenca_confirmada: ficha['Presença Confirmada'] || ficha.Presenca_Confirmada || 'Não',
+    supervisor_do_scouter: ficha['Supervisor do Scouter'] || ficha.Supervisor_do_Scouter || ''
+  };
+}
+
+// Bitrix data fetching functions
+async function fetchFromBitrix(params: any): Promise<LeadsSummary> {
+  try {
+    const leads = await fetchAllLeadsFromBitrix(params);
+    const totalLeads = leads.length;
+    const convertedLeads = leads.filter(lead => lead.etapa === 'Convertido').length;
     const conversionRate = totalLeads > 0 ? (convertedLeads / totalLeads) * 100 : 0;
+    const totalValue = leads.reduce((sum, lead) => sum + (lead.valor_ficha || 0), 0);
     
     return {
       totalLeads,
       convertedLeads,
       conversionRate,
-      totalValue: convertedLeads * 10 // Assuming 10 per converted lead
+      totalValue
     };
   } catch (error) {
     console.error('Error fetching from Bitrix:', error);
@@ -82,30 +207,30 @@ async function fetchFromBitrix(params: any): Promise<LeadsSummary> {
 
 async function fetchScouterDataFromBitrix(params: any): Promise<LeadsByScouter[]> {
   try {
-    const { data, error } = await supabase
-      .from('bitrix_leads')
-      .select('*');
+    const leads = await fetchAllLeadsFromBitrix(params);
+    const scouterStats = new Map();
     
-    if (error) throw error;
-    
-    const scouterStats = data?.reduce((acc: any, lead: any) => {
-      const scouter = lead.primeiro_nome || 'Desconhecido';
-      if (!acc[scouter]) {
-        acc[scouter] = { leads: 0, converted: 0 };
+    leads.forEach(lead => {
+      const scouter = lead.scouter;
+      if (!scouterStats.has(scouter)) {
+        scouterStats.set(scouter, { leads: 0, converted: 0, value: 0 });
       }
-      acc[scouter].leads++;
+      
+      const stats = scouterStats.get(scouter);
+      stats.leads++;
+      stats.value += lead.valor_ficha || 0;
+      
       if (lead.etapa === 'Convertido') {
-        acc[scouter].converted++;
+        stats.converted++;
       }
-      return acc;
-    }, {}) || {};
+    });
     
-    return Object.entries(scouterStats).map(([scouter, stats]: [string, any]) => ({
+    return Array.from(scouterStats.entries()).map(([scouter, stats]) => ({
       scouter,
       leads: stats.leads,
       converted: stats.converted,
       conversionRate: stats.leads > 0 ? (stats.converted / stats.leads) * 100 : 0,
-      value: stats.converted * 10
+      value: stats.value
     }));
   } catch (error) {
     console.error('Error fetching scouter data from Bitrix:', error);
@@ -115,30 +240,30 @@ async function fetchScouterDataFromBitrix(params: any): Promise<LeadsByScouter[]
 
 async function fetchProjectDataFromBitrix(params: any): Promise<LeadsByProject[]> {
   try {
-    const { data, error } = await supabase
-      .from('bitrix_leads')
-      .select('*');
+    const leads = await fetchAllLeadsFromBitrix(params);
+    const projectStats = new Map();
     
-    if (error) throw error;
-    
-    const projectStats = data?.reduce((acc: any, lead: any) => {
-      const project = lead.projetos_cormeciais || 'Sem Projeto';
-      if (!acc[project]) {
-        acc[project] = { leads: 0, converted: 0 };
+    leads.forEach(lead => {
+      const project = lead.projetos;
+      if (!projectStats.has(project)) {
+        projectStats.set(project, { leads: 0, converted: 0, value: 0 });
       }
-      acc[project].leads++;
+      
+      const stats = projectStats.get(project);
+      stats.leads++;
+      stats.value += lead.valor_ficha || 0;
+      
       if (lead.etapa === 'Convertido') {
-        acc[project].converted++;
+        stats.converted++;
       }
-      return acc;
-    }, {}) || {};
+    });
     
-    return Object.entries(projectStats).map(([project, stats]: [string, any]) => ({
+    return Array.from(projectStats.entries()).map(([project, stats]) => ({
       project,
       leads: stats.leads,
       converted: stats.converted,
       conversionRate: stats.leads > 0 ? (stats.converted / stats.leads) * 100 : 0,
-      value: stats.converted * 10
+      value: stats.value
     }));
   } catch (error) {
     console.error('Error fetching project data from Bitrix:', error);
@@ -146,82 +271,16 @@ async function fetchProjectDataFromBitrix(params: any): Promise<LeadsByProject[]
   }
 }
 
-// Export function to get all leads data
-export async function getLeads(params?: any): Promise<any[]> {
-  const dataSource = getDataSource();
-  
-  if (dataSource === 'bitrix') {
-    return fetchAllLeadsFromBitrix(params);
-  } else {
-    return fetchAllLeadsFromSheets(params);
-  }
-}
-
-// Bitrix: Fetch all leads
-async function fetchAllLeadsFromBitrix(params: any): Promise<any[]> {
-  try {
-    const { data, error } = await supabase
-      .from('bitrix_leads')
-      .select('*');
-    
-    if (error) throw error;
-    
-    return data?.map(lead => ({
-      id: lead.id,
-      scouter: lead.primeiro_nome || 'Desconhecido',
-      project: 'Projeto Comercial', // Using default since field doesn't exist
-      etapa: lead.etapa || 'Sem Etapa',
-      valor: 10, // Fixed value since 'valor' field doesn't exist
-      data: lead.created_at || new Date().toISOString(),
-      status: lead.etapa === 'Convertido' ? 'Convertido' : 'Em Andamento'
-    })) || [];
-  } catch (error) {
-    console.error('Error fetching all leads from Bitrix:', error);
-    return [];
-  }
-}
-
-// Google Sheets: Fetch all leads
-async function fetchAllLeadsFromSheets(params: any): Promise<any[]> {
-  try {
-    const { GoogleSheetsService } = await import('@/services/googleSheetsService');
-    const fichas = await GoogleSheetsService.fetchFichas();
-    
-    return fichas.map((ficha, index) => ({
-      id: ficha.ID || `ficha-${index}`,
-      nome: ficha.Nome || 'Sem nome',
-      scouter: ficha.Scouter || 'Desconhecido',
-      projeto: ficha.Projetos || 'Sem Projeto',
-      etapa: ficha.Etapa || 'Sem Etapa',
-      valor: ficha.Valor_Ficha || 0,
-      data_contato: ficha.Criado_date || ficha.Criado,
-      telefone: ficha.celular || ficha.telefone_de_trabalho || '',
-      modelo: ficha.modelo || '',
-      idade: ficha.Idade_num || ficha.Idade || 0,
-      local: ficha.Local_da_Abordagem || 'Não informado',
-      tem_foto: ficha.Cadastro_Existe_Foto === 'SIM',
-      ficha_confirmada: ficha.Ficha_confirmada || 'Aguardando',
-      presenca_confirmada: ficha.Presenca_Confirmada === 'Sim',
-      supervisor: ficha.Supervisor_do_Scouter || '',
-      localizacao: ficha.Localizacao || '',
-      gerenciamento_funil: ficha.GERENCIAMENTOFUNIL || '',
-      etapa_funil: ficha.ETAPAFUNIL || '',
-      interesse: ficha.Etapa && ficha.Etapa !== 'Lead a Qualificar'
-    }));
-  } catch (error) {
-    console.error('Error fetching leads from Sheets:', error);
-    return [];
-  }
-}
-
-// Google Sheets data fetching functions (mock implementation)
+// Google Sheets data fetching functions
 async function fetchFromSheets(params: any): Promise<LeadsSummary> {
   try {
     const leads = await fetchAllLeadsFromSheets(params);
     const totalLeads = leads.length;
-    const convertedLeads = leads.filter(lead => lead.etapa === 'Convertido' || lead.fichaConfirmada).length;
+    const convertedLeads = leads.filter(lead => 
+      lead.etapa === 'Convertido' || lead.ficha_confirmada === 'Sim'
+    ).length;
     const conversionRate = totalLeads > 0 ? (convertedLeads / totalLeads) * 100 : 0;
-    const totalValue = leads.reduce((sum, lead) => sum + (lead.valor || 0), 0);
+    const totalValue = leads.reduce((sum, lead) => sum + (lead.valor_ficha || 0), 0);
     
     return {
       totalLeads,
@@ -253,9 +312,9 @@ async function fetchScouterDataFromSheets(params: any): Promise<LeadsByScouter[]
       
       const stats = scouterStats.get(scouter);
       stats.leads++;
-      stats.value += lead.valor || 0;
+      stats.value += lead.valor_ficha || 0;
       
-      if (lead.fichaConfirmada || lead.etapa === 'Convertido') {
+      if (lead.ficha_confirmada === 'Sim' || lead.etapa === 'Convertido') {
         stats.converted++;
       }
     });
@@ -279,16 +338,16 @@ async function fetchProjectDataFromSheets(params: any): Promise<LeadsByProject[]
     const projectStats = new Map();
     
     leads.forEach(lead => {
-      const project = lead.project;
+      const project = lead.projetos;
       if (!projectStats.has(project)) {
         projectStats.set(project, { leads: 0, converted: 0, value: 0 });
       }
       
       const stats = projectStats.get(project);
       stats.leads++;
-      stats.value += lead.valor || 0;
+      stats.value += lead.valor_ficha || 0;
       
-      if (lead.fichaConfirmada || lead.etapa === 'Convertido') {
+      if (lead.ficha_confirmada === 'Sim' || lead.etapa === 'Convertido') {
         stats.converted++;
       }
     });

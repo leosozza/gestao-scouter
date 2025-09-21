@@ -53,12 +53,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [filters])
 
   const loadData = async () => {
     try {
       setLoading(true)
-      const data = await getLeads()
+      const data = await getLeads(filters)
       setLeads(data)
       
       // Calcular estatísticas
@@ -223,9 +223,9 @@ export default function Dashboard() {
               columns={[
                 { key: 'nome', label: 'Nome', sortable: true },
                 { key: 'scouter', label: 'Scouter', sortable: true },
-                { key: 'projeto', label: 'Projeto', sortable: true },
+                { key: 'projetos', label: 'Projeto', sortable: true },
                 { key: 'etapa', label: 'Status', sortable: true },
-                { key: 'data_contato', label: 'Data', sortable: true }
+                { key: 'data_criacao_ficha', label: 'Data', sortable: true }
               ]}
               actions={{
                 view: (row) => console.log('Lead clicado:', row)

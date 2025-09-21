@@ -41,7 +41,7 @@ interface Column {
   sortable?: boolean;
   filterable?: boolean;
   type?: 'text' | 'number' | 'date' | 'status' | 'currency';
-  formatter?: (value: any) => string | React.ReactNode;
+  formatter?: (value: any, row?: any) => string | React.ReactNode;
 }
 
 interface DataTableProps {

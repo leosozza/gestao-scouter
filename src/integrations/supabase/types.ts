@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          ajuda_custo_tier: Json
+          created_at: string
+          id: string
+          peso_agendado: number
+          peso_compareceu: number
+          peso_concl_neg: number
+          peso_concl_pos: number
+          peso_confirmada: number
+          peso_contato: number
+          peso_foto: number
+          peso_interesse: number
+          peso_sem_contato: number
+          peso_sem_interesse_def: number
+          peso_sem_interesse_momento: number
+          quality_threshold: number
+          updated_at: string
+          valor_base_ficha: number
+        }
+        Insert: {
+          ajuda_custo_tier?: Json
+          created_at?: string
+          id?: string
+          peso_agendado?: number
+          peso_compareceu?: number
+          peso_concl_neg?: number
+          peso_concl_pos?: number
+          peso_confirmada?: number
+          peso_contato?: number
+          peso_foto?: number
+          peso_interesse?: number
+          peso_sem_contato?: number
+          peso_sem_interesse_def?: number
+          peso_sem_interesse_momento?: number
+          quality_threshold?: number
+          updated_at?: string
+          valor_base_ficha?: number
+        }
+        Update: {
+          ajuda_custo_tier?: Json
+          created_at?: string
+          id?: string
+          peso_agendado?: number
+          peso_compareceu?: number
+          peso_concl_neg?: number
+          peso_concl_pos?: number
+          peso_confirmada?: number
+          peso_contato?: number
+          peso_foto?: number
+          peso_interesse?: number
+          peso_sem_contato?: number
+          peso_sem_interesse_def?: number
+          peso_sem_interesse_momento?: number
+          quality_threshold?: number
+          updated_at?: string
+          valor_base_ficha?: number
+        }
+        Relationships: []
+      }
       bitrix_leads: {
         Row: {
           altura_cm: string | null
@@ -45,6 +105,7 @@ export type Database = {
           telefone_de_trabalho: string | null
           uf: string | null
           updated_at: string
+          valor_da_ficha: string | null
         }
         Insert: {
           altura_cm?: string | null
@@ -76,6 +137,7 @@ export type Database = {
           telefone_de_trabalho?: string | null
           uf?: string | null
           updated_at?: string
+          valor_da_ficha?: string | null
         }
         Update: {
           altura_cm?: string | null
@@ -107,6 +169,7 @@ export type Database = {
           telefone_de_trabalho?: string | null
           uf?: string | null
           updated_at?: string
+          valor_da_ficha?: string | null
         }
         Relationships: []
       }

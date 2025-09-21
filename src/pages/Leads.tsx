@@ -9,17 +9,24 @@ import { FilterHeader } from '@/components/shared/FilterHeader'
 import { AIAnalysis } from '@/components/shared/AIAnalysis'
 import { Download, Users, TrendingUp, Calendar, Phone } from 'lucide-react'
 import { getLeads } from '@/repositories/leadsRepo'
+import type { Lead, LeadsFilters } from '@/repositories/types'
+import { formatDateBR } from '@/utils/dataHelpers'
 
 export default function Leads() {
-  const [leads, setLeads] = useState<any[]>([])
+  const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState<Record<string, any>>({})
+  const [filters, setFilters] = useState<LeadsFilters>({})
 
   const filterOptions = [
     {
-      key: 'dataContato',
-      label: 'Período',
-      type: 'dateRange' as const
+      key: 'dataInicio',
+      label: 'Data Início',
+      type: 'date' as const
+    },
+    {
+      key: 'dataFim', 
+      label: 'Data Fim',
+      type: 'date' as const
     },
     {
       key: 'scouter',
@@ -32,7 +39,7 @@ export default function Leads() {
       key: 'projeto',
       label: 'Projeto', 
       type: 'select' as const,
-      options: Array.from(new Set(leads.map(lead => lead.projeto).filter(Boolean)))
+      options: Array.from(new Set(leads.map(lead => lead.projetos).filter(Boolean)))
         .map(projeto => ({ value: projeto, label: projeto }))
     },
     {
@@ -41,15 +48,6 @@ export default function Leads() {
       type: 'select' as const,
       options: Array.from(new Set(leads.map(lead => lead.etapa).filter(Boolean)))
         .map(etapa => ({ value: etapa, label: etapa }))
-    },
-    {
-      key: 'temFoto',
-      label: 'Tem Foto',
-      type: 'select' as const,
-      options: [
-        { value: 'true', label: 'Sim' },
-        { value: 'false', label: 'Não' }
-      ]
     }
   ]
 
@@ -58,7 +56,7 @@ export default function Leads() {
       key: 'nome', 
       label: 'Nome', 
       sortable: true,
-      render: (value: string, row: any) => (
+      formatter: (value: string) => (
         <div className="font-medium">{value}</div>
       )
     },
@@ -68,7 +66,7 @@ export default function Leads() {
       sortable: true 
     },
     { 
-      key: 'projeto', 
+      key: 'projetos', 
       label: 'Projeto', 
       sortable: true 
     },
@@ -81,7 +79,7 @@ export default function Leads() {
       key: 'etapa', 
       label: 'Status', 
       sortable: true,
-      render: (value: string) => (
+      formatter: (value: string) => (
         <Badge 
           variant={getStatusVariant(value)} 
           className="rounded-xl"
@@ -91,42 +89,28 @@ export default function Leads() {
       )
     },
     { 
-      key: 'data_contato', 
+      key: 'data_criacao_ficha', 
       label: 'Data Criação', 
       sortable: true,
-      render: (value: any) => {
-        if (!value) return '-';
-        if (typeof value === 'object' && value.value?.local) {
-          return new Date(value.value.local).toLocaleDateString('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: '2-digit'
-          });
-        }
-        return new Date(value).toLocaleDateString('pt-BR', {
-          day: '2-digit',
-          month: '2-digit', 
-          year: '2-digit'
-        });
-      }
+      formatter: (value: string) => value ? formatDateBR(value) : '-'
     },
     { 
       key: 'idade', 
       label: 'Idade', 
       sortable: true,
-      render: (value: number) => value || '-'
+      formatter: (value: number) => value || '-'
     },
     {
       key: 'indicadores',
       label: 'Indicadores',
-      render: (_: any, row: any) => (
+      formatter: (value: any, row: any) => (
         <div className="flex gap-1">
-          {row.tem_foto && (
+          {row.cadastro_existe_foto === 'SIM' && (
             <Badge variant="secondary" className="text-xs rounded-xl">
               Foto
             </Badge>
           )}
-          {row.presenca_confirmada && (
+          {row.presenca_confirmada === 'Sim' && (
             <Badge variant="outline" className="text-xs rounded-xl">
               Confirmado
             </Badge>
@@ -143,12 +127,12 @@ export default function Leads() {
 
   useEffect(() => {
     loadLeads()
-  }, [])
+  }, [filters])
 
   const loadLeads = async () => {
     try {
       setLoading(true)
-      const data = await getLeads()
+      const data = await getLeads(filters)
       setLeads(data)
     } catch (error) {
       console.error('Erro ao carregar leads:', error)
@@ -167,46 +151,23 @@ export default function Leads() {
   }
 
   const handleFiltersChange = (newFilters: Record<string, any>) => {
-    setFilters(newFilters)
-    // Aplicar filtros aos dados
+    const leadsFilters: LeadsFilters = {
+      scouter: newFilters.scouter,
+      projeto: newFilters.projeto,
+      etapa: newFilters.etapa,
+      dataInicio: newFilters.dataInicio,
+      dataFim: newFilters.dataFim
+    }
+    setFilters(leadsFilters)
   }
 
   const handleSearch = (term: string) => {
-    // Implementar busca
     console.log('Buscar:', term)
   }
 
   const handleExport = () => {
-    // Implementar exportação
     console.log('Exportar dados')
   }
-
-  const filteredLeads = leads.filter(lead => {
-    // Filtro por etapa
-    if (filters.etapa && lead.etapa !== filters.etapa) return false
-    
-    // Filtro por projeto
-    if (filters.projeto && lead.projeto !== filters.projeto) return false
-    
-    // Filtro por scouter
-    if (filters.scouter && lead.scouter !== filters.scouter) return false
-    
-    // Filtro por tem foto
-    if (filters.temFoto !== undefined) {
-      const temFoto = filters.temFoto === 'true'
-      if (lead.tem_foto !== temFoto) return false
-    }
-    
-    // Filtro por intervalo de datas
-    if (filters.dataContato && filters.dataContato.start && filters.dataContato.end) {
-      const leadDate = new Date(lead.data_contato?.value?.local || lead.data_contato)
-      const startDate = new Date(filters.dataContato.start)
-      const endDate = new Date(filters.dataContato.end)
-      if (leadDate < startDate || leadDate > endDate) return false
-    }
-    
-    return true
-  })
 
   return (
     <AppShell sidebar={<Sidebar />}>
@@ -302,7 +263,7 @@ export default function Leads() {
               </CardHeader>
               <CardContent>
             <DataTable
-              data={filteredLeads}
+              data={leads}
               columns={tableColumns}
               searchable={true}
               exportable={true}
@@ -318,7 +279,7 @@ export default function Leads() {
           <div>
             {/* AI Analysis */}
             <AIAnalysis 
-              data={filteredLeads}
+              data={leads}
               title="Análise de Leads"
             />
           </div>

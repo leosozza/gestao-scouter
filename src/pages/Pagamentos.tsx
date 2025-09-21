@@ -96,12 +96,12 @@ export default function Pagamentos() {
 
   useEffect(() => {
     loadPagamentos()
-  }, [])
+  }, [filters])
 
   const loadPagamentos = async () => {
     try {
       setLoading(true)
-      const leads = await getLeads()
+      const leads = await getLeads(filters)
       
       // Gerar dados de pagamento baseados nos leads
       const scouterStats = new Map()
