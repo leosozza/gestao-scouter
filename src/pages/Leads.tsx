@@ -17,36 +17,30 @@ export default function Leads() {
 
   const filterOptions = [
     {
-      key: 'etapa',
-      label: 'Status',
-      type: 'select' as const,
-      options: [
-        { value: 'Convertido', label: 'Convertido' },
-        { value: 'Agendado', label: 'Agendado' },
-        { value: 'Contato', label: 'Em Contato' },
-        { value: 'Novo', label: 'Novo Lead' }
-      ]
-    },
-    {
-      key: 'projeto',
-      label: 'Projeto',
-      type: 'select' as const,
-      options: [
-        { value: 'fashion-week', label: 'Fashion Week' },
-        { value: 'verao', label: 'Projeto Verão' },
-        { value: 'inverno', label: 'Projeto Inverno' }
-      ]
+      key: 'dataContato',
+      label: 'Período',
+      type: 'dateRange' as const
     },
     {
       key: 'scouter',
       label: 'Scouter',
-      type: 'text' as const,
-      placeholder: 'Nome do scouter...'
+      type: 'select' as const,
+      options: Array.from(new Set(leads.map(lead => lead.scouter).filter(Boolean)))
+        .map(scouter => ({ value: scouter, label: scouter }))
     },
     {
-      key: 'dataContato',
-      label: 'Período',
-      type: 'dateRange' as const
+      key: 'projeto',
+      label: 'Projeto', 
+      type: 'select' as const,
+      options: Array.from(new Set(leads.map(lead => lead.projeto).filter(Boolean)))
+        .map(projeto => ({ value: projeto, label: projeto }))
+    },
+    {
+      key: 'etapa',
+      label: 'Status',
+      type: 'select' as const,
+      options: Array.from(new Set(leads.map(lead => lead.etapa).filter(Boolean)))
+        .map(etapa => ({ value: etapa, label: etapa }))
     },
     {
       key: 'temFoto',
@@ -103,9 +97,17 @@ export default function Leads() {
       render: (value: any) => {
         if (!value) return '-';
         if (typeof value === 'object' && value.value?.local) {
-          return new Date(value.value.local).toLocaleDateString('pt-BR');
+          return new Date(value.value.local).toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit'
+          });
         }
-        return new Date(value).toLocaleDateString('pt-BR');
+        return new Date(value).toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit', 
+          year: '2-digit'
+        });
       }
     },
     { 
@@ -180,9 +182,29 @@ export default function Leads() {
   }
 
   const filteredLeads = leads.filter(lead => {
+    // Filtro por etapa
     if (filters.etapa && lead.etapa !== filters.etapa) return false
+    
+    // Filtro por projeto
     if (filters.projeto && lead.projeto !== filters.projeto) return false
-    if (filters.scouter && !lead.scouter?.toLowerCase().includes(filters.scouter.toLowerCase())) return false
+    
+    // Filtro por scouter
+    if (filters.scouter && lead.scouter !== filters.scouter) return false
+    
+    // Filtro por tem foto
+    if (filters.temFoto !== undefined) {
+      const temFoto = filters.temFoto === 'true'
+      if (lead.tem_foto !== temFoto) return false
+    }
+    
+    // Filtro por intervalo de datas
+    if (filters.dataContato && filters.dataContato.start && filters.dataContato.end) {
+      const leadDate = new Date(lead.data_contato?.value?.local || lead.data_contato)
+      const startDate = new Date(filters.dataContato.start)
+      const endDate = new Date(filters.dataContato.end)
+      if (leadDate < startDate || leadDate > endDate) return false
+    }
+    
     return true
   })
 
