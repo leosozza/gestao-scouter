@@ -103,25 +103,28 @@ export default function Leads() {
     {
       key: 'indicadores',
       label: 'Indicadores',
-      formatter: (value: any, row: any) => (
-        <div className="flex gap-1">
-          {row.cadastro_existe_foto === 'SIM' && (
-            <Badge variant="secondary" className="text-xs rounded-xl">
-              Foto
-            </Badge>
-          )}
-          {row.presenca_confirmada === 'Sim' && (
-            <Badge variant="outline" className="text-xs rounded-xl">
-              Confirmado
-            </Badge>
-          )}
-          {row.ficha_confirmada === 'Sim' && (
-            <Badge variant="default" className="text-xs rounded-xl">
-              Validado
-            </Badge>
-          )}
-        </div>
-      )
+      formatter: (value: any, row: Lead) => {
+        if (!row) return <div className="flex gap-1"></div>;
+        return (
+          <div className="flex gap-1">
+            {row.cadastro_existe_foto === 'SIM' && (
+              <Badge variant="secondary" className="text-xs rounded-xl">
+                Foto
+              </Badge>
+            )}
+            {row.presenca_confirmada === 'Sim' && (
+              <Badge variant="outline" className="text-xs rounded-xl">
+                Confirmado
+              </Badge>
+            )}
+            {row.ficha_confirmada === 'Sim' && (
+              <Badge variant="default" className="text-xs rounded-xl">
+                Validado
+              </Badge>
+            )}
+          </div>
+        );
+      }
     }
   ]
 

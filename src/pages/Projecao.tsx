@@ -6,31 +6,40 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip as RTooltip } from 'recharts'
 import { TrendingUp, Calculator, Target } from 'lucide-react'
 import { getProjectionData, type ProjectionData } from '@/repositories/projectionsRepo'
+import { getAppSettings } from '@/repositories/settingsRepo'
+import type { AppSettings } from '@/repositories/types'
 
 export default function ProjecaoPage() {
   const [projectionData, setProjectionData] = useState<ProjectionData[]>([])
+  const [settings, setSettings] = useState<AppSettings | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchProjectionData()
+    fetchData()
   }, [])
 
-  const fetchProjectionData = async () => {
+  const fetchData = async () => {
     setLoading(true)
     try {
-      const data = await getProjectionData()
-      setProjectionData(data)
+      const [projections, appSettings] = await Promise.all([
+        getProjectionData(),
+        getAppSettings()
+      ])
+      setProjectionData(projections)
+      setSettings(appSettings)
     } catch (error) {
-      console.error('Error fetching projection data:', error)
+      console.error('Error fetching data:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  // Calculate summary metrics
+  // Calculate summary metrics using settings
+  const valorFicha = settings?.valor_base_ficha || 10
+  const qualityThreshold = settings?.quality_threshold || 50
   const totalFichas = projectionData.reduce((acc, row) => acc + (row.projecao_provavel || 0), 0)
-  const totalValor = totalFichas * 15 // Assuming R$15 per ficha
-  const qualityMed = projectionData.length > 0 ? 75.5 : 0 // Mock quality average
+  const totalValor = totalFichas * valorFicha
+  const qualityMed = projectionData.length > 0 ? qualityThreshold + 25 : 0 // Mock quality average
 
   const fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
@@ -128,9 +137,9 @@ export default function ProjecaoPage() {
                       <TableCell>{row.tier_name || 'N/A'}</TableCell>
                       <TableCell>{row.weekly_goal || 0}</TableCell>
                       <TableCell>{Math.round(row.projecao_provavel || 0)}</TableCell>
-                      <TableCell>75.0</TableCell>
-                      <TableCell>15.00</TableCell>
-                      <TableCell>{fmtBRL.format((row.projecao_provavel || 0) * 15)}</TableCell>
+                      <TableCell>{qualityThreshold}</TableCell>
+                      <TableCell>{valorFicha.toFixed(2)}</TableCell>
+                      <TableCell>{fmtBRL.format((row.projecao_provavel || 0) * valorFicha)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

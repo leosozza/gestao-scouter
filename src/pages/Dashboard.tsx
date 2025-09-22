@@ -8,11 +8,12 @@ import { DataTable } from '@/components/shared/DataTable'
 import { FilterHeader } from '@/components/shared/FilterHeader'
 import { BarChart3, TrendingUp, Users, Target, Activity, FileText, Clock } from 'lucide-react'
 import { getLeads } from '@/repositories/leadsRepo'
+import type { Lead, LeadsFilters } from '@/repositories/types'
 
 export default function Dashboard() {
-  const [leads, setLeads] = useState<any[]>([])
+  const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState<Record<string, any>>({})
+  const [filters, setFilters] = useState<LeadsFilters>({})
 
   // Stats calculados dos dados reais
   const [stats, setStats] = useState({
@@ -27,17 +28,15 @@ export default function Dashboard() {
       key: 'projeto',
       label: 'Projeto',
       type: 'select' as const,
-      options: [
-        { value: 'fashion-week', label: 'Fashion Week' },
-        { value: 'verao', label: 'Projeto Verão' },
-        { value: 'inverno', label: 'Projeto Inverno' }
-      ]
+      options: Array.from(new Set(leads.map(lead => lead.projetos).filter(Boolean)))
+        .map(projeto => ({ value: projeto, label: projeto }))
     },
     {
       key: 'scouter',
       label: 'Scouter',
-      type: 'text' as const,
-      placeholder: 'Nome do scouter...'
+      type: 'select' as const,
+      options: Array.from(new Set(leads.map(lead => lead.scouter).filter(Boolean)))
+        .map(scouter => ({ value: scouter, label: scouter }))
     },
     {
       key: 'dataInicio',
@@ -48,6 +47,13 @@ export default function Dashboard() {
       key: 'dataFim',
       label: 'Data Fim',
       type: 'date' as const
+    },
+    {
+      key: 'etapa',
+      label: 'Status',
+      type: 'select' as const,
+      options: Array.from(new Set(leads.map(lead => lead.etapa).filter(Boolean)))
+        .map(etapa => ({ value: etapa, label: etapa }))
     }
   ]
 
@@ -83,7 +89,7 @@ export default function Dashboard() {
   const recentActivity = leads.slice(0, 10).map((lead, index) => ({
     id: index,
     description: `${lead.scouter} ${lead.etapa === 'Convertido' ? 'converteu' : 'cadastrou'} lead: ${lead.nome}`,
-    timestamp: lead.data_contato ? new Date(lead.data_contato).toLocaleString('pt-BR') : 'Recente',
+    timestamp: lead.data_criacao_ficha ? new Date(lead.data_criacao_ficha).toLocaleString('pt-BR') : 'Recente',
     type: lead.etapa === 'Convertido' ? 'success' : 'info'
   }))
 
@@ -100,7 +106,16 @@ export default function Dashboard() {
         {/* Filtros */}
         <FilterHeader
           filters={filterOptions}
-          onFiltersChange={setFilters}
+          onFiltersChange={(newFilters) => {
+            const leadsFilters: LeadsFilters = {
+              scouter: newFilters.scouter,
+              projeto: newFilters.projeto,
+              etapa: newFilters.etapa,
+              dataInicio: newFilters.dataInicio,
+              dataFim: newFilters.dataFim
+            };
+            setFilters(leadsFilters);
+          }}
           title="Filtros do Dashboard"
           showSearch={true}
           onSearch={(term) => console.log('Buscar:', term)}
@@ -225,7 +240,12 @@ export default function Dashboard() {
                 { key: 'scouter', label: 'Scouter', sortable: true },
                 { key: 'projetos', label: 'Projeto', sortable: true },
                 { key: 'etapa', label: 'Status', sortable: true },
-                { key: 'data_criacao_ficha', label: 'Data', sortable: true }
+                { 
+                  key: 'data_criacao_ficha', 
+                  label: 'Data', 
+                  sortable: true,
+                  formatter: (value: string) => value ? new Date(value).toLocaleDateString('pt-BR') : '-'
+                }
               ]}
               actions={{
                 view: (row) => console.log('Lead clicado:', row)
