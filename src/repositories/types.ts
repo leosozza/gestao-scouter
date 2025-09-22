@@ -1,21 +1,31 @@
+export type DataSource = 'bitrix' | 'sheets';
+
+export interface LeadsFilters {
+  scouter?: string;
+  projeto?: string;       // ⚠️ usamos "projeto" no filtro e "projetos" no dado
+  etapa?: string;
+  dataInicio?: string;    // YYYY-MM-DD
+  dataFim?: string;       // YYYY-MM-DD
+}
+
 export interface Lead {
   id: string;
-  projetos: string;
-  scouter: string;
-  criado?: string;        // ISO
-  data_criacao_ficha?: string; // ISO
+  projetos: string;                  // ex.: "SELETIVA SANTO ANDRÉ-ABC"
+  scouter: string;                   // nome do scouter
+  criado?: string;                   // ISO
+  data_criacao_ficha?: string;       // ISO
   valor_ficha?: number;
   etapa: string;
-  nome: string;
+  nome: string;                      // responsável
   gerenciamentofunil?: string;
   etapafunil?: string;
   modelo: string;
-  localizacao?: string;   // ou "lat,lng (endereco)" simples
-  ficha_confirmada?: string; // "Sim" | "Não" | "Aguardando" | "Não confirmada"
+  localizacao?: string;              // "lat,lng (endereço)" ou string livre
+  ficha_confirmada?: string;         // "Sim" | "Não" | "Aguardando" | "Não confirmada"
   idade?: number;
   local_da_abordagem?: string;
-  cadastro_existe_foto?: string; // "Sim"/"NÃO"
-  presenca_confirmada?: string;  // "Sim"/"Não"
+  cadastro_existe_foto?: string;     // "SIM" | "NÃO" (mantido igual à origem)
+  presenca_confirmada?: string;      // "Sim" | "Não"
   supervisor_do_scouter?: string;
 }
 
@@ -36,12 +46,4 @@ export interface AppSettings {
   peso_sem_interesse_momento: number;
   ajuda_custo_tier: Record<string, number>;
   updated_at?: string;
-}
-
-export interface LeadsFilters {
-  scouter?: string;
-  projeto?: string;
-  etapa?: string;
-  dataInicio?: string;
-  dataFim?: string;
 }
