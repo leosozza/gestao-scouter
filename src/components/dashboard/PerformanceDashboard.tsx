@@ -253,12 +253,12 @@ export function PerformanceDashboard() {
               </Popover>
 
               {/* Scouters */}
-              <Select value={selectedScouters[0] || ''} onValueChange={(value) => setSelectedScouters(value ? [value] : [])}>
+              <Select value={selectedScouters[0] || 'all'} onValueChange={(value) => setSelectedScouters(value === 'all' ? [] : [value])}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Scouters" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos Scouters</SelectItem>
+                  <SelectItem value="all">Todos Scouters</SelectItem>
                   {getScouterOptions().map(option => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -268,12 +268,12 @@ export function PerformanceDashboard() {
               </Select>
 
               {/* Projects */}
-              <Select value={selectedProjects[0] || ''} onValueChange={(value) => setSelectedProjects(value ? [value] : [])}>
+              <Select value={selectedProjects[0] || 'all'} onValueChange={(value) => setSelectedProjects(value === 'all' ? [] : [value])}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Projetos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos Projetos</SelectItem>
+                  <SelectItem value="all">Todos Projetos</SelectItem>
                   {getProjectOptions().map(option => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
