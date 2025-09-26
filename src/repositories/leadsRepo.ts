@@ -27,7 +27,7 @@ export async function getLeadsSummary(params: LeadsFilters = {}): Promise<LeadsS
   const leads = await getLeads(params);
   const totalLeads = leads.length;
   const convertedLeads = leads.filter(l => l.etapa === 'Convertido' || l.ficha_confirmada === 'Sim').length;
-  const totalValue = leads.reduce((s, l) => s + (l.valor_ficha || 0), 0);
+  const totalValue = leads.reduce((s, l) => s + parseFloat(String(l.valor_ficha || '0').replace(',', '.')), 0);
   return {
     totalLeads,
     convertedLeads,
@@ -46,7 +46,7 @@ export async function getLeadsByScouter(params: LeadsFilters = {}): Promise<
     if (!map.has(key)) map.set(key, { leads: 0, converted: 0, value: 0 });
     const s = map.get(key)!;
     s.leads++;
-    s.value += l.valor_ficha || 0;
+    s.value += parseFloat(String(l.valor_ficha || '0').replace(',', '.'));
     if (l.etapa === 'Convertido' || l.ficha_confirmada === 'Sim') s.converted++;
   }
   return [...map].map(([scouter, s]) => ({
@@ -68,7 +68,7 @@ export async function getLeadsByProject(params: LeadsFilters = {}): Promise<
     if (!map.has(key)) map.set(key, { leads: 0, converted: 0, value: 0 });
     const s = map.get(key)!;
     s.leads++;
-    s.value += l.valor_ficha || 0;
+    s.value += parseFloat(String(l.valor_ficha || '0').replace(',', '.'));
     if (l.etapa === 'Convertido' || l.ficha_confirmada === 'Sim') s.converted++;
   }
   return [...map].map(([project, s]) => ({
@@ -80,25 +80,25 @@ export async function getLeadsByProject(params: LeadsFilters = {}): Promise<
   }));
 }
 
-/** BITRIX (Supabase) */
+/** SUPABASE (nova tabela fichas) */
 async function fetchAllLeadsFromBitrix(params: LeadsFilters): Promise<Lead[]> {
-  let q = supabase.from('bitrix_leads').select('*');
+  let q = supabase.from('fichas').select('*');
 
-  // ⚠️ Colunas prováveis (ajuste se o seu schema usar outros nomes)
-  if (params.dataInicio) q = q.gte('data_de_criacao_da_ficha', params.dataInicio);
-  if (params.dataFim)    q = q.lte('data_de_criacao_da_ficha', params.dataFim);
+  // Filtros usando a nova estrutura
+  if (params.dataInicio) q = q.gte('criado', params.dataInicio);
+  if (params.dataFim)    q = q.lte('criado', params.dataFim);
   if (params.etapa)      q = q.eq('etapa', params.etapa);
 
-  // se existirem colunas específicas para scouter/projeto, aplique:
-  if (params.scouter)    q = q.ilike('primeiro_nome', `%${params.scouter}%`);
-  if (params.projeto)    q = q.ilike('projetos_comerciais', `%${params.projeto}%`);
+  // Filtros por scouter e projeto
+  if (params.scouter)    q = q.ilike('scouter', `%${params.scouter}%`);
+  if (params.projeto)    q = q.ilike('projetos', `%${params.projeto}%`);
 
   const { data, error } = await q;
   if (error) {
-    console.error('Bitrix query error', error);
+    console.error('Fichas query error', error);
     return [];
   }
-  return (data ?? []).map(normalizeLeadFromBitrix)
+  return (data ?? []).map(normalizeFichaFromSupabase)
     .filter(l => applyClientSideFilters(l, params));
 }
 
@@ -135,14 +135,48 @@ async function fetchAllLeadsFromSheets(params: LeadsFilters): Promise<Lead[]> {
   return leads.filter(l => applyClientSideFilters(l, params));
 }
 
+function normalizeFichaFromSupabase(r: any): Lead {
+  return {
+    id: Number(r.id) || 0,
+    projetos: String(r.projetos || 'Sem Projeto'),
+    scouter: String(r.scouter || 'Desconhecido'),
+    criado: r.criado,
+    hora_criacao_ficha: r.hora_criacao_ficha,
+    valor_ficha: String(r.valor_ficha || '0'),
+    etapa: String(r.etapa || 'Sem Etapa'),
+    nome: String(r.nome || 'Sem nome'),
+    gerenciamentofunil: r.gerenciamentofunil,
+    etapafunil: r.etapafunil,
+    modelo: String(r.modelo || ''),
+    localizacao: r.localizacao,
+    ficha_confirmada: r.ficha_confirmada,
+    idade: r.idade,
+    local_da_abordagem: r.local_da_abordagem,
+    cadastro_existe_foto: r.cadastro_existe_foto,
+    presenca_confirmada: r.presenca_confirmada,
+    supervisor_do_scouter: r.supervisor_do_scouter,
+    data_confirmacao_ficha: r.data_confirmacao_ficha,
+    foto: r.foto,
+    compareceu: r.compareceu,
+    confirmado: r.confirmado,
+    datahoracel: r.datahoracel,
+    funilfichas: r.funilfichas,
+    tabulacao: r.tabulacao,
+    agendado: r.agendado,
+    qdoagendou: r.qdoagendou,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+  };
+}
+
 function normalizeLeadFromSheets(f: any, idx?: number): Lead {
   return {
-    id: String(f.ID ?? (idx != null ? `ficha-${idx}` : '')),
+    id: Number(f.ID) ?? (idx != null ? idx : 0),
     projetos: f.Projetos ?? f['Projetos Cormeciais'] ?? f['Agencia e Seletivas'] ?? 'Sem Projeto',
     scouter: f.Scouter ?? f['Gestão de Scouter'] ?? 'Desconhecido',
-    criado: toISO(f.Criado ?? f.Criado_date?.value?.iso),
-    data_criacao_ficha: toISO(f.Data_criacao_Ficha ?? f['Data de criação da Ficha']),
-    valor_ficha: safeNumber(f.Valor_Ficha ?? f['Valor da Ficha']),
+    criado: f.Criado ?? undefined,
+    hora_criacao_ficha: f.hora_criacao_Ficha ?? undefined,
+    valor_ficha: f.Valor_Ficha ?? f['Valor da Ficha'] ?? '0',
     etapa: f.Etapa ?? f['ETAPA FUNIL QUALIFICAÇÃO/AGENDAMENTO'] ?? 'Sem Etapa',
     nome: f.Nome ?? f['Nome do Responsável'] ?? f['Primeiro nome'] ?? 'Sem nome',
     gerenciamentofunil: f.GERENCIAMENTOFUNIL ?? f['GERENCIAMENTO FUNIL DE QUALIFICAÇAO/AGENDAMENTO'] ?? undefined,
@@ -150,11 +184,20 @@ function normalizeLeadFromSheets(f: any, idx?: number): Lead {
     modelo: f.modelo ?? f['Nome do Modelo'] ?? '',
     localizacao: f.Localizacao ?? f.Localização ?? undefined,
     ficha_confirmada: f.Ficha_confirmada ?? f['Ficha confirmada'] ?? undefined,
-    idade: safeNumber(f.Idade_num ?? f.Idade),
+    idade: f.Idade ?? f.Idade_num ?? undefined,
     local_da_abordagem: f.Local_da_Abordagem ?? f['Local da Abordagem'] ?? undefined,
     cadastro_existe_foto: f.Cadastro_Existe_Foto ?? f['Cadastro Existe Foto?'] ?? undefined,
     presenca_confirmada: f.Presenca_Confirmada ?? f['Presença Confirmada'] ?? undefined,
     supervisor_do_scouter: f.Supervisor_do_Scouter ?? f['Supervisor do Scouter'] ?? undefined,
+    data_confirmacao_ficha: f.Data_confirmacao_ficha ?? undefined,
+    foto: f.Foto ?? undefined,
+    compareceu: f.Compareceu ?? undefined,
+    confirmado: f.Confirmado ?? undefined,
+    datahoracel: f.Datahoracel ?? undefined,
+    funilfichas: f.Funilfichas ?? undefined,
+    tabulacao: f.Tabulacao ?? undefined,
+    agendado: f.Agendado ?? undefined,
+    qdoagendou: f.Qdoagendou ?? undefined,
   };
 }
 
@@ -164,10 +207,15 @@ function applyClientSideFilters(l: Lead, p: LeadsFilters): boolean {
   if (p.projeto && !l.projetos?.toLowerCase().includes(p.projeto.toLowerCase())) return false;
   if (p.etapa && l.etapa !== p.etapa) return false;
 
-  if ((p.dataInicio || p.dataFim) && (l.data_criacao_ficha || l.criado)) {
-    const iso = l.data_criacao_ficha ?? l.criado!;
-    if (p.dataInicio && iso < p.dataInicio) return false;
-    if (p.dataFim && iso > p.dataFim) return false;
+  if ((p.dataInicio || p.dataFim) && l.criado) {
+    const dateStr = l.criado;
+    // Convert dd/MM/yyyy to yyyy-MM-dd for comparison
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+      const isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      if (p.dataInicio && isoDate < p.dataInicio) return false;
+      if (p.dataFim && isoDate > p.dataFim) return false;
+    }
   }
   return true;
 }

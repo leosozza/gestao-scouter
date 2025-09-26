@@ -23,19 +23,10 @@ export async function getProjectionData(): Promise<ProjectionData[]> {
   }
 }
 
+// Função para buscar dados do Supabase apenas para Google Sheets agora
 async function fetchProjectionsFromSupabase(): Promise<ProjectionData[]> {
-  try {
-    const { data, error } = await supabase
-      .from('vw_projecao_scouter')
-      .select('*')
-      .order('scouter_name', { ascending: true });
-    
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
-    console.error('Error fetching projections from Supabase:', error);
-    return [];
-  }
+  // Com a nova estrutura, vamos usar apenas Google Sheets
+  return fetchProjectionsFromSheets();
 }
 
 async function fetchProjectionsFromSheets(): Promise<ProjectionData[]> {

@@ -49,33 +49,10 @@ export async function getScoutersSummary(): Promise<ScouterSummary> {
   };
 }
 
+// Função para buscar dados do Supabase apenas para Google Sheets agora  
 async function fetchScoutersFromSupabase(): Promise<ScouterData[]> {
-  try {
-    const { data, error } = await supabase
-      .from('scouter_profiles')
-      .select(`
-        *,
-        scouter_tiers (tier_name)
-      `);
-    
-    if (error) throw error;
-    
-    return (data || []).map(scouter => ({
-      id: scouter.id,
-      scouter_name: scouter.scouter_name,
-      tier_name: scouter.scouter_tiers?.tier_name || 'Scouter Pleno',
-      weekly_goal: scouter.weekly_goal,
-      fichas_value: Number(scouter.fichas_value),
-      total_fichas: 0, // Would need to calculate from leads
-      converted_fichas: 0, // Would need to calculate from leads
-      conversion_rate: 0, // Would need to calculate from leads
-      performance_status: 'Normal',
-      active: scouter.active
-    }));
-  } catch (error) {
-    console.error('Error fetching scouters from Supabase:', error);
-    return [];
-  }
+  // Com a nova estrutura, vamos usar apenas Google Sheets
+  return fetchScoutersFromSheets();
 }
 
 async function fetchScoutersFromSheets(): Promise<ScouterData[]> {

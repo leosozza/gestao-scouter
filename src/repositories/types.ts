@@ -8,26 +8,40 @@ export interface LeadsFilters {
   dataFim?: string;       // YYYY-MM-DD
 }
 
-export interface Lead {
-  id: string;
-  projetos: string;                  // ex.: "SELETIVA SANTO ANDRÉ-ABC"
-  scouter: string;                   // nome do scouter
-  criado?: string;                   // ISO
-  data_criacao_ficha?: string;       // ISO
-  valor_ficha?: number;
-  etapa: string;
-  nome: string;                      // responsável
+export interface Ficha {
+  id: number;
+  projetos?: string;
+  scouter?: string;
+  criado?: string;                      // formato dd/MM/yyyy
+  hora_criacao_ficha?: string;          // formato HH:mm
+  valor_ficha?: string;                 // formato brasileiro com vírgula
+  etapa?: string;
+  nome?: string;
   gerenciamentofunil?: string;
   etapafunil?: string;
-  modelo: string;
-  localizacao?: string;              // "lat,lng (endereço)" ou string livre
-  ficha_confirmada?: string;         // "Sim" | "Não" | "Aguardando" | "Não confirmada"
-  idade?: number;
+  modelo?: string;
+  localizacao?: string;
+  ficha_confirmada?: string;            // "Aguardando" | "Confirmada" | etc
+  idade?: string;                       // pode ser número como string
   local_da_abordagem?: string;
-  cadastro_existe_foto?: string;     // "SIM" | "NÃO" (mantido igual à origem)
-  presenca_confirmada?: string;      // "Sim" | "Não"
+  cadastro_existe_foto?: string;        // "SIM" | "NÃO"
+  presenca_confirmada?: string;         // "Sim" | "Não"
   supervisor_do_scouter?: string;
+  data_confirmacao_ficha?: string;
+  foto?: string;                        // "1" | "0"
+  compareceu?: string;                  // "1" | "0"
+  confirmado?: string;                  // "1" | "0"
+  datahoracel?: string;                 // formato dd/MM/yyyy HH:mm
+  funilfichas?: string;
+  tabulacao?: string;
+  agendado?: string;                    // "1" | "0"
+  qdoagendou?: string;
+  created_at?: string;
+  updated_at?: string;
 }
+
+// Para compatibilidade com o código existente
+export interface Lead extends Ficha {}
 
 export interface AppSettings {
   id?: string;

@@ -38,31 +38,29 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Fetch data from Supabase instead of Google Sheets
+      // Fetch data from the new fichas table
       const { data: leadsData, error: leadsError } = await supabase
-        .from('bitrix_leads')
+        .from('fichas')
         .select('*')
-        .order('data_de_criacao_da_ficha', { ascending: false });
+        .order('criado', { ascending: false });
 
       if (leadsError) throw leadsError;
 
-      // Transform Supabase data to match expected format
-      const fichas = leadsData?.map(lead => ({
-        ID: lead.id,
-        'Gestão de Scouter': lead.primeiro_nome || '',
-        'Projetos Cormeciais': 'Bitrix24', // Default project
-        'Data de criação da Ficha': lead.data_de_criacao_da_ficha 
-          ? new Date(lead.data_de_criacao_da_ficha).toLocaleDateString('pt-BR')
-          : '',
-        'Ficha paga': lead.etapa === 'CONVERTIDO' ? 'Sim' : 'Não',
-        Criado: lead.created_at,
+      // Transform fichas data to match expected format
+      const fichas = leadsData?.map(ficha => ({
+        ID: ficha.id,
+        'Gestão de Scouter': ficha.scouter || '',
+        'Projetos Cormeciais': ficha.projetos || 'Sem Projeto',
+        'Data de criação da Ficha': ficha.criado || '',
+        'Ficha paga': ficha.etapa === 'Convertido' ? 'Sim' : 'Não',
+        Criado: ficha.created_at,
         // Add other fields as needed
-        ...lead
+        ...ficha
       })) || [];
 
       // Mock projects data for now
       const projetos = [
-        { 'Agencia e Seletiva': 'Bitrix24', 'Meta de Fichas': 100 }
+        { 'Agencia e Seletiva': 'Projeto Geral', 'Meta de Fichas': 100 }
       ];
 
       setData({ fichas, projetos });
@@ -85,13 +83,13 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   const handleUpdateFichaPaga = async (fichaIds: string[], status: 'Sim' | 'Não') => {
     setIsLoading(true);
     try {
-      // Update status in Supabase instead of Google Sheets
+      // Update status in the new fichas table
       const { error } = await supabase
-        .from('bitrix_leads')
+        .from('fichas')
         .update({ 
-          etapa: status === 'Sim' ? 'CONVERTIDO' : 'EM_ANDAMENTO'
+          etapa: status === 'Sim' ? 'Convertido' : 'Lead a Qualificar'
         })
-        .in('id', fichaIds);
+        .in('id', fichaIds.map(id => parseInt(id)));
 
       if (error) throw error;
 
