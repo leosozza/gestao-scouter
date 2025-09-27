@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 
 export interface ProjectionData {
-  scouter_name: string;
+  name: string; // Pode ser scouter ou projeto
   semana_futura: number;
   semana_label: string;
   weekly_goal: number;
@@ -14,16 +14,18 @@ export interface ProjectionData {
   avg_weekly_fichas: number;
 }
 
-export async function getProjectionData(): Promise<ProjectionData[]> {
+export type ProjectionType = 'scouter' | 'projeto';
+
+export async function getProjectionData(type: ProjectionType = 'scouter'): Promise<ProjectionData[]> {
   try {
-    return await fetchProjectionsFromSupabase();
+    return await fetchProjectionsFromSupabase(type);
   } catch (error) {
     console.error('Error fetching projections:', error);
     return [];
   }
 }
 
-async function fetchProjectionsFromSupabase(): Promise<ProjectionData[]> {
+async function fetchProjectionsFromSupabase(type: ProjectionType): Promise<ProjectionData[]> {
   try {
     // Buscar fichas dos últimos 30 dias para análise histórica
     const thirtyDaysAgo = new Date();
@@ -43,30 +45,33 @@ async function fetchProjectionsFromSupabase(): Promise<ProjectionData[]> {
       return [];
     }
 
-    // Agrupar por scouter
-    const scouterData = new Map();
+    // Agrupar por scouter ou projeto
+    const groupedData = new Map();
     
     fichas.forEach(ficha => {
-      const scouter = ficha.scouter || 'Desconhecido';
-      if (!scouterData.has(scouter)) {
-        scouterData.set(scouter, {
+      const groupKey = type === 'scouter' 
+        ? (ficha.scouter || 'Desconhecido')
+        : (ficha.projetos || 'Sem Projeto');
+        
+      if (!groupedData.has(groupKey)) {
+        groupedData.set(groupKey, {
           fichas: [],
           weeklyData: new Map() // Para calcular média semanal
         });
       }
-      scouterData.get(scouter).fichas.push(ficha);
+      groupedData.get(groupKey).fichas.push(ficha);
       
       // Agrupar por semana para calcular performance semanal
       const weekKey = getWeekKey(ficha.criado);
-      const weeklyData = scouterData.get(scouter).weeklyData;
+      const weeklyData = groupedData.get(groupKey).weeklyData;
       if (!weeklyData.has(weekKey)) {
         weeklyData.set(weekKey, []);
       }
       weeklyData.get(weekKey).push(ficha);
     });
 
-    // Calcular projeções para cada scouter
-    return Array.from(scouterData.entries()).map(([scouter_name, data]) => {
+    // Calcular projeções para cada item (scouter ou projeto)
+    return Array.from(groupedData.entries()).map(([name, data]) => {
       const totalFichas = data.fichas.length;
       
       // Calcular taxa de confirmação
@@ -96,7 +101,7 @@ async function fetchProjectionsFromSupabase(): Promise<ProjectionData[]> {
       );
       
       return {
-        scouter_name,
+        name,
         semana_futura: 1,
         semana_label: 'Sem+1',
         weekly_goal,
@@ -117,10 +122,38 @@ async function fetchProjectionsFromSupabase(): Promise<ProjectionData[]> {
 
 // Função auxiliar para gerar chave da semana
 function getWeekKey(dateString: string): string {
-  const date = new Date(dateString.split('/').reverse().join('-')); // Converter dd/mm/yyyy para yyyy-mm-dd
-  const weekStart = new Date(date);
-  weekStart.setDate(date.getDate() - date.getDay()); // Início da semana (domingo)
-  return weekStart.toISOString().split('T')[0];
+  if (!dateString) return '';
+  
+  try {
+    // Tentar diferentes formatos de data
+    let date: Date;
+    
+    if (dateString.includes('/')) {
+      // Formato dd/mm/yyyy ou mm/dd/yyyy
+      const parts = dateString.split('/');
+      if (parts.length === 3) {
+        // Assumir dd/mm/yyyy
+        date = new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`);
+      } else {
+        date = new Date(dateString);
+      }
+    } else {
+      // Formato ISO ou outro
+      date = new Date(dateString);
+    }
+    
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date string:', dateString);
+      return '';
+    }
+    
+    const weekStart = new Date(date);
+    weekStart.setDate(date.getDate() - date.getDay()); // Início da semana (domingo)
+    return weekStart.toISOString().split('T')[0];
+  } catch (error) {
+    console.error('Error parsing date:', dateString, error);
+    return '';
+  }
 }
 
 // Função para determinar tier baseado na performance

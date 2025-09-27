@@ -3,9 +3,10 @@ import { AppShell } from '@/layouts/AppShell'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip as RTooltip } from 'recharts'
-import { TrendingUp, Calculator, Target } from 'lucide-react'
-import { getProjectionData, type ProjectionData } from '@/repositories/projectionsRepo'
+import { TrendingUp, Calculator, Target, Filter } from 'lucide-react'
+import { getProjectionData, type ProjectionData, type ProjectionType } from '@/repositories/projectionsRepo'
 import { getAppSettings } from '@/repositories/settingsRepo'
 import type { AppSettings } from '@/repositories/types'
 
@@ -13,16 +14,17 @@ export default function ProjecaoPage() {
   const [projectionData, setProjectionData] = useState<ProjectionData[]>([])
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [loading, setLoading] = useState(true)
+  const [projectionType, setProjectionType] = useState<ProjectionType>('scouter')
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [projectionType])
 
   const fetchData = async () => {
     setLoading(true)
     try {
       const [projections, appSettings] = await Promise.all([
-        getProjectionData(),
+        getProjectionData(projectionType),
         getAppSettings()
       ])
       setProjectionData(projections)
@@ -79,11 +81,26 @@ export default function ProjecaoPage() {
   return (
     <AppShell sidebar={<Sidebar />}>
       <div className="space-y-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">Projeções de Performance</h1>
-          <p className="text-muted-foreground">
-            Analise as projeções de fichas e rendimentos para as próximas semanas
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-3xl font-bold tracking-tight">Projeções de Performance</h1>
+            <p className="text-muted-foreground">
+              Analise as projeções de fichas e rendimentos para as próximas semanas
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-2 min-w-[200px]">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Select value={projectionType} onValueChange={(value: ProjectionType) => setProjectionType(value)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Tipo de projeção" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="scouter">Por Scouter</SelectItem>
+                <SelectItem value="projeto">Por Projeto</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -125,14 +142,16 @@ export default function ProjecaoPage() {
         {/* Projection Table */}
         <Card className="rounded-2xl">
           <CardHeader>
-            <CardTitle>Projeção por Scouter (Sem+1)</CardTitle>
+            <CardTitle>
+              Projeção por {projectionType === 'scouter' ? 'Scouter' : 'Projeto'} (Sem+1)
+            </CardTitle>
           </CardHeader>
           <CardContent className="w-full overflow-auto">
             {projectionData.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Scouter</TableHead>
+                    <TableHead>{projectionType === 'scouter' ? 'Scouter' : 'Projeto'}</TableHead>
                     <TableHead>Tier</TableHead>
                     <TableHead>Meta/Sem</TableHead>
                     <TableHead>Média Semanal</TableHead>
@@ -146,7 +165,7 @@ export default function ProjecaoPage() {
                 <TableBody>
                   {projectionData.map((row, i) => (
                     <TableRow key={i}>
-                      <TableCell className="font-medium">{row.scouter_name || 'N/A'}</TableCell>
+                      <TableCell className="font-medium">{row.name || 'N/A'}</TableCell>
                       <TableCell>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTierColor(row.tier_name)}`}>
                           {row.tier_name || 'N/A'}
@@ -204,7 +223,7 @@ export default function ProjecaoPage() {
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-2">
             <p>
-              <strong>Base de Cálculo:</strong> Análise dos últimos 30 dias de fichas por scouter
+              <strong>Base de Cálculo:</strong> Análise dos últimos 30 dias de fichas por {projectionType === 'scouter' ? 'scouter' : 'projeto'}
             </p>
             <p>
               <strong>Projeção Provável:</strong> 60% da média histórica semanal + 40% da tendência das últimas 2 semanas
