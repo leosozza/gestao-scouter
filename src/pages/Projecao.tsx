@@ -42,6 +42,17 @@ export default function ProjecaoPage() {
   const qualityMed = projectionData.length > 0 ? qualityThreshold + 25 : 0 // Mock quality average
 
   const fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+  
+  // Função para cor do tier
+  const getTierColor = (tier: string) => {
+    switch (tier) {
+      case 'Diamante': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+      case 'Ouro': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+      case 'Prata': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+      case 'Bronze': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+      default: return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+    }
+  }
 
   // Mock series data for chart
   const series = [
@@ -124,9 +135,11 @@ export default function ProjecaoPage() {
                     <TableHead>Scouter</TableHead>
                     <TableHead>Tier</TableHead>
                     <TableHead>Meta/Sem</TableHead>
-                    <TableHead>Fichas Proj.</TableHead>
-                    <TableHead>Quality</TableHead>
-                    <TableHead>R$ por ficha</TableHead>
+                    <TableHead>Média Semanal</TableHead>
+                    <TableHead>Taxa Conversão</TableHead>
+                    <TableHead>Proj. Conservadora</TableHead>
+                    <TableHead>Proj. Provável</TableHead>
+                    <TableHead>Proj. Agressiva</TableHead>
                     <TableHead>Valor Projetado</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -134,12 +147,18 @@ export default function ProjecaoPage() {
                   {projectionData.map((row, i) => (
                     <TableRow key={i}>
                       <TableCell className="font-medium">{row.scouter_name || 'N/A'}</TableCell>
-                      <TableCell>{row.tier_name || 'N/A'}</TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTierColor(row.tier_name)}`}>
+                          {row.tier_name || 'N/A'}
+                        </span>
+                      </TableCell>
                       <TableCell>{row.weekly_goal || 0}</TableCell>
-                      <TableCell>{Math.round(row.projecao_provavel || 0)}</TableCell>
-                      <TableCell>{qualityThreshold}</TableCell>
-                      <TableCell>{valorFicha.toFixed(2)}</TableCell>
-                      <TableCell>{fmtBRL.format((row.projecao_provavel || 0) * valorFicha)}</TableCell>
+                      <TableCell>{row.avg_weekly_fichas || 0}</TableCell>
+                      <TableCell>{row.conversion_rate || 0}%</TableCell>
+                      <TableCell className="text-blue-600">{Math.round(row.projecao_conservadora || 0)}</TableCell>
+                      <TableCell className="font-semibold text-green-600">{Math.round(row.projecao_provavel || 0)}</TableCell>
+                      <TableCell className="text-orange-600">{Math.round(row.projecao_agressiva || 0)}</TableCell>
+                      <TableCell className="font-semibold">{fmtBRL.format((row.projecao_provavel || 0) * valorFicha)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -181,13 +200,30 @@ export default function ProjecaoPage() {
         {/* Explanation */}
         <Card className="rounded-2xl">
           <CardHeader>
-            <CardTitle>Como Calculamos</CardTitle>
+            <CardTitle>Como Calculamos as Projeções</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
+          <CardContent className="text-sm text-muted-foreground space-y-2">
             <p>
-              Média móvel ponderada (6 semanas) com pesos 1,1,2,2,3,4; ajuste por constância e qualidade; 
-              aplicação de bônus/penalidades por tier; ajuda de custo somada ao total.
+              <strong>Base de Cálculo:</strong> Análise dos últimos 30 dias de fichas por scouter
             </p>
+            <p>
+              <strong>Projeção Provável:</strong> 60% da média histórica semanal + 40% da tendência das últimas 2 semanas
+            </p>
+            <p>
+              <strong>Projeção Conservadora:</strong> 75% da projeção provável (cenário mais cauteloso)
+            </p>
+            <p>
+              <strong>Projeção Agressiva:</strong> 130% da projeção provável (cenário otimista)
+            </p>
+            <p>
+              <strong>Classificação por Tier:</strong> Baseada na performance combinada (fichas semanais × taxa de conversão)
+            </p>
+            <ul className="list-disc list-inside ml-4 space-y-1">
+              <li>Diamante: Performance ≥ 80 (Meta: 100 fichas/semana)</li>
+              <li>Ouro: Performance ≥ 60 (Meta: 80 fichas/semana)</li>
+              <li>Prata: Performance ≥ 40 (Meta: 60 fichas/semana)</li>
+              <li>Bronze: Performance &lt; 40 (Meta: 40 fichas/semana)</li>
+            </ul>
           </CardContent>
         </Card>
       </div>

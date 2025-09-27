@@ -1,4 +1,3 @@
-import { getDataSource } from './datasource';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface ProjectionData {
@@ -11,67 +10,136 @@ export interface ProjectionData {
   projecao_provavel: number;
   projecao_agressiva: number;
   projecao_historica: number;
+  conversion_rate: number;  
+  avg_weekly_fichas: number;
 }
 
 export async function getProjectionData(): Promise<ProjectionData[]> {
-  const dataSource = getDataSource();
-  
-  if (dataSource === 'bitrix') {
-    return fetchProjectionsFromSupabase();
-  } else {
-    return fetchProjectionsFromSheets();
+  try {
+    return await fetchProjectionsFromSupabase();
+  } catch (error) {
+    console.error('Error fetching projections:', error);
+    return [];
   }
 }
 
-// Função para buscar dados do Supabase apenas para Google Sheets agora
 async function fetchProjectionsFromSupabase(): Promise<ProjectionData[]> {
-  // Com a nova estrutura, vamos usar apenas Google Sheets
-  return fetchProjectionsFromSheets();
-}
-
-async function fetchProjectionsFromSheets(): Promise<ProjectionData[]> {
   try {
-    const { GoogleSheetsService } = await import('@/services/googleSheetsService');
-    const fichas = await GoogleSheetsService.fetchFichas();
+    // Buscar fichas dos últimos 30 dias para análise histórica
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
-    // Group fichas by scouter to calculate projections
+    const { data: fichas, error } = await supabase
+      .from('fichas')
+      .select('*')
+      .gte('criado', thirtyDaysAgo.toISOString().split('T')[0]);
+
+    if (error) {
+      console.error('Error fetching fichas:', error);
+      return [];
+    }
+
+    if (!fichas || fichas.length === 0) {
+      return [];
+    }
+
+    // Agrupar por scouter
     const scouterData = new Map();
     
     fichas.forEach(ficha => {
-      const scouter = ficha['Gestão de Scouter'] || ficha['Primeiro nome'] || 'Desconhecido';
+      const scouter = ficha.scouter || 'Desconhecido';
       if (!scouterData.has(scouter)) {
         scouterData.set(scouter, {
           fichas: [],
-          weekly_goal: 50, // Default goal
-          tier_name: 'Scouter Pleno' // Default tier
+          weeklyData: new Map() // Para calcular média semanal
         });
       }
       scouterData.get(scouter).fichas.push(ficha);
+      
+      // Agrupar por semana para calcular performance semanal
+      const weekKey = getWeekKey(ficha.criado);
+      const weeklyData = scouterData.get(scouter).weeklyData;
+      if (!weeklyData.has(weekKey)) {
+        weeklyData.set(weekKey, []);
+      }
+      weeklyData.get(weekKey).push(ficha);
     });
-    
-    // Calculate projections based on historical data
+
+    // Calcular projeções para cada scouter
     return Array.from(scouterData.entries()).map(([scouter_name, data]) => {
       const totalFichas = data.fichas.length;
-      const convertedFichas = data.fichas.filter(f => f.status_normalizado === 'Confirmado').length;
-      const conversionRate = totalFichas > 0 ? (convertedFichas / totalFichas) : 0;
       
-      // Simple projection logic based on recent performance
-      const baseProjection = Math.max(data.weekly_goal * 0.8, totalFichas * 0.2);
+      // Calcular taxa de confirmação
+      const confirmedFichas = data.fichas.filter(f => f.confirmado === '1').length;
+      const conversionRate = totalFichas > 0 ? (confirmedFichas / totalFichas) : 0;
+      
+      // Calcular média semanal
+      const weeklyTotals = Array.from(data.weeklyData.values()).map((week: any[]) => week.length);
+      const avgWeeklyFichas = weeklyTotals.length > 0 
+        ? weeklyTotals.reduce((sum, count) => sum + count, 0) / weeklyTotals.length 
+        : 0;
+      
+      // Determinar tier baseado na performance
+      const tier_name = getTierFromPerformance(avgWeeklyFichas, conversionRate);
+      const weekly_goal = getWeeklyGoalFromTier(tier_name);
+      
+      // Calcular projeções baseadas na tendência recente
+      const recentWeeks = weeklyTotals.slice(-2); // Últimas 2 semanas
+      const recentAvg = recentWeeks.length > 0 
+        ? recentWeeks.reduce((sum, count) => sum + count, 0) / recentWeeks.length 
+        : avgWeeklyFichas;
+      
+      // Base da projeção: combinação da média histórica com tendência recente
+      const baseProjection = Math.max(
+        (avgWeeklyFichas * 0.6) + (recentAvg * 0.4), // 60% histórico, 40% recente
+        weekly_goal * 0.3 // Mínimo de 30% da meta
+      );
       
       return {
         scouter_name,
         semana_futura: 1,
         semana_label: 'Sem+1',
-        weekly_goal: data.weekly_goal,
-        tier_name: data.tier_name,
-        projecao_conservadora: Math.round(baseProjection * 0.8),
+        weekly_goal,
+        tier_name,
+        projecao_conservadora: Math.round(baseProjection * 0.75),
         projecao_provavel: Math.round(baseProjection),
-        projecao_agressiva: Math.round(baseProjection * 1.2),
-        projecao_historica: totalFichas
+        projecao_agressiva: Math.round(baseProjection * 1.3),
+        projecao_historica: totalFichas,
+        conversion_rate: Math.round(conversionRate * 100),
+        avg_weekly_fichas: Math.round(avgWeeklyFichas)
       };
     });
   } catch (error) {
-    console.error('Error fetching projections from Sheets:', error);
+    console.error('Error in fetchProjectionsFromSupabase:', error);
     return [];
   }
+}
+
+// Função auxiliar para gerar chave da semana
+function getWeekKey(dateString: string): string {
+  const date = new Date(dateString.split('/').reverse().join('-')); // Converter dd/mm/yyyy para yyyy-mm-dd
+  const weekStart = new Date(date);
+  weekStart.setDate(date.getDate() - date.getDay()); // Início da semana (domingo)
+  return weekStart.toISOString().split('T')[0];
+}
+
+// Função para determinar tier baseado na performance
+function getTierFromPerformance(avgWeekly: number, conversionRate: number): string {
+  const performance = avgWeekly * (1 + conversionRate); // Score combinado
+  
+  if (performance >= 80) return 'Diamante';
+  if (performance >= 60) return 'Ouro';
+  if (performance >= 40) return 'Prata';
+  return 'Bronze';
+}
+
+// Função para obter meta semanal baseada no tier
+function getWeeklyGoalFromTier(tier: string): number {
+  const goals = {
+    'Diamante': 100,
+    'Ouro': 80,
+    'Prata': 60,
+    'Bronze': 40
+  };
+  return goals[tier] || 50;
 }
