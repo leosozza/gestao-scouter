@@ -3,28 +3,42 @@ import { AppShell } from '@/layouts/AppShell'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip as RTooltip } from 'recharts'
-import { TrendingUp, Calculator, Target, Filter } from 'lucide-react'
-import { getProjectionData, type ProjectionData, type ProjectionType } from '@/repositories/projectionsRepo'
+import { TrendingUp, Calculator, Target } from 'lucide-react'
+import { getProjectionData, getAvailableFilters, type ProjectionData, type ProjectionType } from '@/repositories/projectionsRepo'
 import { getAppSettings } from '@/repositories/settingsRepo'
 import type { AppSettings } from '@/repositories/types'
+import { ProjectionFilters } from '@/components/projection/ProjectionFilters'
 
 export default function ProjecaoPage() {
   const [projectionData, setProjectionData] = useState<ProjectionData[]>([])
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [loading, setLoading] = useState(true)
   const [projectionType, setProjectionType] = useState<ProjectionType>('scouter')
+  const [selectedFilter, setSelectedFilter] = useState<string | undefined>(undefined)
+  const [availableFilters, setAvailableFilters] = useState<{ scouters: string[], projetos: string[] }>({ 
+    scouters: [], 
+    projetos: [] 
+  })
+
+  useEffect(() => {
+    loadAvailableFilters()
+  }, [])
 
   useEffect(() => {
     fetchData()
-  }, [projectionType])
+  }, [projectionType, selectedFilter])
+
+  const loadAvailableFilters = async () => {
+    const filters = await getAvailableFilters()
+    setAvailableFilters(filters)
+  }
 
   const fetchData = async () => {
     setLoading(true)
     try {
       const [projections, appSettings] = await Promise.all([
-        getProjectionData(projectionType),
+        getProjectionData(projectionType, selectedFilter),
         getAppSettings()
       ])
       setProjectionData(projections)
@@ -34,6 +48,11 @@ export default function ProjecaoPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleProjectionTypeChange = (type: ProjectionType) => {
+    setProjectionType(type)
+    setSelectedFilter(undefined) // Reset filter when changing type
   }
 
   // Calculate summary metrics using settings
@@ -81,27 +100,22 @@ export default function ProjecaoPage() {
   return (
     <AppShell sidebar={<Sidebar />}>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex flex-col gap-2">
-            <h1 className="text-3xl font-bold tracking-tight">Projeções de Performance</h1>
-            <p className="text-muted-foreground">
-              Analise as projeções de fichas e rendimentos para as próximas semanas
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-2 min-w-[200px]">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <Select value={projectionType} onValueChange={(value: ProjectionType) => setProjectionType(value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Tipo de projeção" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="scouter">Por Scouter</SelectItem>
-                <SelectItem value="projeto">Por Projeto</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-bold tracking-tight">Projeções de Performance</h1>
+          <p className="text-muted-foreground">
+            Analise as projeções de fichas e rendimentos para as próximas semanas
+          </p>
         </div>
+
+        {/* Filtros */}
+        <ProjectionFilters
+          projectionType={projectionType}
+          selectedFilter={selectedFilter}
+          availableScouters={availableFilters.scouters}
+          availableProjetos={availableFilters.projetos}
+          onProjectionTypeChange={handleProjectionTypeChange}
+          onSelectedFilterChange={setSelectedFilter}
+        />
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -143,7 +157,10 @@ export default function ProjecaoPage() {
         <Card className="rounded-2xl">
           <CardHeader>
             <CardTitle>
-              Projeção por {projectionType === 'scouter' ? 'Scouter' : 'Projeto'} (Sem+1)
+              {selectedFilter 
+                ? `Projeção para ${projectionType === 'scouter' ? 'Scouter' : 'Projeto'}: ${selectedFilter}`
+                : `Projeção por ${projectionType === 'scouter' ? 'Scouter' : 'Projeto'} (Sem+1)`
+              }
             </CardTitle>
           </CardHeader>
           <CardContent className="w-full overflow-auto">
@@ -186,7 +203,10 @@ export default function ProjecaoPage() {
               <div className="text-center py-8">
                 <p className="text-muted-foreground">Nenhum dado de projeção disponível</p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Configure a conexão com sua fonte de dados em Configurações
+                  {selectedFilter 
+                    ? `Não há dados suficientes para ${selectedFilter} nos últimos 30 dias`
+                    : "Verifique se existem fichas cadastradas nos últimos 30 dias"
+                  }
                 </p>
               </div>
             )}

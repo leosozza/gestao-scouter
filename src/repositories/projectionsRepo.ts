@@ -16,25 +16,59 @@ export interface ProjectionData {
 
 export type ProjectionType = 'scouter' | 'projeto';
 
-export async function getProjectionData(type: ProjectionType = 'scouter'): Promise<ProjectionData[]> {
+export async function getProjectionData(type: ProjectionType = 'scouter', selectedFilter?: string): Promise<ProjectionData[]> {
   try {
-    return await fetchProjectionsFromSupabase(type);
+    return await fetchProjectionsFromSupabase(type, selectedFilter);
   } catch (error) {
     console.error('Error fetching projections:', error);
     return [];
   }
 }
 
-async function fetchProjectionsFromSupabase(type: ProjectionType): Promise<ProjectionData[]> {
+export async function getAvailableFilters(): Promise<{ scouters: string[], projetos: string[] }> {
+  try {
+    const { data: fichas, error } = await supabase
+      .from('fichas')
+      .select('scouter, projetos');
+
+    if (error) throw error;
+
+    const scouters = Array.from(new Set(
+      fichas?.map(f => f.scouter).filter(Boolean) || []
+    )).sort();
+
+    const projetos = Array.from(new Set(
+      fichas?.map(f => f.projetos).filter(Boolean) || []
+    )).sort();
+
+    return { scouters, projetos };
+  } catch (error) {
+    console.error('Error fetching filters:', error);
+    return { scouters: [], projetos: [] };
+  }
+}
+
+async function fetchProjectionsFromSupabase(type: ProjectionType, selectedFilter?: string): Promise<ProjectionData[]> {
   try {
     // Buscar fichas dos últimos 30 dias para análise histórica
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
-    const { data: fichas, error } = await supabase
+    let query = supabase
       .from('fichas')
       .select('*')
       .gte('criado', thirtyDaysAgo.toISOString().split('T')[0]);
+
+    // Aplicar filtro específico se selecionado
+    if (selectedFilter) {
+      if (type === 'scouter') {
+        query = query.eq('scouter', selectedFilter);
+      } else {
+        query = query.eq('projetos', selectedFilter);
+      }
+    }
+
+    const { data: fichas, error } = await query;
 
     if (error) {
       console.error('Error fetching fichas:', error);
