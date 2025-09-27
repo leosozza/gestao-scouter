@@ -104,12 +104,12 @@ async function fetchAllLeadsFromBitrix(params: LeadsFilters): Promise<Lead[]> {
 
 function normalizeLeadFromBitrix(r: any): Lead {
   return {
-    id: String(r.id ?? ''),
+    id: Number(r.id) || 0,
     projetos: r.projetos_comerciais ?? r.agencia_e_seletivas ?? 'Sem Projeto',
     scouter: r.primeiro_nome ?? r.nome_do_modelo ?? 'Desconhecido',
     criado: r.created_at ?? undefined,
-    data_criacao_ficha: r.data_de_criacao_da_ficha ?? r.created_at ?? undefined,
-    valor_ficha: safeNumber(r.valor_da_ficha),
+    hora_criacao_ficha: r.data_de_criacao_da_ficha ?? r.created_at ?? undefined,
+    valor_ficha: String(r.valor_da_ficha || '0'),
     etapa: r.etapa ?? 'Sem Etapa',
     nome: r.nome_do_responsavel ?? r.primeiro_nome ?? 'Sem nome',
     gerenciamentofunil: r.gerenciamentofunil ?? r.gerenciamento_funil ?? undefined,
@@ -117,7 +117,7 @@ function normalizeLeadFromBitrix(r: any): Lead {
     modelo: r.nome_do_modelo ?? r.primeiro_nome ?? '',
     localizacao: r.localizacao ?? undefined,
     ficha_confirmada: r.ficha_confirmada ?? undefined,
-    idade: safeNumber(r.idade),
+    idade: String(r.idade || ''),
     local_da_abordagem: r.local_da_abordagem ?? undefined,
     cadastro_existe_foto: r.cadastro_existe_foto ?? undefined,
     presenca_confirmada: r.presenca_confirmada ?? undefined,
