@@ -3,116 +3,172 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Target, Trophy, DollarSign } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 
-interface ProjectionData {
-  scouter_name: string;
-  semana_futura: number;
-  semana_label: string;
-  weekly_goal: number;
-  tier_name: string;
-  projecao_conservadora: number;
-  projecao_provavel: number;
-  projecao_agressiva: number;
-  projecao_historica: number;
+interface LinearProjectionData {
+  periodo: {
+    inicio: string;
+    fim: string;
+    hoje_limite: string;
+    dias_passados: number;
+    dias_restantes: number;
+    dias_totais: number;
+  };
+  realizado: {
+    fichas: number;
+    valor: number;
+  };
+  projetado_restante: {
+    fichas: number;
+    valor: number;
+  };
+  total_projetado: {
+    fichas: number;
+    valor: number;
+  };
+  media_diaria: number;
+  valor_medio_por_ficha: number;
 }
 
 interface ProjectionCardsProps {
-  data: ProjectionData[];
-  selectedScenario: 'conservadora' | 'provavel' | 'agressiva';
-  getScenarioValue: (item: ProjectionData) => number;
+  data: LinearProjectionData;
+  projectionType: 'scouter' | 'projeto';
+  selectedFilter?: string;
 }
 
-export function ProjectionCards({ data, selectedScenario, getScenarioValue }: ProjectionCardsProps) {
-  // Group data by scouter
-  const scouterData = data.reduce((acc, item) => {
-    if (!acc[item.scouter_name]) {
-      acc[item.scouter_name] = [];
-    }
-    acc[item.scouter_name].push(item);
-    return acc;
-  }, {} as Record<string, ProjectionData[]>);
-
-  const getTierColor = (tier: string) => {
-    const colors = {
-      'Iniciante': 'bg-gray-100 text-gray-800',
-      'Aprendiz': 'bg-blue-100 text-blue-800',
-      'Junior': 'bg-green-100 text-green-800',
-      'Pleno': 'bg-yellow-100 text-yellow-800',
-      'Senior': 'bg-orange-100 text-orange-800',
-      'Especialista': 'bg-purple-100 text-purple-800',
-      'Gestor': 'bg-red-100 text-red-800'
-    };
-    return colors[tier as keyof typeof colors] || 'bg-gray-100 text-gray-800';
-  };
-
-  const scenarioColors = {
-    conservadora: 'text-orange-600',
-    provavel: 'text-blue-600',
-    agressiva: 'text-green-600'
-  };
+export function ProjectionCards({ data, projectionType, selectedFilter }: ProjectionCardsProps) {
+  const fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+  const fmtNumber = new Intl.NumberFormat('pt-BR');
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {Object.entries(scouterData).map(([scouterName, scouterProjections]) => {
-        const totalProjection = scouterProjections.reduce((sum, item) => sum + getScenarioValue(item), 0);
-        const firstWeekProjection = getScenarioValue(scouterProjections[0]);
-        const tier = scouterProjections[0]?.tier_name || 'N/A';
-        const weeklyGoal = scouterProjections[0]?.weekly_goal || 0;
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <Card className="hover:shadow-md transition-shadow rounded-2xl">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold">Realizado</CardTitle>
+            <Target className="h-5 w-5 text-primary" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Fichas</span>
+            </div>
+            <span className="font-medium text-blue-600">{fmtNumber.format(data.realizado.fichas)}</span>
+          </div>
 
-        return (
-          <Card key={scouterName} className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-semibold">{scouterName}</CardTitle>
-                <Badge className={getTierColor(tier)} variant="secondary">
-                  {tier}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Weekly Goal */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Target className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Meta Semanal</span>
-                </div>
-                <span className="font-medium">{weeklyGoal} fichas</span>
-              </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Valor</span>
+            </div>
+            <span className="font-bold text-lg text-blue-600">{fmtBRL.format(data.realizado.valor)}</span>
+          </div>
 
-              {/* Next Week Projection */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Próxima Semana</span>
-                </div>
-                <span className={`font-medium ${scenarioColors[selectedScenario]}`}>
-                  {formatCurrency(firstWeekProjection)}
-                </span>
-              </div>
+          <div className="pt-2 border-t">
+            <div className="flex items-center justify-center gap-1">
+              <span className="text-xs text-muted-foreground">
+                {data.periodo.dias_passados} dias realizados
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-              {/* 8-Week Total */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Total 8 Semanas</span>
-                </div>
-                <span className={`font-bold text-lg ${scenarioColors[selectedScenario]}`}>
-                  {formatCurrency(totalProjection)}
-                </span>
-              </div>
+      <Card className="hover:shadow-md transition-shadow rounded-2xl">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold">Projeção Total</CardTitle>
+            <TrendingUp className="h-5 w-5 text-primary" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Fichas</span>
+            </div>
+            <span className="font-medium text-green-600">{fmtNumber.format(data.total_projetado.fichas)}</span>
+          </div>
 
-              {/* Performance Indicator */}
-              <div className="pt-2 border-t">
-                <div className="flex items-center justify-center gap-1">
-                  <Trophy className="h-4 w-4 text-yellow-500" />
-                  <span className="text-xs text-muted-foreground">
-                    Baseado no cenário {selectedScenario}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Valor</span>
+            </div>
+            <span className="font-bold text-lg text-green-600">{fmtBRL.format(data.total_projetado.valor)}</span>
+          </div>
+
+          <div className="pt-2 border-t">
+            <div className="flex items-center justify-center gap-1">
+              <span className="text-xs text-muted-foreground">
+                Total até {new Date(data.periodo.fim).toLocaleDateString('pt-BR')}
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="hover:shadow-md transition-shadow rounded-2xl">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold">Média Diária</CardTitle>
+            <DollarSign className="h-5 w-5 text-primary" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Fichas/dia</span>
+            </div>
+            <span className="font-medium">{data.media_diaria.toFixed(1)}</span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Valor/Ficha</span>
+            </div>
+            <span className="font-bold text-lg">{fmtBRL.format(data.valor_medio_por_ficha)}</span>
+          </div>
+
+          <div className="pt-2 border-t">
+            <div className="flex items-center justify-center gap-1">
+              <span className="text-xs text-muted-foreground">
+                Baseado no realizado
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="hover:shadow-md transition-shadow rounded-2xl">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold">Filtro Aplicado</CardTitle>
+            <Trophy className="h-5 w-5 text-primary" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Tipo</span>
+            </div>
+            <Badge variant="secondary">{projectionType === 'scouter' ? 'Scouter' : 'Projeto'}</Badge>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Filtro</span>
+            </div>
+            <span className="font-medium text-sm">
+              {selectedFilter || 'Todos'}
+            </span>
+          </div>
+
+          <div className="pt-2 border-t">
+            <div className="flex items-center justify-center gap-1">
+              <span className="text-xs text-muted-foreground">
+                {data.periodo.dias_restantes} dias restantes
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

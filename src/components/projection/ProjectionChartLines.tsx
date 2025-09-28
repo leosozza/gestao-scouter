@@ -2,85 +2,47 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/utils/formatters";
 
-interface ProjectionData {
-  scouter_name: string;
-  semana_futura: number;
-  semana_label: string;
-  weekly_goal: number;
-  tier_name: string;
-  projecao_conservadora: number;
-  projecao_provavel: number;
-  projecao_agressiva: number;
-  projecao_historica: number;
+interface LinearProjectionData {
+  serie_real: Array<{ dia: string; fichas: number; acumulado: number }>;
+  serie_proj: Array<{ dia: string; fichas: number; acumulado: number }>;
 }
 
 interface ProjectionChartLinesProps {
-  data: ProjectionData[];
-  selectedScenario: 'conservadora' | 'provavel' | 'agressiva';
+  data: LinearProjectionData;
 }
 
-export function ProjectionChartLines({ data, selectedScenario }: ProjectionChartLinesProps) {
-  // Transform data for line chart - group by week and show all scouters
-  const chartData = Array.from({ length: 8 }, (_, i) => {
-    const semana = i + 1;
-    const semanaData: any = {
-      semana: `Sem+${semana}`,
-      semana_num: semana
-    };
-
-    // Get unique scouters
-    const scouters = [...new Set(data.map(item => item.scouter_name))];
-    
-    scouters.forEach(scouter => {
-      const scouterWeekData = data.find(
-        item => item.scouter_name === scouter && item.semana_futura === semana
-      );
-      
-      if (scouterWeekData) {
-        switch (selectedScenario) {
-          case 'conservadora':
-            semanaData[scouter] = scouterWeekData.projecao_conservadora;
-            break;
-          case 'provavel':
-            semanaData[scouter] = scouterWeekData.projecao_provavel;
-            break;
-          case 'agressiva':
-            semanaData[scouter] = scouterWeekData.projecao_agressiva;
-            break;
-        }
-      }
-    });
-
-    return semanaData;
-  });
-
-  const scouters = [...new Set(data.map(item => item.scouter_name))];
+export function ProjectionChartLines({ data }: ProjectionChartLinesProps) {
+  const fmtNumber = new Intl.NumberFormat('pt-BR');
   
-  // Generate colors for each scouter
-  const colors = [
-    '#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', 
-    '#d084d0', '#ffb347', '#87ceeb', '#dda0dd', '#f0e68c'
-  ];
+  // Combine real and projected data for chart
+  const chartData = [
+    ...data.serie_real.map(item => ({
+      dia: item.dia,
+      data: new Date(item.dia).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+      realizado: item.acumulado,
+      projetado: null,
+    })),
+    ...data.serie_proj.map(item => ({
+      dia: item.dia,
+      data: new Date(item.dia).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+      realizado: null,
+      projetado: item.acumulado,
+    }))
+  ].sort((a, b) => a.dia.localeCompare(b.dia));
 
-  const scenarioColors = {
-    conservadora: 'text-orange-600',
-    provavel: 'text-blue-600',
-    agressiva: 'text-green-600'
-  };
-
-  const scenarioLabels = {
-    conservadora: 'Conservador',
-    provavel: 'Provável',
-    agressiva: 'Agressivo'
-  };
+  const totalReal = data.serie_real.length > 0 ? data.serie_real[data.serie_real.length - 1].acumulado : 0;
+  const totalProj = data.serie_proj.length > 0 ? data.serie_proj[data.serie_proj.length - 1].acumulado : 0;
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="rounded-2xl">
         <CardHeader>
-          <CardTitle className={`flex items-center gap-2 ${scenarioColors[selectedScenario]}`}>
-            Evolução das Projeções - Cenário {scenarioLabels[selectedScenario]}
+          <CardTitle className="flex items-center gap-2">
+            Evolução Linear das Fichas
           </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Linha contínua: realizado | Linha tracejada: projetado
+          </p>
         </CardHeader>
         <CardContent>
           <div className="h-96">
@@ -88,29 +50,41 @@ export function ProjectionChartLines({ data, selectedScenario }: ProjectionChart
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
-                  dataKey="semana" 
-                  tick={{ fontSize: 12 }}
+                  dataKey="data" 
+                  tick={{ fontSize: 11 }}
+                  interval="preserveStartEnd"
                 />
                 <YAxis 
-                  tick={{ fontSize: 12 }}
-                  tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(value) => fmtNumber.format(value)}
                 />
                 <Tooltip 
-                  formatter={(value: number) => [formatCurrency(value), '']}
-                  labelFormatter={(label) => `Semana: ${label}`}
+                  labelFormatter={(label) => `Data: ${label}`}
+                  formatter={(value: number, name: string) => [
+                    value !== null ? fmtNumber.format(value) : '-',
+                    name === 'realizado' ? 'Realizado' : 'Projetado'
+                  ]}
                 />
                 <Legend />
-                {scouters.map((scouter, index) => (
-                  <Line
-                    key={scouter}
-                    type="monotone"
-                    dataKey={scouter}
-                    stroke={colors[index % colors.length]}
-                    strokeWidth={2}
-                    dot={{ r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                ))}
+                <Line
+                  type="monotone"
+                  dataKey="realizado"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={3}
+                  dot={false}
+                  connectNulls={false}
+                  name="Realizado"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="projetado"
+                  stroke="hsl(var(--destructive))"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={false}
+                  connectNulls={false}
+                  name="Projetado"
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -118,49 +92,28 @@ export function ProjectionChartLines({ data, selectedScenario }: ProjectionChart
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="rounded-2xl">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Sem+1</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Realizado</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${scenarioColors[selectedScenario]}`}>
-              {formatCurrency(
-                chartData[0] ? Object.keys(chartData[0])
-                  .filter(key => key !== 'semana' && key !== 'semana_num')
-                  .reduce((sum, scouter) => sum + (chartData[0][scouter] || 0), 0) : 0
-              )}
+            <div className="text-2xl font-bold text-blue-600">
+              {fmtNumber.format(totalReal)} fichas
             </div>
+            <p className="text-xs text-muted-foreground">Até hoje</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-2xl">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Sem+4</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Projetado</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${scenarioColors[selectedScenario]}`}>
-              {formatCurrency(
-                chartData[3] ? Object.keys(chartData[3])
-                  .filter(key => key !== 'semana' && key !== 'semana_num')
-                  .reduce((sum, scouter) => sum + (chartData[3][scouter] || 0), 0) : 0
-              )}
+            <div className="text-2xl font-bold text-green-600">
+              {fmtNumber.format(totalProj)} fichas
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Sem+8</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${scenarioColors[selectedScenario]}`}>
-              {formatCurrency(
-                chartData[7] ? Object.keys(chartData[7])
-                  .filter(key => key !== 'semana' && key !== 'semana_num')
-                  .reduce((sum, scouter) => sum + (chartData[7][scouter] || 0), 0) : 0
-              )}
-            </div>
+            <p className="text-xs text-muted-foreground">Até o final do período</p>
           </CardContent>
         </Card>
       </div>

@@ -16,12 +16,153 @@ export interface ProjectionData {
 
 export type ProjectionType = 'scouter' | 'projeto';
 
+// New interfaces for linear projection
+export interface LinearProjectionData {
+  periodo: {
+    inicio: string;
+    fim: string;
+    hoje_limite: string;
+    dias_passados: number;
+    dias_restantes: number;
+    dias_totais: number;
+  };
+  realizado: {
+    fichas: number;
+    valor: number;
+  };
+  projetado_restante: {
+    fichas: number;
+    valor: number;
+  };
+  total_projetado: {
+    fichas: number;
+    valor: number;
+  };
+  serie_real: Array<{ dia: string; fichas: number; acumulado: number }>;
+  serie_proj: Array<{ dia: string; fichas: number; acumulado: number }>;
+  media_diaria: number;
+  valor_medio_por_ficha: number;
+}
+
 export async function getProjectionData(type: ProjectionType = 'scouter', selectedFilter?: string): Promise<ProjectionData[]> {
   try {
     return await fetchProjectionsFromSupabase(type, selectedFilter);
   } catch (error) {
     console.error('Error fetching projections:', error);
     return [];
+  }
+}
+
+// New function for linear projection
+export async function fetchLinearProjection(params: {
+  inicio: string;
+  fim: string;
+  scouter?: string;
+  projeto?: string;
+  valor_ficha_padrao?: number;
+}): Promise<LinearProjectionData> {
+  try {
+    const { inicio, fim, scouter, projeto, valor_ficha_padrao = 10 } = params;
+    
+    const S = new Date(inicio);
+    const E = new Date(fim);
+    const hoje = new Date();
+    const To = new Date(Math.min(+E, +hoje));
+
+    // Build query
+    let query = supabase
+      .from('fichas')
+      .select('criado, valor_ficha, scouter, projetos')
+      .gte('criado', inicio)
+      .lte('criado', fim);
+
+    if (scouter) {
+      query = query.eq('scouter', scouter);
+    }
+    if (projeto) {
+      query = query.eq('projetos', projeto);
+    }
+
+    const { data: fichas, error } = await query;
+    if (error) throw error;
+
+    // Calculate periods
+    const dias_passados = Math.floor((+To - +S) / 86400000) + 1;
+    const dias_totais = Math.floor((+E - +S) / 86400000) + 1;
+    const dias_restantes = Math.max(0, dias_totais - dias_passados);
+
+    // Filter realized vs future
+    const dtTo = To.toISOString().slice(0, 10);
+    const realizadas = (fichas || []).filter((f: any) => {
+      const fichaCriado = parseDate(f.criado);
+      return fichaCriado && fichaCriado <= dtTo;
+    });
+
+    // Calculate realized metrics
+    const fichas_real = realizadas.length;
+    const valor_real = realizadas.reduce((acc: number, f: any) => {
+      const valor = parseFloat(f.valor_ficha) || 0;
+      return acc + valor;
+    }, 0);
+
+    // Calculate averages
+    const media_diaria_qtde = dias_passados > 0 ? fichas_real / dias_passados : 0;
+    const valor_medio_por_ficha = fichas_real > 0 ? (valor_real / fichas_real) : valor_ficha_padrao;
+
+    // Calculate future projection
+    const proj_restante_qtde = Math.round(media_diaria_qtde * dias_restantes);
+    const proj_restante_valor = proj_restante_qtde * valor_medio_por_ficha;
+
+    // Generate daily series for chart
+    const serie_real = generateDailySeries(S, To, realizadas, 'real');
+    const serie_proj = generateProjectionSeries(To, E, media_diaria_qtde, serie_real);
+
+    return {
+      periodo: {
+        inicio,
+        fim,
+        hoje_limite: dtTo,
+        dias_passados,
+        dias_restantes,
+        dias_totais,
+      },
+      realizado: {
+        fichas: fichas_real,
+        valor: Math.round(valor_real * 100) / 100,
+      },
+      projetado_restante: {
+        fichas: proj_restante_qtde,
+        valor: Math.round(proj_restante_valor * 100) / 100,
+      },
+      total_projetado: {
+        fichas: fichas_real + proj_restante_qtde,
+        valor: Math.round((valor_real + proj_restante_valor) * 100) / 100,
+      },
+      serie_real,
+      serie_proj,
+      media_diaria: Math.round(media_diaria_qtde * 100) / 100,
+      valor_medio_por_ficha: Math.round(valor_medio_por_ficha * 100) / 100,
+    };
+  } catch (error) {
+    console.error('Error in fetchLinearProjection:', error);
+    // Return empty state
+    return {
+      periodo: {
+        inicio: params.inicio,
+        fim: params.fim,
+        hoje_limite: new Date().toISOString().slice(0, 10),
+        dias_passados: 0,
+        dias_restantes: 0,
+        dias_totais: 0,
+      },
+      realizado: { fichas: 0, valor: 0 },
+      projetado_restante: { fichas: 0, valor: 0 },
+      total_projetado: { fichas: 0, valor: 0 },
+      serie_real: [],
+      serie_proj: [],
+      media_diaria: 0,
+      valor_medio_por_ficha: params.valor_ficha_padrao || 10,
+    };
   }
 }
 
@@ -209,4 +350,99 @@ function getWeeklyGoalFromTier(tier: string): number {
     'Bronze': 40
   };
   return goals[tier] || 50;
+}
+
+// Helper functions for linear projection
+function parseDate(dateString: string): string | null {
+  if (!dateString) return null;
+  
+  try {
+    let date: Date;
+    
+    if (dateString.includes('/')) {
+      // Formato dd/mm/yyyy
+      const parts = dateString.split('/');
+      if (parts.length === 3) {
+        date = new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`);
+      } else {
+        date = new Date(dateString);
+      }
+    } else {
+      // Formato ISO ou outro
+      date = new Date(dateString);
+    }
+    
+    if (isNaN(date.getTime())) {
+      return null;
+    }
+    
+    return date.toISOString().slice(0, 10);
+  } catch (error) {
+    return null;
+  }
+}
+
+function generateDailySeries(
+  startDate: Date, 
+  endDate: Date, 
+  fichas: any[], 
+  type: 'real'
+): Array<{ dia: string; fichas: number; acumulado: number }> {
+  const series = [];
+  const current = new Date(startDate);
+  let acumulado = 0;
+  
+  // Group fichas by date
+  const fichasByDate = fichas.reduce((acc: Record<string, number>, ficha: any) => {
+    const dateKey = parseDate(ficha.criado);
+    if (dateKey) {
+      acc[dateKey] = (acc[dateKey] || 0) + 1;
+    }
+    return acc;
+  }, {});
+  
+  while (current <= endDate) {
+    const dateKey = current.toISOString().slice(0, 10);
+    const dayFichas = fichasByDate[dateKey] || 0;
+    acumulado += dayFichas;
+    
+    series.push({
+      dia: dateKey,
+      fichas: dayFichas,
+      acumulado,
+    });
+    
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return series;
+}
+
+function generateProjectionSeries(
+  startDate: Date,
+  endDate: Date,
+  mediaDiaria: number,
+  serieReal: Array<{ dia: string; fichas: number; acumulado: number }>
+): Array<{ dia: string; fichas: number; acumulado: number }> {
+  const series = [];
+  const current = new Date(startDate);
+  current.setDate(current.getDate() + 1); // Start from next day
+  
+  let acumulado = serieReal.length > 0 ? serieReal[serieReal.length - 1].acumulado : 0;
+  
+  while (current <= endDate) {
+    const dateKey = current.toISOString().slice(0, 10);
+    const dayFichas = Math.round(mediaDiaria);
+    acumulado += dayFichas;
+    
+    series.push({
+      dia: dateKey,
+      fichas: dayFichas,
+      acumulado,
+    });
+    
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return series;
 }

@@ -2,23 +2,42 @@ import { useState, useEffect } from 'react'
 import { AppShell } from '@/layouts/AppShell'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip as RTooltip } from 'recharts'
-import { TrendingUp, Calculator, Target } from 'lucide-react'
-import { getProjectionData, getAvailableFilters, type ProjectionData, type ProjectionType } from '@/repositories/projectionsRepo'
+import { TrendingUp, Calculator, Target, Calendar, Filter } from 'lucide-react'
+import { 
+  fetchLinearProjection, 
+  getAvailableFilters, 
+  type LinearProjectionData, 
+  type ProjectionType 
+} from '@/repositories/projectionsRepo'
 import { getAppSettings } from '@/repositories/settingsRepo'
 import type { AppSettings } from '@/repositories/types'
-import { ProjectionFilters } from '@/components/projection/ProjectionFilters'
 
 export default function ProjecaoPage() {
-  const [projectionData, setProjectionData] = useState<ProjectionData[]>([])
+  const [projectionData, setProjectionData] = useState<LinearProjectionData | null>(null)
   const [settings, setSettings] = useState<AppSettings | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [projectionType, setProjectionType] = useState<ProjectionType>('scouter')
-  const [selectedFilter, setSelectedFilter] = useState<string | undefined>(undefined)
+  const [selectedFilter, setSelectedFilter] = useState<string>('')
   const [availableFilters, setAvailableFilters] = useState<{ scouters: string[], projetos: string[] }>({ 
     scouters: [], 
     projetos: [] 
+  })
+
+  // Date inputs
+  const [dataInicio, setDataInicio] = useState(() => {
+    const now = new Date()
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+    return firstDay.toISOString().slice(0, 10)
+  })
+  const [dataFim, setDataFim] = useState(() => {
+    const now = new Date()
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    return lastDay.toISOString().slice(0, 10)
   })
 
   useEffect(() => {
@@ -26,25 +45,42 @@ export default function ProjecaoPage() {
   }, [])
 
   useEffect(() => {
-    fetchData()
-  }, [projectionType, selectedFilter])
+    loadSettings()
+  }, [])
 
   const loadAvailableFilters = async () => {
     const filters = await getAvailableFilters()
     setAvailableFilters(filters)
   }
 
+  const loadSettings = async () => {
+    const appSettings = await getAppSettings()
+    setSettings(appSettings)
+  }
+
   const fetchData = async () => {
+    if (!dataInicio || !dataFim) return
+    
     setLoading(true)
     try {
-      const [projections, appSettings] = await Promise.all([
-        getProjectionData(projectionType, selectedFilter),
-        getAppSettings()
-      ])
-      setProjectionData(projections)
-      setSettings(appSettings)
+      const params: any = {
+        inicio: dataInicio,
+        fim: dataFim,
+        valor_ficha_padrao: settings?.valor_base_ficha || 10
+      }
+
+      if (selectedFilter) {
+        if (projectionType === 'scouter') {
+          params.scouter = selectedFilter
+        } else {
+          params.projeto = selectedFilter
+        }
+      }
+
+      const projection = await fetchLinearProjection(params)
+      setProjectionData(projection)
     } catch (error) {
-      console.error('Error fetching data:', error)
+      console.error('Error fetching projection:', error)
     } finally {
       setLoading(false)
     }
@@ -52,37 +88,32 @@ export default function ProjecaoPage() {
 
   const handleProjectionTypeChange = (type: ProjectionType) => {
     setProjectionType(type)
-    setSelectedFilter(undefined) // Reset filter when changing type
+    setSelectedFilter('') // Reset filter when changing type
   }
-
-  // Calculate summary metrics using settings
-  const valorFicha = settings?.valor_base_ficha || 10
-  const qualityThreshold = settings?.quality_threshold || 50
-  const totalFichas = projectionData.reduce((acc, row) => acc + (row.projecao_provavel || 0), 0)
-  const totalValor = totalFichas * valorFicha
-  const qualityMed = projectionData.length > 0 ? qualityThreshold + 25 : 0 // Mock quality average
 
   const fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-  
-  // Função para cor do tier
-  const getTierColor = (tier: string) => {
-    switch (tier) {
-      case 'Diamante': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-      case 'Ouro': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-      case 'Prata': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-      case 'Bronze': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-      default: return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-    }
-  }
+  const fmtNumber = new Intl.NumberFormat('pt-BR')
 
-  // Mock series data for chart
-  const series = [
-    { semana: 'S-4', fichas: 180 },
-    { semana: 'S-3', fichas: 195 },
-    { semana: 'S-2', fichas: 210 },
-    { semana: 'S-1', fichas: 225 },
-    { semana: 'S+1', fichas: Math.round(totalFichas) },
-  ]
+  // Prepare chart data
+  const chartData = projectionData ? [
+    ...projectionData.serie_real.map(item => ({
+      dia: item.dia,
+      data: new Date(item.dia).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+      realizado: item.acumulado,
+      projetado: null,
+      type: 'real'
+    })),
+    ...projectionData.serie_proj.map(item => ({
+      dia: item.dia,
+      data: new Date(item.dia).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+      realizado: null,
+      projetado: item.acumulado,
+      type: 'proj'
+    }))
+  ].sort((a, b) => a.dia.localeCompare(b.dia)) : []
+
+  const availableOptions = projectionType === 'scouter' ? availableFilters.scouters : availableFilters.projetos
+  const filterLabel = projectionType === 'scouter' ? 'Scouter' : 'Projeto'
 
   if (loading) {
     return (
@@ -101,170 +132,256 @@ export default function ProjecaoPage() {
     <AppShell sidebar={<Sidebar />}>
       <div className="space-y-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">Projeções de Performance</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Projeções Lineares</h1>
           <p className="text-muted-foreground">
-            Analise as projeções de fichas e rendimentos para as próximas semanas
+            Análise de projeção diária baseada na performance do período selecionado
           </p>
         </div>
 
         {/* Filtros */}
-        <ProjectionFilters
-          projectionType={projectionType}
-          selectedFilter={selectedFilter}
-          availableScouters={availableFilters.scouters}
-          availableProjetos={availableFilters.projetos}
-          onProjectionTypeChange={handleProjectionTypeChange}
-          onSelectedFilterChange={setSelectedFilter}
-        />
-
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="rounded-2xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Fichas Previstas</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{Math.round(totalFichas)}</div>
-              <p className="text-xs text-muted-foreground">Próxima semana</p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-2xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Valor Projetado</CardTitle>
-              <Calculator className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{fmtBRL.format(totalValor)}</div>
-              <p className="text-xs text-muted-foreground">Receita estimada</p>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-2xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Quality Média</CardTitle>
-              <Target className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{qualityMed.toFixed(1)}</div>
-              <p className="text-xs text-muted-foreground">Score de qualidade</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Projection Table */}
         <Card className="rounded-2xl">
-          <CardHeader>
-            <CardTitle>
-              {selectedFilter 
-                ? `Projeção para ${projectionType === 'scouter' ? 'Scouter' : 'Projeto'}: ${selectedFilter}`
-                : `Projeção por ${projectionType === 'scouter' ? 'Scouter' : 'Projeto'} (Sem+1)`
-              }
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Filter className="h-5 w-5" />
+              Configuração da Projeção
             </CardTitle>
           </CardHeader>
-          <CardContent className="w-full overflow-auto">
-            {projectionData.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{projectionType === 'scouter' ? 'Scouter' : 'Projeto'}</TableHead>
-                    <TableHead>Tier</TableHead>
-                    <TableHead>Meta/Sem</TableHead>
-                    <TableHead>Média Semanal</TableHead>
-                    <TableHead>Taxa Conversão</TableHead>
-                    <TableHead>Proj. Conservadora</TableHead>
-                    <TableHead>Proj. Provável</TableHead>
-                    <TableHead>Proj. Agressiva</TableHead>
-                    <TableHead>Valor Projetado</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {projectionData.map((row, i) => (
-                    <TableRow key={i}>
-                      <TableCell className="font-medium">{row.name || 'N/A'}</TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTierColor(row.tier_name)}`}>
-                          {row.tier_name || 'N/A'}
-                        </span>
-                      </TableCell>
-                      <TableCell>{row.weekly_goal || 0}</TableCell>
-                      <TableCell>{row.avg_weekly_fichas || 0}</TableCell>
-                      <TableCell>{row.conversion_rate || 0}%</TableCell>
-                      <TableCell className="text-blue-600">{Math.round(row.projecao_conservadora || 0)}</TableCell>
-                      <TableCell className="font-semibold text-green-600">{Math.round(row.projecao_provavel || 0)}</TableCell>
-                      <TableCell className="text-orange-600">{Math.round(row.projecao_agressiva || 0)}</TableCell>
-                      <TableCell className="font-semibold">{fmtBRL.format((row.projecao_provavel || 0) * valorFicha)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">Nenhum dado de projeção disponível</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  {selectedFilter 
-                    ? `Não há dados suficientes para ${selectedFilter} nos últimos 30 dias`
-                    : "Verifique se existem fichas cadastradas nos últimos 30 dias"
-                  }
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Chart */}
-        <Card className="rounded-2xl">
-          <CardHeader>
-            <CardTitle>Série Semanal (histórico + projeção)</CardTitle>
-          </CardHeader>
-          <CardContent className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={series}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="semana" />
-                <YAxis />
-                <RTooltip />
-                <Line 
-                  type="monotone" 
-                  dataKey="fichas" 
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Data Início</Label>
+                <Input
+                  type="date"
+                  value={dataInicio}
+                  onChange={(e) => setDataInicio(e.target.value)}
                 />
-              </LineChart>
-            </ResponsiveContainer>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Data Fim</Label>
+                <Input
+                  type="date"
+                  value={dataFim}
+                  onChange={(e) => setDataFim(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Tipo de Análise</Label>
+                <Select value={projectionType} onValueChange={(value: ProjectionType) => handleProjectionTypeChange(value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="scouter">Por Scouter</SelectItem>
+                    <SelectItem value="projeto">Por Projeto</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium mb-2 block">{filterLabel} Específico</Label>
+                <Select
+                  value={selectedFilter}
+                  onValueChange={setSelectedFilter}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={`Todos os ${projectionType === 'scouter' ? 'scouters' : 'projetos'}`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Todos os {projectionType === 'scouter' ? 'scouters' : 'projetos'}</SelectItem>
+                    {availableOptions.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={fetchData} className="flex items-center gap-2">
+                <Calculator className="h-4 w-4" />
+                Calcular Projeção
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Explanation */}
-        <Card className="rounded-2xl">
-          <CardHeader>
-            <CardTitle>Como Calculamos as Projeções</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p>
-              <strong>Base de Cálculo:</strong> Análise dos últimos 30 dias de fichas por {projectionType === 'scouter' ? 'scouter' : 'projeto'}
-            </p>
-            <p>
-              <strong>Projeção Provável:</strong> 60% da média histórica semanal + 40% da tendência das últimas 2 semanas
-            </p>
-            <p>
-              <strong>Projeção Conservadora:</strong> 75% da projeção provável (cenário mais cauteloso)
-            </p>
-            <p>
-              <strong>Projeção Agressiva:</strong> 130% da projeção provável (cenário otimista)
-            </p>
-            <p>
-              <strong>Classificação por Tier:</strong> Baseada na performance combinada (fichas semanais × taxa de conversão)
-            </p>
-            <ul className="list-disc list-inside ml-4 space-y-1">
-              <li>Diamante: Performance ≥ 80 (Meta: 100 fichas/semana)</li>
-              <li>Ouro: Performance ≥ 60 (Meta: 80 fichas/semana)</li>
-              <li>Prata: Performance ≥ 40 (Meta: 60 fichas/semana)</li>
-              <li>Bronze: Performance &lt; 40 (Meta: 40 fichas/semana)</li>
-            </ul>
-          </CardContent>
-        </Card>
+        {projectionData && (
+          <>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="rounded-2xl">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Fichas Realizadas</CardTitle>
+                  <Target className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-blue-600">{fmtNumber.format(projectionData.realizado.fichas)}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {projectionData.periodo.dias_passados} dias ({new Date(projectionData.periodo.inicio).toLocaleDateString('pt-BR')} - {new Date(projectionData.periodo.hoje_limite).toLocaleDateString('pt-BR')})
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-2xl">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Valor Realizado</CardTitle>
+                  <Calculator className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-blue-600">{fmtBRL.format(projectionData.realizado.valor)}</div>
+                  <p className="text-xs text-muted-foreground">Receita confirmada</p>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-2xl">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Fichas Projetadas</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-green-600">{fmtNumber.format(projectionData.total_projetado.fichas)}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Total até {new Date(projectionData.periodo.fim).toLocaleDateString('pt-BR')}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-2xl">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Valor Projetado</CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-green-600">{fmtBRL.format(projectionData.total_projetado.valor)}</div>
+                  <p className="text-xs text-muted-foreground">Receita estimada total</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Metrics Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Card className="rounded-2xl">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Média Diária</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{projectionData.media_diaria.toFixed(1)} fichas/dia</div>
+                  <p className="text-xs text-muted-foreground">Com base no período realizado</p>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-2xl">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Valor Médio/Ficha</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{fmtBRL.format(projectionData.valor_medio_por_ficha)}</div>
+                  <p className="text-xs text-muted-foreground">Média do período</p>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-2xl">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Dias Restantes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{projectionData.periodo.dias_restantes} dias</div>
+                  <p className="text-xs text-muted-foreground">Para projeção</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Chart */}
+            <Card className="rounded-2xl">
+              <CardHeader>
+                <CardTitle>Projeção Linear - Fichas Acumuladas</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Linha contínua: realizado | Linha tracejada: projetado
+                </p>
+              </CardHeader>
+              <CardContent className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="data" 
+                      tick={{ fontSize: 11 }}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <RTooltip 
+                      labelFormatter={(label) => `Data: ${label}`}
+                      formatter={(value: number, name: string) => [
+                        value !== null ? fmtNumber.format(value) : '-',
+                        name === 'realizado' ? 'Realizado' : 'Projetado'
+                      ]}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="realizado" 
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={3}
+                      dot={false}
+                      connectNulls={false}
+                      name="Realizado"
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="projetado" 
+                      stroke="hsl(var(--destructive))"
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      dot={false}
+                      connectNulls={false}
+                      name="Projetado"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Explanation */}
+            <Card className="rounded-2xl">
+              <CardHeader>
+                <CardTitle>Como Funciona a Projeção Linear</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  <strong>Período Analisado:</strong> {new Date(projectionData.periodo.inicio).toLocaleDateString('pt-BR')} a {new Date(projectionData.periodo.fim).toLocaleDateString('pt-BR')} 
+                  ({projectionData.periodo.dias_totais} dias)
+                </p>
+                <p>
+                  <strong>Dias Realizados:</strong> {projectionData.periodo.dias_passados} dias até {new Date(projectionData.periodo.hoje_limite).toLocaleDateString('pt-BR')}
+                </p>
+                <p>
+                  <strong>Lógica de Cálculo:</strong> A projeção utiliza a média diária de fichas do período realizado ({projectionData.media_diaria.toFixed(1)} fichas/dia) 
+                  multiplicada pelos {projectionData.periodo.dias_restantes} dias restantes.
+                </p>
+                <p>
+                  <strong>Filtro Aplicado:</strong> {selectedFilter 
+                    ? `${filterLabel}: ${selectedFilter}` 
+                    : `Todos os ${projectionType === 'scouter' ? 'scouters' : 'projetos'}`}
+                </p>
+              </CardContent>
+            </Card>
+          </>
+        )}
+
+        {!projectionData && (
+          <Card className="rounded-2xl">
+            <CardContent className="text-center py-12">
+              <Calculator className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Configure sua Projeção</h3>
+              <p className="text-muted-foreground mb-4">
+                Selecione o período e os filtros desejados, depois clique em "Calcular Projeção"
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </AppShell>
   )
