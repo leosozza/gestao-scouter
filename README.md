@@ -94,6 +94,27 @@ O sistema suporta integração com Google Sheets através de:
 - **Data de criação da Ficha**: DD/MM/AAAA HH:MM
 - **Valor por Fichas**: R$ X,XX
 
+## 🔄 Sync em tempo real (Sheets → Supabase)
+
+### Configuração
+1) Publique a Edge Function `sheets-upsert`:
+   ```bash
+   supabase functions deploy sheets-upsert
+   ```
+
+2) Configure as variáveis de ambiente:
+   ```env
+   SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key
+   SHEETS_SYNC_SHARED_SECRET=seu_segredo_compartilhado
+   SHEETS_EXPECTED_COLUMNS="ID,Projetos Comerciais,Gestão de Scouter,Criado,Valor por Fichas"
+   ```
+
+3) No Google Sheets, crie um Apps Script e configure o endpoint da Edge Function com o X-Secret.
+
+4) O trigger `onEdit` envia apenas a linha alterada. O menu "Sync > Sincronizar tudo" envia todas as linhas.
+
+5) Após validar, altere `DATA_SOURCE` para `"supabase"` nas telas (Dashboard/Leads/Projeção/Pagamentos).
+
 ## 🔒 Segurança
 
 ### Status de Segurança
