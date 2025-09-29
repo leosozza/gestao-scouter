@@ -64,7 +64,12 @@ export function FilterHeader({
   const [searchTerm, setSearchTerm] = useState('');
 
   const applyFilter = (key: string, value: any) => {
-    const newFilters = { ...activeFilters, [key]: value };
+    const newFilters = { ...activeFilters };
+    if (value === undefined || value === '' || value === null) {
+      delete newFilters[key];
+    } else {
+      newFilters[key] = value;
+    }
     setActiveFilters(newFilters);
     onFiltersChange(newFilters);
   };
@@ -224,14 +229,13 @@ export function FilterHeader({
 
                 {filter.type === 'select' && (
                   <Select
-                    value={activeFilters[filter.key] || ''}
+                    value={activeFilters[filter.key] || undefined}
                     onValueChange={(value) => applyFilter(filter.key, value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={filter.placeholder || 'Selecionar...'} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos</SelectItem>
                       {filter.options?.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
