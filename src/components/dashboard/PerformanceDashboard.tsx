@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/select';
 import {
   Filter,
+  Calendar,
   RefreshCw,
   CheckCircle2,
   Camera,
@@ -29,6 +30,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import { format, addDays } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { getLeads } from '@/repositories/leadsRepo';
 import type { Lead } from '@/repositories/types';
 
