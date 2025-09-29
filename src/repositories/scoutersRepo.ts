@@ -65,7 +65,7 @@ async function fetchScoutersFromSheets(): Promise<ScouterData[]> {
     const scouterMap = new Map();
     
     fichas.forEach(ficha => {
-      const getNomeScouter = (row: any) =>
+      const getNomeScouter = (row: Record<string, unknown>) =>
         normalize(
           row["Gestão de Scouter"] ??
           row["Scouter"] ??

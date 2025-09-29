@@ -5,6 +5,7 @@ import { FileCheck, FileX, DollarSign, AlertTriangle, Calendar } from "lucide-re
 import { formatCurrency, parseFichaValue } from "@/utils/formatters";
 import { useToast } from "@/hooks/use-toast";
 import { FinancialFilterState } from "./FinancialFilters";
+import type { Ficha, Project } from "@/repositories/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,14 +19,14 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface PaymentBatchActionsProps {
-  fichasFiltradas: any[];
+  fichasFiltradas: Ficha[];
   selectedFichas: string[];
   isUpdating: boolean;
   onUpdateFichaPaga?: (fichaIds: string[], status: 'Sim' | 'Não') => Promise<void>;
   onClearSelection: () => void;
   filterType: string;
   filterValue: string;
-  projetos: any[];
+  projetos: Project[];
   selectedPeriod?: { start: string; end: string } | null;
   filters?: FinancialFilterState;
 }
