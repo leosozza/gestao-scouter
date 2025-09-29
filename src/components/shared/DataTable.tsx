@@ -222,16 +222,23 @@ export function DataTable({
         {columns.filter(col => col.filterable).map(column => (
           <Select
             key={column.key}
-            value={filters[column.key] || ''}
+            value={filters[column.key] || undefined}
             onValueChange={(value) => 
-              setFilters(prev => ({ ...prev, [column.key]: value }))
+              setFilters(prev => {
+                const newFilters = { ...prev };
+                if (value === undefined || value === '' || value === null) {
+                  delete newFilters[column.key];
+                } else {
+                  newFilters[column.key] = value;
+                }
+                return newFilters;
+              })
             }
           >
             <SelectTrigger className="w-32">
               <SelectValue placeholder={column.label} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
               {Array.from(new Set(data.map(row => row[column.key]))).map(value => (
                 <SelectItem key={String(value)} value={String(value)}>
                   {String(value)}
