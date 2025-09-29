@@ -61,7 +61,6 @@ export class GoogleSheetsService {
       
       if (gid === this.GIDS.FICHAS) {
         const mockFichas = await MockDataService.fetchFichas();
-        console.log('GoogleSheetsService: Mock fichas loaded:', mockFichas.length, mockFichas);
         return mockFichas;
       } else if (gid === this.GIDS.PROJETOS) {
         return await MockDataService.fetchProjetos();

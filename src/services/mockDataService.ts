@@ -177,7 +177,7 @@ export class MockDataService {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 300));
     
-    console.log('MockDataService: Retornando dados simulados de fichas');
+    console.log('MockDataService: Usando dados simulados de fichas');
     
     // Process mock data similar to GoogleSheetsService
     const processedFichas = this.sampleFichas.map(ficha => ({
@@ -193,7 +193,7 @@ export class MockDataService {
       etapa_normalizada: this.normalizeEtapa(ficha.Etapa)
     }));
 
-    console.log(`MockDataService: ${processedFichas.length} fichas simuladas processadas`);
+    console.log(`MockDataService: ${processedFichas.length} fichas simuladas carregadas`);
     return processedFichas;
   }
 
@@ -201,7 +201,7 @@ export class MockDataService {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 200));
     
-    console.log('MockDataService: Retornando dados simulados de projetos');
+    console.log('MockDataService: Usando dados simulados de projetos');
     
     const processedProjetos = this.sampleProjetos.map(projeto => ({
       ...projeto,
@@ -212,7 +212,7 @@ export class MockDataService {
       meta_individual: this.parseNumber(projeto['Meta Individual']),
     }));
 
-    console.log(`MockDataService: ${processedProjetos.length} projetos simulados processados`);
+    console.log(`MockDataService: ${processedProjetos.length} projetos simulados carregados`);
     return processedProjetos;
   }
 
