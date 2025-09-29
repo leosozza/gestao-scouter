@@ -1,15 +1,15 @@
 // Se já existir parseFichaValue no projeto, mantenha e remova esta versão.
-export const parseFichaValue = (raw: any): number => {
+export const parseFichaValue = (raw: unknown): number => {
   if (raw == null) return 0;
   const str = String(raw).replace(/[R$\s.]/g, "").replace(",", ".");
   const n = Number(str);
   return Number.isFinite(n) ? n : 0;
 };
 
-export const getValorFichaFromRow = (row: any): number => {
+export const getValorFichaFromRow = (row: Record<string, unknown>): number => {
   const candidatos = [
     "Valor por Fichas",
-    "Valor Ficha",
+    "Valor Ficha", 
     "Valor_ficha",
     "R$/Ficha",
     "Valor da Ficha",

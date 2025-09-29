@@ -1,5 +1,11 @@
 export type DataSource = 'bitrix' | 'sheets';
 
+export interface Project {
+  nome?: string;
+  'Agencia e Seletiva'?: string;
+  'agencia e seletiva'?: string;
+}
+
 export interface LeadsFilters {
   scouter?: string;
   projeto?: string;       // ⚠️ usamos "projeto" no filtro e "projetos" no dado
@@ -40,8 +46,8 @@ export interface Ficha {
   updated_at?: string;
 }
 
-// Para compatibilidade com o código existente
-export interface Lead extends Ficha {}
+// Para compatibilidade com o código existente  
+export type Lead = Ficha;
 
 export interface AppSettings {
   id?: string;
