@@ -1,5 +1,6 @@
 import { getDataSource } from './datasource';
 import { supabase } from '@/integrations/supabase/client';
+import { normalize } from '@/utils/normalize';
 
 export interface ScouterData {
   id: string;
@@ -64,7 +65,15 @@ async function fetchScoutersFromSheets(): Promise<ScouterData[]> {
     const scouterMap = new Map();
     
     fichas.forEach(ficha => {
-      const scouterName = ficha['Gestão de Scouter'] || ficha['Primeiro nome'] || 'Desconhecido';
+      const getNomeScouter = (row: any) =>
+        normalize(
+          row["Gestão de Scouter"] ??
+          row["Scouter"] ??
+          row["Gestão do Scouter"] ??
+          row["Gestao de Scouter"] ??
+          row["Gestão de  Scouter"]
+        );
+      const scouterName = getNomeScouter(ficha) || 'Sem Scouter';
       
       if (!scouterMap.has(scouterName)) {
         scouterMap.set(scouterName, {

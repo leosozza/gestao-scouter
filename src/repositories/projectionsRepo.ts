@@ -1,4 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
+import { GoogleSheetsService } from '@/services/googleSheetsService';
+import { normalize, normalizeUpper, toISODate, parseDDMMYYYY } from '@/utils/normalize';
+import { getValorFichaFromRow, parseFichaValue } from '@/utils/values';
 
 export interface ProjectionData {
   name: string; // Pode ser scouter ou projeto
@@ -53,139 +56,113 @@ export async function getProjectionData(type: ProjectionType = 'scouter', select
   }
 }
 
-// New function for linear projection
-export async function fetchLinearProjection(params: {
-  inicio: string;
-  fim: string;
-  scouter?: string;
-  projeto?: string;
-  valor_ficha_padrao?: number;
-}): Promise<LinearProjectionData> {
-  try {
-    const { inicio, fim, scouter, projeto, valor_ficha_padrao = 10 } = params;
-    
-    const S = new Date(inicio);
-    const E = new Date(fim);
-    const hoje = new Date();
-    const To = new Date(Math.min(+E, +hoje));
+type ProjecaoFiltro = { inicio: string; fim: string; scouter?: string; projeto?: string; valor_ficha_padrao?: number }
 
-    // Build query
-    let query = supabase
-      .from('fichas')
-      .select('criado, valor_ficha, scouter, projetos')
-      .gte('criado', inicio)
-      .lte('criado', fim);
+export async function fetchLinearProjection(p: ProjecaoFiltro): Promise<LinearProjectionData> {
+  const S = new Date(p.inicio)
+  const E = new Date(p.fim)
+  const hoje = new Date()
+  const To = new Date(Math.min(+E, +hoje))
+  const toISO = (d: Date) => toISODate(d)
+  const dtTo = toISO(To)
 
-    if (scouter) {
-      query = query.eq('scouter', scouter);
-    }
-    if (projeto) {
-      query = query.eq('projetos', projeto);
-    }
+  // Busca do Sheets para ficar idêntico ao dashboard
+  const rows = await GoogleSheetsService.fetchFichas()
+  const scFil = normalizeUpper(p.scouter)
+  const prFil = normalizeUpper(p.projeto)
 
-    const { data: fichas, error } = await query;
-    if (error) throw error;
+  // filtro período + scouter/projeto
+  const data = rows.filter((r: any) => {
+    const rawData = r["Criado"] || r["Data_criacao_Ficha"] || r["Data"] || r["criado"]
+    const iso = typeof rawData === "string" && rawData.includes("/")
+      ? parseDDMMYYYY(rawData)
+      : toISODate(new Date(rawData))
+    if (!iso) return false
+    if (iso < p.inicio || iso > p.fim) return false
+    if (scFil && normalizeUpper(r["Gestão de Scouter"] ?? r["Scouter"] ?? r["Gestão do Scouter"]) !== scFil) return false
+    if (prFil && normalizeUpper(r["Projetos Cormeciais"] ?? r["Projetos Comerciais"] ?? r["Projetos"] ?? r["Projeto"]) !== prFil) return false
+    ;(r as any).__iso = iso
+    return true
+  })
 
-    // Calculate periods
-    const dias_passados = Math.floor((+To - +S) / 86400000) + 1;
-    const dias_totais = Math.floor((+E - +S) / 86400000) + 1;
-    const dias_restantes = Math.max(0, dias_totais - dias_passados);
+  const realizadas = data.filter((r: any) => (r as any).__iso <= dtTo)
+  const fichas_real = realizadas.length
+  const valor_real = realizadas.reduce((acc: number, r: any) => acc + (getValorFichaFromRow(r) || 0), 0)
 
-    // Filter realized vs future
-    const dtTo = To.toISOString().slice(0, 10);
-    const realizadas = (fichas || []).filter((f: any) => {
-      const fichaCriado = parseDate(f.criado);
-      return fichaCriado && fichaCriado <= dtTo;
-    });
+  const dias_passados  = Math.floor((+To - +S) / 86400000) + 1
+  const dias_totais    = Math.floor((+E  - +S) / 86400000) + 1
+  const dias_restantes = Math.max(0, dias_totais - dias_passados)
 
-    // Calculate realized metrics
-    const fichas_real = realizadas.length;
-    const valor_real = realizadas.reduce((acc: number, f: any) => {
-      const valor = parseFloat(f.valor_ficha) || 0;
-      return acc + valor;
-    }, 0);
+  const media_diaria = dias_passados > 0 ? fichas_real / dias_passados : 0
+  const valor_medio_por_ficha = fichas_real > 0 ? (valor_real / fichas_real) : (p.valor_ficha_padrao ?? 0)
 
-    // Calculate averages
-    const media_diaria_qtde = dias_passados > 0 ? fichas_real / dias_passados : 0;
-    const valor_medio_por_ficha = fichas_real > 0 ? (valor_real / fichas_real) : valor_ficha_padrao;
+  const proj_restante_qtde  = Math.round(media_diaria * dias_restantes)
+  const proj_restante_valor = +(proj_restante_qtde * valor_medio_por_ficha).toFixed(2)
 
-    // Calculate future projection
-    const proj_restante_qtde = Math.round(media_diaria_qtde * dias_restantes);
-    const proj_restante_valor = proj_restante_qtde * valor_medio_por_ficha;
+  // séries para o gráfico
+  const serie_real: Array<{ dia: string; fichas: number; acumulado: number }> = []
+  const serie_proj: Array<{ dia: string; fichas: number; acumulado: number }> = []
+  // acumulado diário realizado
+  const mapCount: Record<string, number> = {}
+  for (const r of realizadas) {
+    const d = (r as any).__iso as string
+    mapCount[d] = (mapCount[d] ?? 0) + 1
+  }
+  // construir série do início até To
+  let cursor = new Date(S)
+  let acc = 0
+  while (cursor <= To) {
+    const key = toISO(cursor)
+    const fichasDia = mapCount[key] ?? 0
+    acc += fichasDia
+    serie_real.push({ dia: key, fichas: fichasDia, acumulado: acc })
+    cursor = new Date(+cursor + 86400000)
+  }
+  // prolongamento linear To -> E
+  const ultimo = acc
+  let projAcc = ultimo
+  let c2 = new Date(+To + 86400000)
+  for (let i = 0; c2 <= E; i++, c2 = new Date(+c2 + 86400000)) {
+    projAcc = Math.round(ultimo + media_diaria * (i + 1))
+    serie_proj.push({ dia: toISO(c2), fichas: media_diaria, acumulado: projAcc })
+  }
 
-    // Generate daily series for chart
-    const serie_real = generateDailySeries(S, To, realizadas, 'real');
-    const serie_proj = generateProjectionSeries(To, E, media_diaria_qtde, serie_real);
-
-    return {
-      periodo: {
-        inicio,
-        fim,
-        hoje_limite: dtTo,
-        dias_passados,
-        dias_restantes,
-        dias_totais,
-      },
-      realizado: {
-        fichas: fichas_real,
-        valor: Math.round(valor_real * 100) / 100,
-      },
-      projetado_restante: {
-        fichas: proj_restante_qtde,
-        valor: Math.round(proj_restante_valor * 100) / 100,
-      },
-      total_projetado: {
-        fichas: fichas_real + proj_restante_qtde,
-        valor: Math.round((valor_real + proj_restante_valor) * 100) / 100,
-      },
-      serie_real,
-      serie_proj,
-      media_diaria: Math.round(media_diaria_qtde * 100) / 100,
-      valor_medio_por_ficha: Math.round(valor_medio_por_ficha * 100) / 100,
-    };
-  } catch (error) {
-    console.error('Error in fetchLinearProjection:', error);
-    // Return empty state
-    return {
-      periodo: {
-        inicio: params.inicio,
-        fim: params.fim,
-        hoje_limite: new Date().toISOString().slice(0, 10),
-        dias_passados: 0,
-        dias_restantes: 0,
-        dias_totais: 0,
-      },
-      realizado: { fichas: 0, valor: 0 },
-      projetado_restante: { fichas: 0, valor: 0 },
-      total_projetado: { fichas: 0, valor: 0 },
-      serie_real: [],
-      serie_proj: [],
-      media_diaria: 0,
-      valor_medio_por_ficha: params.valor_ficha_padrao || 10,
-    };
+  return {
+    periodo: { inicio: p.inicio, hoje_limite: dtTo, fim: p.fim, dias_passados, dias_restantes, dias_totais },
+    realizado: { fichas: fichas_real, valor: +valor_real.toFixed(2) },
+    projetado_restante: { fichas: proj_restante_qtde, valor: proj_restante_valor },
+    total_projetado: { fichas: fichas_real + proj_restante_qtde, valor: +(valor_real + proj_restante_valor).toFixed(2) },
+    media_diaria,
+    valor_medio_por_ficha: +valor_medio_por_ficha.toFixed(2),
+    serie_real,
+    serie_proj
   }
 }
 
 export async function getAvailableFilters(): Promise<{ scouters: string[], projetos: string[] }> {
   try {
-    const { data: fichas, error } = await supabase
-      .from('fichas')
-      .select('scouter, projetos');
-
-    if (error) throw error;
-
-    const scouters = Array.from(new Set(
-      fichas?.map(f => f.scouter).filter(Boolean) || []
-    )).sort();
-
-    const projetos = Array.from(new Set(
-      fichas?.map(f => f.projetos).filter(Boolean) || []
-    )).sort();
-
-    return { scouters, projetos };
-  } catch (error) {
-    console.error('Error fetching filters:', error);
-    return { scouters: [], projetos: [] };
+    const rows = await GoogleSheetsService.fetchFichas() // mesma fonte do dashboard
+    const sc = new Set<string>()
+    const pr = new Set<string>()
+    for (const r of rows) {
+      const scouter =
+        r["Gestão de Scouter"] ??
+        r["Scouter"] ??
+        r["Gestão do Scouter"] ??
+        r["Gestao de Scouter"] ??
+        r["Gestão de  Scouter"]
+      const projeto =
+        r["Projetos Cormeciais"] ??
+        r["Projetos Comerciais"] ??
+        r["Projetos"] ??
+        r["Projeto"]
+      if (normalize(scouter)) sc.add(normalize(scouter))
+      if (normalize(projeto)) pr.add(normalize(projeto))
+    }
+    return { scouters: Array.from(sc).sort(), projetos: Array.from(pr).sort() }
+  } catch (e) {
+    console.error("getAvailableFilters failed:", e)
+    return { scouters: [], projetos: [] }
   }
 }
 

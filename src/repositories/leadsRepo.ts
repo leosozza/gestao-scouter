@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Lead, LeadsFilters } from './types';
+import { normalizeUpper } from '@/utils/normalize';
 
 // fonte atual (ajuste se você já tem outro lugar)
 function getDataSource(): 'bitrix' | 'sheets' { 
@@ -131,8 +132,18 @@ async function fetchAllLeadsFromSheets(params: LeadsFilters): Promise<Lead[]> {
   const fichas = await GoogleSheetsService.fetchFichas();
   const leads: Lead[] = (fichas ?? []).map(normalizeLeadFromSheets);
 
-  // filtros client-side
-  return leads.filter(l => applyClientSideFilters(l, params));
+  // Apply filters similar to other repositories
+  const s = params.scouter ? normalizeUpper(params.scouter) : undefined;
+  const p = params.projeto ? normalizeUpper(params.projeto) : undefined;
+  
+  return leads.filter((l: any) => {
+    if (s && normalizeUpper(l.scouter ?? '') !== s) return false;
+    if (p && normalizeUpper(l.projetos ?? '') !== p) return false;
+    const iso = (l.criado ?? '').slice(0,10);
+    if (params.dataInicio && iso && iso < params.dataInicio) return false;
+    if (params.dataFim && iso && iso > params.dataFim) return false;
+    return true;
+  });
 }
 
 function normalizeFichaFromSupabase(r: any): Lead {

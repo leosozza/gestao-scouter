@@ -15,6 +15,7 @@ import { ProjectFilters } from "./ProjectFilters";
 import { FinancialControlPanel } from "./FinancialControlPanel";
 import { FinancialFilters, FinancialFilterState } from "./FinancialFilters";
 import { supabase } from "@/integrations/supabase/client";
+import { AIAnalysis } from "@/components/shared/AIAnalysis";
 
 interface DashboardProps {
   onLogout: () => void;
@@ -168,6 +169,11 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
             <p className="text-muted-foreground">
               Acompanhe as informações e gerencie as fichas.
             </p>
+          </div>
+
+          {/* AI Analysis na primeira aba/seção do dashboard */}
+          <div className="mt-2">
+            <AIAnalysis />
           </div>
 
           {activeView === "table" && (

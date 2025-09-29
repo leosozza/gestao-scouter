@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, Calendar, FileText, ChevronDown } from "lucide-react";
 import { formatCurrency, parseFichaValue } from "@/utils/formatters";
+import { getValorFichaFromRow } from "@/utils/values";
 import { useToast } from "@/hooks/use-toast";
 import { FinancialFilterState } from "./FinancialFilters";
 import {
@@ -37,7 +38,7 @@ export const PaymentSummary = ({
   const fichasAPagar = fichasFiltradas.filter(f => f && f['Ficha paga'] !== 'Sim');
   
   const valorTotalFichasAPagar = fichasAPagar.reduce((total, ficha) => {
-    const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
+    const valor = getValorFichaFromRow(ficha);
     return total + valor;
   }, 0);
 
@@ -109,7 +110,7 @@ export const PaymentSummary = ({
       }
 
       scouterData[scouter].quantidadeFichas++;
-      scouterData[scouter].valorFichas += parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
+      scouterData[scouter].valorFichas += getValorFichaFromRow(ficha);
 
       // Adicionar dia trabalhado
       const dataCriado = ficha.Criado;
@@ -166,9 +167,9 @@ export const PaymentSummary = ({
           id: ficha.ID,
           scouter: ficha['Gestão de Scouter'] || 'N/A',
           projeto: ficha['Projetos Cormeciais'] || 'N/A',
-          nome: ficha['Primeiro nome'] || 'N/A',
-          valor: parseFichaValue(ficha['Valor por Fichas'], ficha.ID),
-          data: ficha.Criado || 'N/A'
+        nome: ficha['Primeiro nome'] || 'N/A',
+        valor: getValorFichaFromRow(ficha),
+        data: ficha.Criado || 'N/A'
         })),
         resumo: {
           totalFichas: fichasAPagar.length,
