@@ -28,7 +28,7 @@ async function fetchJsonNoCache(url: string) {
 
 export const GoogleSheetsService = {
   // ajuste para seu endpoint publicado ou Apps Script:
-  fichasEndpoint: process.env.NEXT_PUBLIC_SHEETS_FICHAS_URL as string,
+  fichasEndpoint: import.meta.env?.VITE_SHEETS_FICHAS_URL || 'https://your-app-script-url.here',
 
   async fetchFichas(opts: FetchOpts = {}): Promise<any[]> {
     const now = Date.now();
