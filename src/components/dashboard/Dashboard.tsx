@@ -39,37 +39,41 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Fetch data from the new fichas table
-      const { data: leadsData, error: leadsError } = await supabase
-        .from('fichas')
-        .select('*')
-        .order('criado', { ascending: false });
-
-      if (leadsError) throw leadsError;
+      // Fetch data from Google Sheets
+      const { GoogleSheetsService } = await import('@/services/googleSheetsService');
+      
+      const [fichasData, projetosData] = await Promise.all([
+        GoogleSheetsService.fetchFichas(),
+        GoogleSheetsService.fetchProjetos()
+      ]);
 
       // Transform fichas data to match expected format
-      const fichas = leadsData?.map(ficha => ({
-        ID: ficha.id,
-        'Gestão de Scouter': ficha.scouter || '',
-        'Projetos Cormeciais': ficha.projetos || 'Sem Projeto',
-        'Data de criação da Ficha': ficha.criado || '',
-        'Ficha paga': ficha.etapa === 'Convertido' ? 'Sim' : 'Não',
-        Criado: ficha.created_at,
+      const fichas = fichasData?.map(ficha => ({
+        ID: ficha.ID,
+        'Gestão de Scouter': ficha.Scouter || ficha['Gestão de Scouter'] || '',
+        'Projetos Cormeciais': ficha.Projetos || ficha['Projetos Cormeciais'] || 'Sem Projeto',
+        'Data de criação da Ficha': ficha.Criado || '',
+        'Ficha paga': ficha.Etapa === 'Lead convertido' ? 'Sim' : 'Não',
+        'Criado': ficha.Criado,
+        'Valor_Ficha': ficha.Valor_Ficha,
+        'Etapa': ficha.Etapa,
+        'Nome': ficha.Nome,
         // Add other fields as needed
         ...ficha
       })) || [];
 
-      // Mock projects data for now
-      const projetos = [
-        { 'Agencia e Seletiva': 'Projeto Geral', 'Meta de Fichas': 100 }
-      ];
+      // Process projects data
+      const projetos = projetosData?.map(projeto => ({
+        'Agencia e Seletiva': projeto.nome || projeto['agencia e seletiva'] || 'Projeto Geral',
+        'Meta de Fichas': projeto.meta_fichas || 100
+      })) || [];
 
       setData({ fichas, projetos });
     } catch (error: any) {
       console.error("Error fetching data:", error);
       toast({
         title: "Erro ao carregar dados",
-        description: error.message || "Ocorreu um erro ao carregar os dados do Supabase.",
+        description: error.message || "Ocorreu um erro ao carregar os dados do Google Sheets.",
         variant: "destructive",
       });
     } finally {
@@ -84,15 +88,9 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   const handleUpdateFichaPaga = async (fichaIds: string[], status: 'Sim' | 'Não') => {
     setIsLoading(true);
     try {
-      // Update status in the new fichas table
-      const { error } = await supabase
-        .from('fichas')
-        .update({ 
-          etapa: status === 'Sim' ? 'Convertido' : 'Lead a Qualificar'
-        })
-        .in('id', fichaIds.map(id => parseInt(id)));
-
-      if (error) throw error;
+      // Update status using Google Sheets Service
+      const { GoogleSheetsService } = await import('@/services/googleSheetsService');
+      await GoogleSheetsService.updateFichaPagaStatus(fichaIds, status);
 
       toast({
         title: "Fichas atualizadas",
