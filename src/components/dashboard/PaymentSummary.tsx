@@ -1,11 +1,22 @@
+// Garantir consistência: usar getValorFichaFromRow(ficha) para cada item.
+// Remover qualquer parse antigo de "Valor por Fichas".
+import { getValorFichaFromRow } from '@/utils/values';
+import { formatBRL } from '@/utils/currency';
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, Calendar, FileText, ChevronDown } from "lucide-react";
-import { formatCurrency, parseFichaValue } from "@/utils/formatters";
-import { getValorFichaFromRow } from "@/utils/values";
 import { useToast } from "@/hooks/use-toast";
+import { FinancialFilterState } from "./FinancialFilters";
+import type { Ficha, Project } from "@/repositories/types";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { PDFReportService } from "@/services/pdfReportService";
 import { FinancialFilterState } from "./FinancialFilters";
 import type { Ficha, Project } from "@/repositories/types";
 import {
@@ -240,7 +251,7 @@ export const PaymentSummary = ({
                 <div>
                   <span className="text-muted-foreground">Valor fichas a pagar:</span>
                   <br />
-                  <span className="font-medium text-orange-600">{formatCurrency(valorTotalFichasAPagar)}</span>
+                  <span className="font-medium text-orange-600">{formatBRL(valorTotalFichasAPagar)}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Selecionadas:</span>
@@ -257,12 +268,12 @@ export const PaymentSummary = ({
                     <div>
                       <span className="text-muted-foreground">Valor ajuda de custo:</span>
                       <br />
-                      <span className="font-medium text-blue-600">{formatCurrency(valorAjudaCusto)}</span>
+                      <span className="font-medium text-blue-600">{formatBRL(valorAjudaCusto)}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Total fichas + ajuda:</span>
                       <br />
-                      <span className="font-medium text-green-600">{formatCurrency(valorTotalCompleto)}</span>
+                      <span className="font-medium text-green-600">{formatBRL(valorTotalCompleto)}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Período:</span>

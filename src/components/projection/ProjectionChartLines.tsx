@@ -1,6 +1,8 @@
+// Onde exibir valores de R$ na Projeção, não reparse strings.
+// Receber numbers do repo e formatar com formatBRL(n).
+import { formatBRL } from '@/utils/currency';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency } from "@/utils/formatters";
 
 interface LinearProjectionData {
   serie_real: Array<{ dia: string; fichas: number; acumulado: number }>;

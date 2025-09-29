@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileCheck, FileX, DollarSign, AlertTriangle, Calendar } from "lucide-react";
-import { formatCurrency, parseFichaValue } from "@/utils/formatters";
+import { formatBRL } from "@/utils/currency";
+import { getValorFichaFromRow } from "@/utils/values";
 import { useToast } from "@/hooks/use-toast";
 import { FinancialFilterState } from "./FinancialFilters";
 import type { Ficha, Project } from "@/repositories/types";
@@ -49,12 +50,12 @@ export const PaymentBatchActions = ({
   const fichasSelecionadas = fichasFiltradas.filter(f => selectedFichas.includes(f.ID?.toString()));
   
   const valorTotalSelecionadas = fichasSelecionadas.reduce((total, ficha) => {
-    const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
+    const valor = getValorFichaFromRow(ficha);
     return total + valor;
   }, 0);
 
   const valorTotalAPagar = fichasAPagar.reduce((total, ficha) => {
-    const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
+    const valor = getValorFichaFromRow(ficha);
     return total + valor;
   }, 0);
 
@@ -179,7 +180,7 @@ export const PaymentBatchActions = ({
     // Implementar lógica específica para ajuda de custo
     toast({
       title: "Ajuda de custo paga",
-      description: `Ajuda de custo de ${formatCurrency(valorAjudaCusto)} processada`
+      description: `Ajuda de custo de ${formatBRL(valorAjudaCusto)} processada`
     });
   };
 
@@ -196,7 +197,7 @@ export const PaymentBatchActions = ({
       
       toast({
         title: "Pagamento completo processado",
-        description: `Fichas (${formatCurrency(valorTotalAPagar)}) + Ajuda de custo (${formatCurrency(valorAjudaCusto)}) = ${formatCurrency(valorTotalCompleto)}`
+        description: `Fichas (${formatBRL(valorTotalAPagar)}) + Ajuda de custo (${formatBRL(valorAjudaCusto)}) = ${formatBRL(valorTotalCompleto)}`
       });
     } catch (error) {
       console.error('Erro no pagamento completo:', error);
@@ -230,7 +231,7 @@ export const PaymentBatchActions = ({
               Pagar Fichas Selecionadas ({selectedFichas.length})
               {selectedFichas.length > 0 && (
                 <span className="ml-1 text-xs">
-                  {formatCurrency(valorTotalSelecionadas)}
+                  {formatBRL(valorTotalSelecionadas)}
                 </span>
               )}
             </Button>
@@ -247,7 +248,7 @@ export const PaymentBatchActions = ({
                     <DollarSign className="h-4 w-4" />
                     Pagar Todas as Fichas ({fichasAPagar.length})
                     <span className="ml-1 text-xs">
-                      {formatCurrency(valorTotalAPagar)}
+                      {formatBRL(valorTotalAPagar)}
                     </span>
                   </Button>
                 </AlertDialogTrigger>
@@ -262,7 +263,7 @@ export const PaymentBatchActions = ({
                       {filterType && (
                         <span> do {filterType.toLowerCase()} <strong>"{filterValue}"</strong></span>
                       )}
-                      , no valor total de <strong>{formatCurrency(valorTotalAPagar)}</strong>.
+                      , no valor total de <strong>{formatBRL(valorTotalAPagar)}</strong>.
                       <br /><br />
                       Esta ação atualizará a planilha do Google Sheets automaticamente.
                       <br /><br />
@@ -290,7 +291,7 @@ export const PaymentBatchActions = ({
                 <Calendar className="h-4 w-4" />
                 Pagar Ajuda de Custo
                 <span className="ml-1 text-xs">
-                  {formatCurrency(valorAjudaCusto)}
+                  {formatBRL(valorAjudaCusto)}
                 </span>
               </Button>
             )}
@@ -306,7 +307,7 @@ export const PaymentBatchActions = ({
                     <DollarSign className="h-4 w-4" />
                     Pagar Tudo (Fichas + Ajuda)
                     <span className="ml-1 text-xs">
-                      {formatCurrency(valorTotalCompleto)}
+                      {formatBRL(valorTotalCompleto)}
                     </span>
                   </Button>
                 </AlertDialogTrigger>
@@ -319,11 +320,11 @@ export const PaymentBatchActions = ({
                     <AlertDialogDescription>
                       Você está prestes a pagar:
                       <br /><br />
-                      <strong>Fichas:</strong> {fichasAPagar.length} fichas = {formatCurrency(valorTotalAPagar)}
+                      <strong>Fichas:</strong> {fichasAPagar.length} fichas = {formatBRL(valorTotalAPagar)}
                       <br />
-                      <strong>Ajuda de Custo:</strong> {formatCurrency(valorAjudaCusto)}
+                      <strong>Ajuda de Custo:</strong> {formatBRL(valorAjudaCusto)}
                       <br />
-                      <strong>Total:</strong> {formatCurrency(valorTotalCompleto)}
+                      <strong>Total:</strong> {formatBRL(valorTotalCompleto)}
                       <br /><br />
                       Para o scouter <strong>{filters.scouter}</strong> no período de <strong>{selectedPeriod.start}</strong> a <strong>{selectedPeriod.end}</strong>.
                       <br /><br />

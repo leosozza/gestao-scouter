@@ -1,7 +1,8 @@
+// Em todas as funções de Projeção (linear/avançada), ajustar:
+import { getValorFichaFromRow, mediaValorPorFicha } from '@/utils/values';
 import { supabase } from '@/integrations/supabase/client';
 import { GoogleSheetsService } from '@/services/googleSheetsService';
 import { normalize, normalizeUpper, toISODate, parseDDMMYYYY } from '@/utils/normalize';
-import { getValorFichaFromRow, parseFichaValue } from '@/utils/values';
 
 export interface ProjectionData {
   name: string; // Pode ser scouter ou projeto
@@ -116,16 +117,26 @@ export async function fetchLinearProjection(p: ProjecaoFiltro): Promise<LinearPr
     return true
   })
 
+  // (1) No "realizado" (período de análise): somar valor linha-a-linha
+  // const valor_real = realizadas.reduce((acc, r) => acc + getValorFichaFromRow(r), 0);
   const realizadas = data.filter((r: any) => (r as any).__iso <= dtTo)
   const fichas_real = realizadas.length
-  const valor_real = realizadas.reduce((acc: number, r: any) => acc + (getValorFichaFromRow(r) || 0), 0)
+  const valor_real = realizadas.reduce((acc: number, r: any) => acc + getValorFichaFromRow(r), 0)
 
   const dias_passados  = Math.floor((+To - +S) / 86400000) + 1
   const dias_totais    = Math.floor((+E  - +S) / 86400000) + 1
   const dias_restantes = Math.max(0, dias_totais - dias_passados)
 
   const media_diaria = dias_passados > 0 ? fichas_real / dias_passados : 0
-  const valor_medio_por_ficha = fichas_real > 0 ? (valor_real / fichas_real) : (p.valor_ficha_padrao ?? 0)
+  
+  // (2) Para projetar o valor:
+  // - Calcular valor_medio_por_ficha a partir do período de análise (apenas valores > 0).
+  // - Se não houver dados para o scouter/projeto selecionado, usar fallback
+  let valor_medio_por_ficha = mediaValorPorFicha(realizadas);
+  if (valor_medio_por_ficha <= 0) {
+    // Fallback: usar todas as fichas do período para calcular média
+    valor_medio_por_ficha = p.valor_ficha_padrao ?? 0;
+  }
 
   const proj_restante_qtde  = Math.round(media_diaria * dias_restantes)
   const proj_restante_valor = +(proj_restante_qtde * valor_medio_por_ficha).toFixed(2)
@@ -234,9 +245,14 @@ export async function fetchProjectionAdvanced(p: ProjecaoFiltroAdvanced): Promis
   const totalFichasAnalise = fichasAnalise.length
   const mediaDiaria = diasAnalise > 0 ? totalFichasAnalise / diasAnalise : 0
   
-  // Calculate realized value
-  const valorRealizado = fichasAnalise.reduce((acc: number, r: any) => acc + (getValorFichaFromRow(r) || 0), 0)
-  const valor_medio_por_ficha = totalFichasAnalise > 0 ? (valorRealizado / totalFichasAnalise) : (p.valor_ficha_padrao ?? 0)
+  // Calculate realized value using getValorFichaFromRow for each row
+  const valorRealizado = fichasAnalise.reduce((acc: number, r: any) => acc + getValorFichaFromRow(r), 0)
+  
+  // Calculate average value per ficha using mediaValorPorFicha
+  let valor_medio_por_ficha = mediaValorPorFicha(fichasAnalise);
+  if (valor_medio_por_ficha <= 0) {
+    valor_medio_por_ficha = p.valor_ficha_padrao ?? 0;
+  }
   
   // Calculate projection period metrics
   const diasProjecao = Math.floor((+projFim - +projInicio) / 86400000) + 1
@@ -263,6 +279,8 @@ export async function fetchProjectionAdvanced(p: ProjecaoFiltroAdvanced): Promis
   
   // Calculate projection
   const fichasProjetadas = Math.round(mediaDiaria * diasProjecao)
+  // (3) Projetado:
+  // const proj_restante_valor = +(proj_restante_qtde * valor_medio_por_ficha).toFixed(2);
   const valorProjetado = +(fichasProjetadas * valor_medio_por_ficha).toFixed(2)
   
   // Build analysis series

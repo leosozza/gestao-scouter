@@ -1,4 +1,7 @@
 
+// Mesmo ajuste visual: formatBRL na ponta, nada de converter string->number na UI.
+import { formatBRL } from '@/utils/currency';
+import { getValorFichaFromRow } from '@/utils/values';
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,7 +10,8 @@ import { DollarSign, Users, TrendingUp, Calendar } from "lucide-react";
 import { PaymentBatchActions } from "./PaymentBatchActions";
 import { PaymentSummary } from "./PaymentSummary";
 import { CostAllowanceManager } from "./CostAllowanceManager";
-import { formatCurrency, parseFichaValue } from "@/utils/formatters";
+import { FinancialFilterState } from "./FinancialFilters";
+import type { Ficha, Project } from "@/repositories/types";
 import { FinancialFilterState } from "./FinancialFilters";
 import type { Ficha, Project } from "@/repositories/types";
 
@@ -46,12 +50,12 @@ export const FinancialControlPanel = ({
   const fichasAPagar = fichasData?.filter(f => f && f['Ficha paga'] !== 'Sim') || [];
   
   const valorTotalFichasPagas = fichasPagas.reduce((total, ficha) => {
-    const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
+    const valor = getValorFichaFromRow(ficha);
     return total + valor;
   }, 0);
 
   const valorTotalFichasAPagar = fichasAPagar.reduce((total, ficha) => {
-    const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
+    const valor = getValorFichaFromRow(ficha);
     return total + valor;
   }, 0);
 
@@ -61,7 +65,7 @@ export const FinancialControlPanel = ({
     return fichasData
       .filter(f => f && selectedFichas.has(f.ID?.toString()))
       .reduce((total, ficha) => {
-        const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
+        const valor = getValorFichaFromRow(ficha);
         return total + valor;
       }, 0);
   }, [fichasData, selectedFichas]);
@@ -113,7 +117,7 @@ export const FinancialControlPanel = ({
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{fichasPagas.length}</div>
             <p className="text-xs text-muted-foreground">
-              {formatCurrency(valorTotalFichasPagas)}
+              {formatBRL(valorTotalFichasPagas)}
             </p>
           </CardContent>
         </Card>
@@ -126,7 +130,7 @@ export const FinancialControlPanel = ({
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">{fichasAPagar.length}</div>
             <p className="text-xs text-muted-foreground">
-              {formatCurrency(valorTotalFichasAPagar)}
+              {formatBRL(valorTotalFichasAPagar)}
             </p>
           </CardContent>
         </Card>
@@ -139,7 +143,7 @@ export const FinancialControlPanel = ({
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">{selectedFichas?.size || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {formatCurrency(valorTotalSelecionadas)}
+              {formatBRL(valorTotalSelecionadas)}
             </p>
           </CardContent>
         </Card>

@@ -1,7 +1,7 @@
+import { formatBRL } from '@/utils/currency';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency } from "@/utils/formatters";
 
 interface ProjectionData {
   scouter_name: string;
@@ -130,7 +130,7 @@ export function ProjectionChartBars({ data, selectedScenario }: ProjectionChartB
                   tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
                 />
                 <Tooltip 
-                  formatter={(value: number) => [formatCurrency(value), 'Total 8 Semanas']}
+                  formatter={(value: number) => [formatBRL(value), 'Total 8 Semanas']}
                 />
                 <Bar 
                   dataKey={selectedScenario} 
@@ -159,7 +159,7 @@ export function ProjectionChartBars({ data, selectedScenario }: ProjectionChartB
                   tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
                 />
                 <Tooltip 
-                  formatter={(value: number) => [formatCurrency(value), 'Total da Semana']}
+                  formatter={(value: number) => [formatBRL(value), 'Total da Semana']}
                 />
                 <Bar 
                   dataKey="total" 
@@ -193,7 +193,7 @@ export function ProjectionChartBars({ data, selectedScenario }: ProjectionChartB
                   </div>
                 </div>
                 <div className={`text-lg font-bold text-${scenarioColors[selectedScenario].replace('#', '')}`}>
-                  {formatCurrency(scouter[selectedScenario])}
+                  {formatBRL(scouter[selectedScenario])}
                 </div>
               </div>
             ))}
