@@ -94,6 +94,102 @@ O sistema suporta integração com Google Sheets através de:
 - **Data de criação da Ficha**: DD/MM/AAAA HH:MM
 - **Valor por Fichas**: R$ X,XX
 
+## 🔄 Sync em tempo real (Sheets → Supabase)
+
+### Configuração
+1) Publique a Edge Function `sheets-upsert`:
+   ```bash
+   supabase functions deploy sheets-upsert
+   ```
+
+2) Configure as variáveis de ambiente:
+   ```env
+   SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key
+   SHEETS_SYNC_SHARED_SECRET=seu_segredo_compartilhado
+   SHEETS_EXPECTED_COLUMNS="ID,Projetos Comerciais,Gestão de Scouter,Criado,Valor por Fichas"
+   ```
+
+3) No Google Sheets, crie um Apps Script com o código abaixo:
+
+```javascript
+// Google Apps Script para sincronização com Supabase
+const EDGE_FUNCTION_URL = 'https://SEU_PROJETO.supabase.co/functions/v1/sheets-upsert';
+const SHARED_SECRET = 'seu_segredo_compartilhado';
+
+function onEdit(e) {
+  // Envia linha editada em tempo real
+  const range = e.range;
+  const sheet = range.getSheet();
+  
+  if (sheet.getName() !== 'Fichas') return;
+  
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const rowData = sheet.getRange(range.getRow(), 1, 1, sheet.getLastColumn()).getValues()[0];
+  
+  const rowObject = {};
+  headers.forEach((header, index) => {
+    rowObject[header] = rowData[index];
+  });
+  
+  syncToSupabase([rowObject]);
+}
+
+function syncAll() {
+  // Menu personalizado para sincronização completa
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Fichas');
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const rows = data.slice(1);
+  
+  const rowObjects = rows.map(row => {
+    const obj = {};
+    headers.forEach((header, index) => {
+      obj[header] = row[index];
+    });
+    return obj;
+  });
+  
+  syncToSupabase(rowObjects);
+}
+
+function syncToSupabase(rows) {
+  try {
+    const response = UrlFetchApp.fetch(EDGE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Secret': SHARED_SECRET
+      },
+      payload: JSON.stringify({ rows: rows })
+    });
+    
+    if (response.getResponseCode() === 200) {
+      const result = JSON.parse(response.getContentText());
+      Logger.log(`Sincronização concluída: ${result.upserted} fichas atualizadas`);
+    } else {
+      Logger.log(`Erro na sincronização: ${response.getContentText()}`);
+    }
+  } catch (error) {
+    Logger.log(`Erro: ${error.toString()}`);
+  }
+}
+
+function onOpen() {
+  // Adiciona menu personalizado
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('Sync')
+    .addItem('Sincronizar tudo', 'syncAll')
+    .addToUi();
+}
+```
+
+4) Configure os triggers:
+   - `onEdit`: Trigger automático para edições
+   - `onOpen`: Adiciona menu personalizado
+   - `syncAll`: Função para sincronização completa
+
+5) Após validar, altere `DATA_SOURCE` para `"supabase"` nas telas (Dashboard/Leads/Projeção/Pagamentos).
+
 ## 🔒 Segurança
 
 ### Status de Segurança
