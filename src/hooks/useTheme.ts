@@ -93,7 +93,7 @@ export const useTheme = () => {
   // Aplica o tema inicial quando o hook é montado
   useEffect(() => {
     applyTheme(currentTheme);
-  }, []);
+  }, [currentTheme, applyTheme]);
 
   return {
     currentTheme,

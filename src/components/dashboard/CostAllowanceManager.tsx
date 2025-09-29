@@ -12,10 +12,11 @@ import { formatCurrency } from "@/utils/formatters";
 import { CalendarDays, DollarSign, Edit, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format, eachDayOfInterval, parseISO } from "date-fns";
+import type { Ficha, Project } from "@/repositories/types";
 
 interface CostAllowanceManagerProps {
-  fichas: any[];
-  projetos: any[];
+  fichas: Ficha[];
+  projetos: Project[];
   selectedPeriod: { start: string; end: string } | null;
   filters: { scouter: string | null; projeto: string | null };
 }
@@ -81,7 +82,7 @@ export const CostAllowanceManager = ({
     acc[scouter][dateKey].push(ficha);
     
     return acc;
-  }, {} as Record<string, Record<string, any[]>>);
+  }, {} as Record<string, Record<string, Ficha[]>>);
 
   // Obter scouters únicos considerando os filtros
   const scouters = Array.from(new Set(

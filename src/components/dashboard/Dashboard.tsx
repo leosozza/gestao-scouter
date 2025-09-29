@@ -17,6 +17,7 @@ import { FinancialFilters, FinancialFilterState } from "./FinancialFilters";
 import { supabase } from "@/integrations/supabase/client";
 import { AIAnalysis } from "@/components/shared/AIAnalysis";
 import { toISODate } from "@/utils/normalize";
+import type { Ficha, Project } from "@/repositories/types";
 
 interface DashboardProps {
   onLogout: () => void;
@@ -36,7 +37,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [selectedFichas, setSelectedFichas] = useState<Set<string>>(new Set());
-  const [data, setData] = useState<{ fichas: any[]; projetos: any[] }>({ fichas: [], projetos: [] });
+  const [data, setData] = useState<{ fichas: Ficha[]; projetos: Project[] }>({ fichas: [], projetos: [] });
   const [activeView, setActiveView] = useState<"table" | "financial">("table");
   const [isFichaFormOpen, setIsFichaFormOpen] = useState(false);
   const [filters, setFilters] = useState<FinancialFilterState>({
@@ -53,7 +54,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     // mantemos o último válido para não quebrar a busca
     if (!period.start) setPeriod((p) => ({ ...p, start: startDefault }));
     if (!period.end)   setPeriod((p) => ({ ...p, end: endDefault }));
-  }, []);
+  }, [period.start, period.end, startDefault, endDefault]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -88,11 +89,12 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       })) || [];
 
       setData({ fichas, projetos });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching data:", error);
+      const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro ao carregar os dados do Google Sheets.";
       toast({
-        title: "Erro ao carregar dados",
-        description: error.message || "Ocorreu um erro ao carregar os dados do Google Sheets.",
+        title: "Erro ao carregar dados", 
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -117,11 +119,12 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       });
       
       fetchData(); // Refresh data
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating ficha status:", error);
+      const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro ao atualizar o status das fichas.";
       toast({
         title: "Erro ao atualizar fichas",
-        description: error.message || "Ocorreu um erro ao atualizar o status das fichas.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

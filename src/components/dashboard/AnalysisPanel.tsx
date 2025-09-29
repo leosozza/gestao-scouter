@@ -6,9 +6,17 @@ import { Brain, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DashboardFilters } from "./FilterPanel";
 
+interface DashboardData {
+  totalFichas: number;
+  fichasComFoto: number;
+  fichasConfirmadas: number;
+  fichasComContato: number;
+  iqsMedio: number;
+}
+
 interface AnalysisPanelProps {
   filters: DashboardFilters;
-  data: any; // Dados processados para análise
+  data: DashboardData; // Dados processados para análise
 }
 
 export const AnalysisPanel = ({ filters, data }: AnalysisPanelProps) => {
@@ -40,7 +48,7 @@ export const AnalysisPanel = ({ filters, data }: AnalysisPanelProps) => {
     setIsOpen(true);
   };
 
-  const generateScouterAnalysis = (scouter: string, data: any): string => {
+  const generateScouterAnalysis = (scouter: string, data: DashboardData): string => {
     const performances = {
       "Carlos Antônio": {
         fichas: 180,
@@ -91,7 +99,7 @@ ${perf.mediaDia >= 15
 • Definir metas semanais para manter consistência`;
   };
 
-  const generateProjectAnalysis = (project: string, data: any): string => {
+  const generateProjectAnalysis = (project: string, data: DashboardData): string => {
     const projectData = {
       "SELETIVA SANTO ANDRÉ-ABC": {
         meta: 2500,
@@ -143,7 +151,7 @@ ${proj.topScouters.map(s => `• ${s}`).join('\n')}
 • Necessário: Acelerar captação em 40% para recuperar atraso`;
   };
 
-  const generateGeneralAnalysis = (data: any): string => {
+  const generateGeneralAnalysis = (data: DashboardData): string => {
     return `📈 **Visão Geral do Dashboard**
 
 **Performance da Equipe:**
