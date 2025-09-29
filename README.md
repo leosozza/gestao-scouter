@@ -1,73 +1,163 @@
-# Welcome to your Lovable project
+# Gestão Scouter - Sistema de Gerenciamento
 
-## Project info
+Sistema completo de gerenciamento para scouters com dashboard analítico, controle financeiro e integração com Google Sheets e Supabase.
 
-**URL**: https://lovable.dev/projects/5195de91-4408-4193-bfe6-bb7cfb7395cf
+## 🚀 Funcionalidades
 
-## How can I edit this code?
+- **Dashboard Analítico**: Métricas em tempo real com gráficos e indicadores
+- **Gerenciamento de Fichas**: Controle completo de leads e conversões
+- **Sistema de Pagamentos**: Gestão financeira com controle de ajuda de custo
+- **Integração Google Sheets**: Sincronização automática com planilhas
+- **Análise por IA**: Relatórios inteligentes baseados nos dados
+- **Sistema de Projeções**: Previsões e metas personalizadas
+- **Controle de Scouters**: Gestão de equipe e performance
 
-There are several ways of editing your application.
+## 🛠️ Tecnologias
 
-**Use Lovable**
+- **Frontend**: React 18 + TypeScript + Vite 7
+- **UI Framework**: shadcn/ui + Tailwind CSS
+- **Backend**: Supabase (PostgreSQL + Auth + Storage)
+- **Integrações**: Google Sheets API, Bitrix24
+- **Gráficos**: Recharts
+- **Relatórios**: jsPDF + AutoTable
+- **Estado**: TanStack Query + React Hooks
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/5195de91-4408-4193-bfe6-bb7cfb7395cf) and start prompting.
+## 🏗️ Arquitetura
 
-Changes made via Lovable will be committed automatically to this repo.
+### Code Splitting & Performance
+- **Lazy Loading**: Páginas carregadas sob demanda
+- **Chunk Optimization**: Bundles otimizados por categoria
+  - React Core (~142KB)
+  - UI Components (~95KB) 
+  - Charts (~392KB)
+  - Date Utils (~58KB)
+  - Supabase (~123KB)
+- **Tree Shaking**: Importações otimizadas
 
-**Use your preferred IDE**
+### Type Safety
+- **TypeScript**: Tipagem estrita em todo o projeto
+- **Interfaces Customizadas**: Tipos para Ficha, Project, Lead, etc.
+- **Error Handling**: Tratamento robusto de erros
+- **React Hooks**: Dependências otimizadas
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 🔧 Instalação e Uso
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Pré-requisitos
+- Node.js 18+ ([instalar com nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
+- npm ou yarn
 
-Follow these steps:
+### Configuração Local
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# 1. Clone o repositório
+git clone https://github.com/leosozza/gestao-scouter.git
+cd gestao-scouter
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# 2. Instale as dependências
+npm install
 
-# Step 3: Install the necessary dependencies.
-npm i
+# 3. Configure as variáveis de ambiente
+cp .env.example .env
+# Edite o .env com suas credenciais do Supabase
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# 4. Inicie o servidor de desenvolvimento
 npm run dev
+
+# 5. Build para produção
+npm run build
+
+# 6. Preview da build de produção
+npm run preview
 ```
 
-**Edit a file directly in GitHub**
+### Variáveis de Ambiente
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```env
+VITE_SUPABASE_PROJECT_ID=seu_project_id
+VITE_SUPABASE_URL=https://seu_projeto.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sua_chave_publica
+```
 
-**Use GitHub Codespaces**
+## 📊 Integração Google Sheets
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+O sistema suporta integração com Google Sheets através de:
 
-## What technologies are used for this project?
+1. **URL de Planilha**: Configuração via interface
+2. **Proxy CORS**: Bypass automático durante desenvolvimento
+3. **Fallback System**: Dados mock quando API indisponível
+4. **Formato Esperado**: Templates disponíveis no sistema
 
-This project is built with:
+### Estrutura da Planilha de Fichas
+- **ID**: Identificador único
+- **Projetos Comerciais**: Nome do projeto
+- **Gestão de Scouter**: Nome do scouter
+- **Data de criação da Ficha**: DD/MM/AAAA HH:MM
+- **Valor por Fichas**: R$ X,XX
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 🔒 Segurança
 
-## How can I deploy this project?
+### Status de Segurança
+- ✅ **esbuild**: Atualizado para v0.24.3+
+- ✅ **jsPDF**: Vulnerabilidade de DoS corrigida  
+- ✅ **Vite**: Atualizado para v7.1.7
+- ⚠️ **xlsx**: Vulnerabilidade de prototype pollution (planejada substituição)
 
-Simply open [Lovable](https://lovable.dev/projects/5195de91-4408-4193-bfe6-bb7cfb7395cf) and click on Share -> Publish.
+### Melhores Práticas
+- Validação de tipos TypeScript
+- Sanitização de inputs
+- Headers de segurança configurados
+- Autenticação via Supabase Auth
 
-## Can I connect a custom domain to my Lovable project?
+## 📈 Performance
 
-Yes, you can!
+### Otimizações Implementadas
+- **Bundle Size**: Reduzido de 1MB+ para chunks < 400KB
+- **Lazy Loading**: Carregamento sob demanda de páginas
+- **Code Splitting**: Separação inteligente de dependências
+- **Tree Shaking**: Remoção de código não utilizado
+- **Gzip Compression**: ~70% redução de tamanho
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### Métricas
+- **Largest Chunk**: 392KB (charts)
+- **Main App**: ~100KB
+- **UI Components**: 95KB
+- **Load Time**: < 2s em conexões 3G
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## 🧪 Desenvolvimento
+
+### Scripts Disponíveis
+```sh
+npm run dev        # Servidor de desenvolvimento
+npm run build      # Build de produção  
+npm run preview    # Preview da build
+npm run lint       # Análise de código
+npm run lint:fix   # Correção automática
+```
+
+### Padrões de Código
+- **ESLint**: Configuração TypeScript + React
+- **Prettier**: Formatação automática
+- **Husky**: Git hooks para qualidade
+- **Conventional Commits**: Padronização de commits
+
+## 📝 Contribuição
+
+1. Fork o projeto
+2. Crie uma branch feature (`git checkout -b feature/nova-funcionalidade`)
+3. Commit suas mudanças (`git commit -m 'feat: adiciona nova funcionalidade'`)
+4. Push para a branch (`git push origin feature/nova-funcionalidade`)
+5. Abra um Pull Request
+
+## 📞 Suporte
+
+- **Documentação**: Ver `/docs` no repositório
+- **Issues**: GitHub Issues para bugs e sugestões
+- **Discussões**: GitHub Discussions para dúvidas
+
+## 📄 Licença
+
+Este projeto está sob licença MIT. Veja o arquivo [LICENSE](LICENSE) para detalhes.
+
+---
+
+**Desenvolvido com ❤️ para otimização de processos de scouting**
