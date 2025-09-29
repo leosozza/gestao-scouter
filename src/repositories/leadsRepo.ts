@@ -129,6 +129,8 @@ function normalizeLeadFromBitrix(r: any): Lead {
 /** SHEETS */
 async function fetchAllLeadsFromSheets(params: LeadsFilters): Promise<Lead[]> {
   const { GoogleSheetsService } = await import('@/services/googleSheetsService');
+  // Algumas implementações de fetchAllLeadsFromSheets não aceitam params.
+  // Buscamos "cru" e filtramos aqui para evitar retorno vazio.
   const fichas = await GoogleSheetsService.fetchFichas();
   const leads: Lead[] = (fichas ?? []).map(normalizeLeadFromSheets);
 
@@ -139,9 +141,9 @@ async function fetchAllLeadsFromSheets(params: LeadsFilters): Promise<Lead[]> {
   return leads.filter((l: any) => {
     if (s && normalizeUpper(l.scouter ?? '') !== s) return false;
     if (p && normalizeUpper(l.projetos ?? '') !== p) return false;
-    const iso = (l.criado ?? '').slice(0,10);
-    if (params.dataInicio && iso && iso < params.dataInicio) return false;
-    if (params.dataFim && iso && iso > params.dataFim) return false;
+    const iso = (l.criado ?? l["Criado"] ?? l["Data_criacao_Ficha"] ?? l["Data"] ?? "").slice(0,10);
+    if (params.dataInicio && iso && iso < params.dataInicio) return false; // aplica só se existir
+    if (params.dataFim && iso && iso > params.dataFim) return false;     // aplica só se existir
     return true;
   });
 }

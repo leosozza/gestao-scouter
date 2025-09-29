@@ -16,12 +16,23 @@ import { FinancialControlPanel } from "./FinancialControlPanel";
 import { FinancialFilters, FinancialFilterState } from "./FinancialFilters";
 import { supabase } from "@/integrations/supabase/client";
 import { AIAnalysis } from "@/components/shared/AIAnalysis";
+import { toISODate } from "@/utils/normalize";
 
 interface DashboardProps {
   onLogout: () => void;
 }
 
 export const Dashboard = ({ onLogout }: DashboardProps) => {
+  // datas padrão: 1º dia do mês até hoje
+  const today = new Date();
+  const endDefault = toISODate(today);
+  const startDefault = `${endDefault.slice(0,7)}-01`;
+
+  const [period, setPeriod] = useState<{ start?: string; end?: string }>({
+    start: startDefault,
+    end: endDefault,
+  });
+
   const [isLoading, setIsLoading] = useState(true);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [selectedFichas, setSelectedFichas] = useState<Set<string>>(new Set());
@@ -35,6 +46,14 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   });
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // garante busca inicial
+  useEffect(() => {
+    // se algum lado vier vazio (ex.: usuário só muda o fim),
+    // mantemos o último válido para não quebrar a busca
+    if (!period.start) setPeriod((p) => ({ ...p, start: startDefault }));
+    if (!period.end)   setPeriod((p) => ({ ...p, end: endDefault }));
+  }, []);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -171,7 +190,9 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
 
           {/* AI Analysis na primeira aba/seção do dashboard */}
           <div className="mt-2">
-            <AIAnalysis />
+            <AIAnalysis
+              title="Análise de Performance por IA"
+            />
           </div>
 
           {activeView === "table" && (
