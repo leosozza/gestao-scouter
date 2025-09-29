@@ -22,7 +22,7 @@ export default function ProjecaoPage() {
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [loading, setLoading] = useState(false)
   const [projectionType, setProjectionType] = useState<ProjectionType>('scouter')
-  const [selectedFilter, setSelectedFilter] = useState<string>('')
+  const [selectedFilter, setSelectedFilter] = useState<string>('all')
   const [availableFilters, setAvailableFilters] = useState<{ scouters: string[], projetos: string[] }>({ 
     scouters: [], 
     projetos: [] 
@@ -69,7 +69,7 @@ export default function ProjecaoPage() {
         valor_ficha_padrao: settings?.valor_base_ficha || 10
       }
 
-      if (selectedFilter) {
+      if (selectedFilter && selectedFilter !== 'all') {
         if (projectionType === 'scouter') {
           params.scouter = selectedFilter
         } else {
@@ -88,7 +88,7 @@ export default function ProjecaoPage() {
 
   const handleProjectionTypeChange = (type: ProjectionType) => {
     setProjectionType(type)
-    setSelectedFilter('') // Reset filter when changing type
+    setSelectedFilter('all') // Reset filter when changing type
   }
 
   const fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -189,7 +189,7 @@ export default function ProjecaoPage() {
                     <SelectValue placeholder={`Todos os ${projectionType === 'scouter' ? 'scouters' : 'projetos'}`} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos os {projectionType === 'scouter' ? 'scouters' : 'projetos'}</SelectItem>
+                    <SelectItem value="all">Todos os {projectionType === 'scouter' ? 'scouters' : 'projetos'}</SelectItem>
                     {availableOptions.map((option) => (
                       <SelectItem key={option} value={option}>
                         {option}
@@ -362,7 +362,7 @@ export default function ProjecaoPage() {
                   multiplicada pelos {projectionData.periodo.dias_restantes} dias restantes.
                 </p>
                 <p>
-                  <strong>Filtro Aplicado:</strong> {selectedFilter 
+                  <strong>Filtro Aplicado:</strong> {selectedFilter && selectedFilter !== 'all'
                     ? `${filterLabel}: ${selectedFilter}` 
                     : `Todos os ${projectionType === 'scouter' ? 'scouters' : 'projetos'}`}
                 </p>
