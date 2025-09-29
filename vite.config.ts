@@ -41,4 +41,23 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split vendor libraries
+          'react': ['react', 'react-dom'],
+          'ui': ['@radix-ui/react-accordion', '@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select'],
+          'charts': ['recharts'],
+          'tables': ['@tanstack/react-table', '@tanstack/react-query'],
+          'date': ['date-fns', 'date-fns-tz', 'react-day-picker'],
+          'forms': ['react-hook-form', '@hookform/resolvers', 'zod'],
+          'pdf': ['jspdf', 'jspdf-autotable'],
+          'excel': ['xlsx'],
+          'supabase': ['@supabase/supabase-js'],
+        }
+      }
+    },
+    chunkSizeWarningLimit: 600, // Increase limit slightly to be more realistic
+  },
 }));
