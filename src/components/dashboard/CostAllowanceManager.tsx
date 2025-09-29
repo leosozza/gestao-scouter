@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { formatCurrency } from "@/utils/formatters";
+import { formatBRL } from "@/utils/formatters";
 import { CalendarDays, DollarSign, Edit, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format, eachDayOfInterval, parseISO } from "date-fns";
@@ -350,7 +350,7 @@ export const CostAllowanceManager = ({
                     <div>
                       <span className="text-muted-foreground">Ajuda de Custo:</span>
                       <br />
-                      <span className="font-medium text-green-600">{formatCurrency(dados.valorTotalAjudaCusto)}</span>
+                      <span className="font-medium text-green-600">{formatBRL(dados.valorTotalAjudaCusto)}</span>
                     </div>
                   </div>
                 </div>

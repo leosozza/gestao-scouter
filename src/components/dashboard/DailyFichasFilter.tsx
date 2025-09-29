@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Calendar, Eye } from "lucide-react";
 import { format } from "date-fns";
-import { formatCurrency, parseFichaValue } from "@/utils/formatters";
+import { formatBRL } from "@/utils/currency";
+import { getValorFichaFromRow } from "@/utils/values";
 import type { Ficha } from "@/repositories/types";
 
 interface DailyFichasFilterProps {
@@ -72,7 +73,7 @@ export const DailyFichasFilter = ({ fichas, selectedPeriod }: DailyFichasFilterP
             console.log('=== ANÁLISE DE VALORES ===');
             
             const valorPago = fichasPagas.reduce((total, ficha, index) => {
-              const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
+              const valor = getValorFichaFromRow(ficha);
               if (index < 3) { // Log das primeiras 3 fichas pagas
                 console.log(`Paga ${index + 1}: ID ${ficha.ID}, Valor: ${valor}`);
               }
@@ -80,7 +81,7 @@ export const DailyFichasFilter = ({ fichas, selectedPeriod }: DailyFichasFilterP
             }, 0);
             
             const valorAPagar = fichasAPagar.reduce((total, ficha, index) => {
-              const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
+              const valor = getValorFichaFromRow(ficha);
               if (index < 3) { // Log das primeiras 3 fichas a pagar
                 console.log(`A pagar ${index + 1}: ID ${ficha.ID}, Valor: ${valor}`);
               }
@@ -117,14 +118,14 @@ export const DailyFichasFilter = ({ fichas, selectedPeriod }: DailyFichasFilterP
                       {fichasDoDia.length} fichas
                     </Badge>
                     <div className="text-xs text-muted-foreground">
-                      {formatCurrency(valorTotal)}
+                      {formatBRL(valorTotal)}
                     </div>
                     <div className="text-xs space-y-0.5">
                       <div className="text-green-600">
-                        Pagas: {formatCurrency(valorPago)}
+                        Pagas: {formatBRL(valorPago)}
                       </div>
                       <div className="text-orange-600">
-                        A pagar: {formatCurrency(valorAPagar)}
+                        A pagar: {formatBRL(valorAPagar)}
                       </div>
                     </div>
                   </Button>
@@ -135,10 +136,10 @@ export const DailyFichasFilter = ({ fichas, selectedPeriod }: DailyFichasFilterP
                       <span>Fichas de {format(new Date(data), 'dd/MM/yyyy')}</span>
                       <div className="flex gap-4 text-sm">
                         <span className="text-green-600">
-                          {fichasPagas.length} pagas ({formatCurrency(valorPago)})
+                          {fichasPagas.length} pagas ({formatBRL(valorPago)})
                         </span>
                         <span className="text-orange-600">
-                          {fichasAPagar.length} a pagar ({formatCurrency(valorAPagar)})
+                          {fichasAPagar.length} a pagar ({formatBRL(valorAPagar)})
                         </span>
                       </div>
                     </DialogTitle>
@@ -164,7 +165,7 @@ export const DailyFichasFilter = ({ fichas, selectedPeriod }: DailyFichasFilterP
                               {ficha['Projetos Cormeciais'] || 'N/A'}
                             </TableCell>
                             <TableCell>{ficha['Primeiro nome'] || 'N/A'}</TableCell>
-                            <TableCell>{formatCurrency(parseFichaValue(ficha['Valor por Fichas'], ficha.ID))}</TableCell>
+                            <TableCell>{formatBRL(getValorFichaFromRow(ficha))}</TableCell>
                             <TableCell>
                               <Badge variant={ficha['Ficha paga'] === 'Sim' ? 'default' : 'secondary'}>
                                 {ficha['Ficha paga'] || 'Não'}

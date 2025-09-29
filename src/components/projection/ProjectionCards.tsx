@@ -1,7 +1,7 @@
+import { formatBRL } from '@/utils/currency';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Target, Trophy, DollarSign } from "lucide-react";
-import { formatCurrency } from "@/utils/formatters";
 
 interface LinearProjectionData {
   periodo: {

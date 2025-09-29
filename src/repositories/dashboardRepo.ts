@@ -1,3 +1,5 @@
+// Onde calcular totais/valores na Análise/Dashboard, garantir que a soma use getValorFichaFromRow(row).
+import { getValorFichaFromRow } from '@/utils/values';
 import { GoogleSheetsService } from '@/services/googleSheetsService';
 
 export async function getDashboardData(filters: { start?: string; end?: string; scouter?: string; projeto?: string }) {
@@ -14,4 +16,8 @@ export async function getDashboardData(filters: { start?: string; end?: string; 
     if (p && (String(r["Projetos Cormeciais"] ?? r["Projetos Comerciais"] ?? r["Projetos"] ?? r["Projeto"] ?? "").toUpperCase() !== p)) return false;
     return true;
   });
+
+  // Ao agregar:
+  // const valorTotal = rows.reduce((acc, r) => acc + getValorFichaFromRow(r), 0);
+  // Evitar reparse de string na camada de UI.
 }
