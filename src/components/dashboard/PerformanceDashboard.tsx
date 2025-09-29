@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -10,11 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Filter,
-  Calendar as CalendarIcon,
+  Calendar,
   RefreshCw,
   CheckCircle2,
   Camera,
@@ -30,7 +30,6 @@ import {
   BarChart3
 } from 'lucide-react';
 import { format, addDays } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { getLeads } from '@/repositories/leadsRepo';
 import type { Lead } from '@/repositories/types';
@@ -72,24 +71,27 @@ export function PerformanceDashboard() {
     iqsMedio: 0
   });
 
-  // Filters state
-  const [dateRange, setDateRange] = useState({
-    from: addDays(new Date(), -30),
-    to: new Date()
+  // Filters state - use string dates like in Projeção page
+  const [dataInicio, setDataInicio] = useState(() => {
+    const thirtyDaysAgo = addDays(new Date(), -30);
+    return format(thirtyDaysAgo, 'yyyy-MM-dd');
+  });
+  const [dataFim, setDataFim] = useState(() => {
+    return format(new Date(), 'yyyy-MM-dd');
   });
   const [selectedScouters, setSelectedScouters] = useState<string[]>([]);
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
 
   useEffect(() => {
     loadData();
-  }, [dateRange, selectedScouters, selectedProjects]);
+  }, [dataInicio, dataFim, selectedScouters, selectedProjects]);
 
   const loadData = async () => {
     try {
       setIsLoading(true);
       const filters = {
-        dataInicio: dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : undefined,
-        dataFim: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : undefined,
+        dataInicio: dataInicio || undefined,
+        dataFim: dataFim || undefined,
         scouter: selectedScouters.length === 1 ? selectedScouters[0] : undefined,
         projeto: selectedProjects.length === 1 ? selectedProjects[0] : undefined,
       };
@@ -224,33 +226,27 @@ export function PerformanceDashboard() {
                 <span className="text-sm font-medium">Filtros:</span>
               </div>
               
-              {/* Date Range */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="gap-2">
-                    <CalendarIcon className="h-4 w-4" />
-                    {dateRange.from && dateRange.to ? (
-                      `${format(dateRange.from, 'dd/MM/yyyy')} - ${format(dateRange.to, 'dd/MM/yyyy')}`
-                    ) : (
-                      'Selecionar período'
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="range"
-                    selected={dateRange}
-                    onSelect={(range) => {
-                      if (range?.from && range?.to) {
-                        setDateRange({ from: range.from, to: range.to });
-                      }
-                    }}
-                    numberOfMonths={2}
-                    locale={ptBR}
-                    initialFocus
+              {/* Date Range - Separate inputs like Projeção page */}
+              <div className="flex items-center gap-2">
+                <div>
+                  <Label className="text-xs font-medium mb-1 block">Data Início</Label>
+                  <Input
+                    type="date"
+                    value={dataInicio}
+                    onChange={(e) => setDataInicio(e.target.value)}
+                    className="w-40"
                   />
-                </PopoverContent>
-              </Popover>
+                </div>
+                <div>
+                  <Label className="text-xs font-medium mb-1 block">Data Fim</Label>
+                  <Input
+                    type="date"
+                    value={dataFim}
+                    onChange={(e) => setDataFim(e.target.value)}
+                    className="w-40"
+                  />
+                </div>
+              </div>
 
               {/* Scouters */}
               <Select value={selectedScouters[0] || 'all'} onValueChange={(value) => setSelectedScouters(value === 'all' ? [] : [value])}>
