@@ -3,41 +3,53 @@ import { AppShell } from '@/layouts/AppShell'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip as RTooltip } from 'recharts'
-import { TrendingUp, Calculator, Target, Calendar, Filter } from 'lucide-react'
+import { TrendingUp, Calculator, Target, Calendar, AlertCircle } from 'lucide-react'
+import { ProjectionFilters } from '@/components/projection/ProjectionFilters'
 import { 
-  fetchLinearProjection, 
+  fetchProjectionAdvanced, 
   getAvailableFilters, 
-  type LinearProjectionData, 
-  type ProjectionType 
+  type AdvancedProjectionData, 
+  type ProjectionType,
+  type Granularidade
 } from '@/repositories/projectionsRepo'
 import { getAppSettings } from '@/repositories/settingsRepo'
 import type { AppSettings } from '@/repositories/types'
 
 export default function ProjecaoPage() {
-  const [projectionData, setProjectionData] = useState<LinearProjectionData | null>(null)
+  const [projectionData, setProjectionData] = useState<AdvancedProjectionData | null>(null)
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [loading, setLoading] = useState(false)
   const [projectionType, setProjectionType] = useState<ProjectionType>('scouter')
-  const [selectedFilter, setSelectedFilter] = useState<string>('all')
+  const [selectedFilter, setSelectedFilter] = useState<string | undefined>(undefined)
+  const [granularidade, setGranularidade] = useState<Granularidade>('diaria')
   const [availableFilters, setAvailableFilters] = useState<{ scouters: string[], projetos: string[] }>({ 
     scouters: [], 
     projetos: [] 
   })
 
-  // Date inputs
-  const [dataInicio, setDataInicio] = useState(() => {
+  // Período de Análise - default: mês passado
+  const [dataInicioAnalise, setDataInicioAnalise] = useState(() => {
     const now = new Date()
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
-    return firstDay.toISOString().slice(0, 10)
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    return lastMonth.toISOString().slice(0, 10)
   })
-  const [dataFim, setDataFim] = useState(() => {
+  const [dataFimAnalise, setDataFimAnalise] = useState(() => {
     const now = new Date()
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-    return lastDay.toISOString().slice(0, 10)
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
+    return lastMonthEnd.toISOString().slice(0, 10)
+  })
+
+  // Período de Projeção - default: próximo mês
+  const [dataInicioProjecao, setDataInicioProjecao] = useState(() => {
+    const now = new Date()
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    return nextMonth.toISOString().slice(0, 10)
+  })
+  const [dataFimProjecao, setDataFimProjecao] = useState(() => {
+    const now = new Date()
+    const nextMonthEnd = new Date(now.getFullYear(), now.getMonth() + 2, 0)
+    return nextMonthEnd.toISOString().slice(0, 10)
   })
 
   useEffect(() => {
@@ -59,25 +71,22 @@ export default function ProjecaoPage() {
   }
 
   const fetchData = async () => {
-    if (!dataInicio || !dataFim) return
+    if (!dataInicioAnalise || !dataFimAnalise || !dataInicioProjecao || !dataFimProjecao) return
     
     setLoading(true)
     try {
-      const params: any = {
-        inicio: dataInicio,
-        fim: dataFim,
-        valor_ficha_padrao: settings?.valor_base_ficha || 10
+      const params = {
+        dataInicioAnalise,
+        dataFimAnalise,
+        dataInicioProj: dataInicioProjecao,
+        dataFimProj: dataFimProjecao,
+        granularidade,
+        valor_ficha_padrao: settings?.valor_base_ficha || 10,
+        ...(selectedFilter && projectionType === 'scouter' ? { scouter: selectedFilter } : {}),
+        ...(selectedFilter && projectionType === 'projeto' ? { projeto: selectedFilter } : {})
       }
 
-      if (selectedFilter && selectedFilter !== 'all') {
-        if (projectionType === 'scouter') {
-          params.scouter = selectedFilter
-        } else {
-          params.projeto = selectedFilter
-        }
-      }
-
-      const projection = await fetchLinearProjection(params)
+      const projection = await fetchProjectionAdvanced(params)
       setProjectionData(projection)
     } catch (error) {
       console.error('Error fetching projection:', error)
@@ -88,7 +97,7 @@ export default function ProjecaoPage() {
 
   const handleProjectionTypeChange = (type: ProjectionType) => {
     setProjectionType(type)
-    setSelectedFilter('all') // Reset filter when changing type
+    setSelectedFilter(undefined) // Reset filter when changing type
   }
 
   const fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -96,24 +105,30 @@ export default function ProjecaoPage() {
 
   // Prepare chart data
   const chartData = projectionData ? [
-    ...projectionData.serie_real.map(item => ({
+    ...projectionData.serie_analise.map(item => ({
       dia: item.dia,
       data: new Date(item.dia).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
       realizado: item.acumulado,
       projetado: null,
-      type: 'real'
+      type: 'analise'
     })),
-    ...projectionData.serie_proj.map(item => ({
+    ...projectionData.serie_projecao.map(item => ({
       dia: item.dia,
       data: new Date(item.dia).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
       realizado: null,
       projetado: item.acumulado,
-      type: 'proj'
+      type: 'projecao'
     }))
   ].sort((a, b) => a.dia.localeCompare(b.dia)) : []
 
   const availableOptions = projectionType === 'scouter' ? availableFilters.scouters : availableFilters.projetos
   const filterLabel = projectionType === 'scouter' ? 'Scouter' : 'Projeto'
+
+  const granularidadeLabel = {
+    'diaria': 'dia',
+    'semanal': 'semana',
+    'mensal': 'mês'
+  }
 
   if (loading) {
     return (
@@ -132,96 +147,67 @@ export default function ProjecaoPage() {
     <AppShell sidebar={<Sidebar />}>
       <div className="space-y-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">Projeções Lineares</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Projeções Avançadas</h1>
           <p className="text-muted-foreground">
-            Análise de projeção diária baseada na performance do período selecionado
+            Análise com períodos separados e granularidade configurável (diária, semanal ou mensal)
           </p>
         </div>
 
         {/* Filtros */}
-        <Card className="rounded-2xl">
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Filter className="h-5 w-5" />
-              Configuração da Projeção
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <Label className="text-sm font-medium mb-2 block">Data Início</Label>
-                <Input
-                  type="date"
-                  value={dataInicio}
-                  onChange={(e) => setDataInicio(e.target.value)}
-                />
-              </div>
+        <ProjectionFilters
+          projectionType={projectionType}
+          selectedFilter={selectedFilter}
+          availableScouters={availableFilters.scouters}
+          availableProjetos={availableFilters.projetos}
+          dataInicioAnalise={dataInicioAnalise}
+          dataFimAnalise={dataFimAnalise}
+          dataInicioProjecao={dataInicioProjecao}
+          dataFimProjecao={dataFimProjecao}
+          granularidade={granularidade}
+          onProjectionTypeChange={handleProjectionTypeChange}
+          onSelectedFilterChange={setSelectedFilter}
+          onDataInicioAnaliseChange={setDataInicioAnalise}
+          onDataFimAnaliseChange={setDataFimAnalise}
+          onDataInicioProjecaoChange={setDataInicioProjecao}
+          onDataFimProjecaoChange={setDataFimProjecao}
+          onGranularidadeChange={setGranularidade}
+        />
 
-              <div>
-                <Label className="text-sm font-medium mb-2 block">Data Fim</Label>
-                <Input
-                  type="date"
-                  value={dataFim}
-                  onChange={(e) => setDataFim(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium mb-2 block">Tipo de Análise</Label>
-                <Select value={projectionType} onValueChange={(value: ProjectionType) => handleProjectionTypeChange(value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="scouter">Por Scouter</SelectItem>
-                    <SelectItem value="projeto">Por Projeto</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label className="text-sm font-medium mb-2 block">{filterLabel} Específico</Label>
-                <Select
-                  value={selectedFilter}
-                  onValueChange={setSelectedFilter}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={`Todos os ${projectionType === 'scouter' ? 'scouters' : 'projetos'}`} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os {projectionType === 'scouter' ? 'scouters' : 'projetos'}</SelectItem>
-                    {availableOptions.map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {option}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <Button onClick={fetchData} className="flex items-center gap-2">
-                <Calculator className="h-4 w-4" />
-                Calcular Projeção
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex justify-end">
+          <Button onClick={fetchData} className="flex items-center gap-2" size="lg">
+            <Calculator className="h-4 w-4" />
+            Calcular Projeção
+          </Button>
+        </div>
 
         {projectionData && (
           <>
+            {/* Fallback Warning */}
+            {projectionData.fallbackUsado && (
+              <Card className="rounded-2xl border-yellow-500/50 bg-yellow-50">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-2 text-yellow-800">
+                    <AlertCircle className="h-5 w-5" />
+                    <p className="text-sm font-medium">
+                      Atenção: Não foram encontrados dados históricos para o {filterLabel} selecionado. 
+                      Usando média global de todos os {projectionType === 'scouter' ? 'scouters' : 'projetos'}.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card className="rounded-2xl">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Fichas Realizadas</CardTitle>
+                  <CardTitle className="text-sm font-medium">Fichas Analisadas</CardTitle>
                   <Target className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-blue-600">{fmtNumber.format(projectionData.realizado.fichas)}</div>
+                  <div className="text-3xl font-bold text-blue-600">{fmtNumber.format(projectionData.periodoAnalise.totalFichas)}</div>
                   <p className="text-xs text-muted-foreground">
-                    {projectionData.periodo.dias_passados} dias ({new Date(projectionData.periodo.inicio).toLocaleDateString('pt-BR')} - {new Date(projectionData.periodo.hoje_limite).toLocaleDateString('pt-BR')})
+                    {projectionData.periodoAnalise.dias} dias ({new Date(projectionData.periodoAnalise.inicio).toLocaleDateString('pt-BR')} - {new Date(projectionData.periodoAnalise.fim).toLocaleDateString('pt-BR')})
                   </p>
                 </CardContent>
               </Card>
@@ -233,7 +219,7 @@ export default function ProjecaoPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-blue-600">{fmtBRL.format(projectionData.realizado.valor)}</div>
-                  <p className="text-xs text-muted-foreground">Receita confirmada</p>
+                  <p className="text-xs text-muted-foreground">Receita do período de análise</p>
                 </CardContent>
               </Card>
 
@@ -243,9 +229,9 @@ export default function ProjecaoPage() {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-green-600">{fmtNumber.format(projectionData.total_projetado.fichas)}</div>
+                  <div className="text-3xl font-bold text-green-600">{fmtNumber.format(projectionData.projetado.fichas)}</div>
                   <p className="text-xs text-muted-foreground">
-                    Total até {new Date(projectionData.periodo.fim).toLocaleDateString('pt-BR')}
+                    {projectionData.periodoProjecao.dias} dias ({new Date(projectionData.periodoProjecao.inicio).toLocaleDateString('pt-BR')} - {new Date(projectionData.periodoProjecao.fim).toLocaleDateString('pt-BR')})
                   </p>
                 </CardContent>
               </Card>
@@ -256,8 +242,8 @@ export default function ProjecaoPage() {
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-green-600">{fmtBRL.format(projectionData.total_projetado.valor)}</div>
-                  <p className="text-xs text-muted-foreground">Receita estimada total</p>
+                  <div className="text-3xl font-bold text-green-600">{fmtBRL.format(projectionData.projetado.valor)}</div>
+                  <p className="text-xs text-muted-foreground">Receita estimada para período futuro</p>
                 </CardContent>
               </Card>
             </div>
@@ -266,11 +252,25 @@ export default function ProjecaoPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Card className="rounded-2xl">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Média Diária</CardTitle>
+                  <CardTitle className="text-sm font-medium">Média Diária (Análise)</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{projectionData.media_diaria.toFixed(1)} fichas/dia</div>
-                  <p className="text-xs text-muted-foreground">Com base no período realizado</p>
+                  <div className="text-2xl font-bold">{projectionData.periodoAnalise.mediaDiaria.toFixed(1)} fichas/dia</div>
+                  <p className="text-xs text-muted-foreground">Base para projeção</p>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-2xl">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Média por {granularidadeLabel[granularidade]}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {granularidade === 'semanal' && `${(projectionData.periodoAnalise.mediaDiaria * 7).toFixed(1)} fichas/semana`}
+                    {granularidade === 'mensal' && `${(projectionData.periodoAnalise.mediaDiaria * 30).toFixed(1)} fichas/mês`}
+                    {granularidade === 'diaria' && `${projectionData.periodoAnalise.mediaDiaria.toFixed(1)} fichas/dia`}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Granularidade: {granularidade}</p>
                 </CardContent>
               </Card>
 
@@ -280,17 +280,7 @@ export default function ProjecaoPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{fmtBRL.format(projectionData.valor_medio_por_ficha)}</div>
-                  <p className="text-xs text-muted-foreground">Média do período</p>
-                </CardContent>
-              </Card>
-
-              <Card className="rounded-2xl">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Dias Restantes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{projectionData.periodo.dias_restantes} dias</div>
-                  <p className="text-xs text-muted-foreground">Para projeção</p>
+                  <p className="text-xs text-muted-foreground">Média do período de análise</p>
                 </CardContent>
               </Card>
             </div>
@@ -298,9 +288,9 @@ export default function ProjecaoPage() {
             {/* Chart */}
             <Card className="rounded-2xl">
               <CardHeader>
-                <CardTitle>Projeção Linear - Fichas Acumuladas</CardTitle>
+                <CardTitle>Projeção - Fichas Acumuladas</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Linha contínua: realizado | Linha tracejada: projetado
+                  Linha contínua: período de análise | Linha tracejada: projeção futura
                 </p>
               </CardHeader>
               <CardContent className="h-80">
@@ -317,7 +307,7 @@ export default function ProjecaoPage() {
                       labelFormatter={(label) => `Data: ${label}`}
                       formatter={(value: number, name: string) => [
                         value !== null ? fmtNumber.format(value) : '-',
-                        name === 'realizado' ? 'Realizado' : 'Projetado'
+                        name === 'realizado' ? 'Analisado' : 'Projetado'
                       ]}
                     />
                     <Line 
@@ -327,7 +317,7 @@ export default function ProjecaoPage() {
                       strokeWidth={3}
                       dot={false}
                       connectNulls={false}
-                      name="Realizado"
+                      name="Analisado"
                     />
                     <Line 
                       type="monotone" 
@@ -347,24 +337,31 @@ export default function ProjecaoPage() {
             {/* Explanation */}
             <Card className="rounded-2xl">
               <CardHeader>
-                <CardTitle>Como Funciona a Projeção Linear</CardTitle>
+                <CardTitle>Como Funciona a Projeção Avançada</CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground space-y-2">
                 <p>
-                  <strong>Período Analisado:</strong> {new Date(projectionData.periodo.inicio).toLocaleDateString('pt-BR')} a {new Date(projectionData.periodo.fim).toLocaleDateString('pt-BR')} 
-                  ({projectionData.periodo.dias_totais} dias)
+                  <strong>Período de Análise:</strong> {new Date(projectionData.periodoAnalise.inicio).toLocaleDateString('pt-BR')} a {new Date(projectionData.periodoAnalise.fim).toLocaleDateString('pt-BR')} 
+                  ({projectionData.periodoAnalise.dias} dias, {projectionData.periodoAnalise.totalFichas} fichas)
                 </p>
                 <p>
-                  <strong>Dias Realizados:</strong> {projectionData.periodo.dias_passados} dias até {new Date(projectionData.periodo.hoje_limite).toLocaleDateString('pt-BR')}
+                  <strong>Período de Projeção:</strong> {new Date(projectionData.periodoProjecao.inicio).toLocaleDateString('pt-BR')} a {new Date(projectionData.periodoProjecao.fim).toLocaleDateString('pt-BR')} 
+                  ({projectionData.periodoProjecao.dias} dias, {projectionData.periodoProjecao.unidades} {granularidadeLabel[granularidade]}s)
                 </p>
                 <p>
-                  <strong>Lógica de Cálculo:</strong> A projeção utiliza a média diária de fichas do período realizado ({projectionData.media_diaria.toFixed(1)} fichas/dia) 
-                  multiplicada pelos {projectionData.periodo.dias_restantes} dias restantes.
+                  <strong>Lógica de Cálculo:</strong> A projeção utiliza a média diária de fichas do período de análise ({projectionData.periodoAnalise.mediaDiaria.toFixed(1)} fichas/dia) 
+                  multiplicada pelos {projectionData.periodoProjecao.dias} dias do período de projeção.
                 </p>
                 <p>
-                  <strong>Filtro Aplicado:</strong> {selectedFilter && selectedFilter !== 'all'
+                  <strong>Granularidade:</strong> {granularidade.charAt(0).toUpperCase() + granularidade.slice(1)} 
+                  {granularidade === 'semanal' && ` (média de ${(projectionData.periodoAnalise.mediaDiaria * 7).toFixed(1)} fichas por semana)`}
+                  {granularidade === 'mensal' && ` (média de ${(projectionData.periodoAnalise.mediaDiaria * 30).toFixed(1)} fichas por mês)`}
+                </p>
+                <p>
+                  <strong>Filtro Aplicado:</strong> {selectedFilter
                     ? `${filterLabel}: ${selectedFilter}` 
                     : `Todos os ${projectionType === 'scouter' ? 'scouters' : 'projetos'}`}
+                  {projectionData.fallbackUsado && ' (usando média global - fallback)'}
                 </p>
               </CardContent>
             </Card>
@@ -377,7 +374,7 @@ export default function ProjecaoPage() {
               <Calculator className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">Configure sua Projeção</h3>
               <p className="text-muted-foreground mb-4">
-                Selecione o período e os filtros desejados, depois clique em "Calcular Projeção"
+                Defina os períodos de análise e projeção, escolha a granularidade e clique em "Calcular Projeção"
               </p>
             </CardContent>
           </Card>

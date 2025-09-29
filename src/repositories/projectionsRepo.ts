@@ -18,6 +18,7 @@ export interface ProjectionData {
 }
 
 export type ProjectionType = 'scouter' | 'projeto';
+export type Granularidade = 'diaria' | 'semanal' | 'mensal';
 
 // New interfaces for linear projection
 export interface LinearProjectionData {
@@ -45,6 +46,36 @@ export interface LinearProjectionData {
   serie_proj: Array<{ dia: string; fichas: number; acumulado: number }>;
   media_diaria: number;
   valor_medio_por_ficha: number;
+}
+
+// Advanced projection with separate analysis and projection periods
+export interface AdvancedProjectionData {
+  periodoAnalise: {
+    inicio: string;
+    fim: string;
+    dias: number;
+    totalFichas: number;
+    mediaDiaria: number;
+  };
+  periodoProjecao: {
+    inicio: string;
+    fim: string;
+    dias: number;
+    unidades: number; // quantidade de dias/semanas/meses
+  };
+  granularidade: Granularidade;
+  realizado: {
+    fichas: number;
+    valor: number;
+  };
+  projetado: {
+    fichas: number;
+    valor: number;
+  };
+  fallbackUsado: boolean;
+  valor_medio_por_ficha: number;
+  serie_analise: Array<{ dia: string; fichas: number; acumulado: number }>;
+  serie_projecao: Array<{ dia: string; fichas: number; acumulado: number }>;
 }
 
 export async function getProjectionData(type: ProjectionType = 'scouter', selectedFilter?: string): Promise<ProjectionData[]> {
@@ -136,6 +167,164 @@ export async function fetchLinearProjection(p: ProjecaoFiltro): Promise<LinearPr
     valor_medio_por_ficha: +valor_medio_por_ficha.toFixed(2),
     serie_real,
     serie_proj
+  }
+}
+
+type ProjecaoFiltroAdvanced = {
+  dataInicioAnalise: string;
+  dataFimAnalise: string;
+  dataInicioProj: string;
+  dataFimProj: string;
+  granularidade: Granularidade;
+  scouter?: string;
+  projeto?: string;
+  valor_ficha_padrao?: number;
+}
+
+export async function fetchProjectionAdvanced(p: ProjecaoFiltroAdvanced): Promise<AdvancedProjectionData> {
+  const toISO = (d: Date) => toISODate(d)
+  
+  // Parse dates
+  const analiseInicio = new Date(p.dataInicioAnalise)
+  const analiseFim = new Date(p.dataFimAnalise)
+  const projInicio = new Date(p.dataInicioProj)
+  const projFim = new Date(p.dataFimProj)
+  
+  // Fetch data from Sheets
+  const rows = await GoogleSheetsService.fetchFichas()
+  const scFil = normalizeUpper(p.scouter)
+  const prFil = normalizeUpper(p.projeto)
+  
+  // Helper to filter by date range and scouter/projeto
+  const filterData = (dataInicio: Date, dataFim: Date, scouterFilter?: string, projetoFilter?: string) => {
+    return rows.filter((r: any) => {
+      const rawData = r["Criado"] || r["Data_criacao_Ficha"] || r["Data"] || r["criado"]
+      const iso = typeof rawData === "string" && rawData.includes("/")
+        ? parseDDMMYYYY(rawData)
+        : toISODate(new Date(rawData))
+      if (!iso) return false
+      if (iso < toISO(dataInicio) || iso > toISO(dataFim)) return false
+      if (scouterFilter && normalizeUpper(r["Gestão de Scouter"] ?? r["Scouter"] ?? r["Gestão do Scouter"]) !== scouterFilter) return false
+      if (projetoFilter && normalizeUpper(r["Projetos Cormeciais"] ?? r["Projetos Comerciais"] ?? r["Projetos"] ?? r["Projeto"]) !== projetoFilter) return false
+      ;(r as any).__iso = iso
+      return true
+    })
+  }
+  
+  // Get data for analysis period with specific filter
+  let fichasAnalise = filterData(analiseInicio, analiseFim, scFil, prFil)
+  let fallbackUsado = false
+  
+  // Fallback: if no data for specific scouter/projeto, use global average
+  if (fichasAnalise.length === 0 && (scFil || prFil)) {
+    if (scFil) {
+      // Try all scouters (no scouter filter)
+      fichasAnalise = filterData(analiseInicio, analiseFim, undefined, prFil)
+    } else if (prFil) {
+      // Try all projects (no project filter)
+      fichasAnalise = filterData(analiseInicio, analiseFim, scFil, undefined)
+    }
+    if (fichasAnalise.length > 0) {
+      fallbackUsado = true
+    }
+  }
+  
+  // Calculate analysis period metrics
+  const diasAnalise = Math.floor((+analiseFim - +analiseInicio) / 86400000) + 1
+  const totalFichasAnalise = fichasAnalise.length
+  const mediaDiaria = diasAnalise > 0 ? totalFichasAnalise / diasAnalise : 0
+  
+  // Calculate realized value
+  const valorRealizado = fichasAnalise.reduce((acc: number, r: any) => acc + (getValorFichaFromRow(r) || 0), 0)
+  const valor_medio_por_ficha = totalFichasAnalise > 0 ? (valorRealizado / totalFichasAnalise) : (p.valor_ficha_padrao ?? 0)
+  
+  // Calculate projection period metrics
+  const diasProjecao = Math.floor((+projFim - +projInicio) / 86400000) + 1
+  
+  // Calculate units based on granularity
+  let unidades: number
+  let mediaGranularidade: number
+  
+  switch (p.granularidade) {
+    case 'semanal':
+      unidades = Math.ceil(diasProjecao / 7)
+      mediaGranularidade = mediaDiaria * 7
+      break
+    case 'mensal':
+      unidades = Math.ceil(diasProjecao / 30)
+      mediaGranularidade = mediaDiaria * 30
+      break
+    case 'diaria':
+    default:
+      unidades = diasProjecao
+      mediaGranularidade = mediaDiaria
+      break
+  }
+  
+  // Calculate projection
+  const fichasProjetadas = Math.round(mediaDiaria * diasProjecao)
+  const valorProjetado = +(fichasProjetadas * valor_medio_por_ficha).toFixed(2)
+  
+  // Build analysis series
+  const serie_analise: Array<{ dia: string; fichas: number; acumulado: number }> = []
+  const mapCountAnalise: Record<string, number> = {}
+  
+  for (const r of fichasAnalise) {
+    const d = (r as any).__iso as string
+    mapCountAnalise[d] = (mapCountAnalise[d] ?? 0) + 1
+  }
+  
+  let cursor = new Date(analiseInicio)
+  let acc = 0
+  while (cursor <= analiseFim) {
+    const key = toISO(cursor)
+    const fichasDia = mapCountAnalise[key] ?? 0
+    acc += fichasDia
+    serie_analise.push({ dia: key, fichas: fichasDia, acumulado: acc })
+    cursor = new Date(+cursor + 86400000)
+  }
+  
+  // Build projection series
+  const serie_projecao: Array<{ dia: string; fichas: number; acumulado: number }> = []
+  const inicioAcc = acc // Start from end of analysis period
+  let projAcc = inicioAcc
+  let cursor2 = new Date(projInicio)
+  let daysCount = 0
+  
+  while (cursor2 <= projFim) {
+    daysCount++
+    projAcc = Math.round(inicioAcc + mediaDiaria * daysCount)
+    serie_projecao.push({ dia: toISO(cursor2), fichas: mediaDiaria, acumulado: projAcc })
+    cursor2 = new Date(+cursor2 + 86400000)
+  }
+  
+  return {
+    periodoAnalise: {
+      inicio: p.dataInicioAnalise,
+      fim: p.dataFimAnalise,
+      dias: diasAnalise,
+      totalFichas: totalFichasAnalise,
+      mediaDiaria: +mediaDiaria.toFixed(2)
+    },
+    periodoProjecao: {
+      inicio: p.dataInicioProj,
+      fim: p.dataFimProj,
+      dias: diasProjecao,
+      unidades
+    },
+    granularidade: p.granularidade,
+    realizado: {
+      fichas: totalFichasAnalise,
+      valor: +valorRealizado.toFixed(2)
+    },
+    projetado: {
+      fichas: fichasProjetadas,
+      valor: valorProjetado
+    },
+    fallbackUsado,
+    valor_medio_por_ficha: +valor_medio_por_ficha.toFixed(2),
+    serie_analise,
+    serie_projecao
   }
 }
 
