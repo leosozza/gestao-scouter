@@ -10,7 +10,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface DatePeriodFilterProps {
-  onPeriodChange: (period: { start: string; end: string } | null) => void;
+  onPeriodChange: (period: { start?: string; end?: string }) => void;
   selectedPeriod: { start: string; end: string } | null;
 }
 
@@ -43,7 +43,7 @@ export const DatePeriodFilter = ({ onPeriodChange, selectedPeriod }: DatePeriodF
     setStartDate(undefined);
     setEndDate(undefined);
     setIsSelectingStart(true);
-    onPeriodChange(null);
+    onPeriodChange({});
   };
 
   const resetSelection = () => {
@@ -75,12 +75,17 @@ export const DatePeriodFilter = ({ onPeriodChange, selectedPeriod }: DatePeriodF
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
-                mode="single"
-                selected={startDate}
-                onSelect={(date) => {
-                  setStartDate(date);
-                  setEndDate(undefined);
-                  setIsSelectingStart(false);
+                mode="range"
+                selected={{ from: startDate ?? undefined, to: endDate ?? undefined }}
+                onSelect={(range) => {
+                  // atualiza estados progressivamente
+                  if (range?.from) setStartDate(range.from);
+                  if (range?.to) setEndDate(range.to);
+
+                  // emite sempre que houver alguma mudança útil:
+                  const fromIso = range?.from ? format(range.from, "yyyy-MM-dd") : undefined;
+                  const toIso   = range?.to   ? format(range.to, "yyyy-MM-dd")   : undefined;
+                  onPeriodChange({ start: fromIso, end: toIso });
                 }}
                 initialFocus
                 className={cn("p-3 pointer-events-auto")}
@@ -104,17 +109,17 @@ export const DatePeriodFilter = ({ onPeriodChange, selectedPeriod }: DatePeriodF
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
-                mode="single"
-                selected={endDate}
-                onSelect={(date) => {
-                  if (date && startDate) {
-                    setEndDate(date);
-                    const period = {
-                      start: format(startDate, 'yyyy-MM-dd'),
-                      end: format(date, 'yyyy-MM-dd')
-                    };
-                    onPeriodChange(period);
-                  }
+                mode="range"
+                selected={{ from: startDate ?? undefined, to: endDate ?? undefined }}
+                onSelect={(range) => {
+                  // atualiza estados progressivamente
+                  if (range?.from) setStartDate(range.from);
+                  if (range?.to) setEndDate(range.to);
+
+                  // emite sempre que houver alguma mudança útil:
+                  const fromIso = range?.from ? format(range.from, "yyyy-MM-dd") : undefined;
+                  const toIso   = range?.to   ? format(range.to, "yyyy-MM-dd")   : undefined;
+                  onPeriodChange({ start: fromIso, end: toIso });
                 }}
                 disabled={(date) => !startDate || date < startDate}
                 initialFocus
