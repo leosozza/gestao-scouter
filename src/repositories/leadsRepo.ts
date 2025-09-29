@@ -128,16 +128,11 @@ function normalizeLeadFromBitrix(r: any): Lead {
 
 /** SHEETS */
 async function fetchAllLeadsFromSheets(params: LeadsFilters): Promise<Lead[]> {
-  console.log('fetchAllLeadsFromSheets: Iniciando com parâmetros:', params);
-  
   const { GoogleSheetsService } = await import('@/services/googleSheetsService');
   // Algumas implementações de fetchAllLeadsFromSheets não aceitam params.
   // Buscamos "cru" e filtramos aqui para evitar retorno vazio.
   const fichas = await GoogleSheetsService.fetchFichas();
-  console.log('fetchAllLeadsFromSheets: Fichas recebidas:', fichas.length, fichas);
-  
   const leads: Lead[] = (fichas ?? []).map(normalizeLeadFromSheets);
-  console.log('fetchAllLeadsFromSheets: Leads normalizados:', leads.length, leads);
 
   // Apply filters similar to other repositories
   const s = params.scouter ? normalizeUpper(params.scouter) : undefined;
@@ -154,20 +149,13 @@ async function fetchAllLeadsFromSheets(params: LeadsFilters): Promise<Lead[]> {
       const parts = dateStr.split('/');
       if (parts.length === 3) {
         const isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-        if (params.dataInicio && isoDate < params.dataInicio) {
-          console.log(`Filtering out by start date: ${dateStr} -> ${isoDate} < ${params.dataInicio}`);
-          return false;
-        }
-        if (params.dataFim && isoDate > params.dataFim) {
-          console.log(`Filtering out by end date: ${dateStr} -> ${isoDate} > ${params.dataFim}`);
-          return false;
-        }
+        if (params.dataInicio && isoDate < params.dataInicio) return false;
+        if (params.dataFim && isoDate > params.dataFim) return false;
       }
     }
     return true;
   });
   
-  console.log('fetchAllLeadsFromSheets: Leads filtrados:', filteredLeads.length, filteredLeads);
   return filteredLeads;
 }
 
@@ -206,9 +194,7 @@ function normalizeFichaFromSupabase(r: any): Lead {
 }
 
 function normalizeLeadFromSheets(f: any, idx?: number): Lead {
-  console.log('normalizeLeadFromSheets: Processando ficha:', f);
-  
-  const lead = {
+  return {
     id: Number(f.ID) ?? (idx != null ? idx : 0),
     projetos: f.Projetos ?? f['Projetos Cormeciais'] ?? f['Agencia e Seletivas'] ?? 'Sem Projeto',
     scouter: f.Scouter ?? f['Gestão de Scouter'] ?? 'Desconhecido',
@@ -237,9 +223,6 @@ function normalizeLeadFromSheets(f: any, idx?: number): Lead {
     agendado: f.Agendado ?? undefined,
     qdoagendou: f.Qdoagendou ?? undefined,
   };
-  
-  console.log('normalizeLeadFromSheets: Lead processado:', lead);
-  return lead;
 }
 
 /** Helpers comuns */
