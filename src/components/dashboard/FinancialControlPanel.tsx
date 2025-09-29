@@ -9,11 +9,12 @@ import { PaymentSummary } from "./PaymentSummary";
 import { CostAllowanceManager } from "./CostAllowanceManager";
 import { formatCurrency, parseFichaValue } from "@/utils/formatters";
 import { FinancialFilterState } from "./FinancialFilters";
+import type { Ficha, Project } from "@/repositories/types";
 
 interface FinancialControlPanelProps {
-  fichasFiltradas?: any[];
-  fichas?: any[]; // Add this to support the prop from Dashboard
-  projetos: any[];
+  fichasFiltradas?: Ficha[];
+  fichas?: Ficha[]; // Add this to support the prop from Dashboard
+  projetos: Project[];
   selectedFichas: Set<string>;
   onSelectionChange: (ids: Set<string>) => void;
   filterType: string;

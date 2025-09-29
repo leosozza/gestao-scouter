@@ -1,5 +1,6 @@
 // Mock data service to simulate Google Sheets data for development/testing
 // This provides realistic sample data when external APIs are unavailable
+import type { Ficha, Project } from '@/repositories/types';
 
 export class MockDataService {
   private static readonly sampleFichas = [
@@ -173,7 +174,7 @@ export class MockDataService {
     }
   ];
 
-  static async fetchFichas(): Promise<any[]> {
+  static async fetchFichas(): Promise<Ficha[]> {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 300));
     
@@ -197,7 +198,7 @@ export class MockDataService {
     return processedFichas;
   }
 
-  static async fetchProjetos(): Promise<any[]> {
+  static async fetchProjetos(): Promise<Project[]> {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 200));
     
@@ -216,7 +217,7 @@ export class MockDataService {
     return processedProjetos;
   }
 
-  static async fetchMetasScouter(): Promise<any[]> {
+  static async fetchMetasScouter(): Promise<Record<string, unknown>[]> {
     console.log('MockDataService: Retornando array vazio para metas (não implementado)');
     return [];
   }
@@ -290,7 +291,7 @@ export class MockDataService {
     return date instanceof Date && !isNaN(date.getTime()) && date.getFullYear() > 1900;
   }
 
-  static async testConnection(): Promise<{ success: boolean; message: string; data?: any }> {
+  static async testConnection(): Promise<{ success: boolean; message: string; data?: unknown }> {
     const [fichas, projetos] = await Promise.all([
       this.fetchFichas(),
       this.fetchProjetos()

@@ -7,6 +7,7 @@ import { formatCurrency, parseFichaValue } from "@/utils/formatters";
 import { getValorFichaFromRow } from "@/utils/values";
 import { useToast } from "@/hooks/use-toast";
 import { FinancialFilterState } from "./FinancialFilters";
+import type { Ficha, Project } from "@/repositories/types";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,10 +17,10 @@ import {
 import { PDFReportService } from "@/services/pdfReportService";
 
 interface PaymentSummaryProps {
-  fichasFiltradas: any[];
+  fichasFiltradas: Ficha[];
   filterType: string;
   filterValue: string;
-  projetos: any[];
+  projetos: Project[];
   selectedPeriod?: { start: string; end: string } | null;
   filters?: FinancialFilterState;
 }
@@ -86,7 +87,7 @@ export const PaymentSummary = ({
   const valorTotalCompleto = valorTotalFichasAPagar + valorAjudaCusto;
 
   // Função para calcular detalhes por scouter
-  const calcularDetalhesPorScouter = (fichas: any[]) => {
+  const calcularDetalhesPorScouter = (fichas: Ficha[]) => {
     const scouterData: Record<string, {
       nome: string;
       quantidadeFichas: number;
