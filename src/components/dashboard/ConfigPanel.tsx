@@ -11,15 +11,17 @@ import { GoogleSheetsService } from "@/services/googleSheetsService";
 import { TemplateModal } from "./TemplateModal";
 import { IntegrationsPanel } from "./integrations/IntegrationsPanel";
 
+interface ConfigData {
+  spreadsheetUrl: string;
+  ajudaCustoDiaria: number;
+  valorPorFicha: number;
+}
+
 interface ConfigPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfigUpdate: (config: any) => void;
-  currentConfig: {
-    spreadsheetUrl: string;
-    ajudaCustoDiaria: number;
-    valorPorFicha: number;
-  };
+  onConfigUpdate: (config: ConfigData) => void;
+  currentConfig: ConfigData;
 }
 
 export const ConfigPanel = ({ isOpen, onClose, onConfigUpdate, currentConfig }: ConfigPanelProps) => {

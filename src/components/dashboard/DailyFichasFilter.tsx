@@ -8,9 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Calendar, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { formatCurrency, parseFichaValue } from "@/utils/formatters";
+import type { Ficha } from "@/repositories/types";
 
 interface DailyFichasFilterProps {
-  fichas: any[];
+  fichas: Ficha[];
   selectedPeriod: { start: string; end: string } | null;
 }
 
@@ -36,7 +37,7 @@ export const DailyFichasFilter = ({ fichas, selectedPeriod }: DailyFichasFilterP
     }
     acc[dateKey].push(ficha);
     return acc;
-  }, {} as Record<string, any[]>);
+  }, {} as Record<string, Ficha[]>);
 
   // Ordenar datas
   const datasOrdenadas = Object.keys(fichasPorDia).sort().reverse();
