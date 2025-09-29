@@ -6,10 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Filter, X } from "lucide-react";
 import { DateRange } from "react-day-picker";
+import type { Ficha, Project } from "@/repositories/types";
 
 interface FinancialFiltersProps {
-  fichas: any[];
-  projetos: any[];
+  fichas: Ficha[];
+  projetos: Project[];
   onFiltersChange: (filters: FinancialFilterState) => void;
 }
 

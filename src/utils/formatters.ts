@@ -38,7 +38,7 @@ export const parseCurrencyBR = (value: string): number => {
 };
 
 // FUNÇÃO DEBUGADA para parsing de valores de fichas
-export const parseFichaValue = (valorString: any, fichaId?: string): number => {
+export const parseFichaValue = (valorString: unknown, fichaId?: string): number => {
   console.log(`[FICHA VALUE DEBUG] Ficha ${fichaId}:`);
   console.log(`  - Valor original:`, valorString);
   console.log(`  - Tipo:`, typeof valorString);

@@ -29,7 +29,7 @@ export function toISO(dateString: string): string {
   return date.toISOString();
 }
 
-export function safeNumber(value: any): number {
+export function safeNumber(value: unknown): number {
   if (typeof value === 'number') return value;
   if (!value) return 0;
   

@@ -1,8 +1,9 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FinancialFilterState } from "./FinancialFilters";
+import type { Project } from "@/repositories/types";
 
 interface ProjectFiltersProps {
-  projetos: any[];
+  projetos: Project[];
   filters: FinancialFilterState;
   setFilters: (filters: FinancialFilterState) => void;
 }

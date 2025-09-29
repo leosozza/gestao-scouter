@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
         rewrite: (path) => {
           // Convert /api/sheets/spreadsheetId/gid to proper Google Sheets URL
-          const match = path.match(/\/api\/sheets\/([^\/]+)\/(.+)/);
+          const match = path.match(/\/api\/sheets\/([^/]+)\/(.+)/);
           if (match) {
             const [, spreadsheetId, gid] = match;
             return `/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;

@@ -1,6 +1,7 @@
 // Simplified service since we're now using the new fichas structure
+import type { Ficha } from '@/repositories/types';
 
-export async function syncLeadsToSupabase(rawLeads: any[], userId?: string): Promise<{
+export async function syncLeadsToSupabase(rawLeads: Ficha[], userId?: string): Promise<{
   processed: number;
   created: number;
   updated: number;
