@@ -128,24 +128,47 @@ function normalizeLeadFromBitrix(r: any): Lead {
 
 /** SHEETS */
 async function fetchAllLeadsFromSheets(params: LeadsFilters): Promise<Lead[]> {
+  console.log('fetchAllLeadsFromSheets: Iniciando com parâmetros:', params);
+  
   const { GoogleSheetsService } = await import('@/services/googleSheetsService');
   // Algumas implementações de fetchAllLeadsFromSheets não aceitam params.
   // Buscamos "cru" e filtramos aqui para evitar retorno vazio.
   const fichas = await GoogleSheetsService.fetchFichas();
+  console.log('fetchAllLeadsFromSheets: Fichas recebidas:', fichas.length, fichas);
+  
   const leads: Lead[] = (fichas ?? []).map(normalizeLeadFromSheets);
+  console.log('fetchAllLeadsFromSheets: Leads normalizados:', leads.length, leads);
 
   // Apply filters similar to other repositories
   const s = params.scouter ? normalizeUpper(params.scouter) : undefined;
   const p = params.projeto ? normalizeUpper(params.projeto) : undefined;
   
-  return leads.filter((l: any) => {
+  const filteredLeads = leads.filter((l: any) => {
     if (s && normalizeUpper(l.scouter ?? '') !== s) return false;
     if (p && normalizeUpper(l.projetos ?? '') !== p) return false;
-    const iso = (l.criado ?? l["Criado"] ?? l["Data_criacao_Ficha"] ?? l["Data"] ?? "").slice(0,10);
-    if (params.dataInicio && iso && iso < params.dataInicio) return false; // aplica só se existir
-    if (params.dataFim && iso && iso > params.dataFim) return false;     // aplica só se existir
+    
+    // Convert DD/MM/YYYY to YYYY-MM-DD for comparison
+    const dateStr = l.criado ?? l["Criado"] ?? l["Data_criacao_Ficha"] ?? l["Data"] ?? "";
+    if (dateStr && (params.dataInicio || params.dataFim)) {
+      // Parse DD/MM/YYYY format
+      const parts = dateStr.split('/');
+      if (parts.length === 3) {
+        const isoDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        if (params.dataInicio && isoDate < params.dataInicio) {
+          console.log(`Filtering out by start date: ${dateStr} -> ${isoDate} < ${params.dataInicio}`);
+          return false;
+        }
+        if (params.dataFim && isoDate > params.dataFim) {
+          console.log(`Filtering out by end date: ${dateStr} -> ${isoDate} > ${params.dataFim}`);
+          return false;
+        }
+      }
+    }
     return true;
   });
+  
+  console.log('fetchAllLeadsFromSheets: Leads filtrados:', filteredLeads.length, filteredLeads);
+  return filteredLeads;
 }
 
 function normalizeFichaFromSupabase(r: any): Lead {
@@ -183,7 +206,9 @@ function normalizeFichaFromSupabase(r: any): Lead {
 }
 
 function normalizeLeadFromSheets(f: any, idx?: number): Lead {
-  return {
+  console.log('normalizeLeadFromSheets: Processando ficha:', f);
+  
+  const lead = {
     id: Number(f.ID) ?? (idx != null ? idx : 0),
     projetos: f.Projetos ?? f['Projetos Cormeciais'] ?? f['Agencia e Seletivas'] ?? 'Sem Projeto',
     scouter: f.Scouter ?? f['Gestão de Scouter'] ?? 'Desconhecido',
@@ -212,6 +237,9 @@ function normalizeLeadFromSheets(f: any, idx?: number): Lead {
     agendado: f.Agendado ?? undefined,
     qdoagendou: f.Qdoagendou ?? undefined,
   };
+  
+  console.log('normalizeLeadFromSheets: Lead processado:', lead);
+  return lead;
 }
 
 /** Helpers comuns */
