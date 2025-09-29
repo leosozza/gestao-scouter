@@ -1,6 +1,7 @@
 import { getDataSource } from './datasource';
 import { supabase } from '@/integrations/supabase/client';
 import { normalize } from '@/utils/normalize';
+import { GoogleSheetsService } from '@/services/googleSheetsService';
 
 export interface ScouterData {
   id: string;
@@ -58,7 +59,7 @@ async function fetchScoutersFromSupabase(): Promise<ScouterData[]> {
 
 async function fetchScoutersFromSheets(): Promise<ScouterData[]> {
   try {
-    const { GoogleSheetsService } = await import('@/services/googleSheetsService');
+    // usar a mesma fonte e TTL do GoogleSheetsService
     const fichas = await GoogleSheetsService.fetchFichas();
     
     // Group fichas by scouter

@@ -16,6 +16,7 @@ import {
 } from '@/repositories/projectionsRepo'
 import { getAppSettings } from '@/repositories/settingsRepo'
 import type { AppSettings } from '@/repositories/types'
+import { useSync } from '@/hooks/useSync'
 
 export default function ProjecaoPage() {
   const [projectionData, setProjectionData] = useState<LinearProjectionData | null>(null)
@@ -27,6 +28,7 @@ export default function ProjecaoPage() {
     scouters: [], 
     projetos: [] 
   })
+  const { state: syncState, refresh } = useSync()
 
   // Date inputs
   const [dataInicio, setDataInicio] = useState(() => {
@@ -136,6 +138,14 @@ export default function ProjecaoPage() {
           <p className="text-muted-foreground">
             Análise de projeção diária baseada na performance do período selecionado
           </p>
+        </div>
+
+        {/* Sincronização manual aqui também */}
+        <div className="flex items-center gap-2 mb-2">
+          <Button variant="secondary" onClick={refresh} disabled={syncState === "syncing"}>
+            {syncState === "syncing" ? "Sincronizando..." : "Recarregar dados"}
+          </Button>
+          <small className="opacity-70">Estado: {syncState}</small>
         </div>
 
         {/* Filtros */}

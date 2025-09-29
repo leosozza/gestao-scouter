@@ -67,6 +67,7 @@ export async function fetchLinearProjection(p: ProjecaoFiltro): Promise<LinearPr
   const dtTo = toISO(To)
 
   // Busca do Sheets para ficar idêntico ao dashboard
+  // Respeita TTL e permite "Refresh agora" via useSync()
   const rows = await GoogleSheetsService.fetchFichas()
   const scFil = normalizeUpper(p.scouter)
   const prFil = normalizeUpper(p.projeto)

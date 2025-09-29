@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Lead, LeadsFilters } from './types';
 import { normalizeUpper } from '@/utils/normalize';
+import { GoogleSheetsService } from '@/services/googleSheetsService';
 
 // fonte atual (ajuste se você já tem outro lugar)
 function getDataSource(): 'bitrix' | 'sheets' { 
@@ -128,9 +129,9 @@ function normalizeLeadFromBitrix(r: any): Lead {
 
 /** SHEETS */
 async function fetchAllLeadsFromSheets(params: LeadsFilters): Promise<Lead[]> {
-  const { GoogleSheetsService } = await import('@/services/googleSheetsService');
-  const fichas = await GoogleSheetsService.fetchFichas();
-  const leads: Lead[] = (fichas ?? []).map(normalizeLeadFromSheets);
+  // Garantir dados atualizados (respeita TTL)
+  const data = await GoogleSheetsService.fetchFichas();
+  const leads: Lead[] = (data ?? []).map(normalizeLeadFromSheets);
 
   // Apply filters similar to other repositories
   const s = params.scouter ? normalizeUpper(params.scouter) : undefined;

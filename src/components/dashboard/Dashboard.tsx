@@ -16,6 +16,8 @@ import { FinancialControlPanel } from "./FinancialControlPanel";
 import { FinancialFilters, FinancialFilterState } from "./FinancialFilters";
 import { supabase } from "@/integrations/supabase/client";
 import { AIAnalysis } from "@/components/shared/AIAnalysis";
+import { useSync } from "@/hooks/useSync";
+import { Button } from "@/components/ui/button";
 
 interface DashboardProps {
   onLogout: () => void;
@@ -35,6 +37,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   });
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { state: syncState, refresh } = useSync();
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -172,6 +175,16 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
           {/* AI Analysis na primeira aba/seção do dashboard */}
           <div className="mt-2">
             <AIAnalysis />
+          </div>
+
+          {/* Botão de sincronização manual */}
+          <div className="flex items-center gap-2 my-2">
+            <Button variant="secondary" onClick={refresh} disabled={syncState === "syncing"}>
+              {syncState === "syncing" ? "Sincronizando..." : "Recarregar dados agora"}
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Estado: {syncState}
+            </span>
           </div>
 
           {activeView === "table" && (
