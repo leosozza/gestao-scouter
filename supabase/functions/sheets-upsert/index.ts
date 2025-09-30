@@ -97,6 +97,7 @@ serve(async (req) => {
     const result = await upsertRows(rows);
     return new Response(JSON.stringify(result), { status: 200, headers: { "Content-Type": "application/json" }});
   } catch (e) {
-    return new Response(`error:${e.message}`, { status: 500 });
+    const message = e instanceof Error ? e.message : 'Unknown error';
+    return new Response(`error:${message}`, { status: 500 });
   }
 });

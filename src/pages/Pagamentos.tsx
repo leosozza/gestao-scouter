@@ -8,6 +8,7 @@ import { DataTable } from '@/components/shared/DataTable'
 import { FilterHeader } from '@/components/shared/FilterHeader'
 import { Calendar, DollarSign, CreditCard, FileText, Users, TrendingUp } from 'lucide-react'
 import { getLeads } from '@/repositories/leadsRepo'
+import { getValorFichaFromRow } from '@/utils/values'
 
 export default function Pagamentos() {
   const [pagamentos, setPagamentos] = useState<any[]>([])
@@ -113,12 +114,14 @@ export default function Pagamentos() {
           scouterStats.set(lead.scouter, {
             scouter: lead.scouter,
             fichas: 0,
-            convertidos: 0
+            convertidos: 0,
+            somaValorFichas: 0
           })
         }
         
         const stats = scouterStats.get(lead.scouter)
         stats.fichas++
+        stats.somaValorFichas += getValorFichaFromRow(lead)
         
         if (lead.etapa === 'Convertido') {
           stats.convertidos++
@@ -126,18 +129,21 @@ export default function Pagamentos() {
       })
       
       // Converter para dados de pagamento
-      const pagamentosData = Array.from(scouterStats.values()).map((stats, index) => ({
-        id: index + 1,
-        scouter: stats.scouter,
-        periodo: '2024-01-01 - 2024-01-07',
-        fichas: stats.fichas,
-        valorFicha: getValorFichaPorTier(stats.fichas),
-        ajudaCusto: getAjudaCustoPorTier(stats.fichas),
-        bonusQuality: stats.convertidos * 5, // R$ 5 por conversão
-        valorTotal: 0,
-        status: ['Pago', 'Pendente', 'Processando'][Math.floor(Math.random() * 3)],
-        dataPagamento: Math.random() > 0.5 ? '2024-01-15' : null
-      }))
+      const pagamentosData = Array.from(scouterStats.values()).map((stats, index) => {
+        const valorMedioFicha = stats.fichas > 0 ? stats.somaValorFichas / stats.fichas : 0
+        return {
+          id: index + 1,
+          scouter: stats.scouter,
+          periodo: '2024-01-01 - 2024-01-07',
+          fichas: stats.fichas,
+          valorFicha: valorMedioFicha,
+          ajudaCusto: getAjudaCustoPorTier(stats.fichas),
+          bonusQuality: stats.convertidos * 5, // R$ 5 por conversão
+          valorTotal: 0,
+          status: ['Pago', 'Pendente', 'Processando'][Math.floor(Math.random() * 3)],
+          dataPagamento: Math.random() > 0.5 ? '2024-01-15' : null
+        }
+      })
       
       // Calcular valor total
       pagamentosData.forEach(p => {

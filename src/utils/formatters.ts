@@ -24,6 +24,9 @@ export const formatCurrency = (value: number): string => {
   }).format(value);
 };
 
+// Alias for compatibility
+export const formatBRL = formatCurrency;
+
 export const parseCurrencyBR = (value: string): number => {
   if (!value || typeof value !== 'string') return 0;
   
