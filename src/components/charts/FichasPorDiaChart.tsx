@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from "recharts";
 import { format, eachDayOfInterval, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -53,9 +53,25 @@ export default function FichasPorDiaChart({ startDate, endDate, rows, height = 2
     });
   }, [startDate, endDate, rows]);
 
+  const renderCustomizedLabel = (props: any) => {
+    const { x, y, width, value } = props;
+    return (
+      <text
+        x={x + width / 2}
+        y={y - 5}
+        fill="hsl(var(--foreground))"
+        textAnchor="middle"
+        fontSize="12"
+        fontWeight="500"
+      >
+        {value}
+      </text>
+    );
+  };
+
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={chartData}>
+      <BarChart data={chartData} margin={{ top: 25, right: 10, left: 10, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
         <XAxis 
           dataKey="date" 
@@ -78,7 +94,9 @@ export default function FichasPorDiaChart({ startDate, endDate, rows, height = 2
           dataKey="fichas" 
           fill="hsl(var(--primary))" 
           radius={[4, 4, 0, 0]}
-        />
+        >
+          <LabelList content={renderCustomizedLabel} />
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );
