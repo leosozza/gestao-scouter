@@ -37,6 +37,12 @@ import FichasPorDiaChart from '@/components/charts/FichasPorDiaChart';
 import AIInsightsPanel from '@/components/insights/AIInsightsPanel';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { calculateAverageIQS, calculateTabulationMetrics } from '@/utils/iqsCalculation';
+import { 
+  calculateWorkingHours, 
+  calculateAverageTimeBetweenFichas,
+  formatHoursToReadable,
+  formatMinutesToReadable
+} from '@/utils/scouterMetrics';
 
 interface PerformanceMetrics {
   totalFichas: number;
@@ -52,6 +58,8 @@ interface PerformanceMetrics {
   semContato: number;
   semInteresseMomento: number;
   iqsMedio: number;
+  horasTrabalhadasMedia: number;
+  tempoMedioEntreFichas: number;
 }
 
 export function PerformanceDashboard() {
@@ -73,7 +81,9 @@ export function PerformanceDashboard() {
     semInteresseDefinitivo: 0,
     semContato: 0,
     semInteresseMomento: 0,
-    iqsMedio: 0
+    iqsMedio: 0,
+    horasTrabalhadasMedia: 0,
+    tempoMedioEntreFichas: 0
   });
 
   // Filters state - use string dates like in Projeção page
@@ -145,6 +155,10 @@ export function PerformanceDashboard() {
       ? calculateAverageIQS(data, settings) 
       : 0;
 
+    // Calcular métricas de tempo de trabalho
+    const workingHoursData = calculateWorkingHours(data);
+    const timeBetweenFichasData = calculateAverageTimeBetweenFichas(data);
+
     setMetrics({
       totalFichas: total,
       comFoto,
@@ -158,7 +172,9 @@ export function PerformanceDashboard() {
       semInteresseDefinitivo: tabulationMetrics.semInteresseDefinitivo,
       semContato: tabulationMetrics.semContato,
       semInteresseMomento: tabulationMetrics.semInteresseMomento,
-      iqsMedio: Number(iqsMedio.toFixed(1))
+      iqsMedio: Number(iqsMedio.toFixed(1)),
+      horasTrabalhadasMedia: workingHoursData.averageHoursPerDay,
+      tempoMedioEntreFichas: timeBetweenFichasData.averageMinutes
     });
   };
 
@@ -206,13 +222,17 @@ export function PerformanceDashboard() {
           <div className="space-y-2">
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
             <div className="space-y-1">
-              {typeof value === 'number' && value !== undefined ? (
-                <p className="text-2xl font-bold">{value.toLocaleString('pt-BR')}</p>
+              {typeof value === 'string' ? (
+                <p className="text-2xl font-bold">{value}</p>
+              ) : typeof value === 'number' && value !== undefined ? (
+                <>
+                  <p className="text-2xl font-bold">{value.toLocaleString('pt-BR')}</p>
+                  {percentage && (
+                    <p className="text-lg font-semibold text-foreground">{percentage}%</p>
+                  )}
+                </>
               ) : (
                 <p className="text-2xl font-bold">{percentage || '0.0%'}</p>
-              )}
-              {percentage && typeof value === 'number' && (
-                <p className="text-lg font-semibold text-foreground">{percentage}%</p>
               )}
             </div>
           </div>
@@ -459,6 +479,22 @@ export function PerformanceDashboard() {
           icon={Clock}
           iconColor="text-yellow-600"
           bgColor="bg-yellow-100"
+        />
+
+        <MetricCard
+          title="Horas Trabalhadas (Média/Dia)"
+          value={formatHoursToReadable(metrics.horasTrabalhadasMedia)}
+          icon={Clock}
+          iconColor="text-indigo-600"
+          bgColor="bg-indigo-100"
+        />
+
+        <MetricCard
+          title="Tempo Médio Entre Fichas"
+          value={formatMinutesToReadable(metrics.tempoMedioEntreFichas)}
+          icon={Clock}
+          iconColor="text-teal-600"
+          bgColor="bg-teal-100"
         />
       </div>
 
