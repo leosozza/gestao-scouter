@@ -1,10 +1,6 @@
 import { ReactNode } from 'react'
-import { Layers3, Menu, Search } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Layers3 } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { DataSourceSelector } from '@/components/dashboard/integrations/DataSourceSelector'
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar'
 
 interface AppShellProps {
@@ -30,31 +26,7 @@ export function AppShell({ sidebar, children }: AppShellProps) {
               </div>
             </div>
             
-            <div className="hidden md:block max-w-xl w-full px-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Buscar por scouter, projeto…" 
-                  className="pl-9 rounded-2xl" 
-                  aria-label="Buscar"
-                />
-              </div>
-            </div>
-            
             <div className="flex items-center gap-3">
-              <Select defaultValue="ult-6s">
-                <SelectTrigger className="w-40 rounded-xl">
-                  <SelectValue placeholder="Período"/>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ult-4s">Últimas 4 semanas</SelectItem>
-                  <SelectItem value="ult-6s">Últimas 6 semanas</SelectItem>
-                  <SelectItem value="mes">Mês atual</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <DataSourceSelector />
-              
               <Avatar className="h-8 w-8">
                 <AvatarFallback>GS</AvatarFallback>
               </Avatar>
