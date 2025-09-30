@@ -5,6 +5,7 @@ Sistema completo de gerenciamento para scouters com dashboard analítico, contro
 ## 🚀 Funcionalidades
 
 - **Dashboard Analítico**: Métricas em tempo real com gráficos e indicadores
+- **Sistema IQS 2.0**: Índice de Qualidade do Scouter com pesos configuráveis
 - **Gerenciamento de Fichas**: Controle completo de leads e conversões
 - **Sistema de Pagamentos**: Gestão financeira com controle de ajuda de custo
 - **Integração Google Sheets**: Sincronização automática com planilhas
@@ -21,6 +22,64 @@ Sistema completo de gerenciamento para scouters com dashboard analítico, contro
 - **Gráficos**: Recharts
 - **Relatórios**: jsPDF + AutoTable
 - **Estado**: TanStack Query + React Hooks
+
+## 📊 Sistema IQS 2.0 (Índice de Qualidade do Scouter)
+
+### O que é o IQS?
+
+O IQS é um indicador que mede a qualidade do trabalho do scouter baseado em métricas ponderadas. Cada ação realizada pelo scouter (foto, confirmação, contato, etc.) tem um peso configurável que contribui para o cálculo final do índice.
+
+### Como Configurar o IQS
+
+1. **Acesse a Página de Configurações**
+   - Menu lateral → Configurações
+   - Ou clique no ícone de engrenagem no dashboard
+
+2. **Aba "Parâmetros"**
+   - **Valor Base Ficha**: Valor padrão em R$ para cada ficha
+   - **Quality Threshold**: Limite mínimo para considerar uma ficha de qualidade (%)
+   - **Pesos**: Configure o peso de cada métrica (0.0 a 10.0):
+     - Peso Foto
+     - Peso Confirmada
+     - Peso Contato
+     - Peso Agendado
+     - Peso Compareceu
+     - Peso Interesse
+     - Peso Conclusão Positiva
+     - Peso Conclusão Negativa
+     - Peso Sem Interesse Definitivo
+     - Peso Sem Contato
+     - Peso Sem Interesse no Momento
+
+3. **Aba "Classificações"**
+   - Configure a ajuda de custo (R$/semana) para cada tier:
+     - Bronze
+     - Prata
+     - Ouro
+     - Diamante
+
+4. **Salvar Configurações**
+   - Clique em "Salvar" para persistir as alterações
+   - As mudanças são refletidas automaticamente no dashboard e projeções
+
+### Cálculo do IQS
+
+```
+IQS = (Soma dos pontos ponderados / Total de pesos aplicáveis) × 100
+```
+
+**Exemplo:**
+- Se uma ficha tem foto (peso 1.0) e está confirmada (peso 1.0)
+- Pontos ponderados = 2.0
+- Total de pesos = soma de todos os pesos configurados
+- IQS = (2.0 / total_pesos) × 100
+
+### Atualização em Tempo Real
+
+- ✅ Alterações nas configurações atualizam o dashboard automaticamente
+- ✅ IQS é recalculado sempre que os filtros ou settings mudam
+- ✅ Persistência real via Supabase (tabela `app_settings`)
+- ✅ Cache inteligente com React Query (5 minutos de stale time)
 
 ## 🏗️ Arquitetura
 
