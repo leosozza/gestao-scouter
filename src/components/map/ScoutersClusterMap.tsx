@@ -103,6 +103,26 @@ export function ScoutersClusterMap({ scouter }: ScoutersClusterMapProps) {
     map.addLayer(clusterGroup);
     mapRef.current = map;
 
+    // Listen to zoom changes to update tooltip permanence
+    map.on('zoomend', () => {
+      const zoom = map.getZoom();
+      clusterGroup.eachLayer((layer) => {
+        if (layer instanceof L.Marker) {
+          const tooltip = layer.getTooltip();
+          if (tooltip) {
+            // Make tooltips permanent when zoomed in (>= 13)
+            if (zoom >= 13) {
+              tooltip.options.permanent = true;
+              layer.openTooltip();
+            } else {
+              tooltip.options.permanent = false;
+              layer.closeTooltip();
+            }
+          }
+        }
+      });
+    });
+
     return () => {
       if (clusterGroup) {
         clusterGroup.clearLayers();
@@ -157,12 +177,14 @@ export function ScoutersClusterMap({ scouter }: ScoutersClusterMapProps) {
       
       marker.bindPopup(popupContent);
       
-      // Permanent tooltip with scouter name (visible when zoomed in)
+      // Tooltip with scouter name (shows on hover, permanent when zoom >= 13)
+      const currentZoom = mapRef.current?.getZoom() || 11;
       marker.bindTooltip(location.scouter, {
-        permanent: false,
+        permanent: currentZoom >= 13, // Show always when zoomed in
         direction: 'top',
         offset: [0, -20],
         className: 'scouter-name-tooltip',
+        opacity: 0.9,
       });
 
       clusterGroup.addLayer(marker);
