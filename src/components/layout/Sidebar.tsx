@@ -1,4 +1,4 @@
-import { LayoutDashboard, TrendingUp, ClipboardList, Users, Wallet, Settings } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, ClipboardList, Users, Wallet, MapPin, Settings } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 
@@ -12,6 +12,7 @@ export function Sidebar() {
     { key: '/leads', icon: <ClipboardList className='h-4 w-4'/>, label: 'Leads' },
     { key: '/scouters', icon: <Users className='h-4 w-4'/>, label: 'Scouters' },
     { key: '/pagamentos', icon: <Wallet className='h-4 w-4'/>, label: 'Pagamentos' },
+    { key: '/area-de-abordagem', icon: <MapPin className='h-4 w-4'/>, label: 'Área de Abordagem' },
     { key: '/configuracoes', icon: <Settings className='h-4 w-4'/>, label: 'Configurações' },
   ]
   
