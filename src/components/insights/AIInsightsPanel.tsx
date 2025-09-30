@@ -59,8 +59,21 @@ export default function AIInsightsPanel({ startDate, endDate, rows, projectName 
       if (iso && iso.match(/^\d{4}-\d{2}-\d{2}$/)) {
         byDay.set(iso, (byDay.get(iso) ?? 0) + 1);
       }
-      if (toBool(r.confirmado)) confirmados++;
-      if (toBool(r.tem_foto)) comFoto++;
+      
+      // % confirmadas: considerar ficha_confirmada === "Confirmada" OU confirmado == 1
+      const fichaConfirmada = (r as any).ficha_confirmada;
+      const confirmadoField = r.confirmado;
+      if (fichaConfirmada === "Confirmada" || confirmadoField === "1" || confirmadoField === 1 || toBool(confirmadoField)) {
+        confirmados++;
+      }
+      
+      // % com foto: considerar cadastro_existe_foto === "SIM" OU foto == 1
+      const cadastroFoto = (r as any).cadastro_existe_foto;
+      const fotoField = (r as any).foto;
+      if (cadastroFoto === "SIM" || fotoField === "1" || fotoField === 1 || toBool(r.tem_foto)) {
+        comFoto++;
+      }
+      
       const valorFicha = typeof r.valor_ficha === "number" ? r.valor_ficha : parseFloat(String(r.valor_ficha || 0));
       if (!isNaN(valorFicha)) valorTotal += valorFicha;
     }

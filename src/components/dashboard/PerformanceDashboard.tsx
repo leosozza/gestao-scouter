@@ -111,8 +111,16 @@ export function PerformanceDashboard() {
   const calculateMetrics = (data: Lead[]) => {
     const total = data.length;
     
-    const comFoto = data.filter(lead => lead.cadastro_existe_foto === 'SIM').length;
-    const confirmadas = data.filter(lead => lead.ficha_confirmada === 'Sim').length;
+    // % com foto: considerar Cadastro_Existe_Foto === "SIM" OU Foto == 1
+    const comFoto = data.filter(lead => 
+      lead.cadastro_existe_foto === 'SIM' || lead.foto === '1'
+    ).length;
+    
+    // % confirmadas: considerar Ficha_confirmada === "Confirmada" OU Confirmado == 1
+    const confirmadas = data.filter(lead => 
+      lead.ficha_confirmada === 'Confirmada' || lead.confirmado === '1'
+    ).length;
+    
     const conseguiuContato = data.filter(lead => lead.presenca_confirmada === 'Sim').length;
     
     // Mock data for other metrics (you would calculate these based on your actual data structure)
