@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { format, parseISO, isValid } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
-import { Sparkles, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Brain, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp } from "lucide-react";
 
 type Ficha = {
   created_at?: string;
@@ -34,6 +34,7 @@ function toBool(v: any) {
 export default function AIInsightsPanel({ startDate, endDate, rows, projectName }: Props) {
   const [aiText, setAiText] = useState<string | null>(null);
   const [loadingAI, setLoadingAI] = useState(false);
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
   const kpis = useMemo(() => {
     const total = rows.length;
@@ -43,8 +44,21 @@ export default function AIInsightsPanel({ startDate, endDate, rows, projectName 
     let valorTotal = 0;
 
     for (const r of rows) {
-      const iso = (r.data_criacao_ficha ?? r.created_at ?? r.criado ?? "").slice(0, 10);
-      if (iso) byDay.set(iso, (byDay.get(iso) ?? 0) + 1);
+      let iso = r.data_criacao_ficha ?? r.created_at ?? r.criado ?? "";
+      
+      // Se for formato brasileiro (dd/MM/yyyy), converter para ISO (yyyy-MM-dd)
+      if (iso.includes("/")) {
+        const [day, month, year] = iso.split(" ")[0].split("/");
+        if (day && month && year) {
+          iso = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+        }
+      } else {
+        iso = iso.slice(0, 10);
+      }
+      
+      if (iso && iso.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        byDay.set(iso, (byDay.get(iso) ?? 0) + 1);
+      }
       if (toBool(r.confirmado)) confirmados++;
       if (toBool(r.tem_foto)) comFoto++;
       const valorFicha = typeof r.valor_ficha === "number" ? r.valor_ficha : parseFloat(String(r.valor_ficha || 0));
@@ -134,6 +148,7 @@ export default function AIInsightsPanel({ startDate, endDate, rows, projectName 
   async function runAI() {
     try {
       setLoadingAI(true);
+      setShowAnalysis(true);
       // Fallback: mostra só a narrativa local (sem LLM)
       // TODO: Integrar com Edge Function quando necessário
       setAiText(buildPrompt(localNarrative, kpis));
@@ -149,49 +164,65 @@ export default function AIInsightsPanel({ startDate, endDate, rows, projectName 
     <div className="rounded-lg border bg-card p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" />
+          <Brain className="h-5 w-5 text-primary" />
           <div className="text-sm font-medium">IA de Performance</div>
           <TrendIcon className={`h-4 w-4 ${trendColor}`} />
         </div>
-        <Button
-          onClick={runAI}
-          variant="outline"
-          size="sm"
-          disabled={loadingAI}
-        >
-          {loadingAI ? "Analisando..." : "Analisar agora"}
-        </Button>
+        <div className="flex items-center gap-2">
+          {showAnalysis && (
+            <Button
+              onClick={() => setShowAnalysis(false)}
+              variant="ghost"
+              size="sm"
+            >
+              <ChevronUp className="h-4 w-4" />
+            </Button>
+          )}
+          <Button
+            onClick={runAI}
+            variant="outline"
+            size="sm"
+            disabled={loadingAI}
+          >
+            <Brain className="h-4 w-4 mr-2" />
+            {loadingAI ? "Analisando..." : "Analisar"}
+          </Button>
+        </div>
       </div>
 
-      <div className="rounded-md bg-muted/50 p-3">
-        <pre className="whitespace-pre-wrap text-sm text-muted-foreground font-mono">
-          {aiText ?? localNarrative}
-        </pre>
-      </div>
+      {showAnalysis && (
+        <>
+          <div className="rounded-md bg-muted/50 p-3">
+            <pre className="whitespace-pre-wrap text-sm text-muted-foreground font-mono">
+              {aiText ?? localNarrative}
+            </pre>
+          </div>
 
-      <div className="space-y-2 text-sm">
-        <div className="font-medium">💡 Insights:</div>
-        <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-          {kpis.trend < -1 && (
-            <li>⚠️ Tendência de queda detectada - reforçar ações de captação</li>
-          )}
-          {kpis.avgPerDay < 5 && (
-            <li>📉 Média diária abaixo do ideal - considerar aumentar meta</li>
-          )}
-          {kpis.confirmRate < 0.7 && (
-            <li>✅ Taxa de confirmados pode melhorar - reforçar qualificação</li>
-          )}
-          {kpis.fotoRate < 0.8 && (
-            <li>📷 Aumentar taxa de fichas com foto para melhor conversão</li>
-          )}
-          {kpis.best && (
-            <li>🎯 Replicar práticas do dia pico ({kpis.best.date.slice(8, 10)}/{kpis.best.date.slice(5, 7)})</li>
-          )}
-          {kpis.topScouters.length > 0 && (
-            <li>👥 Focar nos top scouters: {kpis.topScouters.slice(0, 2).map(([n]) => n).join(", ")}</li>
-          )}
-        </ul>
-      </div>
+          <div className="space-y-2 text-sm">
+            <div className="font-medium">💡 Insights:</div>
+            <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+              {kpis.trend < -1 && (
+                <li>⚠️ Tendência de queda detectada - reforçar ações de captação</li>
+              )}
+              {kpis.avgPerDay < 5 && (
+                <li>📉 Média diária abaixo do ideal - considerar aumentar meta</li>
+              )}
+              {kpis.confirmRate < 0.7 && (
+                <li>✅ Taxa de confirmados pode melhorar - reforçar qualificação</li>
+              )}
+              {kpis.fotoRate < 0.8 && (
+                <li>📷 Aumentar taxa de fichas com foto para melhor conversão</li>
+              )}
+              {kpis.best && (
+                <li>🎯 Replicar práticas do dia pico ({kpis.best.date.slice(8, 10)}/{kpis.best.date.slice(5, 7)})</li>
+              )}
+              {kpis.topScouters.length > 0 && (
+                <li>👥 Focar nos top scouters: {kpis.topScouters.slice(0, 2).map(([n]) => n).join(", ")}</li>
+              )}
+            </ul>
+          </div>
+        </>
+      )}
     </div>
   );
 }

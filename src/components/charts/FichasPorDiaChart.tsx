@@ -23,8 +23,19 @@ export default function FichasPorDiaChart({ startDate, endDate, rows, height = 2
     const countByDate = new Map<string, number>();
     
     for (const row of rows) {
-      const dateStr = (row.data_criacao_ficha ?? row.created_at ?? row.criado ?? "").slice(0, 10);
-      if (dateStr) {
+      let dateStr = row.data_criacao_ficha ?? row.created_at ?? row.criado ?? "";
+      
+      // Se for formato brasileiro (dd/MM/yyyy), converter para ISO (yyyy-MM-dd)
+      if (dateStr.includes("/")) {
+        const [day, month, year] = dateStr.split(" ")[0].split("/");
+        if (day && month && year) {
+          dateStr = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+        }
+      } else {
+        dateStr = dateStr.slice(0, 10);
+      }
+      
+      if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
         countByDate.set(dateStr, (countByDate.get(dateStr) ?? 0) + 1);
       }
     }
