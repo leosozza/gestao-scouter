@@ -364,16 +364,29 @@ export class GoogleSheetsService {
       // - Tier / Classificação / Nivel: Scouter's tier/level
       // - Status / Situação / Ativo: Active status (ativo, inativo, etc.)
       // - Meta Semanal / Meta / Meta/Semana: Weekly goal number
-      const processedScouters = scouters.map(scouter => ({
-        ...scouter,
+      const processedScouters = scouters.map((scouter, idx) => {
         // Mapear campos comuns da planilha de scouters
         // Os campos exatos podem variar, então tentamos várias variações
-        nome: scouter['Nome'] || scouter['Scouter'] || scouter['Nome do Scouter'],
-        tier: scouter['Tier'] || scouter['Classificação'] || scouter['Nivel'],
-        status: scouter['Status'] || scouter['Situação'],
-        meta_semanal: this.parseNumber(scouter['Meta Semanal'] || scouter['Meta'] || scouter['Meta/Semana']),
-        ativo: this.parseAtivo(scouter['Status'] || scouter['Ativo'] || scouter['Situação']),
-      }));
+        const nome = scouter['Nome'] || scouter['Scouter'] || scouter['Nome do Scouter'];
+        const tier = scouter['Tier'] || scouter['Classificação'] || scouter['Nivel'];
+        const status = scouter['Status'] || scouter['Situação'];
+        const meta_semanal = this.parseNumber(scouter['Meta Semanal'] || scouter['Meta'] || scouter['Meta/Semana']);
+        const ativo = this.parseAtivo(scouter['Status'] || scouter['Ativo'] || scouter['Situação']);
+        
+        // Log first few scouters for debugging
+        if (idx < 3) {
+          console.log(`GoogleSheetsService: Scouter ${idx}: nome="${nome}", tier="${tier}", status="${status}", ativo=${ativo}`);
+        }
+        
+        return {
+          ...scouter,
+          nome,
+          tier,
+          status,
+          meta_semanal,
+          ativo,
+        };
+      });
 
       console.log(`GoogleSheetsService: ${processedScouters.length} scouters processados da aba dedicada`);
       console.log(`GoogleSheetsService: Scouters ativos: ${processedScouters.filter(s => s.ativo).length}`);

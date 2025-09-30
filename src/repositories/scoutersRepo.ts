@@ -130,6 +130,11 @@ function enrichScoutersWithFichasData(scoutersFromTab: ScouterFromTab[], fichas:
     const scouterName = normalize(scouter.nome || 'Sem Nome');
     const scouterFichas = fichasByScouterMap.get(scouterName) || [];
     
+    // Log first few matches for debugging
+    if (index < 3) {
+      console.log(`scoutersRepo: Scouter "${scouterName}" has ${scouterFichas.length} fichas, active=${scouter.ativo}`);
+    }
+    
     const totalFichas = scouterFichas.length;
     const convertedFichas = scouterFichas.filter(f => f.status_normalizado === 'Confirmado').length;
     const conversionRate = totalFichas > 0 ? (convertedFichas / totalFichas) * 100 : 0;
