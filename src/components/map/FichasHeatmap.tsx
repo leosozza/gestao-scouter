@@ -5,13 +5,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-// @ts-ignore - leaflet.heat doesn't have types
+// @ts-expect-error - leaflet.heat doesn't have types
 import 'leaflet.heat';
 import { useFichasGeo } from '@/hooks/useFichasGeo';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Flame, Navigation, Loader2 } from 'lucide-react';
 import { format, subDays } from 'date-fns';
+import { getTileServerConfig, DEFAULT_TILE_SERVER } from '@/config/tileServers';
 
 interface FichasHeatmapProps {
   startDate?: string;
@@ -28,7 +29,7 @@ export function FichasHeatmap({
 }: FichasHeatmapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const heatLayerRef = useRef<any>(null);
+  const heatLayerRef = useRef<L.HeatLayer | null>(null);
 
   // Default to last 30 days if not provided
   const defaultEndDate = format(new Date(), 'yyyy-MM-dd');
@@ -49,9 +50,12 @@ export function FichasHeatmap({
 
     const map = L.map(mapContainerRef.current).setView([-23.5505, -46.6333], 11); // São Paulo center
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19,
+    // Get tile server configuration (from env var or default)
+    const tileConfig = getTileServerConfig(DEFAULT_TILE_SERVER);
+    
+    L.tileLayer(tileConfig.url, {
+      attribution: tileConfig.attribution,
+      maxZoom: tileConfig.maxZoom,
     }).addTo(map);
 
     mapRef.current = map;
@@ -80,7 +84,7 @@ export function FichasHeatmap({
     // Create heat layer points
     const points = fichasGeo.map(ficha => [ficha.lat, ficha.lng, 1]); // [lat, lng, intensity]
 
-    // @ts-ignore - leaflet.heat typing issue
+    // @ts-expect-error - leaflet.heat typing issue
     const heatLayer = L.heatLayer(points, {
       radius: 25,
       blur: 15,

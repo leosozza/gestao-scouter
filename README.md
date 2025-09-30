@@ -12,12 +12,14 @@ Sistema completo de gerenciamento para scouters com dashboard analítico, contro
 - **Análise por IA**: Relatórios inteligentes baseados nos dados
 - **Sistema de Projeções**: Previsões e metas personalizadas
 - **Controle de Scouters**: Gestão de equipe e performance
+- **🗺️ Mapas Interativos**: Geolocalização em tempo real e heatmaps (100% gratuito)
 
 ## 🛠️ Tecnologias
 
 - **Frontend**: React 18 + TypeScript + Vite 7
 - **UI Framework**: shadcn/ui + Tailwind CSS
 - **Backend**: Supabase (PostgreSQL + Auth + Storage)
+- **Mapas**: Leaflet + OpenStreetMap (solução 100% gratuita)
 - **Integrações**: Google Sheets API, Bitrix24
 - **Gráficos**: Recharts
 - **Relatórios**: jsPDF + AutoTable
@@ -248,6 +250,30 @@ function onOpen() {
    - `syncAll`: Função para sincronização completa
 
 5) Após validar, altere `DATA_SOURCE` para `"supabase"` nas telas (Dashboard/Leads/Projeção/Pagamentos).
+
+## 🗺️ Sistema de Mapas
+
+A aplicação usa uma **solução 100% gratuita** e confiável para visualização geográfica:
+
+- **Biblioteca**: Leaflet.js (MIT License, gratuito)
+- **Tiles**: OpenStreetMap (gratuito, sem limites)
+- **Heatmap**: leaflet.heat plugin (MIT License)
+- **Geocoding**: Nominatim API (gratuito com cache)
+
+### Funcionalidades
+- ✅ Rastreamento em tempo real de scouters
+- ✅ Mapa de calor de densidade de fichas
+- ✅ Markers customizados por tier (Bronze/Prata/Ouro)
+- ✅ Filtros por período, projeto e scouter
+- ✅ Geocodificação automática de endereços
+
+### Documentação Completa
+- **[Guia Rápido de Mapas](./MAPS_QUICK_REFERENCE.md)** - Como usar e customizar
+- **[Solução Detalhada de Mapas](./MAPS_SOLUTION.md)** - Arquitetura e alternativas
+- **[Funcionalidade de Geolocalização](./GEOLOCATION_FEATURE.md)** - Implementação técnica
+
+### Custo Total: R$ 0,00 🎉
+Sem necessidade de API keys do Google Maps ou Mapbox. Escalável e sem vendor lock-in.
 
 ## 🔒 Segurança
 

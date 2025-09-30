@@ -1,12 +1,12 @@
 /**
  * Unified Map Component
  * Single map with toggle between Scouter view and Fichas heatmap view
- * Uses OpenStreetMap Shortbread layer
+ * Uses configurable tile servers (100% free options available)
  */
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-// @ts-ignore - leaflet.heat doesn't have types
+// @ts-expect-error - leaflet.heat doesn't have types
 import 'leaflet.heat';
 import { useScoutersLastLocations } from '@/hooks/useScoutersLastLocations';
 import { useFichasGeo } from '@/hooks/useFichasGeo';
@@ -17,6 +17,7 @@ import { MapPin, Users, Navigation, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { format, subDays } from 'date-fns';
+import { getTileServerConfig, DEFAULT_TILE_SERVER } from '@/config/tileServers';
 
 // Cores por tier
 const TIER_COLORS: Record<string, string> = {
@@ -72,7 +73,7 @@ export function UnifiedMap({
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<L.Marker[]>([]);
-  const heatLayerRef = useRef<any>(null);
+  const heatLayerRef = useRef<L.HeatLayer | null>(null);
   
   const [viewMode, setViewMode] = useState<MapViewMode>('fichas');
   const [activeScouters, setActiveScouters] = useState(0);
@@ -94,19 +95,18 @@ export function UnifiedMap({
   const isLoading = isLoadingScouters || isLoadingFichas;
   const error = errorScouters || errorFichas;
 
-  // Initialize map with OpenStreetMap Shortbread layer
+  // Initialize map with configurable tile server
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
     const map = L.map(mapContainerRef.current).setView([-23.5505, -46.6333], 11); // São Paulo center
 
-    // Use OpenStreetMap with Shortbread layer
-    // Shortbread is a specialized vector tile schema for OpenStreetMap
-    // For now using standard OSM tiles as Shortbread requires special tile server setup
-    // TODO: Configure Shortbread tile server when available
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Shortbread Schema',
-      maxZoom: 19,
+    // Get tile server configuration (from env var or default)
+    const tileConfig = getTileServerConfig(DEFAULT_TILE_SERVER);
+    
+    L.tileLayer(tileConfig.url, {
+      attribution: tileConfig.attribution,
+      maxZoom: tileConfig.maxZoom,
     }).addTo(map);
 
     mapRef.current = map;
@@ -208,7 +208,7 @@ export function UnifiedMap({
     // Create heat layer points
     const points = fichasGeo.map(ficha => [ficha.lat, ficha.lng, 1]); // [lat, lng, intensity]
 
-    // @ts-ignore - leaflet.heat typing issue
+    // @ts-expect-error - leaflet.heat typing issue
     const heatLayer = L.heatLayer(points, {
       radius: 25,
       blur: 15,
