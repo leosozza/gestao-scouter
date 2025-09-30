@@ -32,7 +32,7 @@ type Props = {
   projectName?: string | null;
 };
 
-function toBool(v: any) {
+function toBool(v: unknown): boolean {
   if (typeof v === "boolean") return v;
   if (typeof v === "string") return v.trim().toLowerCase() === "sim";
   return !!v;
@@ -68,15 +68,15 @@ export default function AIInsightsPanel({ startDate, endDate, rows, projectName 
       }
       
       // % confirmadas: considerar ficha_confirmada === "Confirmada" OU confirmado == 1
-      const fichaConfirmada = (r as any).ficha_confirmada;
+      const fichaConfirmada = (r as Record<string, unknown>).ficha_confirmada;
       const confirmadoField = r.confirmado;
       if (fichaConfirmada === "Confirmada" || confirmadoField === "1" || confirmadoField === 1 || toBool(confirmadoField)) {
         confirmados++;
       }
       
       // % com foto: considerar cadastro_existe_foto === "SIM" OU foto == 1
-      const cadastroFoto = (r as any).cadastro_existe_foto;
-      const fotoField = (r as any).foto;
+      const cadastroFoto = (r as Record<string, unknown>).cadastro_existe_foto;
+      const fotoField = (r as Record<string, unknown>).foto;
       if (cadastroFoto === "SIM" || fotoField === "1" || fotoField === 1 || toBool(r.tem_foto)) {
         comFoto++;
       }
@@ -89,8 +89,8 @@ export default function AIInsightsPanel({ startDate, endDate, rows, projectName 
       .map(([date, count]) => ({ date, count }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
-    const best = daily.reduce((m, d) => (d.count > (m?.count ?? 0) ? d : m), null as any);
-    const worst = daily.reduce((m, d) => (d.count < (m?.count ?? Infinity) ? d : m), null as any);
+    const best = daily.reduce((m, d) => (d.count > (m?.count ?? 0) ? d : m), null as { date: string; count: number } | null);
+    const worst = daily.reduce((m, d) => (d.count < (m?.count ?? Infinity) ? d : m), null as { date: string; count: number } | null);
 
     const confirmRate = total ? (confirmados / total) : 0;
     const fotoRate = total ? (comFoto / total) : 0;
@@ -296,7 +296,38 @@ export default function AIInsightsPanel({ startDate, endDate, rows, projectName 
   );
 }
 
-function buildPrompt(narrative: string, kpis: any) {
+interface KPIData {
+  total: number;
+  valorTotal: number;
+  confirmRate: number;
+  fotoRate: number;
+  confirmados: number;
+  comFoto: number;
+  avgPerDay: number;
+  best: { date: string; count: number } | null;
+  worst: { date: string; count: number } | null;
+  trend: number;
+  topProjetos: [string, number][];
+  topScouters: [string, number][];
+  daily: { date: string; count: number }[];
+  timeMetrics: {
+    avgIntervalMinutes: number;
+    workStartTime: string | null;
+    workEndTime: string | null;
+    totalWorkHours: number;
+    fichasPerHour: number;
+  };
+  dailyTimeMetrics: {
+    date: string;
+    startTime: string;
+    endTime: string;
+    workHours: number;
+    fichasCount: number;
+    avgIntervalMinutes: number;
+  }[];
+}
+
+function buildPrompt(narrative: string, kpis: KPIData): string {
   const suggestions = [
     "🤖 Análise de Performance",
     "",
