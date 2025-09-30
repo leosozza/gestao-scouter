@@ -199,7 +199,7 @@ function normalizeLeadFromSheets(f: any, idx?: number): Lead {
     projetos: f.Projetos ?? f['Projetos Cormeciais'] ?? f['Agencia e Seletivas'] ?? 'Sem Projeto',
     scouter: f.Scouter ?? f['Gestão de Scouter'] ?? 'Desconhecido',
     criado: f.Criado ?? undefined,
-    hora_criacao_ficha: f.hora_criacao_Ficha ?? undefined,
+    hora_criacao_ficha: f.hora_criacao_Ficha ?? f['Hora Criação Ficha'] ?? f['Hora da Criação'] ?? f.Hora ?? undefined,
     valor_ficha: f.Valor_Ficha ?? f['Valor da Ficha'] ?? '0',
     etapa: f.Etapa ?? f['ETAPA FUNIL QUALIFICAÇÃO/AGENDAMENTO'] ?? 'Sem Etapa',
     nome: f.Nome ?? f['Nome do Responsável'] ?? f['Primeiro nome'] ?? 'Sem nome',
