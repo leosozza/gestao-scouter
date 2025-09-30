@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { MapPin, Navigation, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getTileServerConfig, DEFAULT_TILE_SERVER } from '@/config/tileServers';
 
 // Cores por tier
 const TIER_COLORS: Record<string, string> = {
@@ -61,9 +62,12 @@ export function ScouterLiveMap() {
 
     const map = L.map(mapContainerRef.current).setView([-23.5505, -46.6333], 11); // São Paulo center
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19,
+    // Get tile server configuration (from env var or default)
+    const tileConfig = getTileServerConfig(DEFAULT_TILE_SERVER);
+    
+    L.tileLayer(tileConfig.url, {
+      attribution: tileConfig.attribution,
+      maxZoom: tileConfig.maxZoom,
     }).addTo(map);
 
     mapRef.current = map;
