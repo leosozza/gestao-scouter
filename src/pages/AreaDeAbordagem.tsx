@@ -1,14 +1,13 @@
 /**
  * Página de Área de Abordagem
- * Mostra mapa em tempo real de scouters e heatmap de fichas
+ * Mostra mapa unificado com opção de visualizar scouters ou fichas
  */
 import { useState } from 'react';
 import { AppShell } from '@/layouts/AppShell';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ScouterLiveMap } from '@/components/map/ScouterLiveMap';
-import { FichasHeatmap } from '@/components/map/FichasHeatmap';
+import { UnifiedMap } from '@/components/map/UnifiedMap';
 import { MapPin, Flame, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format, subDays } from 'date-fns';
@@ -110,13 +109,9 @@ export default function AreaDeAbordagem() {
           </Card>
         </div>
 
-        {/* Maps Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[600px]">
-          {/* Scouters Live Map */}
-          <ScouterLiveMap />
-
-          {/* Fichas Heatmap */}
-          <FichasHeatmap 
+        {/* Unified Map */}
+        <div className="h-[600px]">
+          <UnifiedMap 
             startDate={startDate}
             endDate={endDate}
           />
@@ -129,11 +124,15 @@ export default function AreaDeAbordagem() {
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-2">
             <p>
-              <strong>Mapa de Scouters:</strong> Mostra a posição em tempo real dos scouters com base nos dados do Grid 1351167110. 
-              As cores representam os tiers: Bronze (marrom), Prata (cinza), Ouro (dourado).
+              <strong>Mapa Unificado:</strong> Visualize scouters ou fichas no mesmo mapa usando o seletor acima. 
+              Use OpenStreetMap com camada Shortbread para melhor visualização.
             </p>
             <p>
-              <strong>Mapa de Calor:</strong> Visualiza a densidade de fichas geradas por localização. 
+              <strong>Visualização por Scouters:</strong> Mostra a posição em tempo real dos scouters com base nos dados do Grid 1351167110. 
+              As cores dos marcadores representam os tiers: Bronze (marrom), Prata (cinza), Ouro (dourado).
+            </p>
+            <p>
+              <strong>Visualização por Fichas:</strong> Mapa de calor que visualiza a densidade de fichas geradas por localização. 
               Quanto mais vermelho, maior a concentração de fichas naquela área.
             </p>
             <p>
