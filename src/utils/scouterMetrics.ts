@@ -27,6 +27,16 @@ function getFichaDateTime(ficha: Ficha): Date | null {
       }
     }
 
+    // Fallback adicional: tentar acessar campo direto (pode vir de diferentes fontes)
+    // @ts-ignore - campo pode existir em runtime com nomes variados
+    const dataHoraField = ficha['Data de criação da Ficha'] || ficha['data_criacao_ficha'];
+    if (dataHoraField && typeof dataHoraField === 'string') {
+      const parsedDate = parse(dataHoraField, 'dd/MM/yyyy HH:mm', new Date());
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate;
+      }
+    }
+
     return null;
   } catch (error) {
     console.error('Erro ao extrair data/hora da ficha:', error);
