@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { format } from "date-fns";
+import { format, parseISO, isValid } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Sparkles, TrendingUp, TrendingDown, Minus } from "lucide-react";
@@ -100,9 +100,22 @@ export default function AIInsightsPanel({ startDate, endDate, rows, projectName 
   const localNarrative = useMemo(() => {
     const p = (n: number) => (n * 100).toFixed(1) + "%";
     const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    
+    const formatSafeDate = (dateStr: string) => {
+      try {
+        const date = parseISO(dateStr);
+        if (isValid(date)) {
+          return format(date, "dd/MM", { locale: ptBR });
+        }
+      } catch {
+        // ignore
+      }
+      return dateStr;
+    };
+    
     const period = `${format(startDate, "dd/MM", { locale: ptBR })}–${format(endDate, "dd/MM", { locale: ptBR })}`;
-    const bestTxt = kpis.best ? `${format(new Date(kpis.best.date), "dd/MM", { locale: ptBR })} (${kpis.best.count})` : "-";
-    const worstTxt = kpis.worst ? `${format(new Date(kpis.worst.date), "dd/MM", { locale: ptBR })} (${kpis.worst.count})` : "-";
+    const bestTxt = kpis.best ? `${formatSafeDate(kpis.best.date)} (${kpis.best.count})` : "-";
+    const worstTxt = kpis.worst ? `${formatSafeDate(kpis.worst.date)} (${kpis.worst.count})` : "-";
     const trendTxt = kpis.trend > 0 ? "alta" : kpis.trend < 0 ? "queda" : "estável";
     const projTxt = kpis.topProjetos.map(([n, v]) => `${n}: ${v}`).join(" • ") || "-";
     const scoutTxt = kpis.topScouters.map(([n, v]) => `${n}: ${v}`).join(" • ") || "-";
@@ -172,7 +185,7 @@ export default function AIInsightsPanel({ startDate, endDate, rows, projectName 
             <li>📷 Aumentar taxa de fichas com foto para melhor conversão</li>
           )}
           {kpis.best && (
-            <li>🎯 Replicar práticas do dia pico ({format(new Date(kpis.best.date), "dd/MM", { locale: ptBR })})</li>
+            <li>🎯 Replicar práticas do dia pico ({kpis.best.date.slice(8, 10)}/{kpis.best.date.slice(5, 7)})</li>
           )}
           {kpis.topScouters.length > 0 && (
             <li>👥 Focar nos top scouters: {kpis.topScouters.slice(0, 2).map(([n]) => n).join(", ")}</li>
