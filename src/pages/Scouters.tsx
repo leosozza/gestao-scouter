@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress'
 import { DataTable } from '@/components/shared/DataTable'
 import { FilterHeader } from '@/components/shared/FilterHeader'
 import { AIAnalysis } from '@/components/shared/AIAnalysis'
+import { UnifiedMapChart } from '@/components/dashboard/charts/UnifiedMapChart'
 import { UserPlus, Award, Target, TrendingUp, Users } from 'lucide-react'
 import { getScoutersData, getScoutersSummary, type ScouterData } from '@/repositories/scoutersRepo'
 
@@ -249,6 +250,25 @@ export default function Scouters() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Unified Map Component */}
+        <UnifiedMapChart
+          scouterData={filteredScouters.map((scouter, index) => ({
+            lat: 0,
+            lon: 0,
+            scouterName: scouter.scouter_name,
+            fichas: scouter.total_fichas,
+            conversao: scouter.conversion_rate
+          }))}
+          fichaData={[
+            { lat: 0, lon: 0, fichas: 45, conversao: 85, endereco: 'Centro - SP' },
+            { lat: 0, lon: 0, fichas: 38, conversao: 72, endereco: 'Zona Sul - SP' },
+            { lat: 0, lon: 0, fichas: 52, conversao: 68, endereco: 'Zona Oeste - SP' },
+            { lat: 0, lon: 0, fichas: 29, conversao: 55, endereco: 'Zona Leste - SP' },
+            { lat: 0, lon: 0, fichas: 41, conversao: 78, endereco: 'Zona Norte - SP' },
+          ]}
+          isLoading={loading}
+        />
 
         {/* Grid com Tabela e Análise AI */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
