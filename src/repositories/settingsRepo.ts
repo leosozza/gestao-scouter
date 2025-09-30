@@ -1,37 +1,71 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { AppSettings } from './types';
 
+/**
+ * Get application settings from Supabase.
+ * Returns the first settings row or null if none exists.
+ */
 export async function getAppSettings(): Promise<AppSettings | null> {
-  // Como removemos a tabela app_settings, retornamos valores padrão
-  return {
-    valor_base_ficha: 10.00,
-    quality_threshold: 50.00,
-    peso_foto: 1.0,
-    peso_confirmada: 1.0,
-    peso_contato: 1.0,
-    peso_agendado: 1.0,
-    peso_compareceu: 1.0,
-    peso_interesse: 1.0,
-    peso_concl_pos: 1.0,
-    peso_concl_neg: 1.0,
-    peso_sem_interesse_def: 1.0,
-    peso_sem_contato: 1.0,
-    peso_sem_interesse_momento: 1.0,
-    ajuda_custo_tier: {
-      bronze: 200,
-      prata: 250,
-      ouro: 300,
-      diamante: 350
+  try {
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('*')
+      .limit(1)
+      .single();
+
+    if (error) {
+      console.error('Error fetching app settings:', error);
+      return null;
     }
-  };
+
+    return data;
+  } catch (error) {
+    console.error('Error in getAppSettings:', error);
+    return null;
+  }
 }
 
+/**
+ * Save application settings to Supabase.
+ * Uses upsert to update existing settings or create new ones.
+ */
 export async function saveAppSettings(settings: Omit<AppSettings, 'id' | 'updated_at'>): Promise<AppSettings | null> {
-  // Como removemos a tabela, apenas simulamos o salvamento
-  console.log('Settings would be saved:', settings);
-  return {
-    id: 'default',
-    updated_at: new Date().toISOString(),
-    ...settings
-  };
+  try {
+    // First, try to get existing settings to update
+    const existing = await getAppSettings();
+    
+    if (existing) {
+      // Update existing settings
+      const { data, error } = await supabase
+        .from('app_settings')
+        .update(settings)
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating app settings:', error);
+        return null;
+      }
+
+      return data;
+    } else {
+      // Insert new settings
+      const { data, error } = await supabase
+        .from('app_settings')
+        .insert([settings])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error inserting app settings:', error);
+        return null;
+      }
+
+      return data;
+    }
+  } catch (error) {
+    console.error('Error in saveAppSettings:', error);
+    return null;
+  }
 }

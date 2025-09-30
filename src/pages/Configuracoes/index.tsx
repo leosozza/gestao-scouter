@@ -7,19 +7,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { AlertCircle, CheckCircle2, Settings, Users, Plug } from 'lucide-react'
 import { DataSourceSelector } from '@/components/dashboard/integrations/DataSourceSelector'
-import { getAppSettings, saveAppSettings } from '@/repositories/settingsRepo'
-import type { AppSettings } from '@/repositories/types'
-import { toast } from 'sonner'
+import { useAppSettings } from '@/hooks/useAppSettings'
 
 export default function ConfiguracoesPage() {
+  const { settings, isLoading, isSaving, saveSettings, refetch } = useAppSettings()
   const [activeTab, setActiveTab] = useState('parametros')
-  const [loading, setLoading] = useState(false)
   
-  // Settings state
-  const [settings, setSettings] = useState<AppSettings | null>(null)
+  // Local form state
   const [params, setParams] = useState({
     valorBaseFicha: '10',
     pesoFoto: '1.0',
@@ -48,85 +44,57 @@ export default function ConfiguracoesPage() {
     { value: 'diamante', label: 'Diamante' }
   ]
 
+  // Update form state when settings are loaded
   useEffect(() => {
-    loadSettings()
-  }, [])
-
-  const loadSettings = async () => {
-    try {
-      setLoading(true)
-      const appSettings = await getAppSettings()
-      if (appSettings) {
-        setSettings(appSettings)
-        setParams({
-          valorBaseFicha: appSettings.valor_base_ficha.toString(),
-          pesoFoto: appSettings.peso_foto.toString(),
-          pesoConfirmada: appSettings.peso_confirmada.toString(),
-          pesoContato: appSettings.peso_contato.toString(),
-          pesoAgendado: appSettings.peso_agendado.toString(),
-          pesoCompareceu: appSettings.peso_compareceu.toString(),
-          pesoInteresse: appSettings.peso_interesse.toString(),
-          pesoConclusaoPos: appSettings.peso_concl_pos.toString(),
-          pesoConclusaoNeg: appSettings.peso_concl_neg.toString(),
-          pesoSemInteresseDef: appSettings.peso_sem_interesse_def.toString(),
-          pesoSemContato: appSettings.peso_sem_contato.toString(),
-          pesoSemInteresseMomento: appSettings.peso_sem_interesse_momento.toString(),
-          qualityThreshold: appSettings.quality_threshold.toString()
-        })
-        
-        if (appSettings.ajuda_custo_tier[selectedTier]) {
-          setTierConfig({
-            ajudaCusto: appSettings.ajuda_custo_tier[selectedTier].toString()
-          })
-        }
-      }
-    } catch (error) {
-      console.error('Error loading settings:', error)
-      toast.error('Erro ao carregar configurações')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSaveSettings = async () => {
-    try {
-      setLoading(true)
+    if (settings) {
+      setParams({
+        valorBaseFicha: settings.valor_base_ficha.toString(),
+        pesoFoto: settings.peso_foto.toString(),
+        pesoConfirmada: settings.peso_confirmada.toString(),
+        pesoContato: settings.peso_contato.toString(),
+        pesoAgendado: settings.peso_agendado.toString(),
+        pesoCompareceu: settings.peso_compareceu.toString(),
+        pesoInteresse: settings.peso_interesse.toString(),
+        pesoConclusaoPos: settings.peso_concl_pos.toString(),
+        pesoConclusaoNeg: settings.peso_concl_neg.toString(),
+        pesoSemInteresseDef: settings.peso_sem_interesse_def.toString(),
+        pesoSemContato: settings.peso_sem_contato.toString(),
+        pesoSemInteresseMomento: settings.peso_sem_interesse_momento.toString(),
+        qualityThreshold: settings.quality_threshold.toString()
+      })
       
-      const updatedTierConfig = {
-        ...settings?.ajuda_custo_tier || {},
-        [selectedTier]: Number(tierConfig.ajudaCusto)
+      if (settings.ajuda_custo_tier[selectedTier]) {
+        setTierConfig({
+          ajudaCusto: settings.ajuda_custo_tier[selectedTier].toString()
+        })
       }
-
-      const settingsToSave = {
-        valor_base_ficha: Number(params.valorBaseFicha),
-        quality_threshold: Number(params.qualityThreshold),
-        peso_foto: Number(params.pesoFoto),
-        peso_confirmada: Number(params.pesoConfirmada),
-        peso_contato: Number(params.pesoContato),
-        peso_agendado: Number(params.pesoAgendado),
-        peso_compareceu: Number(params.pesoCompareceu),
-        peso_interesse: Number(params.pesoInteresse),
-        peso_concl_pos: Number(params.pesoConclusaoPos),
-        peso_concl_neg: Number(params.pesoConclusaoNeg),
-        peso_sem_interesse_def: Number(params.pesoSemInteresseDef),
-        peso_sem_contato: Number(params.pesoSemContato),
-        peso_sem_interesse_momento: Number(params.pesoSemInteresseMomento),
-        ajuda_custo_tier: updatedTierConfig
-      }
-
-      const saved = await saveAppSettings(settingsToSave)
-      if (saved) {
-        setSettings(saved)
-        toast.success('Configurações salvas com sucesso!')
-      } else {
-        toast.error('Erro ao salvar configurações')
-      }
-    } catch (error) {
-      console.error('Error saving settings:', error)
-      toast.error('Erro ao salvar configurações')
-    } finally {
-      setLoading(false)
     }
+  }, [settings, selectedTier])
+
+  const handleSaveSettings = () => {
+    const updatedTierConfig = {
+      ...settings?.ajuda_custo_tier || {},
+      [selectedTier]: Number(tierConfig.ajudaCusto)
+    }
+
+    const settingsToSave = {
+      valor_base_ficha: Number(params.valorBaseFicha),
+      quality_threshold: Number(params.qualityThreshold),
+      peso_foto: Number(params.pesoFoto),
+      peso_confirmada: Number(params.pesoConfirmada),
+      peso_contato: Number(params.pesoContato),
+      peso_agendado: Number(params.pesoAgendado),
+      peso_compareceu: Number(params.pesoCompareceu),
+      peso_interesse: Number(params.pesoInteresse),
+      peso_concl_pos: Number(params.pesoConclusaoPos),
+      peso_concl_neg: Number(params.pesoConclusaoNeg),
+      peso_sem_interesse_def: Number(params.pesoSemInteresseDef),
+      peso_sem_contato: Number(params.pesoSemContato),
+      peso_sem_interesse_momento: Number(params.pesoSemInteresseMomento),
+      ajuda_custo_tier: updatedTierConfig
+    }
+
+    saveSettings(settingsToSave)
   }
 
   const handleTierChange = (tier: string) => {
@@ -181,7 +149,8 @@ export default function ConfiguracoesPage() {
                     step="0.01"
                     value={params.valorBaseFicha}
                     onChange={(e) => setParams({...params, valorBaseFicha: e.target.value})}
-                    className="rounded-xl" 
+                    className="rounded-xl"
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -191,7 +160,8 @@ export default function ConfiguracoesPage() {
                     type="number"
                     value={params.qualityThreshold}
                     onChange={(e) => setParams({...params, qualityThreshold: e.target.value})}
-                    className="rounded-xl" 
+                    className="rounded-xl"
+                    disabled={isLoading}
                   />
                 </div>
                 <div></div>
@@ -203,7 +173,8 @@ export default function ConfiguracoesPage() {
                     step="0.01"
                     value={params.pesoFoto}
                     onChange={(e) => setParams({...params, pesoFoto: e.target.value})}
-                    className="rounded-xl" 
+                    className="rounded-xl"
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -214,7 +185,8 @@ export default function ConfiguracoesPage() {
                     step="0.01"
                     value={params.pesoConfirmada}
                     onChange={(e) => setParams({...params, pesoConfirmada: e.target.value})}
-                    className="rounded-xl" 
+                    className="rounded-xl"
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -225,7 +197,8 @@ export default function ConfiguracoesPage() {
                     step="0.01"
                     value={params.pesoContato}
                     onChange={(e) => setParams({...params, pesoContato: e.target.value})}
-                    className="rounded-xl" 
+                    className="rounded-xl"
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -236,7 +209,8 @@ export default function ConfiguracoesPage() {
                     step="0.01"
                     value={params.pesoAgendado}
                     onChange={(e) => setParams({...params, pesoAgendado: e.target.value})}
-                    className="rounded-xl" 
+                    className="rounded-xl"
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -247,7 +221,8 @@ export default function ConfiguracoesPage() {
                     step="0.01"
                     value={params.pesoCompareceu}
                     onChange={(e) => setParams({...params, pesoCompareceu: e.target.value})}
-                    className="rounded-xl" 
+                    className="rounded-xl"
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -258,22 +233,23 @@ export default function ConfiguracoesPage() {
                     step="0.01"
                     value={params.pesoInteresse}
                     onChange={(e) => setParams({...params, pesoInteresse: e.target.value})}
-                    className="rounded-xl" 
+                    className="rounded-xl"
+                    disabled={isLoading}
                   />
                 </div>
                 <div className="col-span-full flex gap-2">
                   <Button 
                     className="rounded-xl" 
                     onClick={handleSaveSettings}
-                    disabled={loading}
+                    disabled={isLoading || isSaving}
                   >
-                    {loading ? 'Salvando...' : 'Salvar'}
+                    {isSaving ? 'Salvando...' : 'Salvar'}
                   </Button>
                   <Button 
                     variant="outline" 
                     className="rounded-xl"
-                    onClick={loadSettings}
-                    disabled={loading}
+                    onClick={() => refetch()}
+                    disabled={isLoading || isSaving}
                   >
                     Recarregar
                   </Button>
@@ -291,7 +267,7 @@ export default function ConfiguracoesPage() {
               <CardContent className="grid gap-4 md:grid-cols-4">
                 <div className="md:col-span-2 space-y-2">
                   <Label htmlFor="classificacao">Tier</Label>
-                  <Select value={selectedTier} onValueChange={handleTierChange}>
+                  <Select value={selectedTier} onValueChange={handleTierChange} disabled={isLoading}>
                     <SelectTrigger className="rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
@@ -309,7 +285,8 @@ export default function ConfiguracoesPage() {
                     type="number"
                     value={tierConfig.ajudaCusto}
                     onChange={(e) => setTierConfig({...tierConfig, ajudaCusto: e.target.value})}
-                    className="rounded-xl" 
+                    className="rounded-xl"
+                    disabled={isLoading}
                   />
                 </div>
                 <div></div>
@@ -317,15 +294,15 @@ export default function ConfiguracoesPage() {
                   <Button 
                     className="rounded-xl"
                     onClick={handleSaveSettings}
-                    disabled={loading}
+                    disabled={isLoading || isSaving}
                   >
-                    {loading ? 'Salvando...' : 'Salvar'}
+                    {isSaving ? 'Salvando...' : 'Salvar'}
                   </Button>
                   <Button 
                     variant="outline" 
                     className="rounded-xl"
-                    onClick={loadSettings}
-                    disabled={loading}
+                    onClick={() => refetch()}
+                    disabled={isLoading || isSaving}
                   >
                     Recarregar
                   </Button>
@@ -353,10 +330,10 @@ export default function ConfiguracoesPage() {
                   <div className="rounded-xl border p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="font-medium">Google Sheets</div>
-                    <Badge variant="outline" className="flex items-center gap-1">
+                    <span className="flex items-center gap-1 text-sm">
                       <CheckCircle2 className="h-3 w-3" />
                       Conectado
-                    </Badge>
+                    </span>
                   </div>
                   <div className="text-sm text-muted-foreground">
                     URL/ID da planilha pública
@@ -371,10 +348,10 @@ export default function ConfiguracoesPage() {
                 <div className="rounded-xl border p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="font-medium">Bitrix24</div>
-                    <Badge variant="secondary" className="flex items-center gap-1">
+                    <span className="flex items-center gap-1 text-sm text-muted-foreground">
                       <AlertCircle className="h-3 w-3" />
                       Não configurado
-                    </Badge>
+                    </span>
                   </div>
                   <div className="text-sm text-muted-foreground">
                     Conexão via app local + proxy seguro
