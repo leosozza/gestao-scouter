@@ -2,12 +2,19 @@ import React, { useMemo, useState } from "react";
 import { format, parseISO, isValid } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
-import { Brain, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp } from "lucide-react";
+import { Brain, TrendingUp, TrendingDown, Minus, ChevronDown, ChevronUp, Clock } from "lucide-react";
+import { 
+  calculateTimeMetrics, 
+  calculateDailyTimeMetrics, 
+  getTimeInsights,
+  formatMinutesToHours 
+} from "@/utils/timeAnalytics";
 
 type Ficha = {
   created_at?: string;
   data_criacao_ficha?: string;
   criado?: string;
+  hora_criacao_ficha?: string;
   projeto?: string;
   projetos_comerciais?: string;
   scouter?: string;
@@ -109,18 +116,26 @@ export default function AIInsightsPanel({ startDate, endDate, rows, projectName 
       return Array.from(map.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
     };
 
+    // Calculate time-based metrics
+    const timeMetrics = calculateTimeMetrics(rows);
+    const dailyTimeMetrics = calculateDailyTimeMetrics(rows);
+
     return {
       total,
       valorTotal,
       confirmRate,
       fotoRate,
+      confirmados,
+      comFoto,
       avgPerDay,
       best,
       worst,
       trend,
       topProjetos: top(["projeto", "projetos_comerciais"]),
       topScouters: top(["scouter", "gestao_de_scouter"]),
-      daily
+      daily,
+      timeMetrics,
+      dailyTimeMetrics
     };
   }, [rows]);
 
@@ -147,15 +162,40 @@ export default function AIInsightsPanel({ startDate, endDate, rows, projectName 
     const projTxt = kpis.topProjetos.map(([n, v]) => `${n}: ${v}`).join(" • ") || "-";
     const scoutTxt = kpis.topScouters.map(([n, v]) => `${n}: ${v}`).join(" • ") || "-";
     
-    return [
+    // Build narrative with all KPIs including photo and confirmation rates
+    const narrativeParts = [
       `📅 Período ${period}${projectName ? ` | Projeto: ${projectName}` : ""}`,
       `📊 Total de fichas: ${kpis.total} | Média/dia: ${kpis.avgPerDay.toFixed(1)}`,
       `📈 Dia pico: ${bestTxt} | Dia fraco: ${worstTxt} | Tendência: ${trendTxt}`,
-      `✅ Taxa de confirmados: ${p(kpis.confirmRate)} | 📷 Com foto: ${p(kpis.fotoRate)}`,
+      `✅ Confirmadas: ${kpis.confirmados} (${p(kpis.confirmRate)}) | 📷 Com foto: ${kpis.comFoto} (${p(kpis.fotoRate)})`,
       typeof kpis.valorTotal === "number" && kpis.valorTotal > 0 ? `💰 Valor total estimado: ${brl(kpis.valorTotal)}` : "",
+    ];
+
+    // Add time-based metrics
+    if (kpis.timeMetrics.avgIntervalMinutes > 0) {
+      narrativeParts.push(
+        `⏱️ Intervalo médio entre fichas: ${kpis.timeMetrics.avgIntervalMinutes} minutos`
+      );
+    }
+
+    if (kpis.timeMetrics.workStartTime && kpis.timeMetrics.workEndTime) {
+      narrativeParts.push(
+        `🕐 Horário de trabalho: ${kpis.timeMetrics.workStartTime} às ${kpis.timeMetrics.workEndTime} (${kpis.timeMetrics.totalWorkHours.toFixed(1)}h)`
+      );
+    }
+
+    if (kpis.timeMetrics.fichasPerHour > 0) {
+      narrativeParts.push(
+        `📊 Produtividade: ${kpis.timeMetrics.fichasPerHour.toFixed(1)} fichas/hora`
+      );
+    }
+
+    narrativeParts.push(
       `🎯 Top Projetos: ${projTxt}`,
       `👥 Top Scouters: ${scoutTxt}`
-    ].filter(Boolean).join("\n");
+    );
+    
+    return narrativeParts.filter(Boolean).join("\n");
   }, [kpis, startDate, endDate, projectName]);
 
   async function runAI() {
@@ -221,14 +261,30 @@ export default function AIInsightsPanel({ startDate, endDate, rows, projectName 
                 <li>📉 Média diária abaixo do ideal - considerar aumentar meta</li>
               )}
               {kpis.confirmRate < 0.7 && (
-                <li>✅ Taxa de confirmados pode melhorar - reforçar qualificação</li>
+                <li>✅ Taxa de confirmados {(kpis.confirmRate * 100).toFixed(1)}% pode melhorar - reforçar qualificação (meta: 70%+)</li>
+              )}
+              {kpis.confirmRate >= 0.7 && kpis.confirmRate < 0.85 && (
+                <li>👍 Boa taxa de confirmados {(kpis.confirmRate * 100).toFixed(1)}% - continue assim!</li>
+              )}
+              {kpis.confirmRate >= 0.85 && (
+                <li>🌟 Excelente taxa de confirmados {(kpis.confirmRate * 100).toFixed(1)}% - parabéns!</li>
               )}
               {kpis.fotoRate < 0.8 && (
-                <li>📷 Aumentar taxa de fichas com foto para melhor conversão</li>
+                <li>📷 Taxa de fotos {(kpis.fotoRate * 100).toFixed(1)}% - aumentar para melhor conversão (meta: 80%+)</li>
+              )}
+              {kpis.fotoRate >= 0.8 && kpis.fotoRate < 0.95 && (
+                <li>📸 Boa taxa de fotos {(kpis.fotoRate * 100).toFixed(1)}% - mantenha o padrão!</li>
+              )}
+              {kpis.fotoRate >= 0.95 && (
+                <li>📷✨ Excelente taxa de fotos {(kpis.fotoRate * 100).toFixed(1)}% - qualidade superior!</li>
               )}
               {kpis.best && (
                 <li>🎯 Replicar práticas do dia pico ({kpis.best.date.slice(8, 10)}/{kpis.best.date.slice(5, 7)})</li>
               )}
+              {/* Time-based insights */}
+              {getTimeInsights(kpis.timeMetrics, kpis.dailyTimeMetrics).map((insight, idx) => (
+                <li key={`time-${idx}`}>{insight}</li>
+              ))}
               {kpis.topScouters.length > 0 && (
                 <li>👥 Focar nos top scouters: {kpis.topScouters.slice(0, 2).map(([n]) => n).join(", ")}</li>
               )}
@@ -241,16 +297,40 @@ export default function AIInsightsPanel({ startDate, endDate, rows, projectName 
 }
 
 function buildPrompt(narrative: string, kpis: any) {
-  return [
+  const suggestions = [
     "🤖 Análise de Performance",
     "",
     narrative,
     "",
     "💡 Ações Sugeridas:",
+  ];
+
+  // Add suggestions based on confirmation rate
+  if (kpis.confirmRate < 0.7) {
+    suggestions.push("• Melhorar qualificação das fichas para aumentar taxa de confirmados");
+  }
+
+  // Add suggestions based on photo rate
+  if (kpis.fotoRate < 0.8) {
+    suggestions.push("• Reforçar importância do envio de fotos nas fichas");
+  }
+
+  // Add time-based suggestions
+  if (kpis.timeMetrics.avgIntervalMinutes > 30) {
+    suggestions.push("• Reduzir intervalo entre fichas para aumentar produtividade");
+  }
+
+  if (kpis.timeMetrics.totalWorkHours < 4) {
+    suggestions.push("• Considerar ampliar jornada diária de trabalho");
+  }
+
+  // General suggestions
+  suggestions.push(
     "• Reforçar briefing no meio da semana",
     "• Estabelecer meta diária por scouter",
-    "• Incentivar envio de foto e confirmação",
     "• Monitorar dias de baixa performance",
     "• Celebrar e replicar práticas dos dias pico"
-  ].join("\n");
+  );
+
+  return suggestions.join("\n");
 }
