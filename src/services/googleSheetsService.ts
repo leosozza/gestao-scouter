@@ -6,6 +6,7 @@ export class GoogleSheetsService {
   private static readonly GIDS = {
     FICHAS: '452792639',
     PROJETOS: '449483735',
+    SCOUTERS: '1351167110', // Aba de Scouters ativos
     METAS: '0' // Esta aba parece não existir, vamos usar um fallback
   };
 
@@ -64,6 +65,9 @@ export class GoogleSheetsService {
         return mockFichas;
       } else if (gid === this.GIDS.PROJETOS) {
         return await MockDataService.fetchProjetos();
+      } else if (gid === this.GIDS.SCOUTERS) {
+        // For scouters, return empty array if fetch fails - we'll fallback to deriving from fichas
+        return [];
       }
       
       return [];
@@ -338,6 +342,59 @@ export class GoogleSheetsService {
       return [];
     }
   }
+
+  static async fetchScouters(): Promise<any[]> {
+    try {
+      console.log('GoogleSheetsService: Buscando scouters da aba dedicada...');
+      const scouters = await this.fetchCsvData(this.GIDS.SCOUTERS);
+      
+      if (scouters.length > 0) {
+        console.log('GoogleSheetsService: Campos disponíveis no primeiro scouter:', Object.keys(scouters[0]));
+        console.log('GoogleSheetsService: Primeiro scouter completo:', scouters[0]);
+      }
+      
+      // Processar scouters com campos corretos
+      const processedScouters = scouters.map(scouter => ({
+        ...scouter,
+        // Mapear campos comuns da planilha de scouters
+        // Os campos exatos podem variar, então tentamos várias variações
+        nome: scouter['Nome'] || scouter['Scouter'] || scouter['Nome do Scouter'],
+        tier: scouter['Tier'] || scouter['Classificação'] || scouter['Nivel'],
+        status: scouter['Status'] || scouter['Situação'],
+        meta_semanal: this.parseNumber(scouter['Meta Semanal'] || scouter['Meta'] || scouter['Meta/Semana']),
+        ativo: this.parseAtivo(scouter['Status'] || scouter['Ativo'] || scouter['Situação']),
+      }));
+
+      console.log(`GoogleSheetsService: ${processedScouters.length} scouters processados da aba dedicada`);
+      console.log(`GoogleSheetsService: Scouters ativos: ${processedScouters.filter(s => s.ativo).length}`);
+      return processedScouters;
+    } catch (error) {
+      console.error('GoogleSheetsService: Erro ao buscar scouters:', error);
+      // Return empty array to fallback to ficha-based scouter extraction
+      return [];
+    }
+  }
+
+  private static parseAtivo(status: string): boolean {
+    if (!status || typeof status !== 'string') return true; // Default to active
+    
+    const statusLower = status.toLowerCase().trim();
+    
+    // Considerar ativo se:
+    // - Status contém "ativo" ou "ativa"
+    // - Status não contém palavras que indicam inativo
+    const inactiveKeywords = ['inativo', 'inativa', 'desligado', 'desligada', 'pausado', 'férias', 'ferias', 'afastado'];
+    const isInactive = inactiveKeywords.some(keyword => statusLower.includes(keyword));
+    
+    if (isInactive) return false;
+    
+    // Se status é "ativo" explicitamente, retorna true
+    if (statusLower.includes('ativo') || statusLower.includes('ativa')) return true;
+    
+    // Default: considerar ativo se não foi marcado como inativo
+    return true;
+  }
+
 
   private static normalizeStatus(status: string): string {
     if (!status) return 'Aguardando';
