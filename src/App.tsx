@@ -11,6 +11,7 @@ const ProjecaoPage = lazy(() => import("./pages/Projecao"));
 const Leads = lazy(() => import("./pages/Leads"));
 const Scouters = lazy(() => import("./pages/Scouters"));
 const Pagamentos = lazy(() => import("./pages/Pagamentos"));
+const AreaDeAbordagem = lazy(() => import("./pages/AreaDeAbordagem"));
 const ConfiguracoesPage = lazy(() => import("./pages/Configuracoes"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const BitrixCallback = lazy(() => import("./pages/BitrixCallback"));
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/leads" element={<Leads />} />
             <Route path="/scouters" element={<Scouters />} />
             <Route path="/pagamentos" element={<Pagamentos />} />
+            <Route path="/area-de-abordagem" element={<AreaDeAbordagem />} />
             <Route path="/configuracoes" element={<ConfiguracoesPage />} />
             <Route path="/bitrix-callback" element={<BitrixCallback />} />
             <Route path="*" element={<NotFound />} />
