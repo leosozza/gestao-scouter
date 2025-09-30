@@ -1,4 +1,9 @@
 
+// Type for raw CSV row data
+interface CsvRow {
+  [key: string]: string | number | Date | boolean | null | undefined;
+}
+
 export class GoogleSheetsService {
   private static readonly SPREADSHEET_ID = '14l4A_BOFZM-TwLuam-bKzUgInNAA7fOCeamdkE1nt_o';
   
@@ -20,7 +25,7 @@ export class GoogleSheetsService {
     return `${this.BASE_URL}/${this.SPREADSHEET_ID}/export?format=csv&gid=${gid}`;
   }
 
-  private static async fetchCsvData(gid: string): Promise<any[]> {
+  private static async fetchCsvData(gid: string): Promise<CsvRow[]> {
     try {
       const url = this.buildUrl(gid);
       console.log(`GoogleSheetsService: Buscando dados de ${url}`);
@@ -74,7 +79,7 @@ export class GoogleSheetsService {
     }
   }
 
-  private static parseCsv(csvText: string): any[] {
+  private static parseCsv(csvText: string): CsvRow[] {
     try {
       const lines = csvText.trim().split('\n');
       
@@ -93,11 +98,11 @@ export class GoogleSheetsService {
       }
 
       // Parse das linhas de dados
-      const data = [];
+      const data: CsvRow[] = [];
       for (let i = 1; i < lines.length; i++) {
         if (lines[i].trim()) {
           const values = this.parseCsvLine(lines[i]);
-          const row: any = {};
+          const row: CsvRow = {};
           
           headers.forEach((header, index) => {
             row[header] = values[index] || '';
@@ -252,7 +257,7 @@ export class GoogleSheetsService {
     return date instanceof Date && !isNaN(date.getTime()) && date.getFullYear() > 1900;
   }
 
-  static async fetchFichas(): Promise<any[]> {
+  static async fetchFichas(): Promise<CsvRow[]> {
     try {
       console.log('GoogleSheetsService: Buscando fichas...');
       const fichas = await this.fetchCsvData(this.GIDS.FICHAS);
@@ -307,7 +312,7 @@ export class GoogleSheetsService {
     }
   }
 
-  static async fetchProjetos(): Promise<any[]> {
+  static async fetchProjetos(): Promise<CsvRow[]> {
     try {
       console.log('GoogleSheetsService: Buscando projetos...');
       const projetos = await this.fetchCsvData(this.GIDS.PROJETOS);
@@ -331,7 +336,7 @@ export class GoogleSheetsService {
     }
   }
 
-  static async fetchMetasScouter(): Promise<any[]> {
+  static async fetchMetasScouter(): Promise<CsvRow[]> {
     try {
       console.log('GoogleSheetsService: Buscando metas de scouter...');
       // Como a aba de metas não existe, retorna array vazio
@@ -343,7 +348,7 @@ export class GoogleSheetsService {
     }
   }
 
-  static async fetchScouters(): Promise<any[]> {
+  static async fetchScouters(): Promise<CsvRow[]> {
     try {
       console.log('GoogleSheetsService: Buscando scouters da aba dedicada...');
       const scouters = await this.fetchCsvData(this.GIDS.SCOUTERS);
@@ -354,6 +359,11 @@ export class GoogleSheetsService {
       }
       
       // Processar scouters com campos corretos
+      // Expected columns from the Scouters sheet:
+      // - Nome / Scouter / Nome do Scouter: Scouter's name
+      // - Tier / Classificação / Nivel: Scouter's tier/level
+      // - Status / Situação / Ativo: Active status (ativo, inativo, etc.)
+      // - Meta Semanal / Meta / Meta/Semana: Weekly goal number
       const processedScouters = scouters.map(scouter => ({
         ...scouter,
         // Mapear campos comuns da planilha de scouters
@@ -444,25 +454,38 @@ export class GoogleSheetsService {
   }
 
   // Método para testar a conexão
-  static async testConnection(): Promise<{ success: boolean; message: string; data?: any }> {
+  static async testConnection(): Promise<{ 
+    success: boolean; 
+    message: string; 
+    data?: {
+      fichas: number;
+      projetos: number;
+      scouters: number;
+      scoutersAtivos: number;
+      camposDisponiveis: string[];
+    }
+  }> {
     try {
       console.log('GoogleSheetsService: Testando conexão...');
       
-      const [fichas, projetos] = await Promise.all([
+      const [fichas, projetos, scouters] = await Promise.all([
         this.fetchFichas(),
-        this.fetchProjetos()
+        this.fetchProjetos(),
+        this.fetchScouters()
       ]);
 
-      const success = fichas.length > 0 || projetos.length > 0;
+      const success = fichas.length > 0 || projetos.length > 0 || scouters.length > 0;
       
       return {
         success,
         message: success 
-          ? `Conexão bem-sucedida! ${fichas.length} fichas e ${projetos.length} projetos encontrados.`
+          ? `Conexão bem-sucedida! ${fichas.length} fichas, ${projetos.length} projetos e ${scouters.length} scouters encontrados.`
           : 'Conexão estabelecida, mas nenhum dado foi encontrado.',
         data: {
           fichas: fichas.length,
           projetos: projetos.length,
+          scouters: scouters.length,
+          scoutersAtivos: scouters.filter(s => s.ativo).length,
           camposDisponiveis: fichas.length > 0 ? Object.keys(fichas[0]) : []
         }
       };

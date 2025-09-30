@@ -22,6 +22,22 @@ export interface ScouterSummary {
   averageConversion: number;
 }
 
+// Internal interfaces for processing
+interface ScouterFromTab {
+  nome?: string;
+  tier?: string;
+  status?: string;
+  meta_semanal?: number;
+  ativo?: boolean;
+}
+
+interface FichaRecord {
+  status_normalizado?: string;
+  valor_por_ficha_num?: number;
+  [key: string]: unknown;
+}
+
+
 export async function getScoutersData(): Promise<ScouterData[]> {
   const dataSource = getDataSource();
   
@@ -82,9 +98,11 @@ async function fetchScoutersFromSheets(): Promise<ScouterData[]> {
 }
 
 // New function to enrich scouter data with fichas statistics
-function enrichScoutersWithFichasData(scoutersFromTab: any[], fichas: any[]): ScouterData[] {
+function enrichScoutersWithFichasData(scoutersFromTab: ScouterFromTab[], fichas: FichaRecord[]): ScouterData[] {
+  console.log(`scoutersRepo: Enriching ${scoutersFromTab.length} scouters with fichas data from ${fichas.length} fichas`);
+  
   // Group fichas by scouter for statistics
-  const fichasByScouterMap = new Map<string, any[]>();
+  const fichasByScouterMap = new Map<string, FichaRecord[]>();
   
   fichas.forEach(ficha => {
     const getNomeScouter = (row: Record<string, unknown>) =>
@@ -105,8 +123,10 @@ function enrichScoutersWithFichasData(scoutersFromTab: any[], fichas: any[]): Sc
     }
   });
   
+  console.log(`scoutersRepo: Grouped fichas into ${fichasByScouterMap.size} unique scouter names`);
+  
   // Map scouters from tab with fichas data
-  return scoutersFromTab.map((scouter, index) => {
+  const result = scoutersFromTab.map((scouter, index) => {
     const scouterName = normalize(scouter.nome || 'Sem Nome');
     const scouterFichas = fichasByScouterMap.get(scouterName) || [];
     
@@ -135,12 +155,17 @@ function enrichScoutersWithFichasData(scoutersFromTab: any[], fichas: any[]): Sc
       active: scouter.ativo !== undefined ? scouter.ativo : true
     };
   });
+  
+  const activeCount = result.filter(s => s.active).length;
+  console.log(`scoutersRepo: Enriched ${result.length} scouters (${activeCount} active, ${result.length - activeCount} inactive)`);
+  
+  return result;
 }
 
 // Existing function to derive scouters from fichas (kept as fallback)
-function deriveScoutersFromFichas(fichas: any[]): ScouterData[] {
+function deriveScoutersFromFichas(fichas: FichaRecord[]): ScouterData[] {
   // Group fichas by scouter
-  const scouterMap = new Map();
+  const scouterMap = new Map<string, { fichas: FichaRecord[]; tier_name: string; weekly_goal: number }>();
   
   fichas.forEach(ficha => {
     const getNomeScouter = (row: Record<string, unknown>) =>
@@ -167,7 +192,7 @@ function deriveScoutersFromFichas(fichas: any[]): ScouterData[] {
   // Convert to ScouterData format
   return Array.from(scouterMap.entries()).map(([scouterName, data], index) => {
     const totalFichas = data.fichas.length;
-    const convertedFichas = data.fichas.filter((f: any) => f.status_normalizado === 'Confirmado').length;
+    const convertedFichas = data.fichas.filter((f: FichaRecord) => f.status_normalizado === 'Confirmado').length;
     const conversionRate = totalFichas > 0 ? (convertedFichas / totalFichas) * 100 : 0;
     
     // Determine performance status based on conversion rate
@@ -176,7 +201,7 @@ function deriveScoutersFromFichas(fichas: any[]): ScouterData[] {
     else if (conversionRate >= 60) performanceStatus = 'Bom';
     else if (conversionRate < 40) performanceStatus = 'Precisa Melhorar';
     
-    const totalValue = data.fichas.reduce((sum: number, f: any) => sum + (f.valor_por_ficha_num || 0), 0);
+    const totalValue = data.fichas.reduce((sum: number, f: FichaRecord) => sum + (f.valor_por_ficha_num || 0), 0);
     
     return {
       id: `scouter-${index}`,
