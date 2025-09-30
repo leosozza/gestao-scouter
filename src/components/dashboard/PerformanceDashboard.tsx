@@ -33,6 +33,8 @@ import { format, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { getLeads } from '@/repositories/leadsRepo';
 import type { Lead } from '@/repositories/types';
+import FichasPorDiaChart from '@/components/charts/FichasPorDiaChart';
+import AIInsightsPanel from '@/components/insights/AIInsightsPanel';
 
 interface PerformanceMetrics {
   totalFichas: number;
@@ -304,6 +306,30 @@ export function PerformanceDashboard() {
             </Button>
           </AlertDescription>
         </Alert>
+      </div>
+
+      {/* Charts & AI Insights */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Gráfico de Barras por Dia */}
+        <div className="rounded-lg border bg-card p-4">
+          <div className="mb-2 text-sm font-medium">
+            Fichas por dia ({new Date(dataInicio).toLocaleDateString('pt-BR')} – {new Date(dataFim).toLocaleDateString('pt-BR')})
+          </div>
+          <FichasPorDiaChart
+            startDate={new Date(dataInicio)}
+            endDate={new Date(dataFim)}
+            rows={leads}
+            height={280}
+          />
+        </div>
+
+        {/* Painel de IA */}
+        <AIInsightsPanel
+          startDate={new Date(dataInicio)}
+          endDate={new Date(dataFim)}
+          rows={leads}
+          projectName={selectedProjects[0] || null}
+        />
       </div>
 
       {/* Performance Metrics Grid */}
