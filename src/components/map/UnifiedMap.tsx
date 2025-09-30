@@ -26,35 +26,31 @@ const TIER_COLORS: Record<string, string> = {
   'default': '#3B82F6',
 };
 
-// Criar ícone customizado para scouters
+// Criar ícone customizado para scouters (ícone de pessoa)
 function createMarkerIcon(color: string): L.DivIcon {
   return L.divIcon({
     className: 'custom-marker',
     html: `
       <div style="
+        display: flex;
+        align-items: center;
+        justify-content: center;
         background-color: ${color};
-        width: 24px;
-        height: 24px;
-        border-radius: 50% 50% 50% 0;
-        transform: rotate(-45deg);
-        border: 2px solid white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
       ">
-        <div style="
-          width: 12px;
-          height: 12px;
-          background: white;
-          border-radius: 50%;
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-        "></div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
       </div>
     `,
-    iconSize: [24, 24],
-    iconAnchor: [12, 24],
-    popupAnchor: [0, -24],
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16],
   });
 }
 
@@ -219,9 +215,8 @@ export function UnifiedMap({
       maxZoom: 17,
       max: 1.0,
       gradient: {
-        0.0: 'blue',
-        0.5: 'lime',
-        0.7: 'yellow',
+        0.0: 'green',
+        0.5: 'yellow',
         1.0: 'red'
       }
     }).addTo(mapRef.current);

@@ -87,9 +87,8 @@ export function FichasHeatmap({
       maxZoom: 17,
       max: 1.0,
       gradient: {
-        0.0: 'blue',
-        0.5: 'lime',
-        0.7: 'yellow',
+        0.0: 'green',
+        0.5: 'yellow',
         1.0: 'red'
       }
     }).addTo(mapRef.current);
