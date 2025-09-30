@@ -13,12 +13,11 @@ import {
   type ProjectionType,
   type Granularidade
 } from '@/repositories/projectionsRepo'
-import { getAppSettings } from '@/repositories/settingsRepo'
-import type { AppSettings } from '@/repositories/types'
+import { useAppSettings } from '@/hooks/useAppSettings'
 
 export default function ProjecaoPage() {
+  const { settings } = useAppSettings()
   const [projectionData, setProjectionData] = useState<AdvancedProjectionData | null>(null)
-  const [settings, setSettings] = useState<AppSettings | null>(null)
   const [loading, setLoading] = useState(false)
   const [projectionType, setProjectionType] = useState<ProjectionType>('scouter')
   const [selectedFilter, setSelectedFilter] = useState<string | undefined>(undefined)
@@ -56,18 +55,9 @@ export default function ProjecaoPage() {
     loadAvailableFilters()
   }, [])
 
-  useEffect(() => {
-    loadSettings()
-  }, [])
-
   const loadAvailableFilters = async () => {
     const filters = await getAvailableFilters()
     setAvailableFilters(filters)
-  }
-
-  const loadSettings = async () => {
-    const appSettings = await getAppSettings()
-    setSettings(appSettings)
   }
 
   const fetchData = async () => {

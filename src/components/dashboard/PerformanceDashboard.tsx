@@ -35,6 +35,8 @@ import { getLeads } from '@/repositories/leadsRepo';
 import type { Lead } from '@/repositories/types';
 import FichasPorDiaChart from '@/components/charts/FichasPorDiaChart';
 import AIInsightsPanel from '@/components/insights/AIInsightsPanel';
+import { useAppSettings } from '@/hooks/useAppSettings';
+import { calculateAverageIQS, calculateTabulationMetrics } from '@/utils/iqsCalculation';
 
 interface PerformanceMetrics {
   totalFichas: number;
@@ -53,6 +55,7 @@ interface PerformanceMetrics {
 }
 
 export function PerformanceDashboard() {
+  const { settings } = useAppSettings();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -87,6 +90,13 @@ export function PerformanceDashboard() {
   useEffect(() => {
     loadData();
   }, [dataInicio, dataFim, selectedScouters, selectedProjects]);
+
+  // Recalculate metrics when settings change
+  useEffect(() => {
+    if (leads.length > 0 && settings) {
+      calculateMetrics(leads);
+    }
+  }, [settings, leads]);
 
   const loadData = async () => {
     try {
@@ -123,15 +133,17 @@ export function PerformanceDashboard() {
     
     const conseguiuContato = data.filter(lead => lead.presenca_confirmada === 'Sim').length;
     
-    // Mock data for other metrics (you would calculate these based on your actual data structure)
-    const agendadas = Math.floor(total * 0.0);
-    const compareceu = Math.floor(total * 0.0);
-    const interesse = Math.floor(total * 0.0);
-    const concluiuPositivo = Math.floor(total * 0.0);
-    const concluiuNegativo = Math.floor(total * 0.0);
-    const semInteresseDefinitivo = Math.floor(total * 0.0);
-    const semContato = Math.floor(total * 0.0);
-    const semInteresseMomento = Math.floor(total * 0.0);
+    // Agendadas e Compareceu
+    const agendadas = data.filter(lead => lead.agendado === '1').length;
+    const compareceu = data.filter(lead => lead.compareceu === '1').length;
+
+    // Métricas de tabulação
+    const tabulationMetrics = calculateTabulationMetrics(data);
+
+    // Calcular IQS médio usando as configurações atuais
+    const iqsMedio = settings 
+      ? calculateAverageIQS(data, settings) 
+      : 0;
 
     setMetrics({
       totalFichas: total,
@@ -140,13 +152,13 @@ export function PerformanceDashboard() {
       conseguiuContato,
       agendadas,
       compareceu,
-      interesse,
-      concluiuPositivo,
-      concluiuNegativo,
-      semInteresseDefinitivo,
-      semContato,
-      semInteresseMomento,
-      iqsMedio: 49.7 // Mock value
+      interesse: tabulationMetrics.interesse,
+      concluiuPositivo: tabulationMetrics.conclusaoPositiva,
+      concluiuNegativo: tabulationMetrics.conclusaoNegativa,
+      semInteresseDefinitivo: tabulationMetrics.semInteresseDefinitivo,
+      semContato: tabulationMetrics.semContato,
+      semInteresseMomento: tabulationMetrics.semInteresseMomento,
+      iqsMedio: Number(iqsMedio.toFixed(1))
     });
   };
 
