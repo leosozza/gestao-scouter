@@ -54,7 +54,10 @@ export function parseLatLng(coordStr: string): { lat: number; lng: number } | nu
  * Fetch CSV data from Google Sheets
  */
 async function fetchCsv(gid: string): Promise<string> {
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
+  // Use proxy in development to avoid CORS issues
+  const url = import.meta.env.DEV
+    ? `/api/sheets/${SHEET_ID}/${gid}`
+    : `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
   
   try {
     const response = await fetch(url, { 
