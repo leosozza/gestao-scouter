@@ -19,7 +19,7 @@ import {
 } from "@/map/fichas";
 import { AppShell } from "@/layouts/AppShell";
 import { Sidebar } from "@/components/layout/Sidebar";
-import { Calendar, Eye, Pencil, RefreshCw, X, Check, FileText, Maximize2, Minimize2 } from "lucide-react";
+import { Calendar, Eye, Pencil, RefreshCw, X, Check, FileText, Maximize2, Minimize2, Flame } from "lucide-react";
 // ATENÇÃO: Instale html2pdf.js na sua base (npm i html2pdf.js)
 import html2pdf from "html2pdf.js";
 
@@ -71,6 +71,7 @@ export default function TestFichasPage() {
   // Controle de seleção
   const [controlsVisible, setControlsVisible] = useState(false);
   const [selecting, setSelecting] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(true);
   const [dateRange, setDateRange] = useState<[string, string]>(() => {
     const now = new Date();
     const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -108,24 +109,15 @@ export default function TestFichasPage() {
       .then(({ fichas }) => {
         if (canceled) return;
         setAllFichas(fichas);
-        // filtro inicial por data
-        const filtered = fichas.filter((f) => {
-          // Corrigir para pegar data da coluna D
-          const dataVal = f.data || f.Data || f["Data"];
-          if (!dataVal) return false;
-          const dt = new Date(dataVal);
-          return (
-            dt >= new Date(dateRange[0]) &&
-            dt <= new Date(dateRange[1] + "T23:59:59")
-          );
-        });
-        setFilteredFichas(filtered);
-        setDisplayedFichas(filtered);
-        setSummary(generateSummary(filtered));
+        // NO INITIAL DATE FILTER - show all fichas on first load
+        // Date filter will only be applied when user changes the date range
+        setFilteredFichas(fichas);
+        setDisplayedFichas(fichas);
+        setSummary(generateSummary(fichas));
         // heatmap
         if (mapRef.current) {
           if (heatmapRef.current) {
-            heatmapRef.current.updateData(filtered);
+            heatmapRef.current.updateData(fichas);
             heatmapRef.current.fitBounds();
           } else {
             heatmapRef.current = createFichasHeatmap(mapRef.current, {
@@ -140,7 +132,7 @@ export default function TestFichasPage() {
                 1.0: "#EF4444",
               },
             });
-            heatmapRef.current.updateData(filtered);
+            heatmapRef.current.updateData(fichas);
             heatmapRef.current.fitBounds();
           }
         }
@@ -151,8 +143,30 @@ export default function TestFichasPage() {
     return () => {
       canceled = true;
     };
-    // eslint-disable-next-line
-  }, [dateRange]);
+  }, []); // Remove dateRange dependency - only load once on mount
+
+  // Apply date filter when user changes the date range
+  useEffect(() => {
+    if (allFichas.length === 0) return;
+    
+    const filtered = allFichas.filter((f) => {
+      const dataVal = f.data || f.Data || f["Data"];
+      if (!dataVal) return false;
+      const dt = new Date(dataVal);
+      return (
+        dt >= new Date(dateRange[0]) &&
+        dt <= new Date(dateRange[1] + "T23:59:59")
+      );
+    });
+    
+    setFilteredFichas(filtered);
+    setDisplayedFichas(filtered);
+    setSummary(generateSummary(filtered));
+    
+    if (heatmapRef.current && showHeatmap) {
+      heatmapRef.current.updateData(filtered);
+    }
+  }, [dateRange, allFichas, showHeatmap]);
 
   // Atualizar heatmap e contagem ao mover/zoom no mapa
   useEffect(() => {
@@ -166,14 +180,15 @@ export default function TestFichasPage() {
       );
       setDisplayedFichas(visible);
       setSummary(generateSummary(visible));
-      heatmapRef.current.updateData(visible);
+      if (showHeatmap) {
+        heatmapRef.current.updateData(visible);
+      }
     };
     mapRef.current.on("moveend zoomend", onMove);
     return () => {
       mapRef.current?.off("moveend zoomend", onMove);
     };
-    // eslint-disable-next-line
-  }, [filteredFichas]);
+  }, [filteredFichas, showHeatmap]);
 
   // Seleção poligonal (desenhar zona)
   const handleStartSelection = () => {
@@ -187,7 +202,9 @@ export default function TestFichasPage() {
         setSelecting(false);
         setDisplayedFichas(result.fichas);
         setSummary(generateSummary(result.fichas));
-        heatmapRef.current?.updateData(result.fichas);
+        if (showHeatmap) {
+          heatmapRef.current?.updateData(result.fichas);
+        }
       },
       { mode: "polygon", disableMapPan: true }
     );
@@ -198,7 +215,9 @@ export default function TestFichasPage() {
   const handleClearSelection = () => {
     setDisplayedFichas(filteredFichas);
     setSummary(generateSummary(filteredFichas));
-    heatmapRef.current?.updateData(filteredFichas);
+    if (showHeatmap) {
+      heatmapRef.current?.updateData(filteredFichas);
+    }
     selectionRef.current?.destroy();
     setSelecting(false);
   };
@@ -212,7 +231,9 @@ export default function TestFichasPage() {
     );
     setDisplayedFichas(visibles);
     setSummary(generateSummary(visibles));
-    heatmapRef.current?.updateData(visibles);
+    if (showHeatmap) {
+      heatmapRef.current?.updateData(visibles);
+    }
     selectionRef.current?.destroy();
     setSelecting(false);
   };
@@ -221,6 +242,23 @@ export default function TestFichasPage() {
   const handleApplySelection = () => {
     setSelecting(false);
     selectionRef.current?.destroy();
+  };
+
+  // Toggle heatmap visibility
+  const handleToggleHeatmap = () => {
+    setShowHeatmap((prev) => {
+      const newValue = !prev;
+      if (heatmapRef.current) {
+        if (newValue) {
+          // Show heatmap - update with current displayed fichas
+          heatmapRef.current.updateData(displayedFichas);
+        } else {
+          // Hide heatmap - clear it
+          heatmapRef.current.clear();
+        }
+      }
+      return newValue;
+    });
   };
 
   // Tela cheia
@@ -311,15 +349,36 @@ export default function TestFichasPage() {
           
           {/* Botão de controles de seleção (apenas no modo fichas) */}
           {modo === "fichas" && (
-            <button 
-              className={`bg-white/95 rounded-lg shadow-lg p-3 border transition ${
-                controlsVisible ? "bg-blue-50 border-blue-300" : "hover:bg-gray-50"
-              }`}
-              title="Controles de seleção" 
-              onClick={() => setControlsVisible(!controlsVisible)} 
-            > 
-              <Pencil size={20} /> 
-            </button>
+            <>
+              <button 
+                className={`bg-white/95 rounded-lg shadow-lg p-3 border transition ${
+                  showHeatmap ? "bg-orange-50 border-orange-300" : "hover:bg-gray-50"
+                }`}
+                title={showHeatmap ? "Ocultar heatmap" : "Mostrar heatmap"} 
+                onClick={handleToggleHeatmap} 
+              > 
+                <Flame size={20} className={showHeatmap ? "text-orange-500" : "text-gray-400"} /> 
+              </button>
+              <button 
+                className={`bg-white/95 rounded-lg shadow-lg p-3 border transition ${
+                  selecting ? "bg-blue-50 border-blue-300" : "hover:bg-gray-50"
+                }`}
+                title={selecting ? "Desenhando polígono..." : "Desenhar zona no mapa"} 
+                onClick={handleStartSelection}
+                disabled={selecting || filteredFichas.length === 0}
+              > 
+                <Pencil size={20} className={selecting ? "text-blue-500" : ""} /> 
+              </button>
+              <button 
+                className={`bg-white/95 rounded-lg shadow-lg p-3 border transition ${
+                  controlsVisible ? "bg-blue-50 border-blue-300" : "hover:bg-gray-50"
+                }`}
+                title="Controles de filtro e seleção" 
+                onClick={() => setControlsVisible(!controlsVisible)} 
+              > 
+                <Calendar size={20} /> 
+              </button>
+            </>
           )}
         </div>
 
