@@ -42,16 +42,35 @@ const MOCK_FICHAS: FichaMapData[] = [
 
 /**
  * Parse lat,lng string format
- * Handles formats like "-23.507144,-46.846307" or "-23.507144, -46.846307"
+ * Handles formats like "-23.507144,-46.846307", "-23.507144, -46.846307", 
+ * "-23.507144 -46.846307", or "-23.507144 ; -46.846307"
  */
 export function parseLatLng(coordStr: string): { lat: number; lng: number } | null {
   if (!coordStr || typeof coordStr !== 'string') return null;
   
-  // Remove extra spaces and parentheses
-  const cleaned = coordStr.trim().replace(/[()]/g, '');
+  // Pre-clean: remove BOM, replace semicolons with comma, remove parentheses, collapse whitespace, trim
+  let cleaned = coordStr.trim();
+  // Remove BOM if present
+  if (cleaned.charCodeAt(0) === 0xFEFF) {
+    cleaned = cleaned.substring(1);
+  }
+  // Replace semicolons with comma
+  cleaned = cleaned.replace(/;/g, ',');
+  // Remove parentheses
+  cleaned = cleaned.replace(/[()]/g, '');
+  // Collapse multiple spaces to single space
+  cleaned = cleaned.replace(/\s+/g, ' ');
+  // Trim again
+  cleaned = cleaned.trim();
   
-  // Match format: number, number (with optional spaces)
-  const match = cleaned.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+  // Match format: number separator number (separator can be comma or space(s))
+  // First try with comma
+  let match = cleaned.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+  
+  // If no comma match, try space-separated
+  if (!match) {
+    match = cleaned.match(/(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/);
+  }
   
   if (!match) return null;
   
@@ -215,6 +234,34 @@ export async function fetchScoutersData(): Promise<ScouterMapData[]> {
 }
 
 /**
+ * Normalize header string for robust matching
+ * - NFD diacritic removal
+ * - Trim
+ * - Convert to lowercase
+ * - Remove surrounding parentheses
+ * - Collapse inner spaces to single space
+ * - Remove leading/trailing punctuation ((),:;)
+ */
+function normalizeHeader(header: string): string {
+  let normalized = header
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+    .trim()
+    .toLowerCase();
+  
+  // Remove surrounding parentheses and trim again
+  normalized = normalized.replace(/^\(+\s*/, '').replace(/\s*\)+$/, '').trim();
+  
+  // Collapse multiple spaces to single space
+  normalized = normalized.replace(/\s+/g, ' ');
+  
+  // Remove leading/trailing punctuation
+  normalized = normalized.replace(/^[(),:;]+/, '').replace(/[(),:;]+$/, '').trim();
+  
+  return normalized;
+}
+
+/**
  * Fetch fichas data from Google Sheets
  * Column L contains "Localização" in format "lat,lng"
  */
@@ -230,13 +277,56 @@ export async function fetchFichasData(): Promise<FichaMapData[]> {
       console.log('📋 Available columns:', Object.keys(rows[0]));
     }
     
+    // Build normalized header map
+    const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
+    const normalizedHeaderMap = new Map<string, string>();
+    headers.forEach(header => {
+      const normalized = normalizeHeader(header);
+      normalizedHeaderMap.set(normalized, header);
+      console.log(`🔍 Header mapping: "${header}" -> normalized: "${normalized}"`);
+    });
+    
+    // Candidate normalized keys for location column
+    const candidateKeys = [
+      'localizacao',
+      'localizacao lat,lng',
+      'localizacao lat lng',
+      'local',
+      'localizacao ficha'
+    ];
+    
+    // Try to find location column by normalized header
+    let locationHeaderKey: string | null = null;
+    for (const candidate of candidateKeys) {
+      if (normalizedHeaderMap.has(candidate)) {
+        locationHeaderKey = normalizedHeaderMap.get(candidate)!;
+        console.log(`✅ Found location column by normalized key "${candidate}": original header = "${locationHeaderKey}"`);
+        break;
+      }
+    }
+    
+    // If no candidate found, fallback to column index 11 (L)
+    if (!locationHeaderKey && headers.length > 11) {
+      locationHeaderKey = headers[11];
+      console.warn(`⚠️ No matching location header found by name. Falling back to column index 11 (L): "${locationHeaderKey}"`);
+    }
+    
+    if (!locationHeaderKey) {
+      console.error('❌ Could not identify location column. Headers:', headers);
+      console.warn('⚠️ No fichas found - no location column identified, using mock data for testing');
+      return MOCK_FICHAS;
+    }
+    
     const fichas: FichaMapData[] = [];
+    let validCount = 0;
+    let skippedNoValue = 0;
+    let skippedParse = 0;
     
     for (const row of rows) {
-      // Look for location field (column L should be "Localização")
-      const localizacao = row['Localização'] || row['Localizacao'] || row['localização'] || row['localizacao'] || '';
+      const localizacao = row[locationHeaderKey] || '';
       
       if (!localizacao) {
+        skippedNoValue++;
         continue; // Skip rows without location
       }
       
@@ -248,14 +338,30 @@ export async function fetchFichasData(): Promise<FichaMapData[]> {
           lng: coords.lng,
           localizacao,
         });
+        validCount++;
+        
+        // Log first 2 valid rows for debugging
+        if (validCount <= 2) {
+          console.log(`📍 Valid ficha ${validCount}:`, { lat: coords.lat, lng: coords.lng, localizacao });
+        }
+      } else {
+        skippedParse++;
       }
     }
     
+    // Log summary
+    console.log(`📊 Fichas parsing summary:`, {
+      total: rows.length,
+      valid: validCount,
+      skippedNoValue,
+      skippedParse,
+      locationHeader: locationHeaderKey
+    });
     console.log(`✅ Successfully parsed ${fichas.length} fichas with valid coordinates`);
     
     // If no fichas found, return mock data for testing
     if (fichas.length === 0) {
-      console.warn('⚠️ No fichas found in Google Sheets, using mock data for testing');
+      console.warn(`⚠️ No fichas found in Google Sheets (header used: "${locationHeaderKey}"), using mock data for testing`);
       return MOCK_FICHAS;
     }
     
