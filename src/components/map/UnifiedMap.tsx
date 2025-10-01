@@ -245,6 +245,7 @@ export function UnifiedMap({
     }
 
     if (!fichas || fichas.length === 0) {
+      console.debug('Fichas heatmap: no data after fetch', { length: fichas?.length });
       console.warn('⚠️ No fichas data available');
       setTotalFichas(0);
       return;
