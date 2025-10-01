@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchFichasData, FichaMapData } from '@/services/googleSheetsMapService';
 
 export function useFichasFromSheets() {
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['fichas-from-sheets'],
     queryFn: async (): Promise<FichaMapData[]> => {
       try {
@@ -26,5 +26,6 @@ export function useFichasFromSheets() {
     isLoading,
     error,
     refetch,
+    isFetching,
   };
 }
