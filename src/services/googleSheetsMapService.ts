@@ -21,6 +21,21 @@ export interface FichaMapData {
   localizacao: string;
 }
 
+export interface FichasParsingDebugData {
+  summary: {
+    total: number;
+    valid: number;
+    skippedNoValue: number;
+    skippedParse: number;
+    skippedOutOfBounds: number;
+    decimalCommaConverted: number;
+    duplicates: number;
+    locationHeader: string;
+  };
+  fichasSample: FichaMapData[];
+  timestamp: string;
+}
+
 // Mock data for testing when Google Sheets is unavailable
 const MOCK_SCOUTERS: ScouterMapData[] = [
   { nome: 'João Silva', lat: -23.5505, lng: -46.6333, geolocalizacao: '-23.5505,-46.6333' },
@@ -477,7 +492,7 @@ export async function fetchFichasData(): Promise<FichaMapData[]> {
     
     // Expose debug data to window (only if window is defined)
     if (typeof window !== 'undefined') {
-      (window as any).__fichasParsed = {
+      window.__fichasParsed = {
         summary,
         fichasSample: fichas.slice(0, 20),
         timestamp: new Date().toISOString()
