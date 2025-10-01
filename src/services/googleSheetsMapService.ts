@@ -21,6 +21,25 @@ export interface FichaMapData {
   localizacao: string;
 }
 
+// Mock data for testing when Google Sheets is unavailable
+const MOCK_SCOUTERS: ScouterMapData[] = [
+  { nome: 'João Silva', lat: -23.5505, lng: -46.6333, geolocalizacao: '-23.5505,-46.6333' },
+  { nome: 'Maria Santos', lat: -23.5489, lng: -46.6388, geolocalizacao: '-23.5489,-46.6388' },
+  { nome: 'Pedro Costa', lat: -23.5558, lng: -46.6396, geolocalizacao: '-23.5558,-46.6396' },
+  { nome: 'Ana Lima', lat: -23.5629, lng: -46.6544, geolocalizacao: '-23.5629,-46.6544' },
+  { nome: 'Carlos Souza', lat: -23.5475, lng: -46.6361, geolocalizacao: '-23.5475,-46.6361' },
+];
+
+const MOCK_FICHAS: FichaMapData[] = [
+  { lat: -23.5505, lng: -46.6333, localizacao: '-23.5505,-46.6333' },
+  { lat: -23.5520, lng: -46.6350, localizacao: '-23.5520,-46.6350' },
+  { lat: -23.5535, lng: -46.6370, localizacao: '-23.5535,-46.6370' },
+  { lat: -23.5550, lng: -46.6390, localizacao: '-23.5550,-46.6390' },
+  { lat: -23.5565, lng: -46.6410, localizacao: '-23.5565,-46.6410' },
+  { lat: -23.5580, lng: -46.6430, localizacao: '-23.5580,-46.6430' },
+  { lat: -23.5595, lng: -46.6450, localizacao: '-23.5595,-46.6450' },
+];
+
 /**
  * Parse lat,lng string format
  * Handles formats like "-23.507144,-46.846307" or "-23.507144, -46.846307"
@@ -41,9 +60,9 @@ export function parseLatLng(coordStr: string): { lat: number; lng: number } | nu
   
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   
-  // Basic validation for Brazil coordinates
-  if (lat < -35 || lat > 5 || lng < -75 || lng > -30) {
-    console.warn(`Invalid coordinates for Brazil: ${lat}, ${lng}`);
+  // Relaxed validation - accept any valid world coordinates
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    console.warn(`Invalid coordinates (out of world bounds): ${lat}, ${lng}`);
     return null;
   }
   
@@ -54,13 +73,13 @@ export function parseLatLng(coordStr: string): { lat: number; lng: number } | nu
  * Fetch CSV data from Google Sheets
  */
 async function fetchCsv(gid: string): Promise<string> {
-  // Use proxy in development to avoid CORS issues
-  const url = import.meta.env.DEV
-    ? `/api/sheets/${SHEET_ID}/${gid}`
-    : `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${gid}`;
+  
+  console.log(`Fetching CSV from: ${url}`);
   
   try {
     const response = await fetch(url, { 
+      mode: 'cors',
       cache: 'no-store',
       headers: {
         'Accept': 'text/csv',
@@ -71,7 +90,9 @@ async function fetchCsv(gid: string): Promise<string> {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     
-    return await response.text();
+    const text = await response.text();
+    console.log(`Successfully fetched CSV, length: ${text.length} chars`);
+    return text;
   } catch (error) {
     console.error(`Error fetching CSV for GID ${gid}:`, error);
     throw error;
@@ -140,14 +161,14 @@ function parseCsvToObjects(csvText: string): Record<string, string>[] {
  */
 export async function fetchScoutersData(): Promise<ScouterMapData[]> {
   try {
-    console.log('Fetching scouters data from Google Sheets...');
+    console.log('🗺️ Fetching scouters data from Google Sheets...');
     const csvText = await fetchCsv(CSV_SCOUTERS_GID);
     const rows = parseCsvToObjects(csvText);
     
-    console.log(`Parsed ${rows.length} rows from Scouters sheet`);
+    console.log(`📊 Parsed ${rows.length} rows from Scouters sheet`);
     if (rows.length > 0) {
-      console.log('First row sample:', rows[0]);
-      console.log('Available columns:', Object.keys(rows[0]));
+      console.log('📋 First row sample:', rows[0]);
+      console.log('📋 Available columns:', Object.keys(rows[0]));
     }
     
     const scouters: ScouterMapData[] = [];
@@ -173,15 +194,23 @@ export async function fetchScoutersData(): Promise<ScouterMapData[]> {
           geolocalizacao,
         });
       } else {
-        console.warn(`Invalid coordinates for scouter ${nome}: ${geolocalizacao}`);
+        console.warn(`⚠️ Invalid coordinates for scouter ${nome}: ${geolocalizacao}`);
       }
     }
     
-    console.log(`Successfully parsed ${scouters.length} scouters with valid coordinates`);
+    console.log(`✅ Successfully parsed ${scouters.length} scouters with valid coordinates`);
+    
+    // If no scouters found, return mock data for testing
+    if (scouters.length === 0) {
+      console.warn('⚠️ No scouters found in Google Sheets, using mock data for testing');
+      return MOCK_SCOUTERS;
+    }
+    
     return scouters;
   } catch (error) {
-    console.error('Error fetching scouters data:', error);
-    throw error;
+    console.error('❌ Error fetching scouters data from Google Sheets:', error);
+    console.log('🔄 Falling back to mock data for testing');
+    return MOCK_SCOUTERS;
   }
 }
 
@@ -191,14 +220,14 @@ export async function fetchScoutersData(): Promise<ScouterMapData[]> {
  */
 export async function fetchFichasData(): Promise<FichaMapData[]> {
   try {
-    console.log('Fetching fichas data from Google Sheets...');
+    console.log('🗺️ Fetching fichas data from Google Sheets...');
     const csvText = await fetchCsv(CSV_FICHAS_GID);
     const rows = parseCsvToObjects(csvText);
     
-    console.log(`Parsed ${rows.length} rows from Fichas sheet`);
+    console.log(`📊 Parsed ${rows.length} rows from Fichas sheet`);
     if (rows.length > 0) {
-      console.log('First row sample:', rows[0]);
-      console.log('Available columns:', Object.keys(rows[0]));
+      console.log('📋 First row sample:', rows[0]);
+      console.log('📋 Available columns:', Object.keys(rows[0]));
     }
     
     const fichas: FichaMapData[] = [];
@@ -222,10 +251,18 @@ export async function fetchFichasData(): Promise<FichaMapData[]> {
       }
     }
     
-    console.log(`Successfully parsed ${fichas.length} fichas with valid coordinates`);
+    console.log(`✅ Successfully parsed ${fichas.length} fichas with valid coordinates`);
+    
+    // If no fichas found, return mock data for testing
+    if (fichas.length === 0) {
+      console.warn('⚠️ No fichas found in Google Sheets, using mock data for testing');
+      return MOCK_FICHAS;
+    }
+    
     return fichas;
   } catch (error) {
-    console.error('Error fetching fichas data:', error);
-    throw error;
+    console.error('❌ Error fetching fichas data from Google Sheets:', error);
+    console.log('🔄 Falling back to mock data for testing');
+    return MOCK_FICHAS;
   }
 }

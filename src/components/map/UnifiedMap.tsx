@@ -122,19 +122,27 @@ export function UnifiedMap({
 
   // Update scouter markers with clustering
   useEffect(() => {
-    console.log('UnifiedMap: scouters effect triggered', {
+    console.log('🗺️ UnifiedMap: scouters effect triggered', {
       hasMap: !!mapRef.current,
       viewMode,
       scoutersCount: scouters?.length,
-      scouters: scouters?.slice(0, 2)
+      firstThree: scouters?.slice(0, 3).map(s => ({ nome: s.nome, lat: s.lat, lng: s.lng }))
     });
     
-    if (!mapRef.current || viewMode !== 'scouters' || !scouters || scouters.length === 0) {
-      if (viewMode !== 'scouters') {
+    if (!mapRef.current || viewMode !== 'scouters') {
+      if (viewMode !== 'scouters' && clusterGroupRef.current) {
+        console.log('🧹 Clearing scouter layers (switched to fichas mode)');
         clearLayers();
       }
       return;
     }
+
+    if (!scouters || scouters.length === 0) {
+      console.warn('⚠️ No scouters data available');
+      return;
+    }
+
+    console.log(`✅ Ready to display ${scouters.length} scouters on map`);
 
     // Clear existing layers
     clearLayers();
@@ -175,79 +183,108 @@ export function UnifiedMap({
     });
 
     // Add markers to cluster group
+    let addedMarkers = 0;
     scouters.forEach((scouter, index) => {
-      const icon = createMarkerIcon();
-      
-      const marker = L.marker([scouter.lat, scouter.lng], { icon });
-      
-      // Popup with scouter name
-      const popupContent = `
-        <div style="font-family: system-ui; padding: 4px;">
-          <strong>${scouter.nome}</strong>
-        </div>
-      `;
-      
-      marker.bindPopup(popupContent);
-      clusterGroup.addLayer(marker);
-      
-      if (index < 3) {
-        console.log(`UnifiedMap: Added marker ${index}`, { nome: scouter.nome, lat: scouter.lat, lng: scouter.lng });
+      try {
+        const icon = createMarkerIcon();
+        const marker = L.marker([scouter.lat, scouter.lng], { icon });
+        
+        // Popup with scouter name
+        const popupContent = `
+          <div style="font-family: system-ui; padding: 4px;">
+            <strong>${scouter.nome}</strong><br/>
+            <small>${scouter.lat.toFixed(4)}, ${scouter.lng.toFixed(4)}</small>
+          </div>
+        `;
+        
+        marker.bindPopup(popupContent);
+        clusterGroup.addLayer(marker);
+        addedMarkers++;
+        
+        if (index < 3) {
+          console.log(`📍 Added marker ${index}:`, { nome: scouter.nome, lat: scouter.lat, lng: scouter.lng });
+        }
+      } catch (error) {
+        console.error(`❌ Error adding marker for ${scouter.nome}:`, error);
       }
     });
 
-    console.log(`UnifiedMap: Adding ${scouters.length} markers to map`);
-    mapRef.current.addLayer(clusterGroup);
-    clusterGroupRef.current = clusterGroup;
-    setTotalScouters(scouters.length);
+    console.log(`✅ Added ${addedMarkers} markers to cluster group`);
+    
+    try {
+      mapRef.current.addLayer(clusterGroup);
+      clusterGroupRef.current = clusterGroup;
+      setTotalScouters(addedMarkers);
+      console.log('✅ Cluster group added to map successfully');
 
-    // Fit bounds to show all markers
-    if (scouters.length > 0) {
-      const bounds = L.latLngBounds(scouters.map(s => [s.lat, s.lng]));
-      mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+      // Fit bounds to show all markers
+      if (addedMarkers > 0) {
+        const bounds = L.latLngBounds(scouters.map(s => [s.lat, s.lng]));
+        mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+        console.log('✅ Map bounds fitted to markers');
+      }
+    } catch (error) {
+      console.error('❌ Error adding cluster group to map:', error);
     }
   }, [scouters, viewMode]);
 
   // Update heatmap
   useEffect(() => {
-    if (!mapRef.current || viewMode !== 'fichas' || !fichas) {
-      if (viewMode !== 'fichas') {
+    console.log('🔥 UnifiedMap: fichas effect triggered', {
+      hasMap: !!mapRef.current,
+      viewMode,
+      fichasCount: fichas?.length
+    });
+    
+    if (!mapRef.current || viewMode !== 'fichas') {
+      if (viewMode !== 'fichas' && heatLayerRef.current) {
+        console.log('🧹 Clearing heatmap layers (switched to scouters mode)');
         clearLayers();
       }
       return;
     }
 
-    // Clear existing layers
-    clearLayers();
-
-    if (fichas.length === 0) {
+    if (!fichas || fichas.length === 0) {
+      console.warn('⚠️ No fichas data available');
       setTotalFichas(0);
       return;
     }
 
+    console.log(`✅ Ready to display ${fichas.length} fichas on heatmap`);
+
+    // Clear existing layers
+    clearLayers();
+
     // Create heat layer points
     const points = fichas.map(ficha => [ficha.lat, ficha.lng, 1]); // [lat, lng, intensity]
 
-    const heatLayer = (L as any).heatLayer(points, {
-      radius: 25,
-      blur: 15,
-      maxZoom: 17,
-      max: 1.0,
-      gradient: {
-        0.2: '#6BE675', // verde
-        0.4: '#FFE58F', // amarelo claro
-        0.6: '#FFC53D', // amarelo
-        0.8: '#FA8C16', // laranja
-        1.0: '#F5222D'  // vermelho
+    try {
+      const heatLayer = (L as any).heatLayer(points, {
+        radius: 25,
+        blur: 15,
+        maxZoom: 17,
+        max: 1.0,
+        gradient: {
+          0.2: '#6BE675', // verde
+          0.4: '#FFE58F', // amarelo claro
+          0.6: '#FFC53D', // amarelo
+          0.8: '#FA8C16', // laranja
+          1.0: '#F5222D'  // vermelho
+        }
+      }).addTo(mapRef.current);
+
+      heatLayerRef.current = heatLayer;
+      setTotalFichas(fichas.length);
+      console.log('✅ Heatmap layer added to map successfully');
+
+      // Fit bounds to show all points
+      if (points.length > 0) {
+        const bounds = L.latLngBounds(points.map(p => [p[0], p[1]] as [number, number]));
+        mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+        console.log('✅ Map bounds fitted to heatmap');
       }
-    }).addTo(mapRef.current);
-
-    heatLayerRef.current = heatLayer;
-    setTotalFichas(fichas.length);
-
-    // Fit bounds to show all points
-    if (points.length > 0) {
-      const bounds = L.latLngBounds(points.map(p => [p[0], p[1]] as [number, number]));
-      mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+    } catch (error) {
+      console.error('❌ Error adding heatmap to map:', error);
     }
   }, [fichas, viewMode]);
 
