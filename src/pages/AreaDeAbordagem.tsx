@@ -1,6 +1,7 @@
 /**
  * Página de Área de Abordagem
- * Mostra dois mapas: Scouters com clustering e Heatmap de fichas
+ * Mostra mapa único com toggle: Scouters (clustering) ou Fichas (heatmap)
+ * Dados lidos diretamente do Google Sheets
  */
 import { useState, useEffect } from 'react';
 import { AppShell } from '@/layouts/AppShell';
@@ -9,76 +10,28 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ScoutersClusterMap } from '@/components/map/ScoutersClusterMap';
-import { FichasHeatmap } from '@/components/map/FichasHeatmap';
+import { UnifiedMap } from '@/components/map/UnifiedMap';
 import { MapPin, Flame, RefreshCw, Users, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format, subDays } from 'date-fns';
-import { useScoutersLastLocations } from '@/hooks/useScoutersLastLocations';
-import { useFichasGeo } from '@/hooks/useFichasGeo';
-import { supabase } from '@/integrations/supabase/client';
+import { useScoutersFromSheets } from '@/hooks/useScoutersFromSheets';
+import { useFichasFromSheets } from '@/hooks/useFichasFromSheets';
 
 export default function AreaDeAbordagem() {
   const { toast } = useToast();
   const [isEnriching, setIsEnriching] = useState(false);
   
-  // Filter states
+  // Filter states (kept for future use, currently not filtering)
   const [startDate, setStartDate] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [selectedProject, setSelectedProject] = useState<string | null>(null);
-  const [selectedScouter, setSelectedScouter] = useState<string | null>(null);
-  
-  // Available filter options
-  const [availableProjects, setAvailableProjects] = useState<string[]>([]);
-  const [availableScouters, setAvailableScouters] = useState<string[]>([]);
 
-  // Fetch data for stats
-  const { locations } = useScoutersLastLocations();
-  const { fichasGeo } = useFichasGeo({
-    startDate,
-    endDate,
-    project: selectedProject,
-    scouter: selectedScouter,
-  });
+  // Fetch data from Google Sheets
+  const { scouters, refetch: refetchScouters } = useScoutersFromSheets();
+  const { fichas, refetch: refetchFichas } = useFichasFromSheets();
 
-  // Count active scouters (within 10 minutes)
-  const activeScouters = locations?.filter(loc => {
-    const minutesAgo = Math.floor((new Date().getTime() - new Date(loc.at).getTime()) / 60000);
-    return minutesAgo <= 10;
-  }).length || 0;
-
-  // Load available filters
-  useEffect(() => {
-    const loadFilters = async () => {
-      try {
-        // Get unique projects
-        const { data: projectsData } = await supabase
-          .from('fichas')
-          .select('projeto')
-          .not('projeto', 'is', null);
-        
-        if (projectsData) {
-          const projects = Array.from(new Set(projectsData.map(f => f.projeto).filter(Boolean))) as string[];
-          setAvailableProjects(projects.sort());
-        }
-
-        // Get unique scouters
-        const { data: scoutersData } = await supabase
-          .from('scouters')
-          .select('name')
-          .order('name');
-        
-        if (scoutersData) {
-          setAvailableScouters(scoutersData.map(s => s.name));
-        }
-      } catch (error) {
-        console.error('Error loading filters:', error);
-      }
-    };
-
-    loadFilters();
-  }, []);
+  // Stats
+  const totalScouters = scouters?.length || 0;
+  const totalFichas = fichas?.length || 0;
 
   const handleEnrichGeo = async () => {
     setIsEnriching(true);
@@ -104,6 +57,10 @@ export default function AreaDeAbordagem() {
         title: 'Geolocalização Atualizada',
         description: `${result.processed} fichas processadas, ${result.geocoded} geocodificadas`,
       });
+      
+      // Refresh data after enrichment
+      refetchScouters();
+      refetchFichas();
     } catch (error) {
       toast({
         title: 'Erro',
@@ -123,7 +80,7 @@ export default function AreaDeAbordagem() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Área de Abordagem</h1>
             <p className="text-muted-foreground mt-1">
-              Visualize scouters em tempo real e mapa de calor das fichas
+              Visualize scouters e fichas em mapa único com toggle
             </p>
           </div>
           <Button 
@@ -136,97 +93,19 @@ export default function AreaDeAbordagem() {
           </Button>
         </div>
 
-        {/* Filters */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Filtros</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Period */}
-              <div className="space-y-2">
-                <Label htmlFor="start-date" className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Data Início
-                </Label>
-                <Input
-                  id="start-date"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="end-date">Data Fim</Label>
-                <Input
-                  id="end-date"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
-              </div>
-
-              {/* Project Filter */}
-              <div className="space-y-2">
-                <Label>Projeto</Label>
-                <Select
-                  value={selectedProject || 'all'}
-                  onValueChange={(value) => setSelectedProject(value === 'all' ? null : value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos os projetos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os projetos</SelectItem>
-                    {availableProjects.map((project) => (
-                      <SelectItem key={project} value={project}>
-                        {project}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Scouter Filter */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Scouter
-                </Label>
-                <Select
-                  value={selectedScouter || 'all'}
-                  onValueChange={(value) => setSelectedScouter(value === 'all' ? null : value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos os scouters" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os scouters</SelectItem>
-                    {availableScouters.map((scouter) => (
-                      <SelectItem key={scouter} value={scouter}>
-                        {scouter}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Scouters Ativos
+                Total Scouters
               </CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activeScouters}</div>
+              <div className="text-2xl font-bold">{totalScouters}</div>
               <p className="text-xs text-muted-foreground">
-                Última atualização ≤10 minutos
+                Com coordenadas válidas
               </p>
             </CardContent>
           </Card>
@@ -234,59 +113,49 @@ export default function AreaDeAbordagem() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Pontos de Fichas
+                Total Fichas
               </CardTitle>
               <Flame className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{fichasGeo?.length || 0}</div>
+              <div className="text-2xl font-bold">{totalFichas}</div>
               <p className="text-xs text-muted-foreground">
-                No período selecionado
+                Com localização mapeada
               </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Two Maps Side by Side */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Map 1: Scouters with Clustering */}
-          <div className="h-[600px]">
-            <ScoutersClusterMap scouter={selectedScouter} />
-          </div>
-
-          {/* Map 2: Fichas Heatmap */}
-          <div className="h-[600px]">
-            <FichasHeatmap 
-              startDate={startDate}
-              endDate={endDate}
-              project={selectedProject}
-              scouter={selectedScouter}
-            />
-          </div>
+        {/* Unified Map with Toggle */}
+        <div className="h-[700px]">
+          <UnifiedMap 
+            startDate={startDate}
+            endDate={endDate}
+          />
         </div>
 
         {/* Info */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Sobre os Mapas</CardTitle>
+            <CardTitle className="text-base">Sobre o Mapa</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-2">
             <p>
-              <strong>Mapa de Scouters (Esquerda):</strong> Mostra a posição em tempo real dos scouters com clusters amarelos. 
-              Ao aproximar, os clusters se separam em markers individuais com o nome do scouter visível. 
-              As cores representam os tiers: Bronze (marrom), Prata (cinza), Ouro (dourado).
+              <strong>Modo Scouters:</strong> Mostra scouters com clustering (círculos amarelos com números). 
+              Ao aproximar (zoom in), os clusters se separam em markers individuais. 
+              Clique em um marker para ver o nome do scouter.
             </p>
             <p>
-              <strong>Mapa de Calor (Direita):</strong> Visualiza a densidade de fichas geradas por localização. 
-              Quanto mais vermelho, maior a concentração de fichas naquela área. Verde indica baixa concentração.
+              <strong>Modo Fichas:</strong> Visualiza mapa de calor (heatmap) das fichas. 
+              Verde → Amarelo → Laranja → Vermelho indica densidade crescente de fichas.
             </p>
             <p>
-              <strong>Filtros:</strong> Use os filtros acima para refinar a visualização por período, projeto ou scouter específico.
-              Os filtros afetam ambos os mapas simultaneamente.
+              <strong>Fonte de Dados:</strong> Lê direto do Google Sheets (GIDs 1351167110 e 452792639). 
+              Futuro: fácil migração para Supabase.
             </p>
             <p>
-              <strong>Enriquecer Geolocalização:</strong> Processa fichas que possuem endereço na coluna "Localização" 
-              e converte para coordenadas usando geocodificação (com cache para otimização).
+              <strong>Enriquecer Geolocalização:</strong> Processa fichas que possuem endereço 
+              e converte para coordenadas usando geocodificação.
             </p>
           </CardContent>
         </Card>
