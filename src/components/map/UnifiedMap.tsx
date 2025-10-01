@@ -7,9 +7,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-// @ts-expect-error - leaflet.heat doesn't have types
 import 'leaflet.heat';
-// @ts-expect-error - leaflet.markercluster doesn't have complete types
 import 'leaflet.markercluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
@@ -69,9 +67,8 @@ export function UnifiedMap({
 }: UnifiedMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  // @ts-expect-error - MarkerClusterGroup typing
-  const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
-  const heatLayerRef = useRef<L.HeatLayer | null>(null);
+  const clusterGroupRef = useRef<any>(null);
+  const heatLayerRef = useRef<any>(null);
   
   const [viewMode, setViewMode] = useState<MapViewMode>('scouters');
   const [totalScouters, setTotalScouters] = useState(0);
@@ -125,6 +122,13 @@ export function UnifiedMap({
 
   // Update scouter markers with clustering
   useEffect(() => {
+    console.log('UnifiedMap: scouters effect triggered', {
+      hasMap: !!mapRef.current,
+      viewMode,
+      scoutersCount: scouters?.length,
+      scouters: scouters?.slice(0, 2)
+    });
+    
     if (!mapRef.current || viewMode !== 'scouters' || !scouters || scouters.length === 0) {
       if (viewMode !== 'scouters') {
         clearLayers();
@@ -136,8 +140,7 @@ export function UnifiedMap({
     clearLayers();
 
     // Create marker cluster group
-    // @ts-expect-error - MarkerClusterGroup typing
-    const clusterGroup = L.markerClusterGroup({
+    const clusterGroup = (L as any).markerClusterGroup({
       chunkedLoading: true,
       maxClusterRadius: 60,
       spiderfyOnMaxZoom: true,
@@ -172,7 +175,7 @@ export function UnifiedMap({
     });
 
     // Add markers to cluster group
-    scouters.forEach(scouter => {
+    scouters.forEach((scouter, index) => {
       const icon = createMarkerIcon();
       
       const marker = L.marker([scouter.lat, scouter.lng], { icon });
@@ -186,8 +189,13 @@ export function UnifiedMap({
       
       marker.bindPopup(popupContent);
       clusterGroup.addLayer(marker);
+      
+      if (index < 3) {
+        console.log(`UnifiedMap: Added marker ${index}`, { nome: scouter.nome, lat: scouter.lat, lng: scouter.lng });
+      }
     });
 
+    console.log(`UnifiedMap: Adding ${scouters.length} markers to map`);
     mapRef.current.addLayer(clusterGroup);
     clusterGroupRef.current = clusterGroup;
     setTotalScouters(scouters.length);
@@ -219,8 +227,7 @@ export function UnifiedMap({
     // Create heat layer points
     const points = fichas.map(ficha => [ficha.lat, ficha.lng, 1]); // [lat, lng, intensity]
 
-    // @ts-expect-error - leaflet.heat typing issue
-    const heatLayer = L.heatLayer(points, {
+    const heatLayer = (L as any).heatLayer(points, {
       radius: 25,
       blur: 15,
       maxZoom: 17,
@@ -239,7 +246,7 @@ export function UnifiedMap({
 
     // Fit bounds to show all points
     if (points.length > 0) {
-      const bounds = L.latLngBounds(points.map(p => [p[0], p[1]]));
+      const bounds = L.latLngBounds(points.map(p => [p[0], p[1]] as [number, number]));
       mapRef.current.fitBounds(bounds, { padding: [50, 50] });
     }
   }, [fichas, viewMode]);
@@ -249,10 +256,10 @@ export function UnifiedMap({
     if (!mapRef.current) return;
 
     if (viewMode === 'scouters' && scouters && scouters.length > 0) {
-      const bounds = L.latLngBounds(scouters.map(s => [s.lat, s.lng]));
+      const bounds = L.latLngBounds(scouters.map(s => [s.lat, s.lng] as [number, number]));
       mapRef.current.fitBounds(bounds, { padding: [50, 50] });
     } else if (viewMode === 'fichas' && fichas && fichas.length > 0) {
-      const points = fichas.map(ficha => [ficha.lat, ficha.lng]);
+      const points = fichas.map(ficha => [ficha.lat, ficha.lng] as [number, number]);
       const bounds = L.latLngBounds(points);
       mapRef.current.fitBounds(bounds, { padding: [50, 50] });
     }

@@ -5,7 +5,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-// @ts-expect-error - leaflet.heat doesn't have types
 import 'leaflet.heat';
 import { useFichasGeo } from '@/hooks/useFichasGeo';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -111,7 +110,7 @@ export function FichasHeatmap({
   const handleCenterMap = () => {
     if (!mapRef.current || !fichasGeo || fichasGeo.length === 0) return;
 
-    const points = fichasGeo.map(ficha => [ficha.lat, ficha.lng]);
+    const points = fichasGeo.map(ficha => [ficha.lat, ficha.lng] as [number, number]);
     const bounds = L.latLngBounds(points);
     mapRef.current.fitBounds(bounds, { padding: [50, 50] });
   };
