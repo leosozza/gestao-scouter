@@ -122,30 +122,41 @@ export function UnifiedMap({
 
   // Update scouter markers with clustering
   useEffect(() => {
-    console.log('🗺️ UnifiedMap: scouters effect triggered', {
+    console.log('🗺️ [Scouters] Effect triggered', {
       hasMap: !!mapRef.current,
       viewMode,
       scoutersCount: scouters?.length,
       firstThree: scouters?.slice(0, 3).map(s => ({ nome: s.nome, lat: s.lat, lng: s.lng }))
     });
     
-    if (!mapRef.current || viewMode !== 'scouters') {
-      if (viewMode !== 'scouters' && clusterGroupRef.current) {
-        console.log('🧹 Clearing scouter layers (switched to fichas mode)');
-        clearLayers();
+    if (!mapRef.current) {
+      console.warn('[Scouters] No map reference available');
+      return;
+    }
+    
+    if (viewMode !== 'scouters') {
+      // Clear cluster layer when not in scouters mode
+      if (clusterGroupRef.current) {
+        console.log('[Scouters] Clearing cluster layer (switched to fichas mode)');
+        mapRef.current.removeLayer(clusterGroupRef.current);
+        clusterGroupRef.current = null;
       }
       return;
     }
 
     if (!scouters || scouters.length === 0) {
-      console.warn('⚠️ No scouters data available');
+      console.warn('[Scouters] No scouters data available');
       return;
     }
 
-    console.log(`✅ Ready to display ${scouters.length} scouters on map`);
+    console.log(`[Scouters] Ready to display ${scouters.length} scouters on map`);
 
-    // Clear existing layers
-    clearLayers();
+    // Clear existing cluster layer
+    if (clusterGroupRef.current) {
+      console.log('[Scouters] Removing previous cluster layer');
+      mapRef.current.removeLayer(clusterGroupRef.current);
+      clusterGroupRef.current = null;
+    }
 
     // Create marker cluster group
     const clusterGroup = (L as any).markerClusterGroup({
@@ -202,59 +213,75 @@ export function UnifiedMap({
         addedMarkers++;
         
         if (index < 3) {
-          console.log(`📍 Added marker ${index}:`, { nome: scouter.nome, lat: scouter.lat, lng: scouter.lng });
+          console.log(`[Scouters] Added marker ${index}:`, { nome: scouter.nome, lat: scouter.lat, lng: scouter.lng });
         }
       } catch (error) {
-        console.error(`❌ Error adding marker for ${scouter.nome}:`, error);
+        console.error(`[Scouters] Error adding marker for ${scouter.nome}:`, error);
       }
     });
 
-    console.log(`✅ Added ${addedMarkers} markers to cluster group`);
+    console.log(`[Scouters] Added ${addedMarkers} markers to cluster group`);
     
     try {
       mapRef.current.addLayer(clusterGroup);
       clusterGroupRef.current = clusterGroup;
       setTotalScouters(addedMarkers);
-      console.log('✅ Cluster group added to map successfully');
+      console.log('[Scouters] Cluster group added to map successfully');
 
       // Fit bounds to show all markers
       if (addedMarkers > 0) {
         const bounds = L.latLngBounds(scouters.map(s => [s.lat, s.lng]));
         mapRef.current.fitBounds(bounds, { padding: [50, 50] });
-        console.log('✅ Map bounds fitted to markers');
+        console.log('[Scouters] Map bounds fitted to markers');
       }
     } catch (error) {
-      console.error('❌ Error adding cluster group to map:', error);
+      console.error('[Scouters] Error adding cluster group to map:', error);
     }
   }, [scouters, viewMode]);
 
-  // Update heatmap
+  // Update heatmap when data or view mode changes
   useEffect(() => {
-    console.log('🔥 UnifiedMap: fichas effect triggered', {
+    console.log('🔥 [Heatmap] Effect triggered', {
       hasMap: !!mapRef.current,
       viewMode,
-      fichasCount: fichas?.length
+      fichasCount: fichas?.length,
+      firstThree: fichas?.slice(0, 3).map(f => ({ lat: f.lat, lng: f.lng }))
     });
     
-    if (!mapRef.current || viewMode !== 'fichas') {
-      if (viewMode !== 'fichas' && heatLayerRef.current) {
-        console.log('🧹 Clearing heatmap layers (switched to scouters mode)');
-        clearLayers();
+    if (!mapRef.current) {
+      console.warn('[Heatmap] No map reference available');
+      return;
+    }
+    
+    if (viewMode !== 'fichas') {
+      // Clear heatmap layer when not in fichas mode
+      if (heatLayerRef.current) {
+        console.log('[Heatmap] Clearing heatmap layer (switched to scouters mode)');
+        mapRef.current.removeLayer(heatLayerRef.current);
+        heatLayerRef.current = null;
       }
       return;
     }
 
     if (!fichas || fichas.length === 0) {
-      console.debug('Fichas heatmap: no data after fetch', { length: fichas?.length });
-      console.warn('⚠️ No fichas data available');
+      console.log('[Heatmap] No fichas to render', { fichasLength: fichas?.length });
       setTotalFichas(0);
+      // Clear existing heatmap layer if present
+      if (heatLayerRef.current) {
+        mapRef.current.removeLayer(heatLayerRef.current);
+        heatLayerRef.current = null;
+      }
       return;
     }
 
-    console.log(`✅ Ready to display ${fichas.length} fichas on heatmap`);
+    console.log(`[Heatmap] Rendering ${fichas.length} fichas`);
 
-    // Clear existing layers
-    clearLayers();
+    // Clear existing heatmap layer
+    if (heatLayerRef.current) {
+      console.log('[Heatmap] Removing previous heatmap layer');
+      mapRef.current.removeLayer(heatLayerRef.current);
+      heatLayerRef.current = null;
+    }
 
     // Create heat layer points
     const points = fichas.map(ficha => [ficha.lat, ficha.lng, 1]); // [lat, lng, intensity]
@@ -276,16 +303,16 @@ export function UnifiedMap({
 
       heatLayerRef.current = heatLayer;
       setTotalFichas(fichas.length);
-      console.log('✅ Heatmap layer added to map successfully');
+      console.log('[Heatmap] Layer added successfully', { count: fichas.length });
 
       // Fit bounds to show all points
       if (points.length > 0) {
         const bounds = L.latLngBounds(points.map(p => [p[0], p[1]] as [number, number]));
         mapRef.current.fitBounds(bounds, { padding: [50, 50] });
-        console.log('✅ Map bounds fitted to heatmap');
+        console.log('[Heatmap] Bounds fitted to points');
       }
     } catch (error) {
-      console.error('❌ Error adding heatmap to map:', error);
+      console.error('[Heatmap] Error adding heatmap to map:', error);
     }
   }, [fichas, viewMode]);
 
