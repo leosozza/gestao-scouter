@@ -71,7 +71,13 @@ export function groupByProjeto(fichas: FichaDataPoint[]): Map<string, FichaDataP
     if (!groups.has(projeto)) {
       groups.set(projeto, []);
     }
-    groups.get(projeto)!.push(ficha);
+    const arr = groups.get(projeto);
+    if (arr) {
+      arr.push(ficha);
+    } else {
+      // This should not happen, but handle gracefully
+      groups.set(projeto, [ficha]);
+    }
   });
   
   return groups;
