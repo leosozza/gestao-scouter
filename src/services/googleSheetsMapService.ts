@@ -21,6 +21,21 @@ export interface FichaMapData {
   localizacao: string;
 }
 
+export interface FichasParsingDebugData {
+  summary: {
+    total: number;
+    valid: number;
+    skippedNoValue: number;
+    skippedParse: number;
+    skippedOutOfBounds: number;
+    decimalCommaConverted: number;
+    duplicates: number;
+    locationHeader: string;
+  };
+  fichasSample: FichaMapData[];
+  timestamp: string;
+}
+
 // Mock data for testing when Google Sheets is unavailable
 const MOCK_SCOUTERS: ScouterMapData[] = [
   { nome: 'João Silva', lat: -23.5505, lng: -46.6333, geolocalizacao: '-23.5505,-46.6333' },
@@ -42,26 +57,63 @@ const MOCK_FICHAS: FichaMapData[] = [
 
 /**
  * Parse lat,lng string format
- * Handles formats like "-23.507144,-46.846307", "-23.507144, -46.846307", 
+ * Handles standard formats like "-23.507144,-46.846307", "-23.507144, -46.846307", 
  * "-23.507144 -46.846307", or "-23.507144 ; -46.846307"
+ * 
+ * Also handles decimal comma formats (European style):
+ * - "-23,7233014,-46,5439845" (four comma-separated numeric chunks)
+ * - "-23,7233014 ; -46,5439845" (semicolon separator with decimal commas)
+ * - "-23,7233014  -46,5439845" (double space separator with decimal commas)
+ * 
+ * Strategy: If the pattern matches 4 numeric chunks separated by commas/semicolons/spaces,
+ * we reconstruct as: lat = chunk1+'.'+chunk2, lng = chunk3+'.'+chunk4
+ * 
+ * @param coordStr - Coordinate string to parse
+ * @returns Parsed coordinates or null if invalid
  */
 export function parseLatLng(coordStr: string): { lat: number; lng: number } | null {
   if (!coordStr || typeof coordStr !== 'string') return null;
   
-  // Pre-clean: remove BOM, replace semicolons with comma, remove parentheses, collapse whitespace, trim
+  // Pre-clean: remove BOM, remove parentheses, collapse whitespace, trim
   let cleaned = coordStr.trim();
   // Remove BOM if present
   if (cleaned.charCodeAt(0) === 0xFEFF) {
     cleaned = cleaned.substring(1);
   }
-  // Replace semicolons with comma
-  cleaned = cleaned.replace(/;/g, ',');
   // Remove parentheses
   cleaned = cleaned.replace(/[()]/g, '');
   // Collapse multiple spaces to single space
   cleaned = cleaned.replace(/\s+/g, ' ');
   // Trim again
   cleaned = cleaned.trim();
+  
+  // Strategy 1: Try to detect decimal comma format (4 numeric chunks)
+  // Pattern: -23,7233014,-46,5439845 or -23,7233014 ; -46,5439845 or -23,7233014  -46,5439845
+  // This pattern should have 4 numeric parts separated by various delimiters
+  const decimalCommaMatch = cleaned.match(/^(-?\d+),(\d+)\s*[;,\s]+\s*(-?\d+),(\d+)$/);
+  
+  if (decimalCommaMatch) {
+    // Reconstruct coordinates by joining integer and fractional parts with a dot
+    const latStr = `${decimalCommaMatch[1]}.${decimalCommaMatch[2]}`;
+    const lngStr = `${decimalCommaMatch[3]}.${decimalCommaMatch[4]}`;
+    
+    const lat = parseFloat(latStr);
+    const lng = parseFloat(lngStr);
+    
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      // Validate world bounds
+      if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        return { lat, lng };
+      } else {
+        console.warn(`Invalid coordinates (out of world bounds): ${lat}, ${lng}`);
+        return null;
+      }
+    }
+  }
+  
+  // Strategy 2: Standard format with dot decimal separator
+  // Replace semicolons with comma for normalization
+  cleaned = cleaned.replace(/;/g, ',');
   
   // Match format: number separator number (separator can be comma or space(s))
   // First try with comma
@@ -264,9 +316,15 @@ function normalizeHeader(header: string): string {
 /**
  * Fetch fichas data from Google Sheets
  * Column L contains "Localização" in format "lat,lng"
+ * 
+ * Debug mode: Enable verbose logging by adding ?debugMap=1 to URL or setting VITE_MAP_DEBUG=1
  */
 export async function fetchFichasData(): Promise<FichaMapData[]> {
   try {
+    // Detect debug mode: check URL query param or env var
+    const isDebugMode = (typeof window !== 'undefined' && window.location.search.includes('debugMap=1')) 
+                     || import.meta.env.VITE_MAP_DEBUG === '1';
+    
     console.log('🗺️ Fetching fichas data from Google Sheets...');
     const csvText = await fetchCsv(CSV_FICHAS_GID);
     const rows = parseCsvToObjects(csvText);
@@ -318,21 +376,51 @@ export async function fetchFichasData(): Promise<FichaMapData[]> {
     }
     
     const fichas: FichaMapData[] = [];
+    const seenCoordinates = new Map<string, number>(); // Track duplicates: "lat,lng" -> count
     let validCount = 0;
     let skippedNoValue = 0;
     let skippedParse = 0;
+    let skippedOutOfBounds = 0;
+    let decimalCommaConverted = 0;
+    let duplicatesSkipped = 0;
     
-    for (const row of rows) {
+    // Track problematic rows for debug mode
+    const problematicRows: Array<{ rowIndex: number; rawValue: string; reason: string }> = [];
+    
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
       const localizacao = row[locationHeaderKey] || '';
+      const rowIndex = i + 2; // +2 because: 1-indexed and header row
       
       if (!localizacao) {
         skippedNoValue++;
+        if (isDebugMode && problematicRows.length < 25) {
+          problematicRows.push({ rowIndex, rawValue: localizacao, reason: 'empty' });
+        }
         continue; // Skip rows without location
       }
+      
+      // Check if this is a decimal comma format before parsing
+      const isDecimalComma = /^-?\d+,\d+\s*[;,\s]+\s*-?\d+,\d+$/.test(localizacao.trim());
       
       const coords = parseLatLng(localizacao);
       
       if (coords) {
+        // Track if decimal comma format was converted
+        if (isDecimalComma) {
+          decimalCommaConverted++;
+        }
+        
+        // Check for duplicates
+        const coordKey = `${coords.lat},${coords.lng}`;
+        if (seenCoordinates.has(coordKey)) {
+          duplicatesSkipped++;
+          seenCoordinates.set(coordKey, seenCoordinates.get(coordKey)! + 1);
+          // Still include the duplicate (as per spec: do not exclude)
+        } else {
+          seenCoordinates.set(coordKey, 1);
+        }
+        
         fichas.push({
           lat: coords.lat,
           lng: coords.lng,
@@ -345,19 +433,71 @@ export async function fetchFichasData(): Promise<FichaMapData[]> {
           console.log(`📍 Valid ficha ${validCount}:`, { lat: coords.lat, lng: coords.lng, localizacao });
         }
       } else {
-        skippedParse++;
+        // Check if parse failed due to out of bounds or parse error
+        // Try to determine if it's out of bounds by attempting a loose parse
+        const looseParse = localizacao.match(/(-?\d+[.,]\d+)/g);
+        if (looseParse && looseParse.length >= 2) {
+          const testLat = parseFloat(looseParse[0].replace(',', '.'));
+          const testLng = parseFloat(looseParse[1].replace(',', '.'));
+          if (Number.isFinite(testLat) && Number.isFinite(testLng)) {
+            if (testLat < -90 || testLat > 90 || testLng < -180 || testLng > 180) {
+              skippedOutOfBounds++;
+              if (isDebugMode && problematicRows.length < 25) {
+                problematicRows.push({ rowIndex, rawValue: localizacao, reason: 'out-of-bounds' });
+              }
+            } else {
+              skippedParse++;
+              if (isDebugMode && problematicRows.length < 25) {
+                problematicRows.push({ rowIndex, rawValue: localizacao, reason: 'parse-failed' });
+              }
+            }
+          } else {
+            skippedParse++;
+            if (isDebugMode && problematicRows.length < 25) {
+              problematicRows.push({ rowIndex, rawValue: localizacao, reason: 'parse-failed' });
+            }
+          }
+        } else {
+          skippedParse++;
+          if (isDebugMode && problematicRows.length < 25) {
+            problematicRows.push({ rowIndex, rawValue: localizacao, reason: 'parse-failed' });
+          }
+        }
       }
     }
     
-    // Log summary
-    console.log(`📊 Fichas parsing summary:`, {
+    // Verbose per-row diagnostics in debug mode
+    if (isDebugMode && problematicRows.length > 0) {
+      console.group('🔍 Debug: Problematic rows (first 25)');
+      problematicRows.forEach(({ rowIndex, rawValue, reason }) => {
+        console.log(`Row ${rowIndex}: "${rawValue}" - Reason: ${reason}`);
+      });
+      console.groupEnd();
+    }
+    
+    // Log summary (always shown, but enhanced in debug mode)
+    const summary = {
       total: rows.length,
       valid: validCount,
       skippedNoValue,
       skippedParse,
+      skippedOutOfBounds,
+      decimalCommaConverted,
+      duplicates: duplicatesSkipped,
       locationHeader: locationHeaderKey
-    });
+    };
+    
+    console.log(`📊 Fichas parsing summary:`, summary);
     console.log(`✅ Successfully parsed ${fichas.length} fichas with valid coordinates`);
+    
+    // Expose debug data to window (only if window is defined)
+    if (typeof window !== 'undefined') {
+      window.__fichasParsed = {
+        summary,
+        fichasSample: fichas.slice(0, 20),
+        timestamp: new Date().toISOString()
+      };
+    }
     
     // If no fichas found, return mock data for testing
     if (fichas.length === 0) {
