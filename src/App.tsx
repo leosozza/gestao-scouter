@@ -15,6 +15,7 @@ const AreaDeAbordagem = lazy(() => import("./pages/AreaDeAbordagem"));
 const ConfiguracoesPage = lazy(() => import("./pages/Configuracoes"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const BitrixCallback = lazy(() => import("./pages/BitrixCallback"));
+const TestFichas = lazy(() => import("./pages/TestFichas"));
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/area-de-abordagem" element={<AreaDeAbordagem />} />
             <Route path="/configuracoes" element={<ConfiguracoesPage />} />
             <Route path="/bitrix-callback" element={<BitrixCallback />} />
+            <Route path="/test-fichas" element={<TestFichas />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
