@@ -124,7 +124,7 @@ export default function TestFichasPage() {
               radius: 14,
               blur: 22,
               max: 0.6,
-              minOpacity: 0.23,
+              minOpacity: 0.25,
               gradient: {
                 0.2: "#A7F3D0",
                 0.4: "#FDE68A",
@@ -250,11 +250,11 @@ export default function TestFichasPage() {
       const newValue = !prev;
       if (heatmapRef.current) {
         if (newValue) {
-          // Show heatmap - update with current displayed fichas
-          heatmapRef.current.updateData(displayedFichas);
+          // Show heatmap
+          heatmapRef.current.show();
         } else {
-          // Hide heatmap - clear it
-          heatmapRef.current.clear();
+          // Hide heatmap
+          heatmapRef.current.hide();
         }
       }
       return newValue;
@@ -363,7 +363,7 @@ export default function TestFichasPage() {
                 className={`bg-white/95 rounded-lg shadow-lg p-3 border transition ${
                   selecting ? "bg-blue-50 border-blue-300" : "hover:bg-gray-50"
                 }`}
-                title={selecting ? "Desenhando polígono..." : "Desenhar zona no mapa"} 
+                title={selecting ? "Desenhando polígono (duplo clique para finalizar)" : "Desenhar zona no mapa"} 
                 onClick={handleStartSelection}
                 disabled={selecting || filteredFichas.length === 0}
               > 
