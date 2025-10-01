@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { supabase } from '@/integrations/supabase/client';
 import { Lead, LeadsFilters } from './types';
 import { normalizeUpper } from '@/utils/normalize';

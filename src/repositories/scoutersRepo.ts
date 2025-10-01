@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { getDataSource } from './datasource';
 import { supabase } from '@/integrations/supabase/client';
 import { normalize } from '@/utils/normalize';

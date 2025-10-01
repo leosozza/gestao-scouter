@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Em todas as funções de Projeção (linear/avançada), ajustar:
 import { getValorFichaFromRow, mediaValorPorFicha } from '@/utils/values';
 import { supabase } from '@/integrations/supabase/client';

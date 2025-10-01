@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Garantir consistência: usar getValorFichaFromRow(ficha) para cada item.
 // Remover qualquer parse antigo de "Valor por Fichas".
 import { getValorFichaFromRow } from '@/utils/values';

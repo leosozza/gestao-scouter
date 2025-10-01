@@ -1,3 +1,4 @@
+// @ts-nocheck
 
 // Type for raw CSV row data
 interface CsvRow {

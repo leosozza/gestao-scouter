@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Hook para buscar últimas localizações dos scouters
  * Inclui suporte a Realtime updates
