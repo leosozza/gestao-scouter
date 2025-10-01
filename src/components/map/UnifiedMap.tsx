@@ -1,34 +1,31 @@
 /**
  * Unified Map Component
- * Single map with toggle between Scouter view and Fichas heatmap view
- * Uses configurable tile servers (100% free options available)
+ * Single map with toggle between Scouter view (clusters) and Fichas heatmap view
+ * Reads data directly from Google Sheets CSV exports
+ * Future-ready: Easy to swap to Supabase data source
  */
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 // @ts-expect-error - leaflet.heat doesn't have types
 import 'leaflet.heat';
-import { useScoutersLastLocations } from '@/hooks/useScoutersLastLocations';
-import { useFichasGeo } from '@/hooks/useFichasGeo';
+// @ts-expect-error - leaflet.markercluster doesn't have complete types
+import 'leaflet.markercluster';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+import { useScoutersFromSheets } from '@/hooks/useScoutersFromSheets';
+import { useFichasFromSheets } from '@/hooks/useFichasFromSheets';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { MapPin, Users, Navigation, Loader2 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { format, subDays } from 'date-fns';
 import { getTileServerConfig, DEFAULT_TILE_SERVER } from '@/config/tileServers';
 
-// Cores por tier
-const TIER_COLORS: Record<string, string> = {
-  'Bronze': '#CD7F32',
-  'Prata': '#C0C0C0',
-  'Ouro': '#FFD700',
-  'default': '#3B82F6',
-};
+// Default marker icon color
+const DEFAULT_MARKER_COLOR = '#3B82F6';
 
 // Criar ícone customizado para scouters (ícone de pessoa)
-function createMarkerIcon(color: string): L.DivIcon {
+function createMarkerIcon(color: string = DEFAULT_MARKER_COLOR): L.DivIcon {
   return L.divIcon({
     className: 'custom-marker',
     html: `
@@ -72,25 +69,17 @@ export function UnifiedMap({
 }: UnifiedMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const markersRef = useRef<L.Marker[]>([]);
+  // @ts-expect-error - MarkerClusterGroup typing
+  const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
   const heatLayerRef = useRef<L.HeatLayer | null>(null);
   
-  const [viewMode, setViewMode] = useState<MapViewMode>('fichas');
-  const [activeScouters, setActiveScouters] = useState(0);
+  const [viewMode, setViewMode] = useState<MapViewMode>('scouters');
+  const [totalScouters, setTotalScouters] = useState(0);
   const [totalFichas, setTotalFichas] = useState(0);
 
-  // Default to last 30 days if not provided
-  const defaultEndDate = format(new Date(), 'yyyy-MM-dd');
-  const defaultStartDate = format(subDays(new Date(), 30), 'yyyy-MM-dd');
-
-  // Fetch data for both views
-  const { locations, isLoading: isLoadingScouters, error: errorScouters } = useScoutersLastLocations();
-  const { fichasGeo, isLoading: isLoadingFichas, error: errorFichas } = useFichasGeo({
-    startDate: startDate || defaultStartDate,
-    endDate: endDate || defaultEndDate,
-    project,
-    scouter,
-  });
+  // Fetch data from Google Sheets
+  const { scouters, isLoading: isLoadingScouters, error: errorScouters } = useScoutersFromSheets();
+  const { fichas, isLoading: isLoadingFichas, error: errorFichas } = useFichasFromSheets();
 
   const isLoading = isLoadingScouters || isLoadingFichas;
   const error = errorScouters || errorFichas;
@@ -117,13 +106,15 @@ export function UnifiedMap({
     };
   }, []);
 
-  // Clear current view when switching modes
-  const clearView = () => {
+  // Clear current view layers
+  const clearLayers = () => {
     if (!mapRef.current) return;
 
-    // Clear markers
-    markersRef.current.forEach(marker => marker.remove());
-    markersRef.current = [];
+    // Clear cluster group
+    if (clusterGroupRef.current) {
+      mapRef.current.removeLayer(clusterGroupRef.current);
+      clusterGroupRef.current = null;
+    }
 
     // Clear heatmap
     if (heatLayerRef.current) {
@@ -132,81 +123,101 @@ export function UnifiedMap({
     }
   };
 
-  // Update scouter markers
+  // Update scouter markers with clustering
   useEffect(() => {
-    if (!mapRef.current || viewMode !== 'scouters' || !locations || locations.length === 0) {
+    if (!mapRef.current || viewMode !== 'scouters' || !scouters || scouters.length === 0) {
       if (viewMode !== 'scouters') {
-        // Clear markers when not in scouter mode
-        markersRef.current.forEach(marker => marker.remove());
-        markersRef.current = [];
+        clearLayers();
       }
       return;
     }
 
-    // Clear existing markers
-    clearView();
+    // Clear existing layers
+    clearLayers();
 
-    // Count active scouters (last update within 10 minutes)
-    const now = new Date();
-    let activeCount = 0;
-
-    // Add new markers
-    locations.forEach(location => {
-      const tierColor = TIER_COLORS[location.tier || 'default'] || TIER_COLORS.default;
-      const icon = createMarkerIcon(tierColor);
-      
-      const marker = L.marker([location.lat, location.lng], { icon })
-        .addTo(mapRef.current!);
-
-      const lastUpdate = new Date(location.at);
-      const minutesAgo = Math.floor((now.getTime() - lastUpdate.getTime()) / 60000);
-      
-      if (minutesAgo <= 10) {
-        activeCount++;
+    // Create marker cluster group
+    // @ts-expect-error - MarkerClusterGroup typing
+    const clusterGroup = L.markerClusterGroup({
+      chunkedLoading: true,
+      maxClusterRadius: 60,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      iconCreateFunction: function(cluster: any) {
+        const count = cluster.getChildCount();
+        let size = 'small';
+        
+        if (count >= 10) {
+          size = 'large';
+        } else if (count >= 5) {
+          size = 'medium';
+        }
+        
+        return L.divIcon({
+          html: `<div style="
+            background-color: #FFD700;
+            border-radius: 50%;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            border: 3px solid white;
+          ">${count}</div>`,
+          className: `marker-cluster marker-cluster-${size}`,
+          iconSize: L.point(40, 40),
+        });
       }
+    });
 
+    // Add markers to cluster group
+    scouters.forEach(scouter => {
+      const icon = createMarkerIcon();
+      
+      const marker = L.marker([scouter.lat, scouter.lng], { icon });
+      
+      // Popup with scouter name
       const popupContent = `
         <div style="font-family: system-ui; padding: 4px;">
-          <strong>${location.scouter}</strong><br/>
-          Tier: ${location.tier || 'N/A'}<br/>
-          <small>Última atualização: ${formatDistanceToNow(lastUpdate, { locale: ptBR, addSuffix: true })}</small>
+          <strong>${scouter.nome}</strong>
         </div>
       `;
       
       marker.bindPopup(popupContent);
-      markersRef.current.push(marker);
+      clusterGroup.addLayer(marker);
     });
 
-    setActiveScouters(activeCount);
+    mapRef.current.addLayer(clusterGroup);
+    clusterGroupRef.current = clusterGroup;
+    setTotalScouters(scouters.length);
 
     // Fit bounds to show all markers
-    if (markersRef.current.length > 0) {
-      const group = L.featureGroup(markersRef.current);
-      mapRef.current.fitBounds(group.getBounds(), { padding: [50, 50] });
+    if (scouters.length > 0) {
+      const bounds = L.latLngBounds(scouters.map(s => [s.lat, s.lng]));
+      mapRef.current.fitBounds(bounds, { padding: [50, 50] });
     }
-  }, [locations, viewMode]);
+  }, [scouters, viewMode]);
 
   // Update heatmap
   useEffect(() => {
-    if (!mapRef.current || viewMode !== 'fichas' || !fichasGeo) {
-      if (viewMode !== 'fichas' && heatLayerRef.current) {
-        // Clear heatmap when not in fichas mode
-        mapRef.current?.removeLayer(heatLayerRef.current);
-        heatLayerRef.current = null;
+    if (!mapRef.current || viewMode !== 'fichas' || !fichas) {
+      if (viewMode !== 'fichas') {
+        clearLayers();
       }
       return;
     }
 
-    // Clear existing heatmap
-    clearView();
+    // Clear existing layers
+    clearLayers();
 
-    if (fichasGeo.length === 0) {
+    if (fichas.length === 0) {
       setTotalFichas(0);
       return;
     }
 
     // Create heat layer points
-    const points = fichasGeo.map(ficha => [ficha.lat, ficha.lng, 1]); // [lat, lng, intensity]
+    const points = fichas.map(ficha => [ficha.lat, ficha.lng, 1]); // [lat, lng, intensity]
 
     // @ts-expect-error - leaflet.heat typing issue
     const heatLayer = L.heatLayer(points, {
@@ -215,31 +226,33 @@ export function UnifiedMap({
       maxZoom: 17,
       max: 1.0,
       gradient: {
-        0.0: 'green',
-        0.5: 'yellow',
-        1.0: 'red'
+        0.2: '#6BE675', // verde
+        0.4: '#FFE58F', // amarelo claro
+        0.6: '#FFC53D', // amarelo
+        0.8: '#FA8C16', // laranja
+        1.0: '#F5222D'  // vermelho
       }
     }).addTo(mapRef.current);
 
     heatLayerRef.current = heatLayer;
-    setTotalFichas(fichasGeo.length);
+    setTotalFichas(fichas.length);
 
     // Fit bounds to show all points
     if (points.length > 0) {
       const bounds = L.latLngBounds(points.map(p => [p[0], p[1]]));
       mapRef.current.fitBounds(bounds, { padding: [50, 50] });
     }
-  }, [fichasGeo, viewMode]);
+  }, [fichas, viewMode]);
 
   // Center map on current view
   const handleCenterMap = () => {
     if (!mapRef.current) return;
 
-    if (viewMode === 'scouters' && markersRef.current.length > 0) {
-      const group = L.featureGroup(markersRef.current);
-      mapRef.current.fitBounds(group.getBounds(), { padding: [50, 50] });
-    } else if (viewMode === 'fichas' && fichasGeo && fichasGeo.length > 0) {
-      const points = fichasGeo.map(ficha => [ficha.lat, ficha.lng]);
+    if (viewMode === 'scouters' && scouters && scouters.length > 0) {
+      const bounds = L.latLngBounds(scouters.map(s => [s.lat, s.lng]));
+      mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+    } else if (viewMode === 'fichas' && fichas && fichas.length > 0) {
+      const points = fichas.map(ficha => [ficha.lat, ficha.lng]);
       const bounds = L.latLngBounds(points);
       mapRef.current.fitBounds(bounds, { padding: [50, 50] });
     }
@@ -262,19 +275,19 @@ export function UnifiedMap({
               onValueChange={(value) => value && setViewMode(value as MapViewMode)}
               className="border rounded-lg"
             >
-              <ToggleGroupItem value="fichas" aria-label="Visualizar fichas" className="gap-2">
-                <MapPin className="h-4 w-4" />
-                Fichas
-              </ToggleGroupItem>
               <ToggleGroupItem value="scouters" aria-label="Visualizar scouters" className="gap-2">
                 <Users className="h-4 w-4" />
                 Scouters
+              </ToggleGroupItem>
+              <ToggleGroupItem value="fichas" aria-label="Visualizar fichas" className="gap-2">
+                <MapPin className="h-4 w-4" />
+                Fichas
               </ToggleGroupItem>
             </ToggleGroup>
 
             {/* Stats */}
             <span className="text-sm text-muted-foreground">
-              {viewMode === 'scouters' && `${activeScouters} ativos (≤10min)`}
+              {viewMode === 'scouters' && `${totalScouters} scouters`}
               {viewMode === 'fichas' && `${totalFichas} pontos`}
             </span>
 
@@ -284,7 +297,7 @@ export function UnifiedMap({
               size="sm"
               onClick={handleCenterMap}
               disabled={
-                (viewMode === 'scouters' && markersRef.current.length === 0) ||
+                (viewMode === 'scouters' && totalScouters === 0) ||
                 (viewMode === 'fichas' && totalFichas === 0)
               }
             >
