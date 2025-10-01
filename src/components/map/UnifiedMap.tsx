@@ -4,7 +4,7 @@
  * Reads data directly from Google Sheets CSV exports
  * Future-ready: Easy to swap to Supabase data source
  */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.heat';
@@ -291,7 +291,7 @@ export function UnifiedMap({
   }, [fichas, viewMode]);
 
   // Handle fichas reload
-  const handleReloadFichas = async () => {
+  const handleReloadFichas = useCallback(async () => {
     if (isFetchingFichas) {
       console.log('[FichasReload] Already fetching, skipping reload request');
       return;
@@ -312,7 +312,7 @@ export function UnifiedMap({
     } catch (error) {
       console.error('[FichasReload] Exception during reload:', error);
     }
-  };
+  }, [isFetchingFichas, refetchFichas]);
 
   // Keyboard shortcut for reloading fichas (R key)
   useEffect(() => {
@@ -352,7 +352,7 @@ export function UnifiedMap({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [viewMode, isFetchingFichas, refetchFichas]);
+  }, [viewMode, isFetchingFichas, handleReloadFichas]);
 
   // Center map on current view
   const handleCenterMap = () => {
