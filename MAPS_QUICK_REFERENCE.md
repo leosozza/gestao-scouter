@@ -159,9 +159,11 @@ L.heatLayer(points, {
   blur: 15,        // ⬆️ Aumentar = mais suave
   maxZoom: 17,     // Zoom máximo de intensidade
   max: 1.0,        // ⬆️ Aumentar = menos intenso
-  minOpacity: 0.3, // Opacidade mínima (0-1)
+  minOpacity: 0.25, // ✅ IMPORTANTE: Opacidade mínima (garante visibilidade em todos os zooms)
 });
 ```
+
+**💡 Dica**: O parâmetro `minOpacity` é essencial para garantir que o heatmap permaneça visível mesmo em zooms distantes. Valores recomendados: 0.2 - 0.3
 
 ---
 
