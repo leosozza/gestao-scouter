@@ -12,8 +12,6 @@ import { PaymentSummary } from "./PaymentSummary";
 import { CostAllowanceManager } from "./CostAllowanceManager";
 import { FinancialFilterState } from "./FinancialFilters";
 import type { Ficha, Project } from "@/repositories/types";
-import { FinancialFilterState } from "./FinancialFilters";
-import type { Ficha, Project } from "@/repositories/types";
 
 interface FinancialControlPanelProps {
   fichasFiltradas?: Ficha[];

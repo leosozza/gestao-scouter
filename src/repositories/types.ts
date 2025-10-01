@@ -2,8 +2,11 @@ export type DataSource = 'bitrix' | 'sheets';
 
 export interface Project {
   nome?: string;
-  'Agencia e Seletiva'?: string;
+  'Agencia e Seletiva'?: string | number | boolean | Date;
   'agencia e seletiva'?: string;
+  'Meta de Fichas'?: string | number | boolean | Date;
+  valorAjudaCusto?: number | string;
+  valorFolgaRemunerada?: number | string;
 }
 
 export interface LeadsFilters {
@@ -15,12 +18,16 @@ export interface LeadsFilters {
 }
 
 export interface Ficha {
-  id: number;
+  id?: number;  // Opcional para compatibilidade com Google Sheets
+  ID?: string | number | boolean | Date;  // Google Sheets compatibility
   projetos?: string;
+  Projetos?: string;  // Google Sheets compatibility
   scouter?: string;
-  criado?: string;                      // formato dd/MM/yyyy
+  Scouter?: string;  // Google Sheets compatibility
+  criado?: string |  boolean | Date;  // formato dd/MM/yyyy
+  Criado?: string | number | boolean | Date;  // Google Sheets compatibility
   hora_criacao_ficha?: string;          // formato HH:mm
-  valor_ficha?: string;                 // formato brasileiro com vírgula
+  valor_ficha?: string | number;        // formato brasileiro com vírgula ou número
   etapa?: string;
   nome?: string;
   gerenciamentofunil?: string;
@@ -35,8 +42,9 @@ export interface Ficha {
   supervisor_do_scouter?: string;
   data_confirmacao_ficha?: string;
   foto?: string;                        // "1" | "0"
-  compareceu?: string;                  // "1" | "0"
-  confirmado?: string;                  // "1" | "0"
+  compareceu?: string | number;         // "1" | "0" ou 1 | 0
+  confirmado?: string | number | boolean; // "1" | "0" ou 1 | 0 ou true | false
+  tem_foto?: string | boolean;          // Para compatibilidade
   datahoracel?: string;                 // formato dd/MM/yyyy HH:mm
   funilfichas?: string;
   tabulacao?: string;

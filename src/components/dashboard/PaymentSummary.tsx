@@ -17,15 +17,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { PDFReportService } from "@/services/pdfReportService";
-import { FinancialFilterState } from "./FinancialFilters";
-import type { Ficha, Project } from "@/repositories/types";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { PDFReportService } from "@/services/pdfReportService";
 
 interface PaymentSummaryProps {
   fichasFiltradas: Ficha[];
@@ -67,8 +58,12 @@ export const PaymentSummary = ({
     
     if (!projeto) return 0;
 
-    const valorDiaria = parseFloat(projeto.valorAjudaCusto || 0);
-    const valorFolgaRemunerada = parseFloat(projeto.valorFolgaRemunerada || 0);
+    const valorDiaria = typeof projeto.valorAjudaCusto === 'number' 
+      ? projeto.valorAjudaCusto 
+      : parseFloat(String(projeto.valorAjudaCusto || '0'));
+    const valorFolgaRemunerada = typeof projeto.valorFolgaRemunerada === 'number'
+      ? projeto.valorFolgaRemunerada
+      : parseFloat(String(projeto.valorFolgaRemunerada || '0'));
 
     // Calcular dias trabalhados no período
     const startDate = new Date(selectedPeriod.start);
@@ -140,8 +135,12 @@ export const PaymentSummary = ({
         const projeto = projetos?.find(p => p.nome === projetoScouter);
         
         if (projeto) {
-          const valorDiaria = parseFloat(projeto.valorAjudaCusto || 0);
-          const valorFolgaRemunerada = parseFloat(projeto.valorFolgaRemunerada || 0);
+          const valorDiaria = typeof projeto.valorAjudaCusto === 'number' 
+            ? projeto.valorAjudaCusto 
+            : parseFloat(String(projeto.valorAjudaCusto || '0'));
+          const valorFolgaRemunerada = typeof projeto.valorFolgaRemunerada === 'number'
+            ? projeto.valorFolgaRemunerada
+            : parseFloat(String(projeto.valorFolgaRemunerada || '0'));
           
           const startDate = new Date(selectedPeriod.start);
           const endDate = new Date(selectedPeriod.end);

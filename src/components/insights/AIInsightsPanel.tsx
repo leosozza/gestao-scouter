@@ -70,7 +70,10 @@ export default function AIInsightsPanel({ startDate, endDate, rows, projectName 
       // % confirmadas: considerar ficha_confirmada === "Confirmada" OU confirmado == 1
       const fichaConfirmada = (r as Record<string, unknown>).ficha_confirmada;
       const confirmadoField = r.confirmado;
-      if (fichaConfirmada === "Confirmada" || confirmadoField === "1" || confirmadoField === 1 || toBool(confirmadoField)) {
+      const confirmadoBool = typeof confirmadoField === 'boolean' ? confirmadoField : 
+                             typeof confirmadoField === 'number' ? confirmadoField === 1 :
+                             typeof confirmadoField === 'string' ? (confirmadoField === '1' || confirmadoField.toLowerCase() === 'sim') : false;
+      if (fichaConfirmada === "Confirmada" || confirmadoBool) {
         confirmados++;
       }
       

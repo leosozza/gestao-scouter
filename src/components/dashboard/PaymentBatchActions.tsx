@@ -72,8 +72,12 @@ export const PaymentBatchActions = ({
     
     if (!projeto) return 0;
 
-    const valorDiaria = parseFloat(projeto.valorAjudaCusto || 0);
-    const valorFolgaRemunerada = parseFloat(projeto.valorFolgaRemunerada || 0);
+    const valorDiaria = typeof projeto.valorAjudaCusto === 'number' 
+      ? projeto.valorAjudaCusto 
+      : parseFloat(String(projeto.valorAjudaCusto || '0'));
+    const valorFolgaRemunerada = typeof projeto.valorFolgaRemunerada === 'number'
+      ? projeto.valorFolgaRemunerada
+      : parseFloat(String(projeto.valorFolgaRemunerada || '0'));
 
     // Calcular dias trabalhados no período
     const startDate = new Date(selectedPeriod.start);
