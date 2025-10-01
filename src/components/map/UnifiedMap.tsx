@@ -16,7 +16,7 @@ import { useFichasFromSheets } from '@/hooks/useFichasFromSheets';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { MapPin, Users, Navigation, Loader2 } from 'lucide-react';
+import { MapPin, Users, Navigation, Loader2, RefreshCw } from 'lucide-react';
 import { getTileServerConfig, DEFAULT_TILE_SERVER } from '@/config/tileServers';
 
 // Default marker icon color
@@ -76,7 +76,7 @@ export function UnifiedMap({
 
   // Fetch data from Google Sheets
   const { scouters, isLoading: isLoadingScouters, error: errorScouters } = useScoutersFromSheets();
-  const { fichas, isLoading: isLoadingFichas, error: errorFichas } = useFichasFromSheets();
+  const { fichas, isLoading: isLoadingFichas, error: errorFichas, refetch: refetchFichas, isFetching: isFetchingFichas } = useFichasFromSheets();
 
   const isLoading = isLoadingScouters || isLoadingFichas;
   const error = errorScouters || errorFichas;
@@ -303,6 +303,19 @@ export function UnifiedMap({
     }
   };
 
+  // Reload fichas data from Google Sheets
+  const handleReloadFichas = async () => {
+    console.log('🔄 Reloading fichas...');
+    try {
+      const result = await refetchFichas();
+      const fichasData = result.data || [];
+      console.log(`✅ Reloaded fichas: ${fichasData.length}`);
+    } catch (error) {
+      console.error('❌ Failed to reload fichas', error);
+      console.warn('Failed to reload fichas data');
+    }
+  };
+
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="flex-none">
@@ -349,6 +362,19 @@ export function UnifiedMap({
               <Navigation className="h-4 w-4 mr-1" />
               Centralizar
             </Button>
+
+            {/* Reload Fichas Button - Only visible in Fichas mode */}
+            {viewMode === 'fichas' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReloadFichas}
+                disabled={isLoadingFichas || isFetchingFichas}
+              >
+                <RefreshCw className={`h-4 w-4 mr-1 ${isFetchingFichas ? 'animate-spin' : ''}`} />
+                Recarregar Fichas
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>
