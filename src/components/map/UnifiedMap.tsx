@@ -16,7 +16,7 @@ import { useFichasFromSheets } from '@/hooks/useFichasFromSheets';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { MapPin, Users, Navigation, Loader2 } from 'lucide-react';
+import { MapPin, Users, Navigation, Loader2, RefreshCw } from 'lucide-react';
 import { getTileServerConfig, DEFAULT_TILE_SERVER } from '@/config/tileServers';
 
 // Default marker icon color
@@ -73,10 +73,11 @@ export function UnifiedMap({
   const [viewMode, setViewMode] = useState<MapViewMode>('scouters');
   const [totalScouters, setTotalScouters] = useState(0);
   const [totalFichas, setTotalFichas] = useState(0);
+  const [lastReloadTime, setLastReloadTime] = useState<Date | null>(null);
 
   // Fetch data from Google Sheets
   const { scouters, isLoading: isLoadingScouters, error: errorScouters } = useScoutersFromSheets();
-  const { fichas, isLoading: isLoadingFichas, error: errorFichas } = useFichasFromSheets();
+  const { fichas, isLoading: isLoadingFichas, error: errorFichas, refetch: refetchFichas, isFetching: isFetchingFichas } = useFichasFromSheets();
 
   const isLoading = isLoadingScouters || isLoadingFichas;
   const error = errorScouters || errorFichas;
@@ -289,6 +290,70 @@ export function UnifiedMap({
     }
   }, [fichas, viewMode]);
 
+  // Handle fichas reload
+  const handleReloadFichas = async () => {
+    if (isFetchingFichas) {
+      console.log('[FichasReload] Already fetching, skipping reload request');
+      return;
+    }
+
+    console.log('[FichasReload] Starting reload...');
+    try {
+      const result = await refetchFichas();
+      
+      if (!result.isError) {
+        const now = new Date();
+        setLastReloadTime(now);
+        const count = result.data?.length || 0;
+        console.log(`[FichasReload] ✅ Reloaded fichas at ${now.toISOString()} (count=${count})`);
+      } else {
+        console.error('[FichasReload] Error during reload:', result.error);
+      }
+    } catch (error) {
+      console.error('[FichasReload] Exception during reload:', error);
+    }
+  };
+
+  // Keyboard shortcut for reloading fichas (R key)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Check if R or r key was pressed
+      if (event.key !== 'r' && event.key !== 'R') return;
+
+      // Don't trigger if focus is in an input element
+      const target = event.target as HTMLElement;
+      const isInputFocused = 
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable;
+
+      if (isInputFocused) {
+        return;
+      }
+
+      // Only trigger in fichas mode
+      if (viewMode !== 'fichas') {
+        return;
+      }
+
+      // Don't trigger if already fetching
+      if (isFetchingFichas) {
+        return;
+      }
+
+      console.log('[FichasReload] ⌨️ R pressed: reloading fichas');
+      event.preventDefault();
+      handleReloadFichas();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [viewMode, isFetchingFichas, refetchFichas]);
+
   // Center map on current view
   const handleCenterMap = () => {
     if (!mapRef.current) return;
@@ -349,6 +414,35 @@ export function UnifiedMap({
               <Navigation className="h-4 w-4 mr-1" />
               Centralizar
             </Button>
+
+            {/* Reload Fichas Button (only visible in fichas mode) */}
+            {viewMode === 'fichas' && (
+              <div className="flex flex-col gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleReloadFichas}
+                  disabled={isFetchingFichas}
+                >
+                  {isFetchingFichas ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      Recarregando... ({fichas.length})
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-1" />
+                      Recarregar Fichas ({fichas.length} pontos)
+                    </>
+                  )}
+                </Button>
+                {lastReloadTime && (
+                  <span className="text-xs text-muted-foreground text-center">
+                    Atualizado às {lastReloadTime.toLocaleTimeString('pt-BR', { hour12: false })}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </CardHeader>
