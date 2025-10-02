@@ -214,7 +214,10 @@ ${proj.topScouters.map(s => `• ${s}`).join('\n')}
           <Collapsible open={isOpen} onOpenChange={setIsOpen}>
             <CollapsibleTrigger asChild>
               <Button variant="outline" className="w-full justify-between">
-                Observação de Análise
+                <span className="flex items-center gap-2">
+                  <Brain className="w-4 h-4 text-primary" />
+                  Observação de Análise
+                </span>
                 {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </Button>
             </CollapsibleTrigger>
