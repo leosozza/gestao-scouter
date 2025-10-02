@@ -19,6 +19,23 @@ import { useFichasFromSheets } from '@/hooks/useFichasFromSheets';
 import { getTileServerConfig, DEFAULT_TILE_SERVER } from '@/config/tileServers';
 import type { FichaMapData } from '@/services/googleSheetsMapService';
 
+// Geoman types
+interface GeomanMap extends L.Map {
+  pm?: {
+    setPathOptions: (options: Record<string, unknown>) => void;
+    enableDraw: (shape: string, options: Record<string, unknown>) => void;
+    disableDraw: () => void;
+    globalDrawModeEnabled: () => boolean;
+  };
+}
+
+interface GeomanCreateEvent {
+  layer: L.Layer & {
+    getLatLngs: () => Array<Array<{ lat: number; lng: number }>>;
+  };
+  shape: string;
+}
+
 // Extended ficha type with metadata
 interface FichaDataPoint extends FichaMapData {
   id?: string;
@@ -203,10 +220,10 @@ export function FichasTab() {
 
   // Geoman event listener for polygon creation
   useEffect(() => {
-    const map = mapRef.current as L.Map & { pm?: any };
+    const map = mapRef.current as GeomanMap;
     if (!map || !map.pm) return;
 
-    const onCreate = (e: any) => {
+    const onCreate = (e: GeomanCreateEvent) => {
       // Remove previous polygon
       if (drawnLayerRef.current) {
         map.removeLayer(drawnLayerRef.current);
@@ -217,7 +234,7 @@ export function FichasTab() {
 
       // Get polygon coordinates
       const latlngs = e.layer.getLatLngs()[0];
-      const coords = latlngs.map((p: any) => [p.lng, p.lat]);
+      const coords = latlngs.map((p) => [p.lng, p.lat]);
       coords.push(coords[0]); // Close polygon
 
       // Filter fichas inside polygon using Turf.js
@@ -276,7 +293,7 @@ export function FichasTab() {
 
   // Start drawing
   const handleStartDrawing = () => {
-    const map = mapRef.current as L.Map & { pm?: any };
+    const map = mapRef.current as GeomanMap;
     if (!map?.pm) {
       console.error('Geoman não carregado (map.pm undefined)');
       return;
