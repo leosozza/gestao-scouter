@@ -26,15 +26,15 @@ import { buildAISummaryFromSelection, formatAIAnalysisHTML } from '@/utils/ai-an
 import { exportAreaReportPDF, exportAreaReportCSV } from '@/utils/export-reports';
 import './mobile.css';
 
-// Geoman types
-interface GeomanMap extends L.Map {
+// Geoman types - use type intersection to avoid extension issues
+type GeomanMap = L.Map & {
   pm?: {
     setPathOptions: (options: Record<string, unknown>) => void;
     enableDraw: (shape: string, options: Record<string, unknown>) => void;
     disableDraw: () => void;
     globalDrawModeEnabled: () => boolean;
   };
-}
+};
 
 interface GeomanCreateEvent {
   layer: L.Layer & {
@@ -72,14 +72,6 @@ interface ProjetoSummary {
 interface AnalysisSummary {
   total: number;
   byProjeto: ProjetoSummary[];
-}
-
-// Extend L.HeatLayer type
-declare module 'leaflet' {
-  interface HeatLayer extends L.Layer {
-    setLatLngs(latlngs: Array<[number, number, number]>): this;
-    addLatLng(latlng: [number, number, number]): this;
-  }
 }
 
 // Format large numbers with K suffix
@@ -309,7 +301,7 @@ export function FichasTab() {
     // On draw start - lock map and prepare realtime heat layer
     const onDrawStart = () => {
       console.log('[Fichas] Drawing started - locking map');
-      lockMap(map);
+      if (map) lockMap(map as L.Map);
       setIsDrawing(true);
 
       // Create realtime selection heat layer (initially empty)
@@ -372,7 +364,7 @@ export function FichasTab() {
       }
       drawnLayerRef.current = e.layer;
       setIsDrawing(false);
-      unlockMap(map);
+      if (map) unlockMap(map as L.Map);
       map.pm.disableDraw();
 
       // Get polygon coordinates
@@ -401,7 +393,7 @@ export function FichasTab() {
     const onDrawCancel = () => {
       console.log('[Fichas] Drawing canceled - unlocking map');
       setIsDrawing(false);
-      unlockMap(map);
+      if (map) unlockMap(map as L.Map);
 
       // Clear realtime heat
       if (heatSelectedRef.current) {
@@ -513,7 +505,7 @@ export function FichasTab() {
     setSummary(generateAnalysis(filteredFichas));
     setIsDrawing(false);
     setShowSummary(false);
-    unlockMap(map!);
+    if (map) unlockMap(map as L.Map);
   };
 
   // Center map

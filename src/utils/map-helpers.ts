@@ -58,12 +58,13 @@ export function bboxFilter<T extends BBoxFilterable>(
 /**
  * Filter points inside polygon using Turf.js
  * @param points - Array of points with lat/lng
- * @param polygon - Turf polygon
+ * @param polygon - Turf polygon (any type from turf)
  * @returns Points inside polygon
  */
 export function pointsInPolygon<T extends BBoxFilterable>(
   points: T[],
-  polygon: turf.helpers.Feature<turf.helpers.Polygon>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  polygon: any
 ): T[] {
   return points.filter(p => {
     const point = turf.point([p.lng, p.lat]);
