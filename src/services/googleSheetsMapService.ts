@@ -22,6 +22,15 @@ export interface FichaMapData {
   projeto?: string;
   scouter?: string;
   data?: string;
+  // Additional columns for comprehensive analysis
+  etapa?: string;
+  nome?: string;
+  idade?: string;
+  foto?: string;
+  confirmado?: string;
+  valor_ficha?: string;
+  supervisor?: string;
+  [key: string]: string | number | undefined; // Allow dynamic columns
 }
 
 export interface FichasParsingDebugData {
@@ -395,10 +404,19 @@ export async function fetchFichasData(): Promise<FichaMapData[]> {
       const localizacao = row[locationHeaderKey] || '';
       const rowIndex = i + 2; // +2 because: 1-indexed and header row
       
-      // Extract additional columns: B (Projetos), C (Scouter), D (Criado)
+      // Extract additional columns: B (Projetos), C (Scouter), D (Criado), and more
       const projeto = row['Projetos'] || row['Projeto'] || row['projetos'] || row['projeto'] || '';
-      const scouter = row['Scouter'] || row['scouter'] || row['Nome Scouter'] || '';
+      const scouter = row['Scouter'] || row['scouter'] || row['Nome Scouter'] || row['Gestão de Scouter'] || '';
       const data = row['Criado'] || row['criado'] || row['Data'] || row['data'] || '';
+      
+      // Extract additional analysis columns
+      const etapa = row['Etapa'] || row['etapa'] || '';
+      const nome = row['Nome'] || row['nome'] || row['Primeiro Nome'] || '';
+      const idade = row['Idade'] || row['idade'] || '';
+      const foto = row['Foto'] || row['foto'] || row['Cadastro existe foto'] || '';
+      const confirmado = row['Confirmado'] || row['confirmado'] || row['Ficha Confirmada'] || '';
+      const valor_ficha = row['Valor da Ficha'] || row['valor_ficha'] || row['Valor por Fichas'] || '';
+      const supervisor = row['Supervisor'] || row['supervisor'] || row['Supervisor do Scouter'] || '';
       
       if (!localizacao) {
         skippedNoValue++;
@@ -436,6 +454,13 @@ export async function fetchFichasData(): Promise<FichaMapData[]> {
           projeto: projeto || undefined,
           scouter: scouter || undefined,
           data: data || undefined,
+          etapa: etapa || undefined,
+          nome: nome || undefined,
+          idade: idade || undefined,
+          foto: foto || undefined,
+          confirmado: confirmado || undefined,
+          valor_ficha: valor_ficha || undefined,
+          supervisor: supervisor || undefined,
         });
         validCount++;
         

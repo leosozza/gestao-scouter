@@ -18,6 +18,14 @@ interface ProjetoSummary {
 interface AnalysisSummary {
   total: number;
   byProjeto: ProjetoSummary[];
+  // Enhanced analysis data
+  byEtapa?: Map<string, number>;
+  byConfirmado?: Map<string, number>;
+  totalComFoto?: number;
+  totalConfirmados?: number;
+  valorTotal?: number;
+  idadeMedia?: number;
+  supervisores?: Set<string>;
 }
 
 interface AIAnalysisResult {
@@ -26,6 +34,11 @@ interface AIAnalysisResult {
   densidade: string;
   hotspot: string;
   recomendacoes: string[];
+  // Enhanced insights
+  etapas?: Array<{ etapa: string; count: number }>;
+  taxaConfirmacao?: number;
+  taxaComFoto?: number;
+  insights?: string[];
 }
 
 interface AdvancedSummaryProps {

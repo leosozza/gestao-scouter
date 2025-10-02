@@ -11,6 +11,14 @@ interface AnalysisSummary {
     total: number;
     byScout: Map<string, number>;
   }>;
+  // Enhanced analysis data
+  byEtapa?: Map<string, number>;
+  byConfirmado?: Map<string, number>;
+  totalComFoto?: number;
+  totalConfirmados?: number;
+  valorTotal?: number;
+  idadeMedia?: number;
+  supervisores?: Set<string>;
 }
 
 interface AIAnalysisResult {
@@ -19,6 +27,11 @@ interface AIAnalysisResult {
   densidade: string;
   hotspot: string;
   recomendacoes: string[];
+  // Enhanced insights
+  etapas?: Array<{ etapa: string; count: number }>;
+  taxaConfirmacao?: number;
+  taxaComFoto?: number;
+  insights?: string[];
 }
 
 /**
@@ -299,21 +312,61 @@ function generateOverviewAnswer(
   summary: AnalysisSummary,
   analysis: AIAnalysisResult
 ): string {
-  let answer = `📋 **Resumo da Área Selecionada:**\n\n`;
+  let answer = `📋 **Resumo Automático da Área Selecionada:**\n\n`;
   
-  answer += `**Total de Fichas:** ${summary.total}\n`;
-  answer += `**Densidade:** ${analysis.densidade}\n`;
-  answer += `**Projetos:** ${summary.byProjeto.length}\n\n`;
+  answer += `**📊 Dados Gerais:**\n`;
+  answer += `• Total de Fichas: ${summary.total}\n`;
+  answer += `• Densidade: ${analysis.densidade}\n`;
+  answer += `• Projetos: ${summary.byProjeto.length}\n`;
   
   if (analysis.topProjetos.length > 0) {
-    answer += `**Top Projeto:** ${analysis.topProjetos[0]}\n`;
+    answer += `• Top Projeto: ${analysis.topProjetos[0]}\n`;
   }
   
   if (analysis.topScouters.length > 0) {
-    answer += `**Top Scouter:** ${analysis.topScouters[0]}\n`;
+    answer += `• Top Scouter: ${analysis.topScouters[0]}\n`;
+  }
+  
+  // Add enhanced insights
+  if (analysis.taxaConfirmacao !== undefined) {
+    answer += `• Taxa de Confirmação: ${analysis.taxaConfirmacao.toFixed(1)}%\n`;
+  }
+  
+  if (analysis.taxaComFoto !== undefined) {
+    answer += `• Fichas com Foto: ${analysis.taxaComFoto.toFixed(1)}%\n`;
+  }
+  
+  if (summary.idadeMedia !== undefined && summary.idadeMedia > 0) {
+    answer += `• Idade Média: ${summary.idadeMedia.toFixed(0)} anos\n`;
+  }
+  
+  if (summary.valorTotal !== undefined && summary.valorTotal > 0) {
+    answer += `• Valor Total: R$ ${summary.valorTotal.toFixed(2)}\n`;
+  }
+  
+  // Show etapas distribution
+  if (analysis.etapas && analysis.etapas.length > 0) {
+    answer += `\n**📈 Por Etapa:**\n`;
+    analysis.etapas.slice(0, 5).forEach(({ etapa, count }) => {
+      const percentage = ((count / summary.total) * 100).toFixed(1);
+      answer += `• ${etapa}: ${count} (${percentage}%)\n`;
+    });
+  }
+  
+  // Show supervisores
+  if (summary.supervisores && summary.supervisores.size > 0) {
+    answer += `\n**👥 Supervisores:** ${summary.supervisores.size} supervisor(es)\n`;
+  }
+  
+  // Add contextual insights
+  if (analysis.insights && analysis.insights.length > 0) {
+    answer += `\n**💡 Insights:**\n`;
+    analysis.insights.forEach(insight => {
+      answer += `• ${insight}\n`;
+    });
   }
 
-  answer += `\n💬 Faça perguntas específicas sobre densidade, projetos, scouters ou recomendações.`;
+  answer += `\n💬 Faça perguntas específicas sobre densidade, projetos, scouters, etapas ou recomendações.`;
 
   return answer;
 }

@@ -12,6 +12,14 @@ interface ProjetoSummary {
 interface AnalysisSummary {
   total: number;
   byProjeto: ProjetoSummary[];
+  // Enhanced analysis data
+  byEtapa?: Map<string, number>;
+  byConfirmado?: Map<string, number>;
+  totalComFoto?: number;
+  totalConfirmados?: number;
+  valorTotal?: number;
+  idadeMedia?: number;
+  supervisores?: Set<string>;
 }
 
 interface AIAnalysisResult {
@@ -20,6 +28,11 @@ interface AIAnalysisResult {
   densidade: string;
   hotspot: string;
   recomendacoes: string[];
+  // Enhanced insights
+  etapas?: Array<{ etapa: string; count: number }>;
+  taxaConfirmacao?: number;
+  taxaComFoto?: number;
+  insights?: string[];
 }
 
 /**
@@ -64,8 +77,25 @@ export function buildAISummaryFromSelection(
     ? `Centro: ${centerLat.toFixed(4)}, ${centerLng.toFixed(4)}` 
     : 'Centroide da área selecionada';
 
+  // Calculate enhanced metrics
+  const taxaConfirmacao = summary.totalConfirmados !== undefined 
+    ? (summary.totalConfirmados / summary.total) * 100 
+    : undefined;
+    
+  const taxaComFoto = summary.totalComFoto !== undefined
+    ? (summary.totalComFoto / summary.total) * 100
+    : undefined;
+
+  // Generate etapas array
+  const etapas = summary.byEtapa
+    ? Array.from(summary.byEtapa.entries())
+        .map(([etapa, count]) => ({ etapa, count }))
+        .sort((a, b) => b.count - a.count)
+    : undefined;
+
   // Generate recommendations
   const recomendacoes: string[] = [];
+  const insights: string[] = [];
   
   if (summary.total > 100) {
     recomendacoes.push('Área de alto potencial - considere intensificar operações');
@@ -84,6 +114,38 @@ export function buildAISummaryFromSelection(
   if (topScouters.length > 0) {
     recomendacoes.push('Concentrar esforços nos scouters mais produtivos');
   }
+  
+  // Enhanced insights based on new data
+  if (taxaConfirmacao !== undefined) {
+    if (taxaConfirmacao > 80) {
+      insights.push('Excelente taxa de confirmação!');
+    } else if (taxaConfirmacao < 50) {
+      insights.push('Taxa de confirmação baixa - revisar processo de validação');
+    }
+  }
+  
+  if (taxaComFoto !== undefined) {
+    if (taxaComFoto < 50) {
+      insights.push('Aumentar coleta de fotos pode melhorar conversão');
+    } else if (taxaComFoto > 90) {
+      insights.push('Ótima taxa de coleta de fotos!');
+    }
+  }
+  
+  if (summary.idadeMedia && summary.idadeMedia > 0) {
+    if (summary.idadeMedia < 25) {
+      insights.push('Público predominantemente jovem');
+    } else if (summary.idadeMedia > 35) {
+      insights.push('Público com idade mais elevada');
+    }
+  }
+  
+  if (etapas && etapas.length > 0) {
+    const topEtapa = etapas[0];
+    if (topEtapa.count / summary.total > 0.5) {
+      insights.push(`Maioria concentrada na etapa: ${topEtapa.etapa}`);
+    }
+  }
 
   recomendacoes.push('Monitorar tendências temporais para otimização de recursos');
 
@@ -92,7 +154,11 @@ export function buildAISummaryFromSelection(
     topScouters,
     densidade,
     hotspot,
-    recomendacoes
+    recomendacoes,
+    etapas,
+    taxaConfirmacao,
+    taxaComFoto,
+    insights: insights.length > 0 ? insights : undefined,
   };
 }
 
