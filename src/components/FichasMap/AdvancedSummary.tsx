@@ -1,10 +1,13 @@
 /**
  * Advanced Summary Component
- * Collapsible summary panel with PDF/CSV export buttons
+ * Collapsible summary panel with PDF/CSV export buttons and AI Q&A
  */
 import React, { useState } from 'react';
 import { X, Download, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AIQAPanel } from './AIQAPanel';
+import { generateSelectionHash } from '@/utils/selection-hash';
+import { answerQuestion } from '@/utils/ai-qa-service';
 
 interface ProjetoSummary {
   projeto: string;
@@ -17,9 +20,19 @@ interface AnalysisSummary {
   byProjeto: ProjetoSummary[];
 }
 
+interface AIAnalysisResult {
+  topProjetos: string[];
+  topScouters: string[];
+  densidade: string;
+  hotspot: string;
+  recomendacoes: string[];
+}
+
 interface AdvancedSummaryProps {
   summary: AnalysisSummary;
-  aiAnalysisHTML?: string;
+  aiAnalysis: AIAnalysisResult;
+  selectionCoords?: number[][];
+  centerLatLng?: { lat: number; lng: number };
   onClose: () => void;
   onExportPDF: () => void;
   onExportCSV: () => void;
@@ -28,7 +41,9 @@ interface AdvancedSummaryProps {
 
 export function AdvancedSummary({ 
   summary, 
-  aiAnalysisHTML,
+  aiAnalysis,
+  selectionCoords = [],
+  centerLatLng,
   onClose, 
   onExportPDF, 
   onExportCSV,
@@ -44,6 +59,21 @@ export function AdvancedSummary({
       newExpanded.add(projeto);
     }
     setExpandedProjects(newExpanded);
+  };
+
+  // Generate selection hash for Q&A context
+  const selectionHash = generateSelectionHash(selectionCoords);
+
+  // Handle Q&A questions
+  const handleAskQuestion = async (question: string): Promise<string> => {
+    try {
+      // Use local heuristic service
+      const answer = answerQuestion(question, summary, aiAnalysis);
+      return answer;
+    } catch (error) {
+      console.error('Error answering question:', error);
+      throw error;
+    }
   };
 
   return (
@@ -129,10 +159,15 @@ export function AdvancedSummary({
       )}
 
       {/* AI Analysis if provided */}
-      {aiAnalysisHTML && (
-        <div className="mt-4 pt-4 border-t">
-          <div dangerouslySetInnerHTML={{ __html: aiAnalysisHTML }} />
-        </div>
+      {aiAnalysis && (
+        <AIQAPanel
+          selectionHash={selectionHash}
+          totalFichas={summary.total}
+          topProjetos={aiAnalysis.topProjetos}
+          topScouters={aiAnalysis.topScouters}
+          densidade={aiAnalysis.densidade}
+          onAskQuestion={handleAskQuestion}
+        />
       )}
     </div>
   );
