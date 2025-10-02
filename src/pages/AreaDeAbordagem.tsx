@@ -1,6 +1,6 @@
 /**
  * Página de Área de Abordagem
- * Mostra mapa único com toggle: Scouters (clustering) ou Fichas (heatmap)
+ * Mostra mapa único com toggle: Scouters (clustering) ou Fichas (heatmap + desenho)
  * Dados lidos diretamente do Google Sheets
  */
 import { useState, useEffect } from 'react';
@@ -10,12 +10,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UnifiedMap } from '@/components/map/UnifiedMap';
+import { FichasTab } from './AreaDeAbordagem/FichasTab';
 import { MapPin, Flame, RefreshCw, Users, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format, subDays } from 'date-fns';
 import { useScoutersFromSheets } from '@/hooks/useScoutersFromSheets';
 import { useFichasFromSheets } from '@/hooks/useFichasFromSheets';
+import './AreaDeAbordagem/mobile.css';
 
 export default function AreaDeAbordagem() {
   const { toast } = useToast();
@@ -80,7 +83,7 @@ export default function AreaDeAbordagem() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Área de Abordagem</h1>
             <p className="text-muted-foreground mt-1">
-              Visualize scouters e fichas em mapa único com toggle
+              Visualize e analise scouters e fichas com clustering e desenho de área
             </p>
           </div>
           <Button 
@@ -126,36 +129,61 @@ export default function AreaDeAbordagem() {
           </Card>
         </div>
 
-        {/* Unified Map with Toggle */}
-        <div className="h-[700px]">
-          <UnifiedMap 
-            startDate={startDate}
-            endDate={endDate}
-          />
-        </div>
+        {/* Tabs for different map modes */}
+        <Tabs defaultValue="unified" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsTrigger value="unified" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Modo Unificado
+            </TabsTrigger>
+            <TabsTrigger value="fichas" className="flex items-center gap-2">
+              <Flame className="h-4 w-4" />
+              Análise de Fichas
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="unified" className="mt-4">
+            <div className="h-[700px]">
+              <UnifiedMap 
+                startDate={startDate}
+                endDate={endDate}
+              />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="fichas" className="mt-4">
+            <div className="h-[700px]">
+              <FichasTab />
+            </div>
+          </TabsContent>
+        </Tabs>
 
         {/* Info */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Sobre o Mapa</CardTitle>
+            <CardTitle className="text-base">Sobre os Modos do Mapa</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-2">
             <p>
-              <strong>Modo Scouters:</strong> Mostra scouters com clustering (círculos amarelos com números). 
-              Ao aproximar (zoom in), os clusters se separam em markers individuais. 
-              Clique em um marker para ver o nome do scouter.
+              <strong>Modo Unificado:</strong> Toggle entre Scouters (clustering com círculos amarelos) 
+              e Fichas (heatmap colorido). Zoom in/out para ajustar visualização.
             </p>
             <p>
-              <strong>Modo Fichas:</strong> Visualiza mapa de calor (heatmap) das fichas. 
-              Verde → Amarelo → Laranja → Vermelho indica densidade crescente de fichas.
+              <strong>Análise de Fichas:</strong> Modo avançado com desenho de polígono. 
+              Clique em "Desenhar" → desenhe área no mapa (duplo clique para finalizar) → 
+              receba análise detalhada por Projeto e Scouter.
+            </p>
+            <p>
+              <strong>Clustering:</strong> Ambos os modos usam clustering para agrupar pontos próximos. 
+              Números indicam quantidade de itens. Clique para aproximar e separar.
             </p>
             <p>
               <strong>Fonte de Dados:</strong> Lê direto do Google Sheets (GIDs 1351167110 e 452792639). 
-              Futuro: fácil migração para Supabase.
+              Botão "Recarregar" atualiza dados em tempo real.
             </p>
             <p>
-              <strong>Enriquecer Geolocalização:</strong> Processa fichas que possuem endereço 
-              e converte para coordenadas usando geocodificação.
+              <strong>Mobile:</strong> Controles otimizados para toque. Botões ≥44px. 
+              Painéis não bloqueiam interação durante desenho.
             </p>
           </CardContent>
         </Card>
