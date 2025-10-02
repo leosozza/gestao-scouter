@@ -316,7 +316,6 @@ function generateOverviewAnswer(
   
   answer += `**📊 Dados Gerais:**\n`;
   answer += `• Total de Fichas: ${summary.total}\n`;
-  answer += `• Densidade: ${analysis.densidade}\n`;
   answer += `• Projetos: ${summary.byProjeto.length}\n`;
   
   if (analysis.topProjetos.length > 0) {
@@ -338,10 +337,6 @@ function generateOverviewAnswer(
   
   if (summary.idadeMedia !== undefined && summary.idadeMedia > 0) {
     answer += `• Idade Média: ${summary.idadeMedia.toFixed(0)} anos\n`;
-  }
-  
-  if (summary.valorTotal !== undefined && summary.valorTotal > 0) {
-    answer += `• Valor Total: R$ ${summary.valorTotal.toFixed(2)}\n`;
   }
   
   // Show etapas distribution
