@@ -15,7 +15,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import * as turf from '@turf/turf';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, MapPin, Pencil, RefreshCw, X, Navigation, Flame, Maximize2, Minimize2 } from 'lucide-react';
+import { Loader2, MapPin, Pencil, RefreshCw, X, Navigation, Flame, Maximize2, Minimize2, Brain } from 'lucide-react';
 import { useFichasFromSheets } from '@/hooks/useFichasFromSheets';
 import { getTileServerConfig, DEFAULT_TILE_SERVER } from '@/config/tileServers';
 import type { FichaMapData } from '@/services/googleSheetsMapService';
@@ -97,6 +97,8 @@ export function FichasTab() {
   const [showSummary, setShowSummary] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectionCoords, setSelectionCoords] = useState<number[][]>([]); // For AI hash
+  const [aiAnalysis, setAiAnalysis] = useState<any>(null); // AI analysis result
 
   // Date filter state (no auto-filtering)
   const [dateStart, setDateStart] = useState<string>('');
@@ -381,11 +383,23 @@ export function FichasTab() {
 
       console.log(`✅ [Fichas] Polygon created: ${selected.length} fichas selected`);
 
+      // Store selection data (but don't auto-open panel)
       setDisplayedFichas(selected);
-      setSummary(generateAnalysis(selected));
-      setShowSummary(true);
+      const analysisSummary = generateAnalysis(selected);
+      setSummary(analysisSummary);
+      setSelectionCoords(coords);
+      
+      // Generate AI analysis
+      const center = mapRef.current?.getCenter();
+      const aiResult = buildAISummaryFromSelection(
+        analysisSummary,
+        center?.lat,
+        center?.lng
+      );
+      setAiAnalysis(aiResult);
 
       // Keep the realtime heat showing final selection
+      // Panel is opened via brain button, not automatically
     };
 
     // On draw canceled - clean up
@@ -501,7 +515,9 @@ export function FichasTab() {
     }
 
     setDisplayedFichas(filteredFichas);
-    setSummary(generateAnalysis(filteredFichas));
+    setSummary(null);
+    setAiAnalysis(null);
+    setSelectionCoords([]);
     setIsDrawing(false);
     setShowSummary(false);
     if (map) unlockMap(map as L.Map);
@@ -750,7 +766,7 @@ export function FichasTab() {
           </div>
         )}
 
-        {/* Unified button group - Calendar + Fullscreen */}
+        {/* Unified button group - Calendar + Brain + Fullscreen */}
         <div className="absolute top-4 right-4 z-[9999] flex flex-col bg-white/95 shadow-lg border backdrop-blur-sm rounded overflow-hidden">
           {/* Calendar button */}
           <DateFilter
@@ -761,6 +777,19 @@ export function FichasTab() {
             onClear={handleClearDateFilter}
           />
           
+          {/* Divider between buttons */}
+          <div className="h-px bg-border" />
+          
+          {/* Brain button (toggle analysis panel) */}
+          <button
+            className="fullscreen-button flex items-center justify-center w-[30px] h-[30px] hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => setShowSummary(!showSummary)}
+            disabled={!summary || !aiAnalysis}
+            title={showSummary ? 'Fechar análise' : 'Abrir análise IA'}
+          >
+            <Brain size={16} className={showSummary ? 'text-primary' : ''} />
+          </button>
+
           {/* Divider between buttons */}
           <div className="h-px bg-border" />
           
@@ -775,16 +804,15 @@ export function FichasTab() {
         </div>
 
         {/* Advanced summary panel */}
-        {showSummary && summary && (
+        {showSummary && summary && aiAnalysis && (
           <AdvancedSummary
             summary={summary}
-            aiAnalysisHTML={formatAIAnalysisHTML(
-              buildAISummaryFromSelection(
-                summary,
-                mapRef.current?.getCenter().lat,
-                mapRef.current?.getCenter().lng
-              )
-            )}
+            aiAnalysis={aiAnalysis}
+            selectionCoords={selectionCoords}
+            centerLatLng={mapRef.current ? {
+              lat: mapRef.current.getCenter().lat,
+              lng: mapRef.current.getCenter().lng
+            } : undefined}
             onClose={() => setShowSummary(false)}
             onExportPDF={handleExportPDF}
             onExportCSV={handleExportCSV}
