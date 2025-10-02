@@ -25,16 +25,16 @@ export function DateFilter({
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-      <div className="absolute top-4 left-4 z-[9999] bg-white/95 rounded-lg shadow-lg border backdrop-blur-sm">
-        <CollapsibleTrigger asChild>
-          <button className="flex items-center justify-center w-10 h-10 hover:bg-accent rounded-lg transition-colors">
-            <Calendar size={20} className="text-muted-foreground" />
-          </button>
-        </CollapsibleTrigger>
-        
-        <CollapsibleContent>
-          <div className="flex items-center gap-2 px-3 pb-2 pt-1">
+    <div className="absolute top-4 right-4 z-[9999] bg-white/95 rounded-lg shadow-lg border backdrop-blur-sm">
+      <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+        <div className="flex items-center gap-2 px-2 py-2">
+          <CollapsibleTrigger asChild>
+            <button className="flex items-center justify-center w-8 h-8 hover:bg-accent rounded-lg transition-colors">
+              <Calendar size={18} className="text-muted-foreground" />
+            </button>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="flex items-center gap-2">
             <input
               type="date"
               value={startDate}
@@ -65,9 +65,9 @@ export function DateFilter({
             >
               Limpar
             </Button>
-          </div>
-        </CollapsibleContent>
-      </div>
-    </Collapsible>
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+    </div>
   );
 }
