@@ -71,8 +71,7 @@ export class FichasHeatmap {
       console.log('🔄 [Fichas Heatmap] Updating existing layer with setLatLngs');
       this.heatLayer.setLatLngs(points);
     } else if (!this.heatLayer) {
-      // @ts-expect-error - leaflet.heat typing issue
-      this.heatLayer = L.heatLayer(points, {
+      this.heatLayer = (L as any).heatLayer(points, {
         radius: this.options.radius,
         blur: this.options.blur,
         maxZoom: this.options.maxZoom,

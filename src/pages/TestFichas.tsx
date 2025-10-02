@@ -166,7 +166,7 @@ export default function TestFichasPage() {
     if (allFichas.length === 0) return;
     
     const filtered = allFichas.filter((f) => {
-      const dataVal = f.data || f.Data || f["Data"];
+      const dataVal = f.data || (f as any).Data || f["Data"];
       if (!dataVal) return false;
       const dt = new Date(dataVal);
       return (

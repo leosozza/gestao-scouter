@@ -54,7 +54,7 @@ export class FichasSelection {
       startLatLng = e.latlng;
       
       // Create initial rectangle
-      rectangle = L.rectangle([startLatLng, startLatLng], {
+      rectangle = L.rectangle([[startLatLng.lat, startLatLng.lng], [startLatLng.lat, startLatLng.lng]], {
         color: '#3B82F6',
         weight: 2,
         fillOpacity: 0.1
@@ -63,7 +63,7 @@ export class FichasSelection {
 
     const onMouseMove = (e: L.LeafletMouseEvent) => {
       if (startLatLng && rectangle) {
-        rectangle.setBounds([startLatLng, e.latlng]);
+        rectangle.setBounds([[startLatLng.lat, startLatLng.lng], [e.latlng.lat, e.latlng.lng]]);
       }
     };
 

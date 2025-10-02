@@ -47,7 +47,7 @@ export function AdvancedSummary({
   };
 
   return (
-    <div className="absolute top-4 right-4 z-50 w-[min(90vw,420px)] bg-white/95 rounded-lg shadow-lg border p-4 max-h-[70vh] overflow-y-auto">
+    <div className="absolute top-4 right-4 z-[9999] w-[min(90vw,420px)] bg-white/95 rounded-lg shadow-lg border p-4 max-h-[70vh] overflow-y-auto backdrop-blur-sm">
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-bold text-lg">Análise da Área</h3>
         <button 
