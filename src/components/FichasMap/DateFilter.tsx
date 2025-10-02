@@ -22,7 +22,7 @@ export function DateFilter({
   onClear 
 }: DateFilterProps) {
   return (
-    <div className="flex items-center gap-2 bg-white/95 rounded-lg shadow-lg px-3 py-2 border">
+    <div className="absolute top-4 left-4 z-[9999] flex items-center gap-2 bg-white/95 rounded-lg shadow-lg px-3 py-2 border backdrop-blur-sm">
       <Calendar size={16} className="text-muted-foreground" />
       <input
         type="date"

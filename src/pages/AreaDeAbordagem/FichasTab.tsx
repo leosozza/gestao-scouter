@@ -148,14 +148,13 @@ export function FichasTab() {
       return;
     }
 
-    // Convert to FichaDataPoint with metadata
-    // In a real implementation, these would come from additional columns
+    // Convert to FichaDataPoint - now using real data from Google Sheets
     const enrichedFichas: FichaDataPoint[] = fichas.map((f, index) => ({
       ...f,
       id: `ficha-${index}`,
-      projeto: 'Projeto Padrão', // Would come from sheet column B
-      scouter: 'Scouter Desconhecido', // Would come from sheet column C
-      data: new Date().toISOString(), // Would come from sheet date column
+      projeto: f.projeto || 'Sem Projeto',
+      scouter: f.scouter || 'Não Identificado',
+      data: f.data || '',
     }));
 
     setAllFichas(enrichedFichas);
@@ -527,11 +526,35 @@ export function FichasTab() {
       return;
     }
 
+    // Parse Brazilian date format (DD/MM/YYYY) from Google Sheets
+    const parseBrazilianDate = (dateStr: string): Date | null => {
+      if (!dateStr) return null;
+      
+      // Try DD/MM/YYYY format first (from Google Sheets)
+      const brMatch = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (brMatch) {
+        const [, day, month, year] = brMatch;
+        return new Date(Number(year), Number(month) - 1, Number(day));
+      }
+      
+      // Try ISO format as fallback
+      const isoDate = new Date(dateStr);
+      if (!isNaN(isoDate.getTime())) {
+        return isoDate;
+      }
+      
+      return null;
+    };
+
     const filtered = allFichas.filter(f => {
       if (!f.data) return false;
-      const fichaDate = new Date(f.data);
+      
+      const fichaDate = parseBrazilianDate(f.data);
+      if (!fichaDate) return false;
+      
       const startDate = new Date(dateStart);
       const endDate = new Date(dateEnd + 'T23:59:59');
+      
       return fichaDate >= startDate && fichaDate <= endDate;
     });
 
@@ -727,20 +750,18 @@ export function FichasTab() {
           </div>
         )}
 
-        {/* Date filter panel */}
-        <div className="absolute top-4 left-4 z-50">
-          <DateFilter
-            startDate={dateStart}
-            endDate={dateEnd}
-            onDateChange={handleDateChange}
-            onApply={handleApplyDateFilter}
-            onClear={handleClearDateFilter}
-          />
-        </div>
+        {/* Date filter panel - z-index is handled by DateFilter itself */}
+        <DateFilter
+          startDate={dateStart}
+          endDate={dateEnd}
+          onDateChange={handleDateChange}
+          onApply={handleApplyDateFilter}
+          onClear={handleClearDateFilter}
+        />
 
         {/* Fullscreen button */}
         <button
-          className="fullscreen-button absolute top-4 right-4 z-50 bg-white/95 rounded shadow-lg p-2 border hover:bg-gray-50 transition"
+          className="fullscreen-button absolute top-4 right-4 z-[9999] bg-white/95 rounded shadow-lg p-2 border hover:bg-gray-50 transition backdrop-blur-sm"
           onClick={handleToggleFullscreen}
           title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
         >

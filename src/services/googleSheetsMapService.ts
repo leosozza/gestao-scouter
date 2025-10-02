@@ -19,6 +19,9 @@ export interface FichaMapData {
   lat: number;
   lng: number;
   localizacao: string;
+  projeto?: string;
+  scouter?: string;
+  data?: string;
 }
 
 export interface FichasParsingDebugData {
@@ -46,13 +49,13 @@ const MOCK_SCOUTERS: ScouterMapData[] = [
 ];
 
 const MOCK_FICHAS: FichaMapData[] = [
-  { lat: -23.5505, lng: -46.6333, localizacao: '-23.5505,-46.6333' },
-  { lat: -23.5520, lng: -46.6350, localizacao: '-23.5520,-46.6350' },
-  { lat: -23.5535, lng: -46.6370, localizacao: '-23.5535,-46.6370' },
-  { lat: -23.5550, lng: -46.6390, localizacao: '-23.5550,-46.6390' },
-  { lat: -23.5565, lng: -46.6410, localizacao: '-23.5565,-46.6410' },
-  { lat: -23.5580, lng: -46.6430, localizacao: '-23.5580,-46.6430' },
-  { lat: -23.5595, lng: -46.6450, localizacao: '-23.5595,-46.6450' },
+  { lat: -23.5505, lng: -46.6333, localizacao: '-23.5505,-46.6333', projeto: 'Projeto Teste 1', scouter: 'João Silva', data: '2025-09-01' },
+  { lat: -23.5520, lng: -46.6350, localizacao: '-23.5520,-46.6350', projeto: 'Projeto Teste 2', scouter: 'Maria Santos', data: '2025-09-02' },
+  { lat: -23.5535, lng: -46.6370, localizacao: '-23.5535,-46.6370', projeto: 'Projeto Teste 1', scouter: 'Pedro Costa', data: '2025-09-03' },
+  { lat: -23.5550, lng: -46.6390, localizacao: '-23.5550,-46.6390', projeto: 'Projeto Teste 3', scouter: 'Ana Lima', data: '2025-09-04' },
+  { lat: -23.5565, lng: -46.6410, localizacao: '-23.5565,-46.6410', projeto: 'Projeto Teste 2', scouter: 'Carlos Souza', data: '2025-09-05' },
+  { lat: -23.5580, lng: -46.6430, localizacao: '-23.5580,-46.6430', projeto: 'Projeto Teste 1', scouter: 'João Silva', data: '2025-09-06' },
+  { lat: -23.5595, lng: -46.6450, localizacao: '-23.5595,-46.6450', projeto: 'Projeto Teste 3', scouter: 'Maria Santos', data: '2025-09-07' },
 ];
 
 /**
@@ -392,6 +395,11 @@ export async function fetchFichasData(): Promise<FichaMapData[]> {
       const localizacao = row[locationHeaderKey] || '';
       const rowIndex = i + 2; // +2 because: 1-indexed and header row
       
+      // Extract additional columns: B (Projetos), C (Scouter), D (Criado)
+      const projeto = row['Projetos'] || row['Projeto'] || row['projetos'] || row['projeto'] || '';
+      const scouter = row['Scouter'] || row['scouter'] || row['Nome Scouter'] || '';
+      const data = row['Criado'] || row['criado'] || row['Data'] || row['data'] || '';
+      
       if (!localizacao) {
         skippedNoValue++;
         if (isDebugMode && problematicRows.length < 25) {
@@ -425,6 +433,9 @@ export async function fetchFichasData(): Promise<FichaMapData[]> {
           lat: coords.lat,
           lng: coords.lng,
           localizacao,
+          projeto: projeto || undefined,
+          scouter: scouter || undefined,
+          data: data || undefined,
         });
         validCount++;
         
