@@ -292,6 +292,7 @@ export function UnifiedMap({
         blur: 15,
         maxZoom: 17,
         max: 1.0,
+        minOpacity: 0.25, // Ensures heatmap stays visible at all zoom levels
         gradient: {
           0.2: '#6BE675', // verde
           0.4: '#FFE58F', // amarelo claro

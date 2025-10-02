@@ -89,6 +89,7 @@ export function FichasHeatmap({
       blur: 15,
       maxZoom: 17,
       max: 1.0,
+      minOpacity: 0.25, // Ensures heatmap stays visible at all zoom levels
       gradient: {
         0.0: 'green',
         0.5: 'yellow',
