@@ -750,23 +750,29 @@ export function FichasTab() {
           </div>
         )}
 
-        {/* Date filter panel - z-index is handled by DateFilter itself */}
-        <DateFilter
-          startDate={dateStart}
-          endDate={dateEnd}
-          onDateChange={handleDateChange}
-          onApply={handleApplyDateFilter}
-          onClear={handleClearDateFilter}
-        />
-
-        {/* Fullscreen button */}
-        <button
-          className="fullscreen-button absolute top-16 right-4 z-[9999] bg-white/95 rounded-lg shadow-lg p-2 border hover:bg-gray-50 transition backdrop-blur-sm"
-          onClick={handleToggleFullscreen}
-          title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
-        >
-          {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
-        </button>
+        {/* Unified button group - Calendar + Fullscreen */}
+        <div className="absolute top-4 right-4 z-[9999] flex flex-col bg-white/95 shadow-lg border backdrop-blur-sm rounded-lg overflow-hidden">
+          {/* Calendar button */}
+          <DateFilter
+            startDate={dateStart}
+            endDate={dateEnd}
+            onDateChange={handleDateChange}
+            onApply={handleApplyDateFilter}
+            onClear={handleClearDateFilter}
+          />
+          
+          {/* Divider between buttons */}
+          <div className="h-px bg-border" />
+          
+          {/* Fullscreen button */}
+          <button
+            className="fullscreen-button flex items-center justify-center w-10 h-10 hover:bg-accent transition-colors"
+            onClick={handleToggleFullscreen}
+            title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+          >
+            {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+          </button>
+        </div>
 
         {/* Advanced summary panel */}
         {showSummary && summary && (
