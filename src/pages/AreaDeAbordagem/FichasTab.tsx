@@ -1,7 +1,7 @@
 /**
- * FichasTab Component - Enterprise Edition
- * Advanced spatial analysis with PDF/CSV reports, realtime heat, and performance optimization
- * Features: Realtime heat during drawing, map locking, fullscreen, date filtering, AI analysis
+ * FichasTab Component - Area Analysis with AI Q&A (Point 3)
+ * - Reintroduz toggle manual (botão cérebro)
+ * - Adiciona suporte para Q&A via AdvancedSummary (centerLatLng)
  */
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
@@ -15,7 +15,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import * as turf from '@turf/turf';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, MapPin, Pencil, RefreshCw, X, Navigation, Flame, Maximize2, Minimize2 } from 'lucide-react';
+import { Loader2, Pencil, RefreshCw, X, Navigation, Flame, Maximize2, Minimize2, Brain } from 'lucide-react';
 import { useFichasFromSheets } from '@/hooks/useFichasFromSheets';
 import { getTileServerConfig, DEFAULT_TILE_SERVER } from '@/config/tileServers';
 import type { FichaMapData } from '@/services/googleSheetsMapService';
@@ -26,8 +26,8 @@ import { buildAISummaryFromSelection, formatAIAnalysisHTML } from '@/utils/ai-an
 import { exportAreaReportPDF, exportAreaReportCSV } from '@/utils/export-reports';
 import './mobile.css';
 
-// Geoman types - use type intersection to avoid extension issues
-type GeomanMap = L.Map & {
+// Geoman types
+ type GeomanMap = L.Map & {
   pm?: {
     setPathOptions: (options: Record<string, unknown>) => void;
     enableDraw: (shape: string, options: Record<string, unknown>) => void;
@@ -36,7 +36,7 @@ type GeomanMap = L.Map & {
   };
 };
 
-interface GeomanCreateEvent {
+ interface GeomanCreateEvent {
   layer: L.Layer & {
     getLatLngs: () => Array<Array<{ lat: number; lng: number }>>;
     getBounds: () => L.LatLngBounds;
@@ -44,7 +44,7 @@ interface GeomanCreateEvent {
   shape: string;
 }
 
-interface GeomanDrawVertexEvent {
+ interface GeomanDrawVertexEvent {
   workingLayer?: L.Layer & {
     getLatLngs: () => Array<Array<{ lat: number; lng: number }>>;
     getBounds: () => L.LatLngBounds;
@@ -56,70 +56,62 @@ interface GeomanDrawVertexEvent {
 }
 
 // Extended ficha type with metadata
-interface FichaDataPoint extends FichaMapData {
+ interface FichaDataPoint extends FichaMapData {
   id?: string;
   projeto?: string;
   scouter?: string;
   data?: string;
 }
 
-interface ProjetoSummary {
+ interface ProjetoSummary {
   projeto: string;
   total: number;
   byScout: Map<string, number>;
 }
 
-interface AnalysisSummary {
+ interface AnalysisSummary {
   total: number;
   byProjeto: ProjetoSummary[];
 }
 
 // Format large numbers with K suffix
-function formatK(n: number): string {
+ function formatK(n: number): string {
   if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
   return n.toString();
 }
 
-export function FichasTab() {
+ export function FichasTab() {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapWrapperRef = useRef<HTMLDivElement>(null); // For fullscreen
+  const mapWrapperRef = useRef<HTMLDivElement>(null);
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
   const drawnLayerRef = useRef<L.Layer | null>(null);
-  const heatLayerRef = useRef<L.HeatLayer | null>(null); // Base heat layer
-  const heatSelectedRef = useRef<L.HeatLayer | null>(null); // Realtime selection heat
+  const heatLayerRef = useRef<L.HeatLayer | null>(null);
+  const heatSelectedRef = useRef<L.HeatLayer | null>(null);
 
   const [isDrawing, setIsDrawing] = useState(false);
   const [allFichas, setAllFichas] = useState<FichaDataPoint[]>([]);
-  const [filteredFichas, setFilteredFichas] = useState<FichaDataPoint[]>([]); // After date filter
+  const [filteredFichas, setFilteredFichas] = useState<FichaDataPoint[]>([]);
   const [displayedFichas, setDisplayedFichas] = useState<FichaDataPoint[]>([]);
   const [summary, setSummary] = useState<AnalysisSummary | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Date filter state (no auto-filtering)
+  // Date filter state
   const [dateStart, setDateStart] = useState<string>('');
   const [dateEnd, setDateEnd] = useState<string>('');
   const [hasDateFilter, setHasDateFilter] = useState(false);
 
-  // Fetch data from Google Sheets
   const { fichas, isLoading, error, refetch, isFetching } = useFichasFromSheets();
 
   // Initialize map
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
-
     const map = L.map(mapContainerRef.current).setView([-23.5505, -46.6333], 11);
     const tileConfig = getTileServerConfig(DEFAULT_TILE_SERVER);
-    
-    L.tileLayer(tileConfig.url, {
-      attribution: tileConfig.attribution,
-      maxZoom: tileConfig.maxZoom,
-    }).addTo(map);
-
+    L.tileLayer(tileConfig.url, { attribution: tileConfig.attribution, maxZoom: tileConfig.maxZoom }).addTo(map);
     mapRef.current = map;
-
     return () => {
       clusterGroupRef.current?.clearLayers();
       map.remove();
@@ -127,286 +119,101 @@ export function FichasTab() {
     };
   }, []);
 
-  // Add/remove drawing-mode class
+  // Map container class for drawing
   useEffect(() => {
     const container = mapRef.current?.getContainer();
     if (!container) return;
-    
-    if (isDrawing) {
-      container.classList.add('drawing-mode');
-    } else {
-      container.classList.remove('drawing-mode');
-    }
+    if (isDrawing) container.classList.add('drawing-mode'); else container.classList.remove('drawing-mode');
   }, [isDrawing]);
 
-  // Update fichas data
+  // Load fichas
   useEffect(() => {
     if (!fichas || fichas.length === 0) {
-      setAllFichas([]);
-      setFilteredFichas([]);
-      setDisplayedFichas([]);
-      return;
+      setAllFichas([]); setFilteredFichas([]); setDisplayedFichas([]); setSummary(null); setShowSummary(false); return;
     }
-
-    // Convert to FichaDataPoint - now using real data from Google Sheets
-    const enrichedFichas: FichaDataPoint[] = fichas.map((f, index) => ({
-      ...f,
-      id: `ficha-${index}`,
-      projeto: f.projeto || 'Sem Projeto',
-      scouter: f.scouter || 'Não Identificado',
-      data: f.data || '',
-    }));
-
-    setAllFichas(enrichedFichas);
-    setFilteredFichas(enrichedFichas);
-    setDisplayedFichas(enrichedFichas);
-    setSummary(generateAnalysis(enrichedFichas));
+    const enriched: FichaDataPoint[] = fichas.map((f, i) => ({ ...f, id: `ficha-${i}`, projeto: f.projeto || 'Sem Projeto', scouter: f.scouter || 'Não Identificado', data: f.data || '' }));
+    setAllFichas(enriched);
+    setFilteredFichas(enriched);
+    setDisplayedFichas(enriched);
+    setSummary(generateAnalysis(enriched));
   }, [fichas]);
 
-  // Update heat layers when filtered data changes
+  // Heat layer base
   useEffect(() => {
     if (!mapRef.current || filteredFichas.length === 0) {
-      // Clear heat layers if no data
-      if (heatLayerRef.current) {
-        mapRef.current?.removeLayer(heatLayerRef.current);
-        heatLayerRef.current = null;
-      }
-      if (heatSelectedRef.current) {
-        mapRef.current?.removeLayer(heatSelectedRef.current);
-        heatSelectedRef.current = null;
-      }
+      if (heatLayerRef.current) { mapRef.current?.removeLayer(heatLayerRef.current); heatLayerRef.current = null; }
+      if (heatSelectedRef.current) { mapRef.current?.removeLayer(heatSelectedRef.current); heatSelectedRef.current = null; }
       return;
     }
-
-    console.log(`[Fichas] Updating base heat layer with ${filteredFichas.length} fichas`);
-
-    // Clear existing base heat
-    if (heatLayerRef.current) {
-      mapRef.current.removeLayer(heatLayerRef.current);
-    }
-
-    // Create base heat layer
-    const heatPoints = filteredFichas.map(f => [f.lat, f.lng, 1] as [number, number, number]);
-    heatLayerRef.current = (L as typeof L & { heatLayer?: (points: number[][], options?: { radius?: number; blur?: number; maxZoom?: number; max?: number; minOpacity?: number; gradient?: Record<number, string> }) => L.HeatLayer }).heatLayer?.(heatPoints, {
-      radius: 25,
-      blur: 35,
-      maxZoom: 19,
-      max: 1.0,
-      minOpacity: 0.3,
-      gradient: {
-        0.0: '#4ade80',
-        0.5: '#fbbf24',
-        0.8: '#f97316',
-        1.0: '#ef4444',
-      }
+    if (heatLayerRef.current) { mapRef.current.removeLayer(heatLayerRef.current); }
+    // @ts-ignore
+    heatLayerRef.current = L.heatLayer(filteredFichas.map(f => [f.lat, f.lng, 1]), {
+      radius: 25, blur: 35, maxZoom: 19, max: 1.0, minOpacity: 0.3,
+      gradient: { 0.0: '#4ade80', 0.5: '#fbbf24', 0.8: '#f97316', 1.0: '#ef4444' }
     });
-
-    if (heatLayerRef.current) {
-      mapRef.current.addLayer(heatLayerRef.current);
-    }
+    mapRef.current.addLayer(heatLayerRef.current);
   }, [filteredFichas]);
 
-  // Update clusters when data changes
+  // Clusters
   useEffect(() => {
     if (!mapRef.current || displayedFichas.length === 0) {
-      // Clear clusters if no data
-      if (clusterGroupRef.current) {
-        mapRef.current?.removeLayer(clusterGroupRef.current);
-        clusterGroupRef.current = null;
-      }
+      if (clusterGroupRef.current) { mapRef.current?.removeLayer(clusterGroupRef.current); clusterGroupRef.current = null; }
       return;
     }
-
-    console.log(`[Fichas] Rendering ${displayedFichas.length} fichas with clustering`);
-
-    // Clear existing clusters
-    if (clusterGroupRef.current) {
-      mapRef.current.removeLayer(clusterGroupRef.current);
-    }
-
-    // Create marker cluster group
-    const clusterGroup = L.markerClusterGroup({
-      chunkedLoading: true,
-      maxClusterRadius: 60,
-      spiderfyOnMaxZoom: true,
-      showCoverageOnHover: false,
-      zoomToBoundsOnClick: true,
-      iconCreateFunction: (cluster) => {
-        const count = cluster.getChildCount();
-        let size = 'small';
-        
-        if (count >= 100) {
-          size = 'large';
-        } else if (count >= 10) {
-          size = 'medium';
-        }
-        
-        return L.divIcon({
-          html: `<div style="
-            background-color: #FF6B35;
-            border-radius: 50%;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-            border: 3px solid white;
-          ">${formatK(count)}</div>`,
-          className: `marker-cluster marker-cluster-${size}`,
-          iconSize: L.point(40, 40),
-        });
-      }
-    });
-
-    // Add markers
-    displayedFichas.forEach((ficha) => {
-      const marker = L.circleMarker([ficha.lat, ficha.lng], {
-        radius: 6,
-        fillColor: '#FF6B35',
-        color: '#fff',
-        weight: 2,
-        opacity: 1,
-        fillOpacity: 0.8
-      });
-      
-      marker.bindPopup(`
-        <div style="font-family: system-ui; padding: 4px;">
-          <strong>Ficha</strong><br/>
-          <small>Projeto: ${ficha.projeto || 'N/A'}</small><br/>
-          <small>Scouter: ${ficha.scouter || 'N/A'}</small><br/>
-          <small>${ficha.lat.toFixed(4)}, ${ficha.lng.toFixed(4)}</small>
-        </div>
-      `);
-      
+    if (clusterGroupRef.current) { mapRef.current.removeLayer(clusterGroupRef.current); }
+    const clusterGroup = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 60, spiderfyOnMaxZoom: true, showCoverageOnHover: false, zoomToBoundsOnClick: true, iconCreateFunction: (cluster) => {
+      const count = cluster.getChildCount(); let size = 'small'; if (count >= 100) size = 'large'; else if (count >= 10) size = 'medium';
+      return L.divIcon({ html: `<div style="background-color:#FF6B35;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;box-shadow:0 2px 6px rgba(0,0,0,0.4);border:3px solid white;">${formatK(count)}</div>`, className: `marker-cluster marker-cluster-${size}`, iconSize: L.point(40, 40) }); } });
+    displayedFichas.forEach(f => {
+      const marker = L.circleMarker([f.lat, f.lng], { radius: 6, fillColor: '#FF6B35', color: '#fff', weight: 2, opacity: 1, fillOpacity: 0.8 });
+      marker.bindPopup(`<div style="font-family:system-ui;padding:4px;"><strong>Ficha</strong><br/><small>Projeto: ${f.projeto || 'N/A'}</small><br/><small>Scouter: ${f.scouter || 'N/A'}</small><br/><small>${f.lat.toFixed(4)}, ${f.lng.toFixed(4)}</small></div>`);
       clusterGroup.addLayer(marker);
     });
-
-    mapRef.current.addLayer(clusterGroup);
-    clusterGroupRef.current = clusterGroup;
-
-    // Fit bounds only if showing all fichas (not a selection)
+    mapRef.current.addLayer(clusterGroup); clusterGroupRef.current = clusterGroup;
     if (displayedFichas.length === filteredFichas.length && displayedFichas.length > 0) {
-      const bounds = L.latLngBounds(displayedFichas.map(f => [f.lat, f.lng]));
-      mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+      const bounds = L.latLngBounds(displayedFichas.map(f => [f.lat, f.lng])); mapRef.current.fitBounds(bounds, { padding: [50, 50] });
     }
   }, [displayedFichas, filteredFichas]);
 
-  // Geoman event listeners for polygon creation WITH REALTIME HEAT
+  // Drawing events
   useEffect(() => {
-    const map = mapRef.current as GeomanMap;
-    if (!map || !map.pm) return;
-
-    // On draw start - lock map and prepare realtime heat layer
+    const map = mapRef.current as GeomanMap; if (!map || !map.pm) return;
     const onDrawStart = () => {
-      console.log('[Fichas] Drawing started - locking map');
-      if (map) lockMap(map as L.Map);
-      setIsDrawing(true);
-
-      // Create realtime selection heat layer (initially empty)
+      if (map) lockMap(map as L.Map); setIsDrawing(true);
       if (!heatSelectedRef.current) {
-        heatSelectedRef.current = (L as typeof L & { heatLayer?: (points: number[][], options?: { radius?: number; blur?: number; maxZoom?: number; max?: number; minOpacity?: number; gradient?: Record<number, string> }) => L.HeatLayer }).heatLayer?.([], {
-          radius: 20,
-          blur: 30,
-          maxZoom: 19,
-          max: 1.0,
-          minOpacity: 0.4,
-          gradient: {
-            0.0: '#3b82f6',
-            0.5: '#8b5cf6',
-            0.8: '#ec4899',
-            1.0: '#ef4444',
-          }
-        });
-        if (heatSelectedRef.current) {
-          map.addLayer(heatSelectedRef.current);
-        }
+        // @ts-ignore
+        heatSelectedRef.current = L.heatLayer([], { radius: 20, blur: 30, maxZoom: 19, max: 1.0, minOpacity: 0.4, gradient: { 0.0: '#3b82f6', 0.5: '#8b5cf6', 0.8: '#ec4899', 1.0: '#ef4444' } });
+        map.addLayer(heatSelectedRef.current);
       }
     };
-
-    // On vertex added/dragged - update realtime heat
     const onDrawVertex = (e: GeomanDrawVertexEvent) => {
-      const shape = e.workingLayer || e.layer;
-      if (!shape || !heatSelectedRef.current) return;
-
-      const latLngs = shape.getLatLngs?.()[0];
-      if (!latLngs || latLngs.length < 3) return;
-
-      // Get bounds for bbox pre-filtering
-      const bounds = shape.getBounds();
-      const candidates = bboxFilter(filteredFichas, bounds);
-
-      // Create polygon for Turf filtering
-      const coords = latLngs.map((p: L.LatLng) => [p.lng, p.lat]);
-      coords.push(coords[0]); // Close polygon
+      const shape = e.workingLayer || e.layer; if (!shape || !heatSelectedRef.current) return;
+      const latLngs = shape.getLatLngs?.()[0]; if (!latLngs || latLngs.length < 3) return;
+      const bounds = shape.getBounds(); const candidates = bboxFilter(filteredFichas, bounds);
+      const coords = latLngs.map((p: L.LatLng) => [p.lng, p.lat]); coords.push(coords[0]);
       const polygon = turf.polygon([coords]);
-
-      // Filter points (use worker if large dataset)
-      if (candidates.length > 5000) {
-        // For very large datasets, we could use worker here, but for now do sync
-        console.log('[Fichas] Large dataset - using bbox pre-filter only');
-      }
-
       const selected = pointsInPolygon(candidates, polygon);
-      console.log(`[Fichas] Realtime heat: ${selected.length} fichas in partial polygon`);
-
-      // Update realtime heat layer
       const heatPoints = selected.map(f => [f.lat, f.lng, 1] as [number, number, number]);
       heatSelectedRef.current.setLatLngs(heatPoints);
     };
-
-    // On polygon created - finalize selection
     const onCreate = (e: GeomanCreateEvent) => {
-      // Remove previous polygon
-      if (drawnLayerRef.current) {
-        map.removeLayer(drawnLayerRef.current);
-      }
-      drawnLayerRef.current = e.layer;
-      setIsDrawing(false);
-      if (map) unlockMap(map as L.Map);
-      map.pm.disableDraw();
-
-      // Get polygon coordinates
-      const latlngs = e.layer.getLatLngs()[0];
-      const coords = latlngs.map((p) => [p.lng, p.lat]);
-      coords.push(coords[0]); // Close polygon
-
-      // Get bounds for pre-filtering
-      const bounds = e.layer.getBounds();
-      const candidates = bboxFilter(filteredFichas, bounds);
-
-      // Filter fichas inside polygon using Turf.js
-      const polygon = turf.polygon([coords]);
-      const selected = pointsInPolygon(candidates, polygon);
-
-      console.log(`✅ [Fichas] Polygon created: ${selected.length} fichas selected`);
-
-      setDisplayedFichas(selected);
-      setSummary(generateAnalysis(selected));
-      setShowSummary(true);
-
-      // Keep the realtime heat showing final selection
+      if (drawnLayerRef.current) map.removeLayer(drawnLayerRef.current);
+      drawnLayerRef.current = e.layer; setIsDrawing(false); if (map) unlockMap(map as L.Map); map.pm.disableDraw();
+      const latlngs = e.layer.getLatLngs()[0]; const coords = latlngs.map(p => [p.lng, p.lat]); coords.push(coords[0]);
+      const bounds = e.layer.getBounds(); const candidates = bboxFilter(filteredFichas, bounds);
+      const polygon = turf.polygon([coords]); const selected = pointsInPolygon(candidates, polygon);
+      setDisplayedFichas(selected); setSummary(generateAnalysis(selected));
+      // NÃO abrir automaticamente: usuário decide via botão cérebro
     };
-
-    // On draw canceled - clean up
     const onDrawCancel = () => {
-      console.log('[Fichas] Drawing canceled - unlocking map');
-      setIsDrawing(false);
-      if (map) unlockMap(map as L.Map);
-
-      // Clear realtime heat
-      if (heatSelectedRef.current) {
-        map.removeLayer(heatSelectedRef.current);
-        heatSelectedRef.current = null;
-      }
+      setIsDrawing(false); if (map) unlockMap(map as L.Map);
+      if (heatSelectedRef.current) { map.removeLayer(heatSelectedRef.current); heatSelectedRef.current = null; }
     };
-
     map.on('pm:drawstart', onDrawStart);
     map.on('pm:drawvertex', onDrawVertex);
-    map.on('pm:markerdragend', onDrawVertex); // Also update on marker drag
+    map.on('pm:markerdragend', onDrawVertex);
     map.on('pm:create', onCreate);
     map.on('pm:drawcancel', onDrawCancel);
-
     return () => {
       map.off('pm:drawstart', onDrawStart);
       map.off('pm:drawvertex', onDrawVertex);
@@ -416,257 +223,65 @@ export function FichasTab() {
     };
   }, [filteredFichas]);
 
-  // Generate analysis summary
   const generateAnalysis = (fichas: FichaDataPoint[]): AnalysisSummary => {
     const projetoMap = new Map<string, Map<string, number>>();
-
-    fichas.forEach((ficha) => {
-      const projeto = ficha.projeto || 'Sem Projeto';
-      const scouter = ficha.scouter || 'Não Identificado';
-
-      if (!projetoMap.has(projeto)) {
-        projetoMap.set(projeto, new Map());
-      }
-      
-      const scouterMap = projetoMap.get(projeto)!;
-      scouterMap.set(scouter, (scouterMap.get(scouter) || 0) + 1);
+    fichas.forEach(f => {
+      const projeto = f.projeto || 'Sem Projeto'; const sc = f.scouter || 'Não Identificado';
+      if (!projetoMap.has(projeto)) projetoMap.set(projeto, new Map());
+      const scMap = projetoMap.get(projeto)!; scMap.set(sc, (scMap.get(sc) || 0) + 1);
     });
-
     const byProjeto: ProjetoSummary[] = [];
-    projetoMap.forEach((scouterMap, projeto) => {
-      let total = 0;
-      scouterMap.forEach((count) => {
-        total += count;
-      });
-      byProjeto.push({ projeto, total, byScout: scouterMap });
+    projetoMap.forEach((scMap, projeto) => {
+      let total = 0; scMap.forEach(c => { total += c; });
+      byProjeto.push({ projeto, total, byScout: scMap });
     });
-
-    // Sort by total descending
-    byProjeto.sort((a, b) => b.total - a.total);
-
-    return {
-      total: fichas.length,
-      byProjeto,
-    };
+    byProjeto.sort((a,b)=> b.total - a.total);
+    return { total: fichas.length, byProjeto };
   };
 
-  // Start drawing
   const handleStartDrawing = () => {
-    const map = mapRef.current as GeomanMap;
-    if (!map?.pm) {
-      console.error('Geoman não carregado (map.pm undefined)');
-      return;
-    }
-    
-    setShowSummary(false);
-    setIsDrawing(true);
-    
-    // Disable any existing draw mode
-    if (map.pm.globalDrawModeEnabled()) {
-      map.pm.disableDraw();
-    }
-    
-    // Set drawing style
-    map.pm.setPathOptions({ 
-      color: '#4096ff', 
-      fillColor: '#4096ff', 
-      fillOpacity: 0.1, 
-      weight: 2 
-    });
-    
-    // Enable polygon drawing
-    map.pm.enableDraw('Polygon', {
-      snappable: true,
-      snapDistance: 25,
-      allowSelfIntersection: false,
-      finishOnDoubleClick: true,
-      tooltips: true
-    });
-    
-    console.log('✏️ [Fichas] Polygon drawing mode activated');
+    const map = mapRef.current as GeomanMap; if (!map?.pm) return;
+    setShowSummary(false); setIsDrawing(true);
+    if (map.pm.globalDrawModeEnabled()) map.pm.disableDraw();
+    map.pm.setPathOptions({ color: '#4096ff', fillColor: '#4096ff', fillOpacity: 0.1, weight: 2 });
+    map.pm.enableDraw('Polygon', { snappable: true, snapDistance: 25, allowSelfIntersection: false, finishOnDoubleClick: true, tooltips: true });
   };
 
-  // Clear selection
   const handleClearSelection = () => {
     const map = mapRef.current;
-    if (drawnLayerRef.current && map) {
-      map.removeLayer(drawnLayerRef.current);
-      drawnLayerRef.current = null;
-    }
-
-    // Clear realtime heat selection
-    if (heatSelectedRef.current && map) {
-      map.removeLayer(heatSelectedRef.current);
-      heatSelectedRef.current = null;
-    }
-
-    setDisplayedFichas(filteredFichas);
-    setSummary(generateAnalysis(filteredFichas));
-    setIsDrawing(false);
-    setShowSummary(false);
-    if (map) unlockMap(map as L.Map);
+    if (drawnLayerRef.current && map) { map.removeLayer(drawnLayerRef.current); drawnLayerRef.current = null; }
+    if (heatSelectedRef.current && map) { map.removeLayer(heatSelectedRef.current); heatSelectedRef.current = null; }
+    setDisplayedFichas(filteredFichas); setSummary(generateAnalysis(filteredFichas)); setIsDrawing(false); setShowSummary(false); if (map) unlockMap(map as L.Map);
   };
 
-  // Center map
   const handleCenterMap = () => {
     if (!mapRef.current || displayedFichas.length === 0) return;
-    const bounds = L.latLngBounds(displayedFichas.map(f => [f.lat, f.lng]));
-    mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+    const bounds = L.latLngBounds(displayedFichas.map(f => [f.lat, f.lng])); mapRef.current.fitBounds(bounds, { padding: [50, 50] });
   };
 
-  // Date filter handlers
-  const handleDateChange = (start: string, end: string) => {
-    setDateStart(start);
-    setDateEnd(end);
-  };
-
+  const handleDateChange = (start: string, end: string) => { setDateStart(start); setDateEnd(end); };
   const handleApplyDateFilter = () => {
-    if (!dateStart || !dateEnd) {
-      console.log('[Fichas] No date range specified');
-      return;
-    }
-
-    // Parse Brazilian date format (DD/MM/YYYY) from Google Sheets
+    if (!dateStart || !dateEnd) return;
     const parseBrazilianDate = (dateStr: string): Date | null => {
-      if (!dateStr) return null;
-      
-      // Try DD/MM/YYYY format first (from Google Sheets)
-      const brMatch = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-      if (brMatch) {
-        const [, day, month, year] = brMatch;
-        return new Date(Number(year), Number(month) - 1, Number(day));
-      }
-      
-      // Try ISO format as fallback
-      const isoDate = new Date(dateStr);
-      if (!isNaN(isoDate.getTime())) {
-        return isoDate;
-      }
-      
-      return null;
-    };
-
-    const filtered = allFichas.filter(f => {
-      if (!f.data) return false;
-      
-      const fichaDate = parseBrazilianDate(f.data);
-      if (!fichaDate) return false;
-      
-      const startDate = new Date(dateStart);
-      const endDate = new Date(dateEnd + 'T23:59:59');
-      
-      return fichaDate >= startDate && fichaDate <= endDate;
-    });
-
-    console.log(`[Fichas] Date filter applied: ${filtered.length} of ${allFichas.length} fichas`);
-    setFilteredFichas(filtered);
-    setDisplayedFichas(filtered);
-    setSummary(generateAnalysis(filtered));
-    setHasDateFilter(true);
+      if (!dateStr) return null; const m = dateStr.match(/^(\\d{2})\/(\\d{2})\/(\\d{4})$/); if (m) { const [, d, mo, y] = m; return new Date(Number(y), Number(mo)-1, Number(d)); }
+      const iso = new Date(dateStr); return isNaN(iso.getTime()) ? null : iso; };
+    const filtered = allFichas.filter(f => { if (!f.data) return false; const fd = parseBrazilianDate(f.data); if (!fd) return false; const s = new Date(dateStart); const e = new Date(dateEnd + 'T23:59:59'); return fd >= s && fd <= e; });
+    setFilteredFichas(filtered); setDisplayedFichas(filtered); setSummary(generateAnalysis(filtered)); setHasDateFilter(true); setShowSummary(false);
   };
+  const handleClearDateFilter = () => { setDateStart(''); setDateEnd(''); setFilteredFichas(allFichas); setDisplayedFichas(allFichas); setSummary(generateAnalysis(allFichas)); setHasDateFilter(false); setShowSummary(false); };
 
-  const handleClearDateFilter = () => {
-    setDateStart('');
-    setDateEnd('');
-    setFilteredFichas(allFichas);
-    setDisplayedFichas(allFichas);
-    setSummary(generateAnalysis(allFichas));
-    setHasDateFilter(false);
-    console.log('[Fichas] Date filter cleared');
-  };
-
-  // Fullscreen handlers
   const handleToggleFullscreen = () => {
-    const wrapper = mapWrapperRef.current;
-    if (!wrapper) return;
-
-    if (!document.fullscreenElement) {
-      wrapper.requestFullscreen?.().then(() => {
-        setIsFullscreen(true);
-        // Force map to re-render after entering fullscreen
-        setTimeout(() => {
-          mapRef.current?.invalidateSize();
-        }, 100);
-      }).catch((err) => {
-        console.error('Error entering fullscreen:', err);
-      });
-    } else {
-      document.exitFullscreen?.().then(() => {
-        setIsFullscreen(false);
-        // Force map to re-render after exiting fullscreen
-        setTimeout(() => {
-          mapRef.current?.invalidateSize();
-        }, 100);
-      });
-    }
+    const wrapper = mapWrapperRef.current; if (!wrapper) return;
+    if (!document.fullscreenElement) { wrapper.requestFullscreen?.().then(()=> { setIsFullscreen(true); setTimeout(()=> mapRef.current?.invalidateSize(), 100); }).catch(console.error); }
+    else { document.exitFullscreen?.().then(()=> { setIsFullscreen(false); setTimeout(()=> mapRef.current?.invalidateSize(), 100); }); }
   };
 
-  // Listen to fullscreen changes
-  useEffect(() => {
-    const onFullscreenChange = () => {
-      const isNowFullscreen = !!document.fullscreenElement;
-      setIsFullscreen(isNowFullscreen);
-      // Invalidate map size on any fullscreen change
-      setTimeout(() => {
-        mapRef.current?.invalidateSize();
-      }, 100);
-    };
+  useEffect(() => { const onFS = () => { setIsFullscreen(!!document.fullscreenElement); setTimeout(()=> mapRef.current?.invalidateSize(), 100); }; document.addEventListener('fullscreenchange', onFS); return () => document.removeEventListener('fullscreenchange', onFS); }, []);
 
-    document.addEventListener('fullscreenchange', onFullscreenChange);
-    return () => {
-      document.removeEventListener('fullscreenchange', onFullscreenChange);
-    };
-  }, []);
-
-  // Export handlers
   const handleExportPDF = async () => {
-    if (!summary || !mapContainerRef.current) return;
-
-    setIsExporting(true);
-    try {
-      const map = mapRef.current;
-      if (!map) throw new Error('Map not initialized');
-
-      // Get metadata
-      const center = map.getCenter();
-      const zoom = map.getZoom();
-      const bounds = map.getBounds();
-      const sw = bounds.getSouthWest();
-      const ne = bounds.getNorthEast();
-
-      const metadata = {
-        timestamp: new Date().toLocaleString('pt-BR'),
-        center: { lat: center.lat, lng: center.lng },
-        zoom,
-        bbox: `${sw.lat.toFixed(4)},${sw.lng.toFixed(4)} to ${ne.lat.toFixed(4)},${ne.lng.toFixed(4)}`,
-        totalPoints: summary.total,
-      };
-
-      // Generate AI analysis
-      const aiAnalysis = buildAISummaryFromSelection(summary, center.lat, center.lng);
-      const aiHTML = formatAIAnalysisHTML(aiAnalysis);
-
-      await exportAreaReportPDF(mapContainerRef.current, summary, metadata, aiHTML);
-      console.log('✅ PDF report generated successfully');
-    } catch (error) {
-      console.error('❌ Error generating PDF:', error);
-      alert('Erro ao gerar relatório PDF. Verifique o console para detalhes.');
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handleExportCSV = () => {
-    if (!summary) return;
-
-    try {
-      exportAreaReportCSV(summary);
-      console.log('✅ CSV report generated successfully');
-    } catch (error) {
-      console.error('❌ Error generating CSV:', error);
-      alert('Erro ao gerar relatório CSV. Verifique o console para detalhes.');
-    }
-  };
+    if (!summary || !mapContainerRef.current) return; setIsExporting(true);
+    try { const map = mapRef.current; if (!map) throw new Error('Map not initialized'); const center = map.getCenter(); const zoom = map.getZoom(); const bounds = map.getBounds(); const sw = bounds.getSouthWest(); const ne = bounds.getNorthEast(); const metadata = { timestamp: new Date().toLocaleString('pt-BR'), center: { lat: center.lat, lng: center.lng }, zoom, bbox: `${sw.lat.toFixed(4)},${sw.lng.toFixed(4)} to ${ne.lat.toFixed(4)},${ne.lng.toFixed(4)}`, totalPoints: summary.total }; const aiAnalysis = buildAISummaryFromSelection(summary, center.lat, center.lng); const aiHTML = formatAIAnalysisHTML(aiAnalysis); await exportAreaReportPDF(mapContainerRef.current, summary, metadata, aiHTML); } catch (e) { console.error('Erro PDF:', e); alert('Erro ao gerar relatório PDF.'); } finally { setIsExporting(false); } };
+  const handleExportCSV = () => { if (!summary) return; try { exportAreaReportCSV(summary); } catch (e) { console.error('Erro CSV:', e); alert('Erro ao gerar relatório CSV.'); } };
 
   return (
     <Card className="h-full flex flex-col">
@@ -676,105 +291,49 @@ export function FichasTab() {
             <Flame className="h-5 w-5 text-orange-500" />
             <CardTitle>Fichas - Análise de Área</CardTitle>
           </div>
-          
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm text-muted-foreground">
-              {displayedFichas.length === filteredFichas.length 
-                ? `${formatK(displayedFichas.length)} fichas${hasDateFilter ? ' (filtradas)' : ' total'}`
-                : `${formatK(displayedFichas.length)} de ${formatK(filteredFichas.length)} selecionadas`
-              }
+              {displayedFichas.length === filteredFichas.length ? `${formatK(displayedFichas.length)} fichas${hasDateFilter ? ' (filtradas)' : ' total'}` : `${formatK(displayedFichas.length)} de ${formatK(filteredFichas.length)} selecionadas`}
             </span>
-
-            {/* Mobile-optimized buttons (≥44px) */}
-            <Button
-              variant={isDrawing ? "default" : "outline"}
-              size="default"
-              onClick={handleStartDrawing}
-              disabled={isDrawing || filteredFichas.length === 0}
-              className="min-w-[44px] min-h-[44px] touch-manipulation"
-              title={isDrawing ? "Desenhando... (duplo clique para finalizar)" : "Desenhar área"}
-            >
-              <Pencil className="h-4 w-4 mr-2" />
-              {isDrawing ? 'Desenhando...' : 'Desenhar'}
+            <Button variant={isDrawing ? 'default' : 'outline'} size="default" onClick={handleStartDrawing} disabled={isDrawing || filteredFichas.length === 0} className="min-w-[44px] min-h-[44px]" title={isDrawing ? 'Desenhando... (duplo clique para finalizar)' : 'Desenhar área'}>
+              <Pencil className="h-4 w-4 mr-2" /> {isDrawing ? 'Desenhando...' : 'Desenhar'}
             </Button>
-
-            <Button
-              variant="outline"
-              size="default"
-              onClick={handleClearSelection}
-              disabled={displayedFichas.length === filteredFichas.length}
-              className="min-w-[44px] min-h-[44px] touch-manipulation"
-              title="Limpar seleção"
-            >
-              <X className="h-4 w-4 mr-2" />
-              Limpar
+            <Button variant="outline" size="default" onClick={handleClearSelection} disabled={displayedFichas.length === filteredFichas.length} className="min-w-[44px] min-h-[44px]" title="Limpar seleção">
+              <X className="h-4 w-4 mr-2" /> Limpar
             </Button>
-
-            <Button
-              variant="outline"
-              size="default"
-              onClick={handleCenterMap}
-              disabled={displayedFichas.length === 0}
-              className="min-w-[44px] min-h-[44px] touch-manipulation"
-              title="Centralizar mapa"
-            >
+            <Button variant="outline" size="default" onClick={handleCenterMap} disabled={displayedFichas.length === 0} className="min-w-[44px] min-h-[44px]" title="Centralizar mapa">
               <Navigation className="h-4 w-4" />
             </Button>
-
-            <Button
-              variant="outline"
-              size="default"
-              onClick={() => refetch()}
-              disabled={isLoading || isFetching}
-              className="min-w-[44px] min-h-[44px] touch-manipulation"
-              title="Recarregar dados"
-            >
+            <Button variant="outline" size="default" onClick={() => refetch()} disabled={isLoading || isFetching} className="min-w-[44px] min-h-[44px]" title="Recarregar dados">
               <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
             </Button>
           </div>
         </div>
       </CardHeader>
-      
       <CardContent className="flex-1 p-0 relative">
-        {/* Loading state */}
-        {(isLoading || isFetching) && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        )}
-
-        {/* Error state */}
-        {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
-            <p className="text-sm text-destructive">Erro ao carregar fichas</p>
-          </div>
-        )}
-
-        {/* Unified button group - Calendar + Fullscreen */}
+        {(isLoading || isFetching) && <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10"><Loader2 className="h-8 w-8 animate-spin" /></div>}
+        {error && <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10"><p className="text-sm text-destructive">Erro ao carregar fichas</p></div>}
         <div className="absolute top-4 right-4 z-[9999] flex flex-col bg-white/95 shadow-lg border backdrop-blur-sm rounded overflow-hidden">
-          {/* Calendar button */}
-          <DateFilter
-            startDate={dateStart}
-            endDate={dateEnd}
-            onDateChange={handleDateChange}
-            onApply={handleApplyDateFilter}
-            onClear={handleClearDateFilter}
-          />
-          
-          {/* Divider between buttons */}
+          <DateFilter startDate={dateStart} endDate={dateEnd} onDateChange={handleDateChange} onApply={handleApplyDateFilter} onClear={handleClearDateFilter} />
           <div className="h-px bg-border" />
-          
-          {/* Fullscreen button */}
-          <button
-            className="fullscreen-button flex items-center justify-center w-[30px] h-[30px] hover:bg-accent transition-colors"
-            onClick={handleToggleFullscreen}
-            title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
-          >
+          <button className="fullscreen-button flex items-center justify-center w-[30px] h-[30px] hover:bg-accent transition-colors" onClick={handleToggleFullscreen} title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}>
             {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
           </button>
         </div>
 
-        {/* Advanced summary panel */}
+        {/* Botão cérebro */}
+        <div className="absolute bottom-4 right-4 z-[1100] flex flex-col items-end gap-1">
+          <button
+            disabled={!summary}
+            onClick={() => setShowSummary(o => !o)}
+            className={`h-12 w-12 rounded-full shadow-lg flex items-center justify-center border transition ${showSummary ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-gray-50'} disabled:opacity-40`}
+            title={showSummary ? 'Fechar análise' : 'Abrir análise'}
+          >
+            <Brain className="h-6 w-6" />
+          </button>
+          <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wide">Análise</span>
+        </div>
+
         {showSummary && summary && (
           <AdvancedSummary
             summary={summary}
@@ -789,14 +348,11 @@ export function FichasTab() {
             onExportPDF={handleExportPDF}
             onExportCSV={handleExportCSV}
             isExporting={isExporting}
+            centerLatLng={mapRef.current ? { lat: mapRef.current.getCenter().lat, lng: mapRef.current.getCenter().lng } : undefined}
           />
         )}
 
-        {/* Map container with fullscreen wrapper */}
-        <div 
-          ref={mapWrapperRef} 
-          className="fullscreen-container w-full h-full min-h-[500px]"
-        >
+        <div ref={mapWrapperRef} className="fullscreen-container w-full h-full min-h-[500px]">
           <div ref={mapContainerRef} className="w-full h-full" />
         </div>
       </CardContent>
