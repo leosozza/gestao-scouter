@@ -761,7 +761,7 @@ export function FichasTab() {
 
         {/* Fullscreen button */}
         <button
-          className="fullscreen-button absolute top-16 right-4 z-[9999] bg-white/95 rounded shadow-lg p-2 border hover:bg-gray-50 transition backdrop-blur-sm"
+          className="fullscreen-button absolute top-16 right-4 z-[9999] bg-white/95 rounded-lg shadow-lg p-2 border hover:bg-gray-50 transition backdrop-blur-sm"
           onClick={handleToggleFullscreen}
           title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
         >
