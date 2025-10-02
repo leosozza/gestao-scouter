@@ -1,11 +1,12 @@
 /**
- * FichasTab Component
- * Integrated Fichas visualization with drawing, clustering, and analysis
- * Mobile-optimized with touch-friendly controls
+ * FichasTab Component - Enterprise Edition
+ * Advanced spatial analysis with PDF/CSV reports, realtime heat, and performance optimization
+ * Features: Realtime heat during drawing, map locking, fullscreen, date filtering, AI analysis
  */
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.heat';
 import '@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css';
 import '@geoman-io/leaflet-geoman-free';
 import 'leaflet.markercluster';
@@ -14,26 +15,44 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import * as turf from '@turf/turf';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, MapPin, Pencil, RefreshCw, X, Navigation, Flame } from 'lucide-react';
+import { Loader2, MapPin, Pencil, RefreshCw, X, Navigation, Flame, Maximize2, Minimize2 } from 'lucide-react';
 import { useFichasFromSheets } from '@/hooks/useFichasFromSheets';
 import { getTileServerConfig, DEFAULT_TILE_SERVER } from '@/config/tileServers';
 import type { FichaMapData } from '@/services/googleSheetsMapService';
+import { DateFilter } from '@/components/FichasMap/DateFilter';
+import { AdvancedSummary } from '@/components/FichasMap/AdvancedSummary';
+import { lockMap, unlockMap, bboxFilter, pointsInPolygon } from '@/utils/map-helpers';
+import { buildAISummaryFromSelection, formatAIAnalysisHTML } from '@/utils/ai-analysis';
+import { exportAreaReportPDF, exportAreaReportCSV } from '@/utils/export-reports';
+import './mobile.css';
 
-// Geoman types
-interface GeomanMap extends L.Map {
+// Geoman types - use type intersection to avoid extension issues
+type GeomanMap = L.Map & {
   pm?: {
     setPathOptions: (options: Record<string, unknown>) => void;
     enableDraw: (shape: string, options: Record<string, unknown>) => void;
     disableDraw: () => void;
     globalDrawModeEnabled: () => boolean;
   };
-}
+};
 
 interface GeomanCreateEvent {
   layer: L.Layer & {
     getLatLngs: () => Array<Array<{ lat: number; lng: number }>>;
+    getBounds: () => L.LatLngBounds;
   };
   shape: string;
+}
+
+interface GeomanDrawVertexEvent {
+  workingLayer?: L.Layer & {
+    getLatLngs: () => Array<Array<{ lat: number; lng: number }>>;
+    getBounds: () => L.LatLngBounds;
+  };
+  layer?: L.Layer & {
+    getLatLngs: () => Array<Array<{ lat: number; lng: number }>>;
+    getBounds: () => L.LatLngBounds;
+  };
 }
 
 // Extended ficha type with metadata
@@ -64,14 +83,25 @@ function formatK(n: number): string {
 export function FichasTab() {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapWrapperRef = useRef<HTMLDivElement>(null); // For fullscreen
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
   const drawnLayerRef = useRef<L.Layer | null>(null);
+  const heatLayerRef = useRef<L.HeatLayer | null>(null); // Base heat layer
+  const heatSelectedRef = useRef<L.HeatLayer | null>(null); // Realtime selection heat
 
   const [isDrawing, setIsDrawing] = useState(false);
   const [allFichas, setAllFichas] = useState<FichaDataPoint[]>([]);
+  const [filteredFichas, setFilteredFichas] = useState<FichaDataPoint[]>([]); // After date filter
   const [displayedFichas, setDisplayedFichas] = useState<FichaDataPoint[]>([]);
   const [summary, setSummary] = useState<AnalysisSummary | null>(null);
   const [showSummary, setShowSummary] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Date filter state (no auto-filtering)
+  const [dateStart, setDateStart] = useState<string>('');
+  const [dateEnd, setDateEnd] = useState<string>('');
+  const [hasDateFilter, setHasDateFilter] = useState(false);
 
   // Fetch data from Google Sheets
   const { fichas, isLoading, error, refetch, isFetching } = useFichasFromSheets();
@@ -113,6 +143,7 @@ export function FichasTab() {
   useEffect(() => {
     if (!fichas || fichas.length === 0) {
       setAllFichas([]);
+      setFilteredFichas([]);
       setDisplayedFichas([]);
       return;
     }
@@ -122,15 +153,59 @@ export function FichasTab() {
     const enrichedFichas: FichaDataPoint[] = fichas.map((f, index) => ({
       ...f,
       id: `ficha-${index}`,
-      projeto: 'Projeto Padrão', // Would come from sheet
-      scouter: 'Scouter Desconhecido', // Would come from sheet
-      data: new Date().toISOString(), // Would come from sheet
+      projeto: 'Projeto Padrão', // Would come from sheet column B
+      scouter: 'Scouter Desconhecido', // Would come from sheet column C
+      data: new Date().toISOString(), // Would come from sheet date column
     }));
 
     setAllFichas(enrichedFichas);
+    setFilteredFichas(enrichedFichas);
     setDisplayedFichas(enrichedFichas);
     setSummary(generateAnalysis(enrichedFichas));
   }, [fichas]);
+
+  // Update heat layers when filtered data changes
+  useEffect(() => {
+    if (!mapRef.current || filteredFichas.length === 0) {
+      // Clear heat layers if no data
+      if (heatLayerRef.current) {
+        mapRef.current?.removeLayer(heatLayerRef.current);
+        heatLayerRef.current = null;
+      }
+      if (heatSelectedRef.current) {
+        mapRef.current?.removeLayer(heatSelectedRef.current);
+        heatSelectedRef.current = null;
+      }
+      return;
+    }
+
+    console.log(`[Fichas] Updating base heat layer with ${filteredFichas.length} fichas`);
+
+    // Clear existing base heat
+    if (heatLayerRef.current) {
+      mapRef.current.removeLayer(heatLayerRef.current);
+    }
+
+    // Create base heat layer
+    const heatPoints = filteredFichas.map(f => [f.lat, f.lng, 1] as [number, number, number]);
+    heatLayerRef.current = (L as typeof L & { heatLayer?: (points: number[][], options?: { radius?: number; blur?: number; maxZoom?: number; max?: number; minOpacity?: number; gradient?: Record<number, string> }) => L.HeatLayer }).heatLayer?.(heatPoints, {
+      radius: 25,
+      blur: 35,
+      maxZoom: 19,
+      max: 1.0,
+      minOpacity: 0.3,
+      gradient: {
+        0.0: '#4ade80',
+        0.5: '#fbbf24',
+        0.8: '#f97316',
+        1.0: '#ef4444',
+      }
+    });
+
+    if (heatLayerRef.current) {
+      mapRef.current.addLayer(heatLayerRef.current);
+    }
+  }, [filteredFichas]);
 
   // Update clusters when data changes
   useEffect(() => {
@@ -211,18 +286,77 @@ export function FichasTab() {
     mapRef.current.addLayer(clusterGroup);
     clusterGroupRef.current = clusterGroup;
 
-    // Fit bounds
-    if (displayedFichas.length > 0) {
+    // Fit bounds only if showing all fichas (not a selection)
+    if (displayedFichas.length === filteredFichas.length && displayedFichas.length > 0) {
       const bounds = L.latLngBounds(displayedFichas.map(f => [f.lat, f.lng]));
       mapRef.current.fitBounds(bounds, { padding: [50, 50] });
     }
-  }, [displayedFichas]);
+  }, [displayedFichas, filteredFichas]);
 
-  // Geoman event listener for polygon creation
+  // Geoman event listeners for polygon creation WITH REALTIME HEAT
   useEffect(() => {
     const map = mapRef.current as GeomanMap;
     if (!map || !map.pm) return;
 
+    // On draw start - lock map and prepare realtime heat layer
+    const onDrawStart = () => {
+      console.log('[Fichas] Drawing started - locking map');
+      if (map) lockMap(map as L.Map);
+      setIsDrawing(true);
+
+      // Create realtime selection heat layer (initially empty)
+      if (!heatSelectedRef.current) {
+        heatSelectedRef.current = (L as typeof L & { heatLayer?: (points: number[][], options?: { radius?: number; blur?: number; maxZoom?: number; max?: number; minOpacity?: number; gradient?: Record<number, string> }) => L.HeatLayer }).heatLayer?.([], {
+          radius: 20,
+          blur: 30,
+          maxZoom: 19,
+          max: 1.0,
+          minOpacity: 0.4,
+          gradient: {
+            0.0: '#3b82f6',
+            0.5: '#8b5cf6',
+            0.8: '#ec4899',
+            1.0: '#ef4444',
+          }
+        });
+        if (heatSelectedRef.current) {
+          map.addLayer(heatSelectedRef.current);
+        }
+      }
+    };
+
+    // On vertex added/dragged - update realtime heat
+    const onDrawVertex = (e: GeomanDrawVertexEvent) => {
+      const shape = e.workingLayer || e.layer;
+      if (!shape || !heatSelectedRef.current) return;
+
+      const latLngs = shape.getLatLngs?.()[0];
+      if (!latLngs || latLngs.length < 3) return;
+
+      // Get bounds for bbox pre-filtering
+      const bounds = shape.getBounds();
+      const candidates = bboxFilter(filteredFichas, bounds);
+
+      // Create polygon for Turf filtering
+      const coords = latLngs.map((p: L.LatLng) => [p.lng, p.lat]);
+      coords.push(coords[0]); // Close polygon
+      const polygon = turf.polygon([coords]);
+
+      // Filter points (use worker if large dataset)
+      if (candidates.length > 5000) {
+        // For very large datasets, we could use worker here, but for now do sync
+        console.log('[Fichas] Large dataset - using bbox pre-filter only');
+      }
+
+      const selected = pointsInPolygon(candidates, polygon);
+      console.log(`[Fichas] Realtime heat: ${selected.length} fichas in partial polygon`);
+
+      // Update realtime heat layer
+      const heatPoints = selected.map(f => [f.lat, f.lng, 1] as [number, number, number]);
+      heatSelectedRef.current.setLatLngs(heatPoints);
+    };
+
+    // On polygon created - finalize selection
     const onCreate = (e: GeomanCreateEvent) => {
       // Remove previous polygon
       if (drawnLayerRef.current) {
@@ -230,6 +364,7 @@ export function FichasTab() {
       }
       drawnLayerRef.current = e.layer;
       setIsDrawing(false);
+      if (map) unlockMap(map as L.Map);
       map.pm.disableDraw();
 
       // Get polygon coordinates
@@ -237,25 +372,50 @@ export function FichasTab() {
       const coords = latlngs.map((p) => [p.lng, p.lat]);
       coords.push(coords[0]); // Close polygon
 
+      // Get bounds for pre-filtering
+      const bounds = e.layer.getBounds();
+      const candidates = bboxFilter(filteredFichas, bounds);
+
       // Filter fichas inside polygon using Turf.js
       const polygon = turf.polygon([coords]);
-      const selected = allFichas.filter((ficha) => {
-        const point = turf.point([ficha.lng, ficha.lat]);
-        return turf.booleanPointInPolygon(point, polygon);
-      });
+      const selected = pointsInPolygon(candidates, polygon);
 
       console.log(`✅ [Fichas] Polygon created: ${selected.length} fichas selected`);
 
       setDisplayedFichas(selected);
       setSummary(generateAnalysis(selected));
       setShowSummary(true);
+
+      // Keep the realtime heat showing final selection
     };
 
-    map.on('pm:create', onCreate);
-    return () => {
-      map.off('pm:create', onCreate);
+    // On draw canceled - clean up
+    const onDrawCancel = () => {
+      console.log('[Fichas] Drawing canceled - unlocking map');
+      setIsDrawing(false);
+      if (map) unlockMap(map as L.Map);
+
+      // Clear realtime heat
+      if (heatSelectedRef.current) {
+        map.removeLayer(heatSelectedRef.current);
+        heatSelectedRef.current = null;
+      }
     };
-  }, [allFichas]);
+
+    map.on('pm:drawstart', onDrawStart);
+    map.on('pm:drawvertex', onDrawVertex);
+    map.on('pm:markerdragend', onDrawVertex); // Also update on marker drag
+    map.on('pm:create', onCreate);
+    map.on('pm:drawcancel', onDrawCancel);
+
+    return () => {
+      map.off('pm:drawstart', onDrawStart);
+      map.off('pm:drawvertex', onDrawVertex);
+      map.off('pm:markerdragend', onDrawVertex);
+      map.off('pm:create', onCreate);
+      map.off('pm:drawcancel', onDrawCancel);
+    };
+  }, [filteredFichas]);
 
   // Generate analysis summary
   const generateAnalysis = (fichas: FichaDataPoint[]): AnalysisSummary => {
@@ -334,10 +494,18 @@ export function FichasTab() {
       map.removeLayer(drawnLayerRef.current);
       drawnLayerRef.current = null;
     }
-    setDisplayedFichas(allFichas);
-    setSummary(generateAnalysis(allFichas));
+
+    // Clear realtime heat selection
+    if (heatSelectedRef.current && map) {
+      map.removeLayer(heatSelectedRef.current);
+      heatSelectedRef.current = null;
+    }
+
+    setDisplayedFichas(filteredFichas);
+    setSummary(generateAnalysis(filteredFichas));
     setIsDrawing(false);
     setShowSummary(false);
+    if (map) unlockMap(map as L.Map);
   };
 
   // Center map
@@ -345,6 +513,136 @@ export function FichasTab() {
     if (!mapRef.current || displayedFichas.length === 0) return;
     const bounds = L.latLngBounds(displayedFichas.map(f => [f.lat, f.lng]));
     mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+  };
+
+  // Date filter handlers
+  const handleDateChange = (start: string, end: string) => {
+    setDateStart(start);
+    setDateEnd(end);
+  };
+
+  const handleApplyDateFilter = () => {
+    if (!dateStart || !dateEnd) {
+      console.log('[Fichas] No date range specified');
+      return;
+    }
+
+    const filtered = allFichas.filter(f => {
+      if (!f.data) return false;
+      const fichaDate = new Date(f.data);
+      const startDate = new Date(dateStart);
+      const endDate = new Date(dateEnd + 'T23:59:59');
+      return fichaDate >= startDate && fichaDate <= endDate;
+    });
+
+    console.log(`[Fichas] Date filter applied: ${filtered.length} of ${allFichas.length} fichas`);
+    setFilteredFichas(filtered);
+    setDisplayedFichas(filtered);
+    setSummary(generateAnalysis(filtered));
+    setHasDateFilter(true);
+  };
+
+  const handleClearDateFilter = () => {
+    setDateStart('');
+    setDateEnd('');
+    setFilteredFichas(allFichas);
+    setDisplayedFichas(allFichas);
+    setSummary(generateAnalysis(allFichas));
+    setHasDateFilter(false);
+    console.log('[Fichas] Date filter cleared');
+  };
+
+  // Fullscreen handlers
+  const handleToggleFullscreen = () => {
+    const wrapper = mapWrapperRef.current;
+    if (!wrapper) return;
+
+    if (!document.fullscreenElement) {
+      wrapper.requestFullscreen?.().then(() => {
+        setIsFullscreen(true);
+        // Force map to re-render after entering fullscreen
+        setTimeout(() => {
+          mapRef.current?.invalidateSize();
+        }, 100);
+      }).catch((err) => {
+        console.error('Error entering fullscreen:', err);
+      });
+    } else {
+      document.exitFullscreen?.().then(() => {
+        setIsFullscreen(false);
+        // Force map to re-render after exiting fullscreen
+        setTimeout(() => {
+          mapRef.current?.invalidateSize();
+        }, 100);
+      });
+    }
+  };
+
+  // Listen to fullscreen changes
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      const isNowFullscreen = !!document.fullscreenElement;
+      setIsFullscreen(isNowFullscreen);
+      // Invalidate map size on any fullscreen change
+      setTimeout(() => {
+        mapRef.current?.invalidateSize();
+      }, 100);
+    };
+
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+    };
+  }, []);
+
+  // Export handlers
+  const handleExportPDF = async () => {
+    if (!summary || !mapContainerRef.current) return;
+
+    setIsExporting(true);
+    try {
+      const map = mapRef.current;
+      if (!map) throw new Error('Map not initialized');
+
+      // Get metadata
+      const center = map.getCenter();
+      const zoom = map.getZoom();
+      const bounds = map.getBounds();
+      const sw = bounds.getSouthWest();
+      const ne = bounds.getNorthEast();
+
+      const metadata = {
+        timestamp: new Date().toLocaleString('pt-BR'),
+        center: { lat: center.lat, lng: center.lng },
+        zoom,
+        bbox: `${sw.lat.toFixed(4)},${sw.lng.toFixed(4)} to ${ne.lat.toFixed(4)},${ne.lng.toFixed(4)}`,
+        totalPoints: summary.total,
+      };
+
+      // Generate AI analysis
+      const aiAnalysis = buildAISummaryFromSelection(summary, center.lat, center.lng);
+      const aiHTML = formatAIAnalysisHTML(aiAnalysis);
+
+      await exportAreaReportPDF(mapContainerRef.current, summary, metadata, aiHTML);
+      console.log('✅ PDF report generated successfully');
+    } catch (error) {
+      console.error('❌ Error generating PDF:', error);
+      alert('Erro ao gerar relatório PDF. Verifique o console para detalhes.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (!summary) return;
+
+    try {
+      exportAreaReportCSV(summary);
+      console.log('✅ CSV report generated successfully');
+    } catch (error) {
+      console.error('❌ Error generating CSV:', error);
+      alert('Erro ao gerar relatório CSV. Verifique o console para detalhes.');
+    }
   };
 
   return (
@@ -358,9 +656,9 @@ export function FichasTab() {
           
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm text-muted-foreground">
-              {displayedFichas.length === allFichas.length 
-                ? `${formatK(displayedFichas.length)} fichas total`
-                : `${formatK(displayedFichas.length)} de ${formatK(allFichas.length)} selecionadas`
+              {displayedFichas.length === filteredFichas.length 
+                ? `${formatK(displayedFichas.length)} fichas${hasDateFilter ? ' (filtradas)' : ' total'}`
+                : `${formatK(displayedFichas.length)} de ${formatK(filteredFichas.length)} selecionadas`
               }
             </span>
 
@@ -369,7 +667,7 @@ export function FichasTab() {
               variant={isDrawing ? "default" : "outline"}
               size="default"
               onClick={handleStartDrawing}
-              disabled={isDrawing || allFichas.length === 0}
+              disabled={isDrawing || filteredFichas.length === 0}
               className="min-w-[44px] min-h-[44px] touch-manipulation"
               title={isDrawing ? "Desenhando... (duplo clique para finalizar)" : "Desenhar área"}
             >
@@ -381,7 +679,7 @@ export function FichasTab() {
               variant="outline"
               size="default"
               onClick={handleClearSelection}
-              disabled={displayedFichas.length === allFichas.length}
+              disabled={displayedFichas.length === filteredFichas.length}
               className="min-w-[44px] min-h-[44px] touch-manipulation"
               title="Limpar seleção"
             >
@@ -429,48 +727,51 @@ export function FichasTab() {
           </div>
         )}
 
-        {/* Summary panel */}
+        {/* Date filter panel */}
+        <div className="absolute top-4 left-4 z-50">
+          <DateFilter
+            startDate={dateStart}
+            endDate={dateEnd}
+            onDateChange={handleDateChange}
+            onApply={handleApplyDateFilter}
+            onClear={handleClearDateFilter}
+          />
+        </div>
+
+        {/* Fullscreen button */}
+        <button
+          className="fullscreen-button absolute top-4 right-4 z-50 bg-white/95 rounded shadow-lg p-2 border hover:bg-gray-50 transition"
+          onClick={handleToggleFullscreen}
+          title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+        >
+          {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+        </button>
+
+        {/* Advanced summary panel */}
         {showSummary && summary && (
-          <div className="absolute top-4 right-4 z-50 w-[min(90vw,380px)] bg-white/95 rounded-lg shadow-lg border p-4 max-h-[70vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-bold text-lg">Análise da Área</h3>
-              <button 
-                className="p-1 rounded hover:bg-gray-100 min-w-[44px] min-h-[44px] touch-manipulation flex items-center justify-center"
-                onClick={() => setShowSummary(false)}
-                title="Fechar"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="space-y-3">
-              <div className="text-base">
-                <strong>Total de fichas:</strong> {summary.total}
-              </div>
-              
-              {summary.byProjeto.length > 0 && (
-                <div>
-                  <div className="font-semibold mb-2">Por Projeto:</div>
-                  {summary.byProjeto.map((proj) => (
-                    <div key={proj.projeto} className="mb-3 pl-2 border-l-2 border-orange-400">
-                      <div className="font-medium">{proj.projeto} — total {proj.total}</div>
-                      <div className="pl-3 text-sm text-muted-foreground">
-                        {Array.from(proj.byScout.entries()).map(([scouter, count]) => (
-                          <div key={scouter}>
-                            {scouter}: {count}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <AdvancedSummary
+            summary={summary}
+            aiAnalysisHTML={formatAIAnalysisHTML(
+              buildAISummaryFromSelection(
+                summary,
+                mapRef.current?.getCenter().lat,
+                mapRef.current?.getCenter().lng
+              )
+            )}
+            onClose={() => setShowSummary(false)}
+            onExportPDF={handleExportPDF}
+            onExportCSV={handleExportCSV}
+            isExporting={isExporting}
+          />
         )}
 
-        {/* Map container */}
-        <div ref={mapContainerRef} className="w-full h-full min-h-[500px]" />
+        {/* Map container with fullscreen wrapper */}
+        <div 
+          ref={mapWrapperRef} 
+          className="fullscreen-container w-full h-full min-h-[500px]"
+        >
+          <div ref={mapContainerRef} className="w-full h-full" />
+        </div>
       </CardContent>
     </Card>
   );
