@@ -24,6 +24,13 @@
   pointer-events: auto !important;
 }
 
+/* Body class for drawing state - blocks other interactive elements */
+body.body--drawing .floating-panel,
+body.body--drawing [class*="panel"]:not(.leaflet-pm-toolbar) {
+  pointer-events: none !important;
+  opacity: 0.7;
+}
+
 /* Responsive controls panel */
 .controls-panel {
   position: fixed;
@@ -149,4 +156,54 @@
 
 .summary-panel::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+
+/* Fullscreen mode styles */
+.fullscreen-container {
+  position: relative;
+}
+
+.fullscreen-container:fullscreen,
+.fullscreen-container:-webkit-full-screen,
+.fullscreen-container:-moz-full-screen {
+  width: 100vw !important;
+  height: 100vh !important;
+  background: white;
+}
+
+.fullscreen-container:fullscreen .leaflet-container,
+.fullscreen-container:-webkit-full-screen .leaflet-container,
+.fullscreen-container:-moz-full-screen .leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Fullscreen button styles */
+.fullscreen-button {
+  position: absolute;
+  top: 80px;
+  right: 10px;
+  z-index: 1000;
+  background: white;
+  border: 2px solid rgba(0,0,0,0.2);
+  border-radius: 4px;
+  padding: 6px;
+  cursor: pointer;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.3);
+  transition: all 0.2s;
+}
+
+.fullscreen-button:hover {
+  background: #f4f4f4;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+/* Heat layer styles */
+.leaflet-heatmap-layer {
+  pointer-events: none;
+}
+
+/* Ensure heat layers work properly */
+canvas.leaflet-zoom-animated {
+  pointer-events: none;
 }
