@@ -751,7 +751,7 @@ export function FichasTab() {
         )}
 
         {/* Unified button group - Calendar + Fullscreen */}
-        <div className="absolute top-4 right-4 z-[9999] flex flex-col bg-white/95 shadow-lg border backdrop-blur-sm rounded-lg overflow-hidden">
+        <div className="absolute top-4 right-4 z-[9999] flex flex-col bg-white/95 shadow-lg border backdrop-blur-sm rounded overflow-hidden">
           {/* Calendar button */}
           <DateFilter
             startDate={dateStart}
@@ -766,11 +766,11 @@ export function FichasTab() {
           
           {/* Fullscreen button */}
           <button
-            className="fullscreen-button flex items-center justify-center w-10 h-10 hover:bg-accent transition-colors"
+            className="fullscreen-button flex items-center justify-center w-[30px] h-[30px] hover:bg-accent transition-colors"
             onClick={handleToggleFullscreen}
             title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
           >
-            {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+            {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
           </button>
         </div>
 

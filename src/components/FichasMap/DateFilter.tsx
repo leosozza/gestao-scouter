@@ -28,8 +28,8 @@ export function DateFilter({
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
       <div className="flex items-center gap-2">
         <CollapsibleTrigger asChild>
-          <button className="flex items-center justify-center w-10 h-10 hover:bg-accent transition-colors">
-            <Calendar size={18} className="text-muted-foreground" />
+          <button className="flex items-center justify-center w-[30px] h-[30px] hover:bg-accent transition-colors">
+            <Calendar size={16} className="text-muted-foreground" />
           </button>
         </CollapsibleTrigger>
         
