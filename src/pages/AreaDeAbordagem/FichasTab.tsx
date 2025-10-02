@@ -72,6 +72,14 @@ interface ProjetoSummary {
 interface AnalysisSummary {
   total: number;
   byProjeto: ProjetoSummary[];
+  // Enhanced analysis data
+  byEtapa?: Map<string, number>;
+  byConfirmado?: Map<string, number>;
+  totalComFoto?: number;
+  totalConfirmados?: number;
+  valorTotal?: number;
+  idadeMedia?: number;
+  supervisores?: Set<string>;
 }
 
 // Format large numbers with K suffix
@@ -433,17 +441,74 @@ export function FichasTab() {
   // Generate analysis summary
   const generateAnalysis = (fichas: FichaDataPoint[]): AnalysisSummary => {
     const projetoMap = new Map<string, Map<string, number>>();
+    const etapaMap = new Map<string, number>();
+    const confirmadoMap = new Map<string, number>();
+    const supervisoresSet = new Set<string>();
+    
+    let totalComFoto = 0;
+    let totalConfirmados = 0;
+    let somaIdades = 0;
+    let countIdades = 0;
+    let somaValores = 0;
 
     fichas.forEach((ficha) => {
       const projeto = ficha.projeto || 'Sem Projeto';
       const scouter = ficha.scouter || 'Não Identificado';
 
+      // Projeto/Scouter analysis (existing)
       if (!projetoMap.has(projeto)) {
         projetoMap.set(projeto, new Map());
       }
       
       const scouterMap = projetoMap.get(projeto)!;
       scouterMap.set(scouter, (scouterMap.get(scouter) || 0) + 1);
+      
+      // Enhanced analysis
+      // Etapa
+      if (ficha.etapa) {
+        etapaMap.set(ficha.etapa, (etapaMap.get(ficha.etapa) || 0) + 1);
+      }
+      
+      // Confirmado
+      if (ficha.confirmado) {
+        const confirmadoKey = ficha.confirmado.toLowerCase();
+        confirmadoMap.set(confirmadoKey, (confirmadoMap.get(confirmadoKey) || 0) + 1);
+        
+        if (confirmadoKey.includes('sim') || confirmadoKey.includes('confirmad')) {
+          totalConfirmados++;
+        }
+      }
+      
+      // Foto
+      if (ficha.foto) {
+        const fotoValue = ficha.foto.toString().toLowerCase();
+        if (fotoValue === 'sim' || fotoValue === '1' || fotoValue === 'true') {
+          totalComFoto++;
+        }
+      }
+      
+      // Idade
+      if (ficha.idade) {
+        const idade = parseInt(ficha.idade.toString(), 10);
+        if (!isNaN(idade) && idade > 0 && idade < 120) {
+          somaIdades += idade;
+          countIdades++;
+        }
+      }
+      
+      // Valor
+      if (ficha.valor_ficha) {
+        const valorStr = ficha.valor_ficha.toString().replace(/[^\d,.-]/g, '').replace(',', '.');
+        const valor = parseFloat(valorStr);
+        if (!isNaN(valor) && valor > 0) {
+          somaValores += valor;
+        }
+      }
+      
+      // Supervisor
+      if (ficha.supervisor) {
+        supervisoresSet.add(ficha.supervisor);
+      }
     });
 
     const byProjeto: ProjetoSummary[] = [];
@@ -461,6 +526,13 @@ export function FichasTab() {
     return {
       total: fichas.length,
       byProjeto,
+      byEtapa: etapaMap.size > 0 ? etapaMap : undefined,
+      byConfirmado: confirmadoMap.size > 0 ? confirmadoMap : undefined,
+      totalComFoto: totalComFoto > 0 ? totalComFoto : undefined,
+      totalConfirmados: totalConfirmados > 0 ? totalConfirmados : undefined,
+      valorTotal: somaValores > 0 ? somaValores : undefined,
+      idadeMedia: countIdades > 0 ? somaIdades / countIdades : undefined,
+      supervisores: supervisoresSet.size > 0 ? supervisoresSet : undefined,
     };
   };
 
