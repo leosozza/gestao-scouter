@@ -5,6 +5,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
+import "@geoman-io/leaflet-geoman-free";
 import {
   loadFichasData,
   createFichasHeatmap,
@@ -59,6 +61,7 @@ export default function TestFichasPage() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const heatmapRef = useRef<FichasHeatmap | null>(null);
   const selectionRef = useRef<FichasSelection | null>(null);
+  const drawnLayerRef = useRef<L.Layer | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +74,7 @@ export default function TestFichasPage() {
   // Controle de seleção
   const [controlsVisible, setControlsVisible] = useState(false);
   const [selecting, setSelecting] = useState(false);
+  const [isDrawing, setIsDrawing] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [dateRange, setDateRange] = useState<[string, string]>(() => {
     const now = new Date();
@@ -97,6 +101,18 @@ export default function TestFichasPage() {
       mapRef.current = null;
     };
   }, []);
+
+  // Add/remove drawing-mode class based on isDrawing state
+  useEffect(() => {
+    const container = mapRef.current?.getContainer();
+    if (!container) return;
+    
+    if (isDrawing) {
+      container.classList.add('drawing-mode');
+    } else {
+      container.classList.remove('drawing-mode');
+    }
+  }, [isDrawing]);
 
   // Carregar dados e aplicar filtro de datas
   useEffect(() => {
@@ -190,51 +206,143 @@ export default function TestFichasPage() {
     };
   }, [filteredFichas, showHeatmap]);
 
-  // Seleção poligonal (desenhar zona)
+  // Geoman event listener para criação de polígono
+  useEffect(() => {
+    const map = mapRef.current as any;
+    if (!map || !map.pm) return;
+
+    const onCreate = (e: any) => {
+      // Mantém apenas 1 shape ativo
+      if (drawnLayerRef.current) {
+        map.removeLayer(drawnLayerRef.current);
+      }
+      drawnLayerRef.current = e.layer;
+      setIsDrawing(false);
+      setSelecting(false);
+      map.pm.disableDraw();
+
+      // L.LatLng[] -> GeoJSON [lng, lat]
+      const latlngs = e.layer.getLatLngs()[0];
+      const coords = latlngs.map((p: any) => [p.lng, p.lat]);
+      coords.push(coords[0]); // Close the polygon
+
+      // Usar Turf.js para filtrar pontos dentro do polígono
+      const turf = require('@turf/turf');
+      const poly = turf.polygon([coords]);
+
+      const selecionados = displayedFichas.filter((ficha) => {
+        const point = turf.point([ficha.lng, ficha.lat]);
+        return turf.booleanPointInPolygon(point, poly);
+      });
+
+      console.log(`✅ [Geoman] Polygon created with ${selecionados.length} fichas selected`);
+
+      setDisplayedFichas(selecionados);
+      setSummary(generateSummary(selecionados));
+      if (showHeatmap) {
+        heatmapRef.current?.updateData(selecionados);
+      }
+    };
+
+    map.on('pm:create', onCreate);
+    return () => { 
+      map.off('pm:create', onCreate); 
+    };
+  }, [displayedFichas, showHeatmap]);
+
+  // Dynamic heatmap options by zoom level
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !heatmapRef.current) return;
+
+    const updateHeatmapByZoom = () => {
+      const zoom = map.getZoom();
+      const radius = zoom <= 7 ? 8 : zoom <= 10 ? 18 : zoom <= 12 ? 28 : zoom <= 14 ? 38 : 48;
+      const blur = Math.round(radius * 0.6);
+      
+      heatmapRef.current?.updateOptions({
+        radius,
+        blur,
+        minOpacity: 0.25,
+        maxZoom: 19
+      });
+    };
+
+    map.on('zoomend', updateHeatmapByZoom);
+    return () => {
+      map.off('zoomend', updateHeatmapByZoom);
+    };
+  }, []);
+
+  // Seleção poligonal com Geoman
   const handleStartSelection = () => {
-    if (!mapRef.current || !filteredFichas.length) return;
-    setSelecting(true);
-    if (selectionRef.current) selectionRef.current.destroy();
-    selectionRef.current = createFichasSelection(
-      mapRef.current,
-      filteredFichas,
-      (result: SelectionResult) => {
-        setSelecting(false);
-        setDisplayedFichas(result.fichas);
-        setSummary(generateSummary(result.fichas));
-        if (showHeatmap) {
-          heatmapRef.current?.updateData(result.fichas);
-        }
-      },
-      { mode: "polygon", disableMapPan: true }
-    );
-    selectionRef.current.startPolygonSelection();
+    const map = mapRef.current as any;
+    if (!map?.pm) {
+      console.error('Geoman não carregado (map.pm undefined)');
+      return;
+    }
+    if (!filteredFichas.length) return;
+    
+    setControlsVisible(false); // fecha painel se existir
+    setIsDrawing(true);
+    
+    // Disable any existing draw mode
+    if (map.pm.globalDrawModeEnabled()) {
+      map.pm.disableDraw();
+    }
+    
+    // Set drawing style options
+    map.pm.setPathOptions({ 
+      color: '#4096ff', 
+      fillColor: '#4096ff', 
+      fillOpacity: 0.1, 
+      weight: 2 
+    });
+    
+    // Enable polygon drawing mode
+    map.pm.enableDraw('Polygon', {
+      snappable: true,
+      snapDistance: 25,
+      allowSelfIntersection: false,
+      finishOnDoubleClick: true,
+      tooltips: true
+    });
+    
+    console.log('✏️ [Geoman] Polygon drawing mode activated');
   };
 
   // Limpar seleção
   const handleClearSelection = () => {
+    const map = mapRef.current;
+    if (drawnLayerRef.current && map) {
+      map.removeLayer(drawnLayerRef.current);
+      drawnLayerRef.current = null;
+    }
     setDisplayedFichas(filteredFichas);
     setSummary(generateSummary(filteredFichas));
     if (showHeatmap) {
       heatmapRef.current?.updateData(filteredFichas);
     }
-    selectionRef.current?.destroy();
+    setIsDrawing(false);
     setSelecting(false);
   };
 
-  // Pesquisar nesta área (reset para área visível)
+  // Pesquisar nesta área (reset para área visível usando bounds)
   const handleSearchArea = () => {
-    if (!mapRef.current) return;
-    const bounds = mapRef.current.getBounds();
+    const map = mapRef.current;
+    if (!map) return;
+    
+    const bounds = map.getBounds();
     const visibles = filteredFichas.filter((f) =>
       bounds.contains([f.lat, f.lng])
     );
+    
     setDisplayedFichas(visibles);
     setSummary(generateSummary(visibles));
     if (showHeatmap) {
       heatmapRef.current?.updateData(visibles);
     }
-    selectionRef.current?.destroy();
+    setIsDrawing(false);
     setSelecting(false);
   };
 
@@ -305,7 +413,7 @@ export default function TestFichasPage() {
     <AppShell sidebar={<Sidebar />}> 
       <div className={`relative h-screen w-full ${fullscreen ? "bg-black" : ""}`}> 
         {/* Barra superior flutuante - Info e Modo */} 
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center bg-white/95 rounded-lg shadow-lg px-4 py-2 gap-3 border"> 
+        <div className="panel-flutuante absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center bg-white/95 rounded-lg shadow-lg px-4 py-2 gap-3 border"> 
           <span className="text-sm font-medium"> 
             {displayedFichas.length === filteredFichas.length 
               ? `${formatK(displayedFichas.length)} de ${formatK(filteredFichas.length)} fichas` 
@@ -330,7 +438,7 @@ export default function TestFichasPage() {
         </div> 
 
         {/* Controles flutuantes estilo ImovelWeb - Lado direito */}
-        <div className="absolute top-4 right-4 z-40 flex flex-col gap-2">
+        <div className="floating-controls absolute top-4 right-4 z-40 flex flex-col gap-2">
           {/* Fullscreen e PDF - Sempre visíveis */}
           <button 
             className="bg-white/95 rounded-lg shadow-lg p-3 border hover:bg-gray-50 transition" 
@@ -361,13 +469,13 @@ export default function TestFichasPage() {
               </button>
               <button 
                 className={`bg-white/95 rounded-lg shadow-lg p-3 border transition ${
-                  selecting ? "bg-blue-50 border-blue-300" : "hover:bg-gray-50"
+                  isDrawing ? "bg-blue-50 border-blue-300" : "hover:bg-gray-50"
                 }`}
-                title={selecting ? "Desenhando polígono (duplo clique para finalizar)" : "Desenhar zona no mapa"} 
+                title={isDrawing ? "Desenhando polígono (duplo clique para finalizar)" : "Desenhar polígono no mapa"} 
                 onClick={handleStartSelection}
-                disabled={selecting || filteredFichas.length === 0}
+                disabled={isDrawing || filteredFichas.length === 0}
               > 
-                <Pencil size={20} className={selecting ? "text-blue-500" : ""} /> 
+                <Pencil size={20} className={isDrawing ? "text-blue-500" : ""} /> 
               </button>
               <button 
                 className={`bg-white/95 rounded-lg shadow-lg p-3 border transition ${
@@ -384,7 +492,7 @@ export default function TestFichasPage() {
 
         {/* Painel flutuante de controles de seleção (apenas fichas, quando visível) */} 
         {modo === "fichas" && controlsVisible && ( 
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-3"> 
+          <div className="panel-flutuante absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-3"> 
             <div className="bg-white/95 rounded-lg shadow-lg border p-4 flex flex-col gap-3">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm font-medium text-gray-700">Filtros e Seleção</span>
@@ -400,13 +508,13 @@ export default function TestFichasPage() {
               <DateRangePicker value={dateRange} onChange={setDateRange} /> 
               
               <div className="flex gap-2 flex-wrap"> 
-                {!selecting && ( 
+                {!isDrawing && ( 
                   <button 
                     className="flex items-center gap-1.5 px-3 py-2 bg-white border rounded-lg shadow-sm hover:bg-gray-50 text-sm" 
                     onClick={handleStartSelection} 
-                    title="Desenhar zona" 
+                    title="Desenhar polígono" 
                   > 
-                    <Pencil size={16} /> <span>Desenhar zona</span> 
+                    <Pencil size={16} /> <span>Desenhar polígono</span> 
                   </button> 
                 )} 
                 <button 
@@ -423,7 +531,7 @@ export default function TestFichasPage() {
                 > 
                   <X size={16} /> <span>Limpar</span> 
                 </button> 
-                {selecting && ( 
+                {isDrawing && ( 
                   <button 
                     className="flex items-center gap-1.5 px-3 py-2 bg-blue-500 text-white border border-blue-600 rounded-lg shadow-sm hover:bg-blue-600 text-sm font-medium" 
                     onClick={handleApplySelection} 
@@ -439,7 +547,7 @@ export default function TestFichasPage() {
 
         {/* Resumo detalhado */} 
         {showSummary && summary && ( 
-          <div className="absolute top-24 right-4 z-50 w-[340px] max-w-full bg-white/95 rounded-lg shadow-lg border p-4"> 
+          <div className="panel-flutuante absolute top-24 right-4 z-50 w-[340px] max-w-full bg-white/95 rounded-lg shadow-lg border p-4"> 
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-bold">Resumo</h3>
               <button 
