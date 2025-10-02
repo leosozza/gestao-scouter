@@ -102,6 +102,18 @@ export default function TestFichasPage() {
     };
   }, []);
 
+  // Add/remove drawing-mode class based on isDrawing state
+  useEffect(() => {
+    const container = mapRef.current?.getContainer();
+    if (!container) return;
+    
+    if (isDrawing) {
+      container.classList.add('drawing-mode');
+    } else {
+      container.classList.remove('drawing-mode');
+    }
+  }, [isDrawing]);
+
   // Carregar dados e aplicar filtro de datas
   useEffect(() => {
     let canceled = false;
@@ -401,7 +413,7 @@ export default function TestFichasPage() {
     <AppShell sidebar={<Sidebar />}> 
       <div className={`relative h-screen w-full ${fullscreen ? "bg-black" : ""}`}> 
         {/* Barra superior flutuante - Info e Modo */} 
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center bg-white/95 rounded-lg shadow-lg px-4 py-2 gap-3 border"> 
+        <div className="panel-flutuante absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center bg-white/95 rounded-lg shadow-lg px-4 py-2 gap-3 border"> 
           <span className="text-sm font-medium"> 
             {displayedFichas.length === filteredFichas.length 
               ? `${formatK(displayedFichas.length)} de ${formatK(filteredFichas.length)} fichas` 
@@ -426,7 +438,7 @@ export default function TestFichasPage() {
         </div> 
 
         {/* Controles flutuantes estilo ImovelWeb - Lado direito */}
-        <div className="absolute top-4 right-4 z-40 flex flex-col gap-2">
+        <div className="floating-controls absolute top-4 right-4 z-40 flex flex-col gap-2">
           {/* Fullscreen e PDF - Sempre visíveis */}
           <button 
             className="bg-white/95 rounded-lg shadow-lg p-3 border hover:bg-gray-50 transition" 
@@ -480,7 +492,7 @@ export default function TestFichasPage() {
 
         {/* Painel flutuante de controles de seleção (apenas fichas, quando visível) */} 
         {modo === "fichas" && controlsVisible && ( 
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-3"> 
+          <div className="panel-flutuante absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-3"> 
             <div className="bg-white/95 rounded-lg shadow-lg border p-4 flex flex-col gap-3">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm font-medium text-gray-700">Filtros e Seleção</span>
@@ -535,7 +547,7 @@ export default function TestFichasPage() {
 
         {/* Resumo detalhado */} 
         {showSummary && summary && ( 
-          <div className="absolute top-24 right-4 z-50 w-[340px] max-w-full bg-white/95 rounded-lg shadow-lg border p-4"> 
+          <div className="panel-flutuante absolute top-24 right-4 z-50 w-[340px] max-w-full bg-white/95 rounded-lg shadow-lg border p-4"> 
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-bold">Resumo</h3>
               <button 

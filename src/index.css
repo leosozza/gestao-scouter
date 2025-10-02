@@ -595,3 +595,22 @@
   width: 50px !important;
   height: 50px !important;
 }
+
+/* Geoman Drawing Mode - Prevent UI blocking */
+.leaflet-container.drawing-mode .panel-flutuante,
+.leaflet-container.drawing-mode .floating-controls {
+  pointer-events: none !important;
+}
+
+/* Allow interaction with panels when not drawing */
+.panel-flutuante,
+.floating-controls {
+  pointer-events: auto;
+}
+
+/* Ensure Geoman controls remain interactive */
+.leaflet-pm-toolbar,
+.leaflet-pm-actions,
+.leaflet-bar {
+  pointer-events: auto !important;
+}
