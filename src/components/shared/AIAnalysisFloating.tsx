@@ -28,8 +28,43 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  
+  // Estado para posição do FAB
+  const [fabPosition, setFabPosition] = useState({ x: window.innerWidth - 100, y: window.innerHeight - 100 });
+  const [isFabDragging, setIsFabDragging] = useState(false);
+  const [fabDragStart, setFabDragStart] = useState({ x: 0, y: 0 });
 
-  // Handlers de arrastar
+  // Handlers de arrastar FAB
+  const handleFabMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsFabDragging(true);
+    setFabDragStart({
+      x: e.clientX - fabPosition.x,
+      y: e.clientY - fabPosition.y
+    });
+  };
+
+  const handleFabMouseMove = (e: MouseEvent) => {
+    if (!isFabDragging) return;
+    
+    const newX = e.clientX - fabDragStart.x;
+    const newY = e.clientY - fabDragStart.y;
+    
+    // Limites da tela
+    const maxX = window.innerWidth - 80;
+    const maxY = window.innerHeight - 80;
+    
+    setFabPosition({
+      x: Math.max(20, Math.min(maxX, newX)),
+      y: Math.max(20, Math.min(maxY, newY))
+    });
+  };
+
+  const handleFabMouseUp = () => {
+    setIsFabDragging(false);
+  };
+
+  // Handlers de arrastar painel
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
     setDragStart({
@@ -69,6 +104,17 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
       };
     }
   }, [isDragging, dragStart, position]);
+  
+  useEffect(() => {
+    if (isFabDragging) {
+      window.addEventListener('mousemove', handleFabMouseMove);
+      window.addEventListener('mouseup', handleFabMouseUp);
+      return () => {
+        window.removeEventListener('mousemove', handleFabMouseMove);
+        window.removeEventListener('mouseup', handleFabMouseUp);
+      };
+    }
+  }, [isFabDragging, fabDragStart, fabPosition]);
 
   // Análise de dados
   const handleAnalyze = async () => {
@@ -123,19 +169,27 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
     </button>
   );
 
-  // FAB (Floating Action Button) - canto inferior direito
+  // FAB (Floating Action Button) - arrastável
   const FloatingButton = () => {
     if (!isActive) return null;
 
     return (
       <button
-        onClick={() => {
-          setIsPanelOpen(true);
-          if (!analysis) handleAnalyze();
+        onMouseDown={handleFabMouseDown}
+        onClick={(e) => {
+          if (!isFabDragging) {
+            setIsPanelOpen(true);
+            if (!analysis) handleAnalyze();
+          }
         }}
-        className="fixed bottom-6 right-6 z-[9999] w-16 h-16 rounded-full bg-primary text-primary-foreground shadow-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] flex items-center justify-center transition-all duration-300 ease-out hover:scale-110 active:scale-95 cursor-pointer"
-        style={{ boxShadow: '0 4px 14px 0 rgba(0, 118, 255, 0.39)' }}
-        title="Abrir Análise de IA"
+        className="fixed w-16 h-16 rounded-full bg-primary text-primary-foreground shadow-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] flex items-center justify-center transition-all duration-300 ease-out hover:scale-110 active:scale-95 z-[9999]"
+        style={{ 
+          left: `${fabPosition.x}px`,
+          top: `${fabPosition.y}px`,
+          boxShadow: '0 4px 14px 0 rgba(0, 118, 255, 0.39)',
+          cursor: isFabDragging ? 'grabbing' : 'grab'
+        }}
+        title="Arrastar ou clicar para abrir Análise de IA"
       >
         <Sparkles size={28} className="drop-shadow-lg" />
       </button>
