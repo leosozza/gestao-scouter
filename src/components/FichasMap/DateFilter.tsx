@@ -26,14 +26,14 @@ export function DateFilter({
 
   return (
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-      <div className="flex items-center gap-2">
+      <div className="relative">
         <CollapsibleTrigger asChild>
           <button className="flex items-center justify-center w-[30px] h-[30px] hover:bg-accent transition-colors">
             <Calendar size={16} className="text-muted-foreground" />
           </button>
         </CollapsibleTrigger>
         
-        <CollapsibleContent className="flex items-center gap-2 pr-2">
+        <CollapsibleContent className="absolute right-full top-0 mr-1 flex items-center gap-2 bg-white/95 shadow-lg border backdrop-blur-sm rounded px-2 py-1">
           <input
             type="date"
             value={startDate}
