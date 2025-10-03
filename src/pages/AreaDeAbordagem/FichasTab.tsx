@@ -839,7 +839,7 @@ export function FichasTab() {
         )}
 
         {/* Unified button group - Calendar + Brain + Fullscreen */}
-        <div className="absolute top-4 right-4 z-[9999] flex flex-col bg-white/95 shadow-lg border backdrop-blur-sm rounded overflow-hidden">
+        <div className="absolute top-4 right-4 z-[9999] flex flex-col bg-white/95 shadow-lg border backdrop-blur-sm rounded overflow-visible">
           {/* Calendar button */}
           <DateFilter
             startDate={dateStart}

@@ -26,9 +26,15 @@ export function DateFilter({
 
   return (
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-      <div className="relative flex items-center">
-        <CollapsibleContent className="absolute right-full top-0 mr-1 bg-white/95 shadow-lg border backdrop-blur-sm rounded px-2 py-1 whitespace-nowrap overflow-visible data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
-          <div className="flex items-center gap-2">
+      <div className="relative">
+        <CollapsibleTrigger asChild>
+          <button className="flex items-center justify-center w-[30px] h-[30px] hover:bg-accent transition-colors">
+            <Calendar size={16} className="text-muted-foreground" />
+          </button>
+        </CollapsibleTrigger>
+        
+        <CollapsibleContent asChild>
+          <div className="absolute right-full top-0 mr-1 bg-white/95 shadow-lg border backdrop-blur-sm rounded px-2 py-1 whitespace-nowrap flex items-center gap-2 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-right-2 data-[state=open]:slide-in-from-right-2">
           <input
             type="date"
             value={startDate}
@@ -61,12 +67,6 @@ export function DateFilter({
           </Button>
           </div>
         </CollapsibleContent>
-        
-        <CollapsibleTrigger asChild>
-          <button className="flex items-center justify-center w-[30px] h-[30px] hover:bg-accent transition-colors">
-            <Calendar size={16} className="text-muted-foreground" />
-          </button>
-        </CollapsibleTrigger>
       </div>
     </Collapsible>
   );
