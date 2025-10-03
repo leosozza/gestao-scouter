@@ -2,6 +2,7 @@ import { ReactNode } from 'react'
 import { Layers3 } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar'
+import { AIAnalysisFloating } from '@/components/shared/AIAnalysisFloating'
 
 interface AppShellProps {
   sidebar: ReactNode
@@ -26,7 +27,8 @@ export function AppShell({ sidebar, children }: AppShellProps) {
               </div>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <AIAnalysisFloating />
               <Avatar className="h-8 w-8">
                 <AvatarFallback>GS</AvatarFallback>
               </Avatar>
