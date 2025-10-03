@@ -33,11 +33,13 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
   const [fabPosition, setFabPosition] = useState({ x: window.innerWidth - 100, y: window.innerHeight - 100 });
   const [isFabDragging, setIsFabDragging] = useState(false);
   const [fabDragStart, setFabDragStart] = useState({ x: 0, y: 0 });
+  const [hasDragged, setHasDragged] = useState(false);
 
   // Handlers de arrastar FAB
   const handleFabMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsFabDragging(true);
+    setHasDragged(false);
     setFabDragStart({
       x: e.clientX - fabPosition.x,
       y: e.clientY - fabPosition.y
@@ -49,6 +51,13 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
     
     const newX = e.clientX - fabDragStart.x;
     const newY = e.clientY - fabDragStart.y;
+    
+    // Detecta se houve movimento significativo (threshold de 5px)
+    const deltaX = Math.abs(newX - fabPosition.x);
+    const deltaY = Math.abs(newY - fabPosition.y);
+    if (deltaX > 5 || deltaY > 5) {
+      setHasDragged(true);
+    }
     
     // Limites da tela
     const maxX = window.innerWidth - 80;
@@ -62,6 +71,8 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
 
   const handleFabMouseUp = () => {
     setIsFabDragging(false);
+    // Reset hasDragged após um delay para permitir o click processar
+    setTimeout(() => setHasDragged(false), 100);
   };
 
   // Handlers de arrastar painel
@@ -177,7 +188,7 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
       <button
         onMouseDown={handleFabMouseDown}
         onClick={(e) => {
-          if (!isFabDragging) {
+          if (!hasDragged) {
             setIsPanelOpen(true);
             if (!analysis) handleAnalyze();
           }
