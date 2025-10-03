@@ -71,8 +71,6 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
 
   const handleFabMouseUp = () => {
     setIsFabDragging(false);
-    // Reset hasDragged após um delay para permitir o click processar
-    setTimeout(() => setHasDragged(false), 100);
   };
 
   // Handlers de arrastar painel
@@ -188,10 +186,14 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
       <button
         onMouseDown={handleFabMouseDown}
         onClick={(e) => {
+          e.preventDefault();
+          // Só abre o painel se não arrastou
           if (!hasDragged) {
             setIsPanelOpen(true);
             if (!analysis) handleAnalyze();
           }
+          // Reset após o click
+          setTimeout(() => setHasDragged(false), 50);
         }}
         className="fixed w-16 h-16 rounded-full bg-primary text-primary-foreground shadow-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] flex items-center justify-center transition-all duration-300 ease-out hover:scale-110 active:scale-95 z-[9999]"
         style={{ 
