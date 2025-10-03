@@ -87,10 +87,11 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
           setIsPanelOpen(true);
           if (!analysis) handleAnalyze();
         }}
-        className="fixed bottom-6 right-6 z-[100] w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 animate-in fade-in slide-in-from-bottom-4"
+        className="fixed bottom-6 right-6 z-[9999] w-16 h-16 rounded-full bg-primary text-primary-foreground shadow-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] flex items-center justify-center transition-all duration-300 ease-out hover:scale-110 active:scale-95 cursor-pointer"
+        style={{ boxShadow: '0 4px 14px 0 rgba(0, 118, 255, 0.39)' }}
         title="Abrir Análise de IA"
       >
-        <Sparkles size={24} />
+        <Sparkles size={28} className="drop-shadow-lg" />
       </button>
     );
   };
