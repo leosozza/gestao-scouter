@@ -33,18 +33,19 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
   const [fabPosition, setFabPosition] = useState({ x: window.innerWidth - 100, y: window.innerHeight - 100 });
   const [isFabDragging, setIsFabDragging] = useState(false);
   const [fabDragStart, setFabDragStart] = useState({ x: 0, y: 0 });
-  const [hasDragged, setHasDragged] = useState(false);
 
-  // Handlers de arrastar FAB
+  // Handlers de arrastar FAB (apenas com botão direito)
   const handleFabMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsFabDragging(true);
-    setHasDragged(false);
-    setFabDragStart({
-      x: e.clientX - fabPosition.x,
-      y: e.clientY - fabPosition.y
-    });
+    // Botão direito (2) = arrastar
+    if (e.button === 2) {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsFabDragging(true);
+      setFabDragStart({
+        x: e.clientX - fabPosition.x,
+        y: e.clientY - fabPosition.y
+      });
+    }
   };
 
   const handleFabMouseMove = (e: MouseEvent) => {
@@ -52,13 +53,6 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
     
     const newX = e.clientX - fabDragStart.x;
     const newY = e.clientY - fabDragStart.y;
-    
-    // Detecta se houve movimento significativo (threshold de 3px)
-    const deltaX = Math.abs(newX - fabPosition.x);
-    const deltaY = Math.abs(newY - fabPosition.y);
-    if (deltaX > 3 || deltaY > 3) {
-      setHasDragged(true);
-    }
     
     // Limites da tela
     const maxX = window.innerWidth - 80;
@@ -74,18 +68,16 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
     setIsFabDragging(false);
   };
   
+  // Prevenir menu de contexto no botão
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+  };
+  
   const handleFabClick = () => {
-    if (!hasDragged) {
-      console.log('FAB clicked - opening panel');
-      setIsPanelOpen(true);
-      if (!analysis) {
-        handleAnalyze();
-      }
-    } else {
-      console.log('FAB was dragged, not opening panel');
+    setIsPanelOpen(true);
+    if (!analysis) {
+      handleAnalyze();
     }
-    // Reset após processar o click
-    setTimeout(() => setHasDragged(false), 100);
   };
 
   // Handlers de arrastar painel
@@ -201,14 +193,15 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
       <button
         onMouseDown={handleFabMouseDown}
         onClick={handleFabClick}
+        onContextMenu={handleContextMenu}
         className="fixed w-16 h-16 rounded-full bg-primary text-primary-foreground shadow-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] flex items-center justify-center transition-all duration-300 ease-out hover:scale-110 active:scale-95 z-[9999]"
         style={{ 
           left: `${fabPosition.x}px`,
           top: `${fabPosition.y}px`,
           boxShadow: '0 4px 14px 0 rgba(0, 118, 255, 0.39)',
-          cursor: isFabDragging ? 'grabbing' : 'grab'
+          cursor: 'pointer'
         }}
-        title="Arrastar ou clicar para abrir Análise de IA"
+        title="Clique para abrir | Botão direito para arrastar"
       >
         <Sparkles size={28} className="drop-shadow-lg" />
       </button>
