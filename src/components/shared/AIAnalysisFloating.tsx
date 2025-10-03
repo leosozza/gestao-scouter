@@ -1,9 +1,15 @@
-import { useState, useEffect } from 'react';
-import { Brain, Sparkles, X, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Brain, Sparkles, X, Loader2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
 
 interface AIAnalysisFloatingProps {
   data?: any;
@@ -19,10 +25,14 @@ interface AIAnalysisFloatingProps {
  * 3. FAB abre painel de análise
  */
 export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps) {
+  const { toast } = useToast();
   const [isActive, setIsActive] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysis, setAnalysis] = useState<string>('');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   
   // Estado para posição arrastável
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -75,9 +85,6 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
   
   const handleFabClick = () => {
     setIsPanelOpen(true);
-    if (!analysis) {
-      handleAnalyze();
-    }
   };
 
   // Handlers de arrastar painel
@@ -132,41 +139,114 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
     }
   }, [isFabDragging, fabDragStart, fabPosition]);
 
-  // Análise de dados
-  const handleAnalyze = async () => {
-    setIsAnalyzing(true);
-    
+  // Auto-scroll para última mensagem
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Enviar mensagem para o chat
+  const sendMessage = async () => {
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: Message = { role: 'user', content: input.trim() };
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
     try {
-      if (onAnalyze) {
-        const result = await onAnalyze(data);
-        setAnalysis(result);
-      } else {
-        // Análise simulada para demonstração
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        setAnalysis(`
-📊 **Análise da Página Atual**
+      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
+      
+      const response = await fetch(CHAT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })),
+          pageData: data
+        }),
+      });
 
-**Dados Detectados:**
-- ${data?.totalFichas || 0} fichas no mapa
-- ${data?.fichasComFoto || 0} fichas com foto
-- ${data?.projetos?.length || 0} projetos ativos
+      if (!response.ok) {
+        if (response.status === 429) {
+          toast({
+            title: "Limite excedido",
+            description: "Muitas requisições. Aguarde um momento.",
+            variant: "destructive",
+          });
+          setMessages(prev => prev.slice(0, -1));
+          return;
+        }
+        if (response.status === 402) {
+          toast({
+            title: "Créditos insuficientes",
+            description: "Adicione créditos na sua workspace Lovable.",
+            variant: "destructive",
+          });
+          setMessages(prev => prev.slice(0, -1));
+          return;
+        }
+        throw new Error('Erro ao processar mensagem');
+      }
 
-**Insights:**
-- Taxa de conversão com foto: ${data?.fichasComFoto && data?.totalFichas ? ((data.fichasComFoto / data.totalFichas) * 100).toFixed(1) : 0}%
-- Performance está ${data?.totalFichas > 100 ? 'acima' : 'abaixo'} da meta
-- Recomendação: ${data?.fichasComFoto < data?.totalFichas * 0.7 ? 'Aumentar registro de fotos' : 'Manter estratégia atual'}
+      // Processar stream SSE
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let assistantMessage = '';
+      let textBuffer = '';
 
-**Próximos Passos:**
-1. Revisar áreas com baixa cobertura
-2. Otimizar rotas dos scouters
-3. Acompanhar métricas diárias
-        `.trim());
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          textBuffer += decoder.decode(value, { stream: true });
+          let newlineIndex: number;
+
+          while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
+            let line = textBuffer.slice(0, newlineIndex);
+            textBuffer = textBuffer.slice(newlineIndex + 1);
+
+            if (line.endsWith('\r')) line = line.slice(0, -1);
+            if (line.startsWith(':') || line.trim() === '') continue;
+            if (!line.startsWith('data: ')) continue;
+
+            const jsonStr = line.slice(6).trim();
+            if (jsonStr === '[DONE]') break;
+
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const content = parsed.choices?.[0]?.delta?.content;
+              
+              if (content) {
+                assistantMessage += content;
+                setMessages(prev => {
+                  const last = prev[prev.length - 1];
+                  if (last?.role === 'assistant') {
+                    return prev.map((m, i) => 
+                      i === prev.length - 1 ? { ...m, content: assistantMessage } : m
+                    );
+                  }
+                  return [...prev, { role: 'assistant', content: assistantMessage }];
+                });
+              }
+            } catch (e) {
+              console.error('Error parsing SSE:', e);
+            }
+          }
+        }
       }
     } catch (error) {
-      console.error('Erro na análise:', error);
-      setAnalysis('❌ Erro ao realizar análise. Tente novamente.');
+      console.error('Erro ao enviar mensagem:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível processar sua mensagem.",
+        variant: "destructive",
+      });
+      setMessages(prev => prev.slice(0, -1));
     } finally {
-      setIsAnalyzing(false);
+      setIsLoading(false);
     }
   };
 
@@ -244,99 +324,95 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
           cursor: isDragging ? 'grabbing' : 'default'
         }}
       >
-        <CardHeader 
-          className="flex flex-row items-center justify-between space-y-0 pb-4 cursor-grab active:cursor-grabbing"
-          onMouseDown={handleMouseDown}
-        >
-            <div className="flex items-center gap-2">
-              <Brain className="h-5 w-5 text-primary" />
-              <CardTitle className="text-lg">Análise de IA</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 border-b">
+          <div className="flex items-center gap-2">
+            <Brain className="h-5 w-5 text-primary" />
+            <div>
+              <CardTitle className="text-lg">Chat de Análise</CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">Powered by Gemini AI</p>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsPanelOpen(false)}
-              className="h-8 w-8"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </CardHeader>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsPanelOpen(false)}
+            className="h-8 w-8"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </CardHeader>
 
-          <CardContent className="space-y-4">
-            {isAnalyzing ? (
-              <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">
-                  Analisando dados da página...
-                </p>
-              </div>
-            ) : analysis ? (
-              <>
-                <ScrollArea className="h-[400px] pr-4">
-                  <div className="prose prose-sm max-w-none dark:prose-invert">
-                    {analysis.split('\n').map((line, i) => {
-                      if (line.startsWith('**') && line.endsWith('**')) {
-                        return (
-                          <h3 key={i} className="text-base font-semibold mt-4 mb-2">
-                            {line.replace(/\*\*/g, '')}
-                          </h3>
-                        );
-                      }
-                      if (line.startsWith('- ')) {
-                        return (
-                          <li key={i} className="ml-4 text-sm text-muted-foreground">
-                            {line.substring(2)}
-                          </li>
-                        );
-                      }
-                      if (line.match(/^\d+\./)) {
-                        return (
-                          <li key={i} className="ml-4 text-sm text-muted-foreground">
-                            {line.substring(line.indexOf('.') + 1).trim()}
-                          </li>
-                        );
-                      }
-                      if (line.trim().startsWith('📊') || line.trim().startsWith('❌')) {
-                        return (
-                          <p key={i} className="text-base font-medium mb-4">
-                            {line}
-                          </p>
-                        );
-                      }
-                      return line.trim() ? (
-                        <p key={i} className="text-sm text-muted-foreground mb-2">
-                          {line}
-                        </p>
-                      ) : null;
-                    })}
-                  </div>
-                </ScrollArea>
-
-                <div className="flex gap-2 pt-4 border-t">
-                  <Button
-                    onClick={handleAnalyze}
-                    disabled={isAnalyzing}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    <Brain className="h-4 w-4 mr-2" />
-                    Atualizar Análise
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 space-y-4">
+        <CardContent className="p-0 flex flex-col h-[500px]">
+          {/* Área de mensagens */}
+          <ScrollArea ref={scrollAreaRef} className="flex-1 p-4">
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full space-y-4 py-8">
                 <Sparkles className="h-12 w-12 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground text-center">
-                  Clique no botão para iniciar a análise
-                </p>
-                <Button onClick={handleAnalyze}>
-                  <Brain className="h-4 w-4 mr-2" />
-                  Iniciar Análise
-                </Button>
+                <div className="text-center space-y-2">
+                  <p className="text-sm font-medium">Olá! Como posso ajudar?</p>
+                  <p className="text-xs text-muted-foreground">
+                    Faça perguntas sobre os dados da página
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {messages.map((message, index) => (
+                  <div
+                    key={index}
+                    className={`flex ${
+                      message.role === 'user' ? 'justify-end' : 'justify-start'
+                    }`}
+                  >
+                    <div
+                      className={`max-w-[85%] rounded-lg px-4 py-2 ${
+                        message.role === 'user'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted'
+                      }`}
+                    >
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    </div>
+                  </div>
+                ))}
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-muted rounded-lg px-4 py-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
               </div>
             )}
-          </CardContent>
+          </ScrollArea>
+
+          {/* Input de mensagem */}
+          <div className="p-4 border-t">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                sendMessage();
+              }}
+              className="flex gap-2"
+            >
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Digite sua pergunta..."
+                disabled={isLoading}
+                className="flex-1"
+              />
+              <Button 
+                type="submit" 
+                size="icon"
+                disabled={isLoading || !input.trim()}
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </form>
+          </div>
+        </CardContent>
         </Card>
     );
   };
