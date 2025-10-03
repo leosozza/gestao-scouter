@@ -37,6 +37,7 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
 
   // Handlers de arrastar FAB
   const handleFabMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     setIsFabDragging(true);
     setHasDragged(false);
@@ -52,10 +53,10 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
     const newX = e.clientX - fabDragStart.x;
     const newY = e.clientY - fabDragStart.y;
     
-    // Detecta se houve movimento significativo (threshold de 5px)
+    // Detecta se houve movimento significativo (threshold de 3px)
     const deltaX = Math.abs(newX - fabPosition.x);
     const deltaY = Math.abs(newY - fabPosition.y);
-    if (deltaX > 5 || deltaY > 5) {
+    if (deltaX > 3 || deltaY > 3) {
       setHasDragged(true);
     }
     
@@ -71,6 +72,20 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
 
   const handleFabMouseUp = () => {
     setIsFabDragging(false);
+  };
+  
+  const handleFabClick = () => {
+    if (!hasDragged) {
+      console.log('FAB clicked - opening panel');
+      setIsPanelOpen(true);
+      if (!analysis) {
+        handleAnalyze();
+      }
+    } else {
+      console.log('FAB was dragged, not opening panel');
+    }
+    // Reset após processar o click
+    setTimeout(() => setHasDragged(false), 100);
   };
 
   // Handlers de arrastar painel
@@ -185,16 +200,7 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
     return (
       <button
         onMouseDown={handleFabMouseDown}
-        onClick={(e) => {
-          e.preventDefault();
-          // Só abre o painel se não arrastou
-          if (!hasDragged) {
-            setIsPanelOpen(true);
-            if (!analysis) handleAnalyze();
-          }
-          // Reset após o click
-          setTimeout(() => setHasDragged(false), 50);
-        }}
+        onClick={handleFabClick}
         className="fixed w-16 h-16 rounded-full bg-primary text-primary-foreground shadow-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] flex items-center justify-center transition-all duration-300 ease-out hover:scale-110 active:scale-95 z-[9999]"
         style={{ 
           left: `${fabPosition.x}px`,
