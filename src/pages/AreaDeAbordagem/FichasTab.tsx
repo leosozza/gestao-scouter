@@ -21,6 +21,7 @@ import { getTileServerConfig, DEFAULT_TILE_SERVER } from '@/config/tileServers';
 import type { FichaMapData } from '@/services/googleSheetsMapService';
 import { DateFilter } from '@/components/FichasMap/DateFilter';
 import { AdvancedSummary } from '@/components/FichasMap/AdvancedSummary';
+import { AIAnalysisFloating } from '@/components/shared/AIAnalysisFloating';
 import { lockMap, unlockMap, bboxFilter, pointsInPolygon } from '@/utils/map-helpers';
 import { buildAISummaryFromSelection, formatAIAnalysisHTML } from '@/utils/ai-analysis';
 import { exportAreaReportPDF, exportAreaReportCSV } from '@/utils/export-reports';
@@ -852,7 +853,20 @@ export function FichasTab() {
           {/* Divider between buttons */}
           <div className="h-px bg-border" />
           
-          {/* Brain button (toggle analysis panel) */}
+          {/* AI Analysis Floating - novo componente */}
+          <AIAnalysisFloating
+            data={{
+              totalFichas: displayedFichas.length,
+              fichasComFoto: displayedFichas.filter(f => f.foto_1).length,
+              projetos: Array.from(new Set(displayedFichas.map(f => f.projeto))),
+              scouters: Array.from(new Set(displayedFichas.map(f => f.scouter)))
+            }}
+          />
+          
+          {/* Divider between buttons */}
+          <div className="h-px bg-border" />
+          
+          {/* Brain button (toggle analysis panel) - mantido */}
           <button
             className="fullscreen-button flex items-center justify-center w-[30px] h-[30px] hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={() => setShowSummary(!showSummary)}
