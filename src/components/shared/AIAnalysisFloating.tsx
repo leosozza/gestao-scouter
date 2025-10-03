@@ -212,12 +212,35 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
   const AnalysisPanel = () => {
     if (!isPanelOpen) return null;
 
+    // Calcular posição ao lado do botão
+    const panelWidth = 400;
+    const panelHeight = 600;
+    
+    // Tentar posicionar à esquerda do botão
+    let panelX = fabPosition.x - panelWidth - 20;
+    let panelY = fabPosition.y;
+    
+    // Se não couber à esquerda, coloca à direita
+    if (panelX < 20) {
+      panelX = fabPosition.x + 80 + 20;
+    }
+    
+    // Se não couber à direita, centraliza
+    if (panelX + panelWidth > window.innerWidth - 20) {
+      panelX = Math.max(20, (window.innerWidth - panelWidth) / 2);
+    }
+    
+    // Ajustar altura para não sair da tela
+    if (panelY + panelHeight > window.innerHeight - 20) {
+      panelY = Math.max(20, window.innerHeight - panelHeight - 20);
+    }
+
     return (
       <Card 
-        className="fixed w-full max-w-md max-h-[80vh] pointer-events-auto shadow-2xl z-[101]"
+        className="fixed w-full max-w-md max-h-[80vh] pointer-events-auto shadow-2xl z-[10000]"
         style={{
-          right: `${24 + position.x}px`,
-          bottom: `${24 + position.y}px`,
+          left: `${panelX}px`,
+          top: `${panelY}px`,
           cursor: isDragging ? 'grabbing' : 'default'
         }}
       >
