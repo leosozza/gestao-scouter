@@ -66,14 +66,11 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
   const TopToggleButton = () => (
     <button
       onClick={() => setIsActive(!isActive)}
-      className={`
-        flex items-center justify-center w-[30px] h-[30px] 
-        transition-all duration-200
-        ${isActive 
+      className={`flex items-center justify-center w-[30px] h-[30px] rounded transition-all duration-200 ${
+        isActive 
           ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
           : 'hover:bg-accent text-muted-foreground'
-        }
-      `}
+      }`}
       title={isActive ? 'Desativar Análise IA' : 'Ativar Análise IA'}
     >
       <Brain size={16} className={isActive ? 'animate-pulse' : ''} />
@@ -90,16 +87,7 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
           setIsPanelOpen(true);
           if (!analysis) handleAnalyze();
         }}
-        className={`
-          fixed bottom-6 right-6 z-[9998]
-          w-14 h-14 rounded-full
-          bg-primary text-primary-foreground
-          shadow-lg hover:shadow-xl
-          flex items-center justify-center
-          transition-all duration-300
-          hover:scale-110 active:scale-95
-          animate-in fade-in slide-in-from-bottom-4
-        `}
+        className="fixed bottom-6 right-6 z-[100] w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 animate-in fade-in slide-in-from-bottom-4"
         title="Abrir Análise de IA"
       >
         <Sparkles size={24} />
@@ -112,7 +100,7 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
     if (!isPanelOpen) return null;
 
     return (
-      <div className="fixed inset-0 z-[9999] flex items-end justify-end p-6 pointer-events-none">
+      <div className="fixed inset-0 z-[101] flex items-end justify-end p-6 pointer-events-none">
         <Card className="w-full max-w-md max-h-[80vh] pointer-events-auto animate-in slide-in-from-bottom-8 fade-in shadow-2xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
             <div className="flex items-center gap-2">
