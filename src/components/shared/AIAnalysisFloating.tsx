@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Brain, Sparkles, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +23,52 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<string>('');
+  
+  // Estado para posição arrastável
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  // Handlers de arrastar
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStart({
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
+    });
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging) return;
+    
+    const newX = e.clientX - dragStart.x;
+    const newY = e.clientY - dragStart.y;
+    
+    // Limites da tela
+    const maxX = window.innerWidth - 400; // largura do card
+    const maxY = window.innerHeight - 600; // altura estimada do card
+    
+    setPosition({
+      x: Math.max(-maxX, Math.min(0, newX)),
+      y: Math.max(-maxY, Math.min(0, newY))
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Event listeners para arrastar
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, dragStart, position]);
 
   // Análise de dados
   const handleAnalyze = async () => {
@@ -101,9 +147,18 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
     if (!isPanelOpen) return null;
 
     return (
-      <div className="fixed inset-0 z-[101] flex items-end justify-end p-6 pointer-events-none">
-        <Card className="w-full max-w-md max-h-[80vh] pointer-events-auto animate-in slide-in-from-bottom-8 fade-in shadow-2xl">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+      <Card 
+        className="fixed w-full max-w-md max-h-[80vh] pointer-events-auto shadow-2xl z-[101]"
+        style={{
+          right: `${24 + position.x}px`,
+          bottom: `${24 + position.y}px`,
+          cursor: isDragging ? 'grabbing' : 'default'
+        }}
+      >
+        <CardHeader 
+          className="flex flex-row items-center justify-between space-y-0 pb-4 cursor-grab active:cursor-grabbing"
+          onMouseDown={handleMouseDown}
+        >
             <div className="flex items-center gap-2">
               <Brain className="h-5 w-5 text-primary" />
               <CardTitle className="text-lg">Análise de IA</CardTitle>
@@ -194,7 +249,6 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
             )}
           </CardContent>
         </Card>
-      </div>
     );
   };
 
