@@ -26,6 +26,7 @@ interface AIAnalysisFloatingProps {
  */
 export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps) {
   const { toast } = useToast();
+  const [isActive, setIsActive] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -249,8 +250,24 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
     }
   };
 
+  // Botão superior (toggle)
+  const TopToggleButton = () => (
+    <button
+      onClick={() => setIsActive(!isActive)}
+      className={`flex items-center justify-center w-[30px] h-[30px] rounded transition-all duration-200 ${
+        isActive 
+          ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+          : 'hover:bg-accent text-muted-foreground'
+      }`}
+      title={isActive ? 'Desativar Análise IA' : 'Ativar Análise IA'}
+    >
+      <Brain size={16} className={isActive ? 'animate-pulse' : ''} />
+    </button>
+  );
+
   // FAB (Floating Action Button) - arrastável
   const FloatingButton = () => {
+    if (!isActive) return null;
 
     return (
       <button
@@ -402,6 +419,7 @@ export function AIAnalysisFloating({ data, onAnalyze }: AIAnalysisFloatingProps)
 
   return (
     <>
+      <TopToggleButton />
       <FloatingButton />
       <AnalysisPanel />
     </>
