@@ -49,7 +49,7 @@ export function Sidebar() {
                       tooltip={state === 'collapsed' ? item.label : undefined}
                     >
                       <Icon className="h-4 w-4" />
-                      <span>{item.label}</span>
+                      {state !== 'collapsed' && <span>{item.label}</span>}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )
