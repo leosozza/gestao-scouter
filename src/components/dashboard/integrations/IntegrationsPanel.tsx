@@ -17,6 +17,7 @@ import {
 import { BitrixIntegration } from "./BitrixIntegration";
 import { N8NIntegration } from "./N8NIntegration";
 import { DataSourceSelector } from "./DataSourceSelector";
+import { GoogleSheetsIntegration } from "./GoogleSheetsIntegration";
 
 interface Integration {
   id: string;
@@ -47,7 +48,7 @@ const availableIntegrations: Integration[] = [
 ];
 
 export const IntegrationsPanel = () => {
-  const [selectedIntegration, setSelectedIntegration] = useState<string>('data-source');
+  const [selectedIntegration, setSelectedIntegration] = useState<string>('sheets-sync');
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -84,10 +85,14 @@ export const IntegrationsPanel = () => {
       </div>
 
       <Tabs value={selectedIntegration} onValueChange={setSelectedIntegration}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="data-source" className="flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="sheets-sync" className="flex items-center gap-2">
             <Shuffle className="h-4 w-4" />
-            Google Sheets
+            Sincronizar
+          </TabsTrigger>
+          <TabsTrigger value="data-source" className="flex items-center gap-2">
+            <Database className="h-4 w-4" />
+            Fonte de Dados
           </TabsTrigger>
           <TabsTrigger value="bitrix24" className="flex items-center gap-2">
             <Database className="h-4 w-4" />
@@ -102,6 +107,10 @@ export const IntegrationsPanel = () => {
             Visão Geral
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="sheets-sync">
+          <GoogleSheetsIntegration />
+        </TabsContent>
 
         <TabsContent value="data-source">
           <DataSourceSelector />
