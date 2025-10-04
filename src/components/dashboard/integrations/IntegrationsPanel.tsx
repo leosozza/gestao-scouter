@@ -18,6 +18,7 @@ import { BitrixIntegration } from "./BitrixIntegration";
 import { N8NIntegration } from "./N8NIntegration";
 import { DataSourceSelector } from "./DataSourceSelector";
 import { GoogleSheetsIntegration } from "./GoogleSheetsIntegration";
+import { SupabaseIntegration } from "./SupabaseIntegration";
 
 interface Integration {
   id: string;
@@ -48,7 +49,7 @@ const availableIntegrations: Integration[] = [
 ];
 
 export const IntegrationsPanel = () => {
-  const [selectedIntegration, setSelectedIntegration] = useState<string>('sheets-sync');
+  const [selectedIntegration, setSelectedIntegration] = useState<string>('supabase');
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -85,7 +86,11 @@ export const IntegrationsPanel = () => {
       </div>
 
       <Tabs value={selectedIntegration} onValueChange={setSelectedIntegration}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="supabase" className="flex items-center gap-2">
+            <Database className="h-4 w-4" />
+            Supabase
+          </TabsTrigger>
           <TabsTrigger value="sheets-sync" className="flex items-center gap-2">
             <Shuffle className="h-4 w-4" />
             Sincronizar
@@ -107,6 +112,10 @@ export const IntegrationsPanel = () => {
             Visão Geral
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="supabase">
+          <SupabaseIntegration />
+        </TabsContent>
 
         <TabsContent value="sheets-sync">
           <GoogleSheetsIntegration />
