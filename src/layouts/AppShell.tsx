@@ -1,7 +1,7 @@
 import { ReactNode } from 'react'
 import { Layers3 } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar'
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar'
 import { AIAnalysisFloating } from '@/components/shared/AIAnalysisFloating'
 
 interface AppShellProps {
@@ -21,8 +21,7 @@ export function AppShell({ sidebar, children }: AppShellProps) {
           {/* Topbar */}
           <header className="h-16 px-4 md:px-6 border-b flex items-center justify-between sticky top-0 bg-background/75 backdrop-blur supports-[backdrop-filter]:bg-background/75 z-40">
             <div className="flex items-center gap-3">
-              <SidebarTrigger />
-              <div className="hidden md:flex items-center gap-2 text-xl font-semibold tracking-tight">
+              <div className="flex items-center gap-2 text-xl font-semibold tracking-tight">
                 <Layers3 className="h-5 w-5"/> Gestão Scouter
               </div>
             </div>
