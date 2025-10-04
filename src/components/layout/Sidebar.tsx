@@ -9,7 +9,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar'
 
@@ -31,9 +30,6 @@ export function Sidebar() {
   return (
     <SidebarUI>
       <SidebarContent>
-        <div className="p-2">
-          <SidebarTrigger />
-        </div>
         <SidebarGroup>
           <SidebarGroupLabel>Navegação</SidebarGroupLabel>
           <SidebarGroupContent>
