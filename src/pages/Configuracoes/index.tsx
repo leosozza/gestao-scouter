@@ -9,6 +9,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Button } from '@/components/ui/button'
 import { AlertCircle, CheckCircle2, Settings, Users, Plug } from 'lucide-react'
 import { DataSourceSelector } from '@/components/dashboard/integrations/DataSourceSelector'
+import { IntegrationsPanel } from '@/components/dashboard/integrations/IntegrationsPanel'
 import { useAppSettings } from '@/hooks/useAppSettings'
 
 export default function ConfiguracoesPage() {
@@ -313,59 +314,7 @@ export default function ConfiguracoesPage() {
 
           {/* Integrações */}
           <TabsContent value="integracoes" className="space-y-4">
-            <Card className="rounded-2xl">
-              <CardHeader>
-                <CardTitle>Fontes de Dados</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-base font-medium">Fonte de Dados Ativa</Label>
-                    <p className="text-sm text-muted-foreground">Selecione a fonte de dados principal</p>
-                  </div>
-                  <DataSourceSelector />
-                </div>
-                
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-xl border p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium">Google Sheets</div>
-                    <span className="flex items-center gap-1 text-sm">
-                      <CheckCircle2 className="h-3 w-3" />
-                      Conectado
-                    </span>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    URL/ID da planilha pública
-                  </div>
-                  <Input 
-                    placeholder="https://docs.google.com/spreadsheets/d/..." 
-                    className="rounded-xl" 
-                  />
-                  <Button className="rounded-xl w-full">Reconectar</Button>
-                </div>
-                
-                <div className="rounded-xl border p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium">Bitrix24</div>
-                    <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <AlertCircle className="h-3 w-3" />
-                      Não configurado
-                    </span>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Conexão via app local + proxy seguro
-                  </div>
-                  <div className="space-y-2">
-                    <Input placeholder="Base URL" className="rounded-xl" />
-                    <Input placeholder="App ID" className="rounded-xl" />
-                    <Input placeholder="Redirect URL" className="rounded-xl" />
-                  </div>
-                  <Button className="rounded-xl w-full">Autorizar</Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <IntegrationsPanel />
           </TabsContent>
         </Tabs>
       </div>
