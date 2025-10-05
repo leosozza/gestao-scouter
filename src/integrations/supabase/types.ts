@@ -125,6 +125,117 @@ export type Database = {
         }
         Relationships: []
       }
+      permissions: {
+        Row: {
+          action: string
+          allowed: boolean
+          created_at: string | null
+          id: number
+          module: string
+          role_id: number
+        }
+        Insert: {
+          action: string
+          allowed?: boolean
+          created_at?: string | null
+          id?: number
+          module: string
+          role_id: number
+        }
+        Update: {
+          action?: string
+          allowed?: boolean
+          created_at?: string | null
+          id?: number
+          module?: string
+          role_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roles: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: number
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          name?: string
+        }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          role_id: number
+          scouter_id: number | null
+          supervisor_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id: string
+          name: string
+          role_id: number
+          scouter_id?: number | null
+          supervisor_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          role_id?: number
+          scouter_id?: number | null
+          supervisor_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "users_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "user_permissions"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "users_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       webhook_logs: {
         Row: {
           created_at: string | null
@@ -154,10 +265,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      user_permissions: {
+        Row: {
+          action: string | null
+          allowed: boolean | null
+          module: string | null
+          role: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { user_id: string }
+        Returns: string
+      }
+      has_permission: {
+        Args: { action_name: string; module_name: string; user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
