@@ -14,6 +14,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      "Bitrix leads": {
+        Row: {
+          created_at: string
+          id: number
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+        }
+        Update: {
+          created_at?: string
+          id?: number
+        }
+        Relationships: []
+      }
       fichas: {
         Row: {
           agendado: string | null
@@ -107,6 +122,33 @@ export type Database = {
           tabulacao?: string | null
           updated_at?: string | null
           valor_ficha?: string | null
+        }
+        Relationships: []
+      }
+      webhook_logs: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: number
+          payload: Json | null
+          source: string
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: number
+          payload?: Json | null
+          source: string
+          status: string
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: number
+          payload?: Json | null
+          source?: string
+          status?: string
         }
         Relationships: []
       }

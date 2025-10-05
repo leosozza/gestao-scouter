@@ -47,13 +47,13 @@ export const SupabaseIntegration = () => {
     setIsLoadingLogs(true);
     try {
       const { data, error } = await supabase
-        .from('webhook_logs')
+        .from('webhook_logs' as any)
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
 
       if (error) throw error;
-      setLogs(data || []);
+      setLogs((data as unknown as WebhookLog[]) || []);
     } catch (error) {
       console.error('Erro ao carregar logs:', error);
     } finally {
@@ -69,7 +69,7 @@ export const SupabaseIntegration = () => {
   const clearLogs = async () => {
     try {
       const { error } = await supabase
-        .from('webhook_logs')
+        .from('webhook_logs' as any)
         .delete()
         .neq('id', 0); // Delete all
 
@@ -77,7 +77,7 @@ export const SupabaseIntegration = () => {
       toast.success("Logs limpos com sucesso!");
       loadLogs();
     } catch (error) {
-      toast.error("Erro ao limpar logs: " + error.message);
+      toast.error("Erro ao limpar logs: " + (error as Error).message);
     }
   };
 
@@ -108,7 +108,7 @@ export const SupabaseIntegration = () => {
         toast.error("Erro ao testar webhook");
       }
     } catch (error) {
-      toast.error("Erro ao testar webhook: " + error.message);
+      toast.error("Erro ao testar webhook: " + (error as Error).message);
     }
   };
 
