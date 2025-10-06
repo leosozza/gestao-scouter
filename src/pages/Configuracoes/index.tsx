@@ -7,9 +7,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { AlertCircle, CheckCircle2, Settings, Users, Plug } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Settings, Users, Plug, Shield, UserCog } from 'lucide-react'
 import { DataSourceSelector } from '@/components/dashboard/integrations/DataSourceSelector'
 import { IntegrationsPanel } from '@/components/dashboard/integrations/IntegrationsPanel'
+import { UsersPanel } from '@/components/auth/UsersPanel'
+import { PermissionsPanel } from '@/components/auth/PermissionsPanel'
 import { useAppSettings } from '@/hooks/useAppSettings'
 
 export default function ConfiguracoesPage() {
@@ -120,7 +122,7 @@ export default function ConfiguracoesPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3 rounded-2xl">
+          <TabsList className="grid w-full grid-cols-5 rounded-2xl">
             <TabsTrigger value="parametros" className="rounded-xl">
               <Settings className="h-4 w-4 mr-2" />
               Parâmetros
@@ -128,6 +130,14 @@ export default function ConfiguracoesPage() {
             <TabsTrigger value="classificacoes" className="rounded-xl">
               <Users className="h-4 w-4 mr-2" />
               Classificações
+            </TabsTrigger>
+            <TabsTrigger value="usuarios" className="rounded-xl">
+              <UserCog className="h-4 w-4 mr-2" />
+              Usuários
+            </TabsTrigger>
+            <TabsTrigger value="permissoes" className="rounded-xl">
+              <Shield className="h-4 w-4 mr-2" />
+              Permissões
             </TabsTrigger>
             <TabsTrigger value="integracoes" className="rounded-xl">
               <Plug className="h-4 w-4 mr-2" />
@@ -310,6 +320,16 @@ export default function ConfiguracoesPage() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Usuários */}
+          <TabsContent value="usuarios" className="space-y-4">
+            <UsersPanel />
+          </TabsContent>
+
+          {/* Permissões de Acesso */}
+          <TabsContent value="permissoes" className="space-y-4">
+            <PermissionsPanel />
           </TabsContent>
 
           {/* Integrações */}
