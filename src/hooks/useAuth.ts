@@ -52,8 +52,8 @@ export function useAuth() {
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('users')
+      const { data, error } = (await supabase
+        .from('users' as any)
         .select(`
           id,
           name,
@@ -66,7 +66,7 @@ export function useAuth() {
           )
         `)
         .eq('id', userId)
-        .single();
+        .single()) as any;
 
       if (error) throw error;
 
@@ -76,7 +76,7 @@ export function useAuth() {
           name: data.name,
           email: data.email,
           role_id: data.role_id,
-          role_name: (data.roles as any)?.name,
+          role_name: data.roles?.name,
           scouter_id: data.scouter_id,
           supervisor_id: data.supervisor_id,
         });

@@ -58,9 +58,9 @@ export function PermissionsPanel() {
   const fetchRoles = async () => {
     try {
       const { data, error } = await supabase
-        .from('roles')
+        .from('roles' as any)
         .select('*')
-        .order('name');
+        .order('name') as any;
 
       if (error) throw error;
       setRoles(data || []);
@@ -76,9 +76,9 @@ export function PermissionsPanel() {
   const fetchPermissions = async () => {
     try {
       const { data, error } = await supabase
-        .from('permissions')
+        .from('permissions' as any)
         .select('*')
-        .order('module, action');
+        .order('module, action') as any;
 
       if (error) throw error;
       setPermissions(data || []);
@@ -105,9 +105,9 @@ export function PermissionsPanel() {
       if (existingPermission) {
         // Update existing permission
         const { error } = await supabase
-          .from('permissions')
+          .from('permissions' as any)
           .update({ allowed: !existingPermission.allowed })
-          .eq('id', existingPermission.id);
+          .eq('id', existingPermission.id) as any;
 
         if (error) throw error;
 
@@ -120,7 +120,7 @@ export function PermissionsPanel() {
       } else {
         // Insert new permission
         const { data, error } = await supabase
-          .from('permissions')
+          .from('permissions' as any)
           .insert({
             module,
             action,
@@ -128,7 +128,7 @@ export function PermissionsPanel() {
             allowed: true,
           })
           .select()
-          .single();
+          .single() as any;
 
         if (error) throw error;
 

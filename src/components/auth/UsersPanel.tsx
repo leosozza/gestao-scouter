@@ -22,6 +22,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -69,7 +70,7 @@ export function UsersPanel() {
   const fetchUsers = async () => {
     try {
       const { data, error } = await supabase
-        .from('users')
+        .from('users' as any)
         .select(`
           id,
           name,
@@ -81,7 +82,7 @@ export function UsersPanel() {
             name
           )
         `)
-        .order('name');
+        .order('name') as any;
 
       if (error) throw error;
       setUsers(data || []);
@@ -96,9 +97,9 @@ export function UsersPanel() {
   const fetchRoles = async () => {
     try {
       const { data, error } = await supabase
-        .from('roles')
+        .from('roles' as any)
         .select('*')
-        .order('name');
+        .order('name') as any;
 
       if (error) throw error;
       setRoles(data || []);
@@ -114,14 +115,14 @@ export function UsersPanel() {
       if (editingUser) {
         // Update existing user
         const { error } = await supabase
-          .from('users')
+          .from('users' as any)
           .update({
             name: formData.name,
             email: formData.email,
             role_id: parseInt(formData.role_id),
             scouter_id: formData.scouter_id ? parseInt(formData.scouter_id) : null,
           })
-          .eq('id', editingUser.id);
+          .eq('id', editingUser.id) as any;
 
         if (error) throw error;
         toast.success('Usuário atualizado com sucesso');
@@ -142,14 +143,14 @@ export function UsersPanel() {
         if (authData.user) {
           // Create user profile
           const { error: profileError } = await supabase
-            .from('users')
+            .from('users' as any)
             .insert({
               id: authData.user.id,
               name: formData.name,
               email: formData.email,
               role_id: parseInt(formData.role_id),
               scouter_id: formData.scouter_id ? parseInt(formData.scouter_id) : null,
-            });
+            }) as any;
 
           if (profileError) throw profileError;
           toast.success('Usuário criado com sucesso. Um email de confirmação foi enviado.');
@@ -170,9 +171,9 @@ export function UsersPanel() {
 
     try {
       const { error } = await supabase
-        .from('users')
+        .from('users' as any)
         .delete()
-        .eq('id', userId);
+        .eq('id', userId) as any;
 
       if (error) throw error;
 
@@ -230,6 +231,11 @@ export function UsersPanel() {
               <DialogTitle>
                 {editingUser ? 'Editar Usuário' : 'Convidar Novo Usuário'}
               </DialogTitle>
+              <DialogDescription>
+                {editingUser 
+                  ? 'Altere as informações do usuário abaixo.'
+                  : 'Preencha os dados para criar um novo usuário no sistema.'}
+              </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
