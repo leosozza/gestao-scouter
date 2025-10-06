@@ -47,25 +47,34 @@ const ACTIONS = [
 export function PermissionsPanel() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [selectedRole, setSelectedRole] = useState<number | null>(null);
+  const [selectedRole, setSelectedRole] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchRoles();
-    fetchPermissions();
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    await Promise.all([fetchRoles(), fetchPermissions()]);
+    setLoading(false);
+  };
 
   const fetchRoles = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = (await supabase
         .from('roles' as any)
         .select('*')
-        .order('name') as any;
+        .order('name')) as any;
 
       if (error) throw error;
-      setRoles(data || []);
-      if (data && data.length > 0) {
-        setSelectedRole(data[0].id);
+      
+      const rolesData = data || [];
+      setRoles(rolesData);
+      
+      // Set first role as selected
+      if (rolesData.length > 0 && !selectedRole) {
+        setSelectedRole(rolesData[0].id.toString());
       }
     } catch (error) {
       console.error('Error fetching roles:', error);
@@ -75,31 +84,34 @@ export function PermissionsPanel() {
 
   const fetchPermissions = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = (await supabase
         .from('permissions' as any)
         .select('*')
-        .order('module, action') as any;
+        .order('module, action')) as any;
 
       if (error) throw error;
-      setPermissions(data || []);
+      
+      const permsData = data || [];
+      setPermissions(permsData);
+      
+      console.log('Permissions loaded:', permsData.length);
     } catch (error) {
       console.error('Error fetching permissions:', error);
       toast.error('Erro ao carregar permissões');
-    } finally {
-      setLoading(false);
     }
   };
 
-  const hasPermission = (module: string, action: string, roleId: number): boolean => {
+  const hasPermission = (module: string, action: string, roleId: string): boolean => {
     return permissions.some(
-      (p) => p.module === module && p.action === action && p.role_id === roleId && p.allowed
+      (p) => p.module === module && p.action === action && p.role_id === parseInt(roleId) && p.allowed
     );
   };
 
-  const togglePermission = async (module: string, action: string, roleId: number) => {
+  const togglePermission = async (module: string, action: string, roleId: string) => {
     try {
+      const roleIdNum = parseInt(roleId);
       const existingPermission = permissions.find(
-        (p) => p.module === module && p.action === action && p.role_id === roleId
+        (p) => p.module === module && p.action === action && p.role_id === roleIdNum
       );
 
       if (existingPermission) {
@@ -119,16 +131,16 @@ export function PermissionsPanel() {
         );
       } else {
         // Insert new permission
-        const { data, error } = await supabase
+        const { data, error } = (await supabase
           .from('permissions' as any)
           .insert({
             module,
             action,
-            role_id: roleId,
+            role_id: roleIdNum,
             allowed: true,
           })
           .select()
-          .single() as any;
+          .single()) as any;
 
         if (error) throw error;
 
@@ -144,7 +156,25 @@ export function PermissionsPanel() {
   };
 
   if (loading) {
-    return <div>Carregando...</div>;
+    return (
+      <Card>
+        <CardContent className="py-8 text-center">
+          <div className="text-muted-foreground">Carregando permissões...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (roles.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center">
+          <div className="text-muted-foreground">
+            Nenhuma função encontrada. Execute a migration primeiro.
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -156,52 +186,56 @@ export function PermissionsPanel() {
         </p>
       </CardHeader>
       <CardContent>
-        <Tabs value={selectedRole?.toString()} onValueChange={(v) => setSelectedRole(parseInt(v))}>
-          <TabsList className="mb-4">
-            {roles.map((role) => (
-              <TabsTrigger key={role.id} value={role.id.toString()} className="capitalize">
-                {role.name}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+        {selectedRole && (
+          <Tabs value={selectedRole} onValueChange={setSelectedRole}>
+            <TabsList className="mb-4">
+              {roles.map((role) => (
+                <TabsTrigger key={role.id} value={role.id.toString()} className="capitalize">
+                  {role.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-          {roles.map((role) => (
-            <TabsContent key={role.id} value={role.id.toString()}>
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground mb-4">{role.description}</p>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Módulo</TableHead>
-                      {ACTIONS.map((action) => (
-                        <TableHead key={action.name} className="text-center">
-                          {action.label}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {MODULES.map((module) => (
-                      <TableRow key={module.name}>
-                        <TableCell className="font-medium">{module.label}</TableCell>
+            {roles.map((role) => (
+              <TabsContent key={role.id} value={role.id.toString()}>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">{role.description}</p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Módulo</TableHead>
                         {ACTIONS.map((action) => (
-                          <TableCell key={action.name} className="text-center">
-                            <Checkbox
-                              checked={hasPermission(module.name, action.name, role.id)}
-                              onCheckedChange={() =>
-                                togglePermission(module.name, action.name, role.id)
-                              }
-                            />
-                          </TableCell>
+                          <TableHead key={action.name} className="text-center">
+                            {action.label}
+                          </TableHead>
                         ))}
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
+                    </TableHeader>
+                    <TableBody>
+                      {MODULES.map((module) => (
+                        <TableRow key={module.name}>
+                          <TableCell className="font-medium">{module.label}</TableCell>
+                          {ACTIONS.map((action) => (
+                            <TableCell key={action.name} className="text-center">
+                              <div className="flex items-center justify-center">
+                                <Checkbox
+                                  checked={hasPermission(module.name, action.name, role.id.toString())}
+                                  onCheckedChange={() =>
+                                    togglePermission(module.name, action.name, role.id.toString())
+                                  }
+                                />
+                              </div>
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
+        )}
       </CardContent>
     </Card>
   );
