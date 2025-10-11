@@ -2,6 +2,8 @@
 
 Este documento detalha como configurar a sincronização em tempo real entre Google Sheets e Supabase.
 
+> **Nota**: Para sincronização de leads do Bitrix24, consulte [BITRIX_WEBHOOK_SETUP.md](./BITRIX_WEBHOOK_SETUP.md)
+
 ## 1. Configuração do Supabase
 
 ### 1.1 Executar Migration
