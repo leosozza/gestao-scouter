@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# PWA temporary files
+generate-icons.js
+sw.js.map
+workbox-*.js.map
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
