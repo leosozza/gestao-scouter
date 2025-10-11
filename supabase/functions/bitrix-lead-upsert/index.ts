@@ -123,6 +123,8 @@ async function upsertLead(leadData: any) {
 }
 
 serve(async (req) => {
+  const startTime = Date.now();
+  
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -134,6 +136,10 @@ serve(async (req) => {
       },
     });
   }
+
+  let eventType = "";
+  let bitrixId = 0;
+  let payload: any = {};
 
   try {
     // Verify authentication
@@ -148,6 +154,8 @@ serve(async (req) => {
 
     // Parse request body
     const body = await req.json();
+    payload = body;
+    eventType = body.event || "UNKNOWN";
     console.log("Bitrix webhook received:", JSON.stringify(body, null, 2));
 
     // Extract lead data from Bitrix24 webhook format
@@ -167,14 +175,20 @@ serve(async (req) => {
 
     // Upsert the lead
     const result = await upsertLead(leadData);
+    bitrixId = leadData.FIELDS?.ID || leadData.ID || 0;
 
-    console.log("Lead upserted successfully:", result);
+    const processingTime = Date.now() - startTime;
+    console.log(`Lead upserted successfully in ${processingTime}ms:`, result);
+
+    // Optional: Log successful webhook processing
+    await logWebhookEvent(eventType, bitrixId, payload, true, null, processingTime);
 
     return new Response(
       JSON.stringify({
         success: true,
         message: "Lead synchronized successfully",
         result,
+        processingTime,
       }),
       {
         status: 200,
@@ -186,8 +200,13 @@ serve(async (req) => {
     );
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";
+    const processingTime = Date.now() - startTime;
+    
     console.error("Error processing Bitrix webhook:", message);
     console.error("Stack trace:", e instanceof Error ? e.stack : "");
+    
+    // Optional: Log failed webhook processing
+    await logWebhookEvent(eventType, bitrixId, payload, false, message, processingTime);
     
     return new Response(
       JSON.stringify({
@@ -204,3 +223,41 @@ serve(async (req) => {
     );
   }
 });
+
+// Optional logging function - logs to bitrix_webhook_logs table if it exists
+async function logWebhookEvent(
+  eventType: string,
+  bitrixId: number,
+  payload: any,
+  success: boolean,
+  errorMessage: string | null,
+  processingTimeMs: number
+) {
+  try {
+    const SUPABASE_URL = Deno.env.get("NEXT_PUBLIC_SUPABASE_URL");
+    const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    
+    if (!SUPABASE_URL || !SERVICE_KEY) return;
+
+    await fetch(`${SUPABASE_URL}/rest/v1/bitrix_webhook_logs`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SERVICE_KEY,
+        "Authorization": `Bearer ${SERVICE_KEY}`,
+        "Prefer": "return=minimal",
+      },
+      body: JSON.stringify({
+        event_type: eventType,
+        bitrix_id: bitrixId || null,
+        payload,
+        success,
+        error_message: errorMessage,
+        processing_time_ms: processingTimeMs,
+      }),
+    });
+  } catch (logError) {
+    // Don't fail the webhook if logging fails
+    console.warn("Failed to log webhook event:", logError);
+  }
+}

@@ -139,8 +139,9 @@ VITE_SUPABASE_URL=https://seu_projeto.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=sua_chave_publica
 ```
 
-## 📊 Integração Google Sheets
+## 📊 Integrações de Dados
 
+### Google Sheets
 O sistema suporta integração com Google Sheets através de:
 
 1. **URL de Planilha**: Configuração via interface
@@ -155,9 +156,26 @@ O sistema suporta integração com Google Sheets através de:
 - **Data de criação da Ficha**: DD/MM/AAAA HH:MM
 - **Valor por Fichas**: R$ X,XX
 
-## 🔄 Sync em tempo real (Sheets → Supabase)
+## 🔄 Sincronização de Dados
 
-### Configuração
+### Bitrix24 (Webhook)
+Sincronização automática de leads do Bitrix24 via webhooks. Quando um lead é criado ou atualizado no Bitrix24, os dados são enviados automaticamente para o Supabase.
+
+**Documentação completa**: [BITRIX_WEBHOOK_SETUP.md](./BITRIX_WEBHOOK_SETUP.md)
+
+**Recursos:**
+- Webhook automático para ONCRMLEADADD e ONCRMLEADUPDATE
+- Mapeamento de campos padrão e customizados
+- Upsert idempotente baseado em bitrix_id
+- Logs de sincronização para troubleshooting
+- Suporte a autenticação via X-Secret header
+
+### Google Sheets (Sync Automático)
+Sincronização em tempo real entre Google Sheets e Supabase usando Apps Script.
+
+**Documentação completa**: [SHEETS_SYNC_SETUP.md](./SHEETS_SYNC_SETUP.md)
+
+**Configuração rápida:**
 1) Publique a Edge Function `sheets-upsert`:
    ```bash
    supabase functions deploy sheets-upsert
