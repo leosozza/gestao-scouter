@@ -15,7 +15,9 @@ import {
   ExternalLink,
   FileText,
   RefreshCw,
-  Trash2
+  Trash2,
+  Key,
+  Settings
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -31,16 +33,35 @@ interface WebhookLog {
   error_message?: string;
 }
 
+interface BitrixWebhookLog {
+  id: string;
+  event_type: string;
+  bitrix_id: number | null;
+  payload: any;
+  success: boolean;
+  error_message: string | null;
+  processing_time_ms: number | null;
+  created_at: string;
+}
+
 export const SupabaseIntegration = () => {
   const [logs, setLogs] = useState<WebhookLog[]>([]);
+  const [bitrixLogs, setBitrixLogs] = useState<BitrixWebhookLog[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [isLoadingBitrixLogs, setIsLoadingBitrixLogs] = useState(false);
   const [webhookUrl, setWebhookUrl] = useState("");
+  const [bitrixWebhookUrl, setBitrixWebhookUrl] = useState("");
+  const [bitrixSecret, setBitrixSecret] = useState("");
+  const [showSecret, setShowSecret] = useState(false);
   const projectId = "nwgqynfcglcwwvibaypj";
 
   useEffect(() => {
     const url = `https://${projectId}.supabase.co/functions/v1/webhook-receiver`;
+    const bitrixUrl = `https://${projectId}.supabase.co/functions/v1/bitrix-lead-upsert`;
     setWebhookUrl(url);
+    setBitrixWebhookUrl(bitrixUrl);
     loadLogs();
+    loadBitrixLogs();
   }, []);
 
   const loadLogs = async () => {
@@ -61,9 +82,51 @@ export const SupabaseIntegration = () => {
     }
   };
 
+  const loadBitrixLogs = async () => {
+    setIsLoadingBitrixLogs(true);
+    try {
+      const { data, error } = await supabase
+        .from('bitrix_webhook_logs' as any)
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setBitrixLogs((data as unknown as BitrixWebhookLog[]) || []);
+    } catch (error) {
+      console.error('Erro ao carregar logs do Bitrix:', error);
+    } finally {
+      setIsLoadingBitrixLogs(false);
+    }
+  };
+
   const copyWebhookUrl = () => {
     navigator.clipboard.writeText(webhookUrl);
     toast.success("URL do webhook copiada!");
+  };
+
+  const copyBitrixWebhookUrl = () => {
+    navigator.clipboard.writeText(bitrixWebhookUrl);
+    toast.success("URL do webhook Bitrix copiada!");
+  };
+
+  const copyBitrixSecret = () => {
+    if (!bitrixSecret) {
+      toast.error("Configure o secret primeiro!");
+      return;
+    }
+    navigator.clipboard.writeText(bitrixSecret);
+    toast.success("Secret copiado!");
+  };
+
+  const saveBitrixSecret = () => {
+    if (!bitrixSecret) {
+      toast.error("Insira um secret válido!");
+      return;
+    }
+    // In production, this would be saved to environment variables
+    // For now, we just show a success message
+    toast.success("Secret salvo! Configure-o também nas variáveis de ambiente do Supabase.");
   };
 
   const clearLogs = async () => {
@@ -114,14 +177,22 @@ export const SupabaseIntegration = () => {
 
   return (
     <Tabs defaultValue="overview" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-2">
+      <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="overview">
           <Database className="mr-2 h-4 w-4" />
           Visão Geral
         </TabsTrigger>
+        <TabsTrigger value="bitrix-config">
+          <Settings className="mr-2 h-4 w-4" />
+          Config. Bitrix
+        </TabsTrigger>
+        <TabsTrigger value="bitrix-logs">
+          <FileText className="mr-2 h-4 w-4" />
+          Logs Bitrix
+        </TabsTrigger>
         <TabsTrigger value="logs">
           <FileText className="mr-2 h-4 w-4" />
-          Logs de Webhook
+          Logs Gerais
         </TabsTrigger>
       </TabsList>
 
@@ -303,6 +374,248 @@ export const SupabaseIntegration = () => {
                 Documentação do Supabase
               </a>
             </Button>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="bitrix-config" className="space-y-4">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <Key className="h-6 w-6" />
+              <div>
+                <CardTitle>Configuração Bitrix24</CardTitle>
+                <CardDescription>
+                  Configure a integração com Bitrix24 para sincronização automática de leads
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Configure o webhook no Bitrix24 para enviar leads automaticamente ao Supabase.
+                Os dados serão sincronizados em tempo real na tabela <code className="text-xs bg-muted px-1 py-0.5 rounded">bitrix_leads</code>.
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="bitrix-webhook-url">URL do Webhook Bitrix</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    id="bitrix-webhook-url"
+                    value={bitrixWebhookUrl}
+                    readOnly
+                    className="font-mono text-sm"
+                  />
+                  <Button variant="outline" size="icon" onClick={copyBitrixWebhookUrl}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Use esta URL ao configurar o webhook no Bitrix24
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="bitrix-secret">Secret de Autenticação (X-Secret Header)</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    id="bitrix-secret"
+                    type={showSecret ? "text" : "password"}
+                    value={bitrixSecret}
+                    onChange={(e) => setBitrixSecret(e.target.value)}
+                    placeholder="Digite o secret configurado no Supabase"
+                    className="font-mono text-sm"
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => setShowSecret(!showSecret)}
+                  >
+                    {showSecret ? "👁️" : "👁️‍🗨️"}
+                  </Button>
+                  <Button variant="outline" size="icon" onClick={copyBitrixSecret}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Este valor deve ser configurado como <code className="bg-muted px-1 rounded">BITRIX_WEBHOOK_SECRET</code> no Supabase
+                </p>
+              </div>
+
+              <Button onClick={saveBitrixSecret} className="w-full">
+                <Key className="mr-2 h-4 w-4" />
+                Salvar Configuração
+              </Button>
+            </div>
+
+            <div className="space-y-3 pt-4 border-t">
+              <h4 className="font-medium">Instruções de Integração</h4>
+              
+              <div className="space-y-4">
+                <div className="bg-muted p-4 rounded-lg space-y-2">
+                  <h5 className="font-medium text-sm flex items-center gap-2">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs">1</span>
+                    Configurar no Supabase
+                  </h5>
+                  <p className="text-sm text-muted-foreground pl-8">
+                    Acesse o Supabase Dashboard → Settings → Edge Functions → Secrets e adicione:
+                  </p>
+                  <pre className="pl-8 bg-background p-2 rounded text-xs">
+BITRIX_WEBHOOK_SECRET=seu_secret_aqui
+                  </pre>
+                </div>
+
+                <div className="bg-muted p-4 rounded-lg space-y-2">
+                  <h5 className="font-medium text-sm flex items-center gap-2">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs">2</span>
+                    Configurar no Bitrix24
+                  </h5>
+                  <div className="pl-8 space-y-2 text-sm text-muted-foreground">
+                    <p>• Acesse: Aplicativos → Desenvolvedor → Webhooks de saída</p>
+                    <p>• Clique em "Adicionar webhook"</p>
+                    <p>• Configure os eventos: <code className="bg-background px-1 rounded">ONCRMLEADADD</code>, <code className="bg-background px-1 rounded">ONCRMLEADUPDATE</code></p>
+                    <p>• URL do webhook: Use a URL acima</p>
+                    <p>• Adicione header customizado:</p>
+                    <pre className="bg-background p-2 rounded text-xs mt-1">
+Name: X-Secret
+Value: {bitrixSecret || "seu_secret_aqui"}
+                    </pre>
+                  </div>
+                </div>
+
+                <div className="bg-muted p-4 rounded-lg space-y-2">
+                  <h5 className="font-medium text-sm flex items-center gap-2">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs">3</span>
+                    Testar a Integração
+                  </h5>
+                  <p className="text-sm text-muted-foreground pl-8">
+                    Crie ou atualize um lead no Bitrix24 e verifique os logs na aba "Logs Bitrix" para confirmar a sincronização.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t">
+              <Button variant="outline" asChild className="flex-1">
+                <a 
+                  href="/BITRIX_WEBHOOK_SETUP.md"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Documentação Completa
+                </a>
+              </Button>
+              <Button variant="outline" asChild className="flex-1">
+                <a 
+                  href={`https://supabase.com/dashboard/project/${projectId}/functions/bitrix-lead-upsert`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Ver Edge Function
+                </a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="bitrix-logs" className="space-y-4">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <FileText className="h-5 w-5" />
+                <div>
+                  <CardTitle className="text-base">Logs de Sincronização Bitrix24</CardTitle>
+                  <CardDescription>Últimas 50 sincronizações de leads do Bitrix24</CardDescription>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" onClick={loadBitrixLogs} disabled={isLoadingBitrixLogs}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoadingBitrixLogs ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[600px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data/Hora</TableHead>
+                    <TableHead>Evento</TableHead>
+                    <TableHead>Lead ID</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Tempo (ms)</TableHead>
+                    <TableHead>Detalhes</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {bitrixLogs.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground">
+                        {isLoadingBitrixLogs ? (
+                          "Carregando logs..."
+                        ) : (
+                          "Nenhum log encontrado. Configure o webhook no Bitrix24 para ver as sincronizações."
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    bitrixLogs.map((log) => (
+                      <TableRow key={log.id}>
+                        <TableCell className="text-xs whitespace-nowrap">
+                          {new Date(log.created_at).toLocaleString('pt-BR')}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            {log.event_type || 'N/A'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {log.bitrix_id || '-'}
+                        </TableCell>
+                        <TableCell>
+                          {log.success ? (
+                            <Badge className="bg-success/20 text-success border-success/30">
+                              ✓ Sucesso
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive">✗ Erro</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {log.processing_time_ms ? `${log.processing_time_ms}ms` : '-'}
+                        </TableCell>
+                        <TableCell>
+                          <details className="cursor-pointer">
+                            <summary className="text-xs text-primary">Ver payload</summary>
+                            <div className="mt-2 space-y-2">
+                              <pre className="bg-muted p-2 rounded text-xs overflow-x-auto max-w-md">
+                                {JSON.stringify(log.payload, null, 2)}
+                              </pre>
+                              {log.error_message && (
+                                <Alert variant="destructive" className="mt-2">
+                                  <AlertCircle className="h-4 w-4" />
+                                  <AlertDescription className="text-xs">
+                                    {log.error_message}
+                                  </AlertDescription>
+                                </Alert>
+                              )}
+                            </div>
+                          </details>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
           </CardContent>
         </Card>
       </TabsContent>

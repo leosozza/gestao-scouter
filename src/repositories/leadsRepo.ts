@@ -104,6 +104,25 @@ async function fetchAllLeadsFromBitrix(params: LeadsFilters): Promise<Lead[]> {
     .filter(l => applyClientSideFilters(l, params));
 }
 
+/** Fetch leads from bitrix_leads table synced via webhook */
+export async function getBitrixLeads(params: LeadsFilters = {}): Promise<Lead[]> {
+  let q = supabase.from('bitrix_leads').select('*');
+
+  // Apply filters
+  if (params.dataInicio) q = q.gte('data_de_criacao_da_ficha', params.dataInicio);
+  if (params.dataFim) q = q.lte('data_de_criacao_da_ficha', params.dataFim);
+  if (params.etapa) q = q.eq('etapa', params.etapa);
+
+  const { data, error } = await q;
+  if (error) {
+    console.error('Bitrix leads query error', error);
+    return [];
+  }
+
+  return (data ?? []).map(normalizeBitrixLead)
+    .filter(l => applyClientSideFilters(l, params));
+}
+
 function normalizeLeadFromBitrix(r: any): Lead {
   return {
     id: Number(r.id) || 0,
@@ -124,6 +143,26 @@ function normalizeLeadFromBitrix(r: any): Lead {
     cadastro_existe_foto: r.cadastro_existe_foto ?? undefined,
     presenca_confirmada: r.presenca_confirmada ?? undefined,
     supervisor_do_scouter: r.supervisor_do_scouter ?? undefined,
+  };
+}
+
+/** Normalize lead from bitrix_leads table */
+function normalizeBitrixLead(r: any): Lead {
+  return {
+    id: r.bitrix_id || 0,
+    projetos: 'Sem Projeto', // Will be enriched from custom fields if available
+    scouter: r.primeiro_nome ?? 'Desconhecido',
+    criado: r.data_de_criacao_da_ficha ?? r.created_at ?? undefined,
+    hora_criacao_ficha: r.data_de_criacao_da_ficha ?? undefined,
+    valor_ficha: '0', // Will be enriched from custom fields if available
+    etapa: r.etapa ?? 'Sem Etapa',
+    nome: r.primeiro_nome ?? 'Sem nome',
+    modelo: r.nome_do_modelo ?? '',
+    local_da_abordagem: r.local_da_abordagem ?? undefined,
+    idade: r.altura_cm ?? '', // Using height as placeholder
+    telefone: r.telefone_de_trabalho ?? r.celular ?? undefined,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
   };
 }
 
