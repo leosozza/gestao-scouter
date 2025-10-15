@@ -14,16 +14,653 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      call_logs: {
+        Row: {
+          agent_id: number | null
+          call_duration: number | null
+          call_recording_url: string | null
+          call_status: string
+          ficha_id: number | null
+          id: number
+          notes: string | null
+          phone_called: string
+          timestamp: string | null
+        }
+        Insert: {
+          agent_id?: number | null
+          call_duration?: number | null
+          call_recording_url?: string | null
+          call_status: string
+          ficha_id?: number | null
+          id?: number
+          notes?: string | null
+          phone_called: string
+          timestamp?: string | null
+        }
+        Update: {
+          agent_id?: number | null
+          call_duration?: number | null
+          call_recording_url?: string | null
+          call_status?: string
+          ficha_id?: number | null
+          id?: number
+          notes?: string | null
+          phone_called?: string
+          timestamp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_logs_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "telemarketing_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_logs_ficha_id_fkey"
+            columns: ["ficha_id"]
+            isOneToOne: false
+            referencedRelation: "fichas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_logs_ficha_id_fkey"
+            columns: ["ficha_id"]
+            isOneToOne: false
+            referencedRelation: "fichas_completas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fichas: {
+        Row: {
+          agendado: string | null
+          bitrix_id: string | null
+          bitrix_status: string | null
+          bitrix_synced_at: string | null
+          cadastro_existe_foto: string | null
+          compareceu: string | null
+          confirmado: string | null
+          criado: string | null
+          data_agendamento: string | null
+          deleted: boolean | null
+          email: string | null
+          etapa: string | null
+          ficha_confirmada: string | null
+          foto: string | null
+          hora_criacao_ficha: string | null
+          id: number
+          idade: string | null
+          latitude: number | null
+          local_da_abordagem: string | null
+          localizacao: string | null
+          longitude: number | null
+          modelo: string | null
+          nome: string
+          observacoes_telemarketing: string | null
+          presenca_confirmada: string | null
+          projeto: string | null
+          raw: Json | null
+          resultado_ligacao: string | null
+          scouter: string | null
+          scouter_user_id: string | null
+          supervisor: string | null
+          tabulacao: string | null
+          telefone: string | null
+          telemarketing_user_id: string | null
+          updated_at: string | null
+          valor_ficha: number | null
+        }
+        Insert: {
+          agendado?: string | null
+          bitrix_id?: string | null
+          bitrix_status?: string | null
+          bitrix_synced_at?: string | null
+          cadastro_existe_foto?: string | null
+          compareceu?: string | null
+          confirmado?: string | null
+          criado?: string | null
+          data_agendamento?: string | null
+          deleted?: boolean | null
+          email?: string | null
+          etapa?: string | null
+          ficha_confirmada?: string | null
+          foto?: string | null
+          hora_criacao_ficha?: string | null
+          id?: number
+          idade?: string | null
+          latitude?: number | null
+          local_da_abordagem?: string | null
+          localizacao?: string | null
+          longitude?: number | null
+          modelo?: string | null
+          nome: string
+          observacoes_telemarketing?: string | null
+          presenca_confirmada?: string | null
+          projeto?: string | null
+          raw?: Json | null
+          resultado_ligacao?: string | null
+          scouter?: string | null
+          scouter_user_id?: string | null
+          supervisor?: string | null
+          tabulacao?: string | null
+          telefone?: string | null
+          telemarketing_user_id?: string | null
+          updated_at?: string | null
+          valor_ficha?: number | null
+        }
+        Update: {
+          agendado?: string | null
+          bitrix_id?: string | null
+          bitrix_status?: string | null
+          bitrix_synced_at?: string | null
+          cadastro_existe_foto?: string | null
+          compareceu?: string | null
+          confirmado?: string | null
+          criado?: string | null
+          data_agendamento?: string | null
+          deleted?: boolean | null
+          email?: string | null
+          etapa?: string | null
+          ficha_confirmada?: string | null
+          foto?: string | null
+          hora_criacao_ficha?: string | null
+          id?: number
+          idade?: string | null
+          latitude?: number | null
+          local_da_abordagem?: string | null
+          localizacao?: string | null
+          longitude?: number | null
+          modelo?: string | null
+          nome?: string
+          observacoes_telemarketing?: string | null
+          presenca_confirmada?: string | null
+          projeto?: string | null
+          raw?: Json | null
+          resultado_ligacao?: string | null
+          scouter?: string | null
+          scouter_user_id?: string | null
+          supervisor?: string | null
+          tabulacao?: string | null
+          telefone?: string | null
+          telemarketing_user_id?: string | null
+          updated_at?: string | null
+          valor_ficha?: number | null
+        }
+        Relationships: []
+      }
+      permissions: {
+        Row: {
+          action: string
+          allowed: boolean | null
+          id: number
+          module: string
+          role_id: number | null
+        }
+        Insert: {
+          action: string
+          allowed?: boolean | null
+          id?: number
+          module: string
+          role_id?: number | null
+        }
+        Update: {
+          action?: string
+          allowed?: boolean | null
+          id?: number
+          module?: string
+          role_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          phone: string | null
+          project: string
+          scouter_id: number | null
+          supervisor_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id: string
+          name: string
+          phone?: string | null
+          project: string
+          scouter_id?: number | null
+          supervisor_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          project?: string
+          scouter_id?: number | null
+          supervisor_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      roles: {
+        Row: {
+          description: string | null
+          id: number
+          name: string
+          project: string | null
+        }
+        Insert: {
+          description?: string | null
+          id?: number
+          name: string
+          project?: string | null
+        }
+        Update: {
+          description?: string | null
+          id?: number
+          name?: string
+          project?: string | null
+        }
+        Relationships: []
+      }
+      scouter_locations: {
+        Row: {
+          accuracy: number | null
+          battery_level: number | null
+          id: number
+          is_moving: boolean | null
+          latitude: number
+          longitude: number
+          scouter_id: number | null
+          timestamp: string | null
+        }
+        Insert: {
+          accuracy?: number | null
+          battery_level?: number | null
+          id?: number
+          is_moving?: boolean | null
+          latitude: number
+          longitude: number
+          scouter_id?: number | null
+          timestamp?: string | null
+        }
+        Update: {
+          accuracy?: number | null
+          battery_level?: number | null
+          id?: number
+          is_moving?: boolean | null
+          latitude?: number
+          longitude?: number
+          scouter_id?: number | null
+          timestamp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scouter_locations_scouter_id_fkey"
+            columns: ["scouter_id"]
+            isOneToOne: false
+            referencedRelation: "scouter_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scouter_metrics: {
+        Row: {
+          created_at: string | null
+          fichas_com_foto: number | null
+          fichas_confirmadas: number | null
+          id: number
+          iqs: number | null
+          periodo: string
+          scouter_id: number | null
+          taxa_conversao: number | null
+          total_fichas: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          fichas_com_foto?: number | null
+          fichas_confirmadas?: number | null
+          id?: number
+          iqs?: number | null
+          periodo: string
+          scouter_id?: number | null
+          taxa_conversao?: number | null
+          total_fichas?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          fichas_com_foto?: number | null
+          fichas_confirmadas?: number | null
+          id?: number
+          iqs?: number | null
+          periodo?: string
+          scouter_id?: number | null
+          taxa_conversao?: number | null
+          total_fichas?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scouter_metrics_scouter_id_fkey"
+            columns: ["scouter_id"]
+            isOneToOne: false
+            referencedRelation: "scouter_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scouter_payments: {
+        Row: {
+          bonus: number | null
+          created_at: string | null
+          data_pagamento: string | null
+          descontos: number | null
+          id: number
+          observacoes: string | null
+          periodo: string
+          scouter_id: number | null
+          status: string | null
+          valor_base: number
+          valor_total: number
+        }
+        Insert: {
+          bonus?: number | null
+          created_at?: string | null
+          data_pagamento?: string | null
+          descontos?: number | null
+          id?: number
+          observacoes?: string | null
+          periodo: string
+          scouter_id?: number | null
+          status?: string | null
+          valor_base: number
+          valor_total: number
+        }
+        Update: {
+          bonus?: number | null
+          created_at?: string | null
+          data_pagamento?: string | null
+          descontos?: number | null
+          id?: number
+          observacoes?: string | null
+          periodo?: string
+          scouter_id?: number | null
+          status?: string | null
+          valor_base?: number
+          valor_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scouter_payments_scouter_id_fkey"
+            columns: ["scouter_id"]
+            isOneToOne: false
+            referencedRelation: "scouter_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scouter_profiles: {
+        Row: {
+          ativo: boolean | null
+          cpf: string | null
+          created_at: string | null
+          data_admissao: string | null
+          id: number
+          nome: string
+          supervisor: string | null
+          supervisor_user_id: string | null
+          telefone: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          cpf?: string | null
+          created_at?: string | null
+          data_admissao?: string | null
+          id?: number
+          nome: string
+          supervisor?: string | null
+          supervisor_user_id?: string | null
+          telefone?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          cpf?: string | null
+          created_at?: string | null
+          data_admissao?: string | null
+          id?: number
+          nome?: string
+          supervisor?: string | null
+          supervisor_user_id?: string | null
+          telefone?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      telemarketing_agents: {
+        Row: {
+          ativo: boolean | null
+          created_at: string | null
+          data_admissao: string | null
+          id: number
+          nome: string
+          supervisor: string | null
+          telefone: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string | null
+          data_admissao?: string | null
+          id?: number
+          nome: string
+          supervisor?: string | null
+          telefone?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string | null
+          data_admissao?: string | null
+          id?: number
+          nome?: string
+          supervisor?: string | null
+          telefone?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      telemarketing_metrics: {
+        Row: {
+          agent_id: number | null
+          conversoes: number | null
+          created_at: string | null
+          id: number
+          ligacoes_atendidas: number | null
+          periodo: string
+          taxa_conversao: number | null
+          tempo_medio_ligacao: number | null
+          total_ligacoes: number | null
+        }
+        Insert: {
+          agent_id?: number | null
+          conversoes?: number | null
+          created_at?: string | null
+          id?: number
+          ligacoes_atendidas?: number | null
+          periodo: string
+          taxa_conversao?: number | null
+          tempo_medio_ligacao?: number | null
+          total_ligacoes?: number | null
+        }
+        Update: {
+          agent_id?: number | null
+          conversoes?: number | null
+          created_at?: string | null
+          id?: number
+          ligacoes_atendidas?: number | null
+          periodo?: string
+          taxa_conversao?: number | null
+          tempo_medio_ligacao?: number | null
+          total_ligacoes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telemarketing_metrics_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "telemarketing_agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          project: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          project: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          project?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      webhook_logs: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: number
+          payload: Json | null
+          source: string | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: number
+          payload?: Json | null
+          source?: string | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: number
+          payload?: Json | null
+          source?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      fichas_completas: {
+        Row: {
+          agendado: string | null
+          bitrix_id: string | null
+          bitrix_status: string | null
+          bitrix_synced_at: string | null
+          cadastro_existe_foto: string | null
+          compareceu: string | null
+          confirmado: string | null
+          criado: string | null
+          data_agendamento: string | null
+          deleted: boolean | null
+          email: string | null
+          etapa: string | null
+          ficha_confirmada: string | null
+          foto: string | null
+          hora_criacao_ficha: string | null
+          id: number | null
+          idade: string | null
+          latitude: number | null
+          local_da_abordagem: string | null
+          localizacao: string | null
+          longitude: number | null
+          modelo: string | null
+          nome: string | null
+          observacoes_telemarketing: string | null
+          presenca_confirmada: string | null
+          projeto: string | null
+          raw: Json | null
+          resultado_ligacao: string | null
+          scouter: string | null
+          scouter_nome_completo: string | null
+          scouter_telefone: string | null
+          scouter_user_id: string | null
+          supervisor: string | null
+          tabulacao: string | null
+          telefone: string | null
+          telemarketing_nome: string | null
+          telemarketing_user_id: string | null
+          total_ligacoes: number | null
+          ultima_ligacao: string | null
+          updated_at: string | null
+          valor_ficha: number | null
+        }
+        Relationships: []
+      }
+      metricas_gerais: {
+        Row: {
+          comparecimentos: number | null
+          data: string | null
+          fichas_confirmadas: number | null
+          fichas_tabuladas: number | null
+          projeto: string | null
+          total_fichas: number | null
+          valor_medio_ficha: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      user_has_project_access: {
+        Args: { _project: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "admin"
+        | "supervisor"
+        | "scouter"
+        | "telemarketing"
+        | "gestor_telemarketing"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +787,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "admin",
+        "supervisor",
+        "scouter",
+        "telemarketing",
+        "gestor_telemarketing",
+      ],
+    },
   },
 } as const
