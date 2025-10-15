@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-helper';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -62,14 +62,15 @@ export function PermissionsPanel() {
 
   const fetchRoles = async () => {
     try {
-      const { data, error } = (await supabase
-        .from('roles' as any)
+      // @ts-ignore - Supabase types will be generated after migration
+      const response: any = await supabase
+        .from('roles')
         .select('*')
-        .order('name')) as any;
+        .order('name');
 
-      if (error) throw error;
+      if (response.error) throw response.error;
       
-      const rolesData = data || [];
+      const rolesData = (response.data || []) as Role[];
       setRoles(rolesData);
       
       // Set first role as selected
@@ -84,14 +85,15 @@ export function PermissionsPanel() {
 
   const fetchPermissions = async () => {
     try {
-      const { data, error } = (await supabase
-        .from('permissions' as any)
+      // @ts-ignore - Supabase types will be generated after migration
+      const response: any = await supabase
+        .from('permissions')
         .select('*')
-        .order('module, action')) as any;
+        .order('module, action');
 
-      if (error) throw error;
+      if (response.error) throw response.error;
       
-      const permsData = data || [];
+      const permsData = (response.data || []) as Permission[];
       setPermissions(permsData);
       
       console.log('Permissions loaded:', permsData.length);
@@ -116,12 +118,13 @@ export function PermissionsPanel() {
 
       if (existingPermission) {
         // Update existing permission
-        const { error } = await supabase
-          .from('permissions' as any)
+        // @ts-ignore - Supabase types will be generated after migration
+        const response: any = await supabase
+          .from('permissions')
           .update({ allowed: !existingPermission.allowed })
-          .eq('id', existingPermission.id) as any;
+          .eq('id', existingPermission.id);
 
-        if (error) throw error;
+        if (response.error) throw response.error;
 
         // Update local state
         setPermissions(
@@ -131,8 +134,9 @@ export function PermissionsPanel() {
         );
       } else {
         // Insert new permission
-        const { data, error } = (await supabase
-          .from('permissions' as any)
+        // @ts-ignore - Supabase types will be generated after migration
+        const response: any = await supabase
+          .from('permissions')
           .insert({
             module,
             action,
@@ -140,12 +144,14 @@ export function PermissionsPanel() {
             allowed: true,
           })
           .select()
-          .single()) as any;
+          .single();
 
-        if (error) throw error;
+        if (response.error) throw response.error;
 
         // Update local state
-        setPermissions([...permissions, data]);
+        if (response.data) {
+          setPermissions([...permissions, response.data as Permission]);
+        }
       }
 
       toast.success('Permissão atualizada');

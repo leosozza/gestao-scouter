@@ -227,7 +227,8 @@ export default function TestFichasPage() {
       coords.push(coords[0]); // Close the polygon
 
       // Usar Turf.js para filtrar pontos dentro do polígono
-      const turf = require('@turf/turf');
+      // @ts-ignore - Dynamic import
+      const turf = await import('@turf/turf');
       const poly = turf.polygon([coords]);
 
       const selecionados = displayedFichas.filter((ficha) => {

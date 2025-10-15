@@ -67,14 +67,15 @@ export const SupabaseIntegration = () => {
   const loadLogs = async () => {
     setIsLoadingLogs(true);
     try {
-      const { data, error } = await supabase
-        .from('webhook_logs' as any)
+      // @ts-ignore - Supabase types will be generated after migration
+      const response: any = await supabase
+        .from('webhook_logs')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (error) throw error;
-      setLogs((data as unknown as WebhookLog[]) || []);
+      if (response.error) throw response.error;
+      setLogs((response.data as WebhookLog[]) || []);
     } catch (error) {
       console.error('Erro ao carregar logs:', error);
     } finally {
@@ -85,14 +86,15 @@ export const SupabaseIntegration = () => {
   const loadBitrixLogs = async () => {
     setIsLoadingBitrixLogs(true);
     try {
-      const { data, error } = await supabase
-        .from('bitrix_webhook_logs' as any)
+      // @ts-ignore - Supabase types will be generated after migration
+      const response: any = await supabase
+        .from('bitrix_webhook_logs')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (error) throw error;
-      setBitrixLogs((data as unknown as BitrixWebhookLog[]) || []);
+      if (response.error) throw response.error;
+      setBitrixLogs((response.data as BitrixWebhookLog[]) || []);
     } catch (error) {
       console.error('Erro ao carregar logs do Bitrix:', error);
     } finally {
@@ -131,12 +133,13 @@ export const SupabaseIntegration = () => {
 
   const clearLogs = async () => {
     try {
-      const { error } = await supabase
-        .from('webhook_logs' as any)
+      // @ts-ignore - Supabase types will be generated after migration
+      const response: any = await supabase
+        .from('webhook_logs')
         .delete()
         .neq('id', 0); // Delete all
 
-      if (error) throw error;
+      if (response.error) throw response.error;
       toast.success("Logs limpos com sucesso!");
       loadLogs();
     } catch (error) {

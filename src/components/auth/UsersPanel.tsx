@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-helper';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,8 +69,9 @@ export function UsersPanel() {
 
   const fetchUsers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('users' as any)
+      // @ts-ignore - Supabase types will be generated after migration
+      const response: any = await supabase
+        .from('users')
         .select(`
           id,
           name,
@@ -82,10 +83,10 @@ export function UsersPanel() {
             name
           )
         `)
-        .order('name') as any;
+        .order('name');
 
-      if (error) throw error;
-      setUsers(data || []);
+      if (response.error) throw response.error;
+      setUsers((response.data || []) as User[]);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('Erro ao carregar usuários');
@@ -96,13 +97,14 @@ export function UsersPanel() {
 
   const fetchRoles = async () => {
     try {
-      const { data, error } = await supabase
-        .from('roles' as any)
+      // @ts-ignore - Supabase types will be generated after migration
+      const response: any = await supabase
+        .from('roles')
         .select('*')
-        .order('name') as any;
+        .order('name');
 
-      if (error) throw error;
-      setRoles(data || []);
+      if (response.error) throw response.error;
+      setRoles((response.data || []) as Role[]);
     } catch (error) {
       console.error('Error fetching roles:', error);
     }
@@ -114,17 +116,18 @@ export function UsersPanel() {
     try {
       if (editingUser) {
         // Update existing user
-        const { error } = await supabase
-          .from('users' as any)
+        // @ts-ignore - Supabase types will be generated after migration
+        const response: any = await supabase
+          .from('users')
           .update({
             name: formData.name,
             email: formData.email,
             role_id: parseInt(formData.role_id),
             scouter_id: formData.scouter_id ? parseInt(formData.scouter_id) : null,
           })
-          .eq('id', editingUser.id) as any;
+          .eq('id', editingUser.id);
 
-        if (error) throw error;
+        if (response.error) throw response.error;
         toast.success('Usuário atualizado com sucesso');
       } else {
         // Create new user via Supabase Auth
@@ -142,17 +145,18 @@ export function UsersPanel() {
 
         if (authData.user) {
           // Create user profile
-          const { error: profileError } = await supabase
-            .from('users' as any)
+          // @ts-ignore - Supabase types will be generated after migration
+          const profileResponse: any = await supabase
+            .from('users')
             .insert({
               id: authData.user.id,
               name: formData.name,
               email: formData.email,
               role_id: parseInt(formData.role_id),
               scouter_id: formData.scouter_id ? parseInt(formData.scouter_id) : null,
-            }) as any;
+            });
 
-          if (profileError) throw profileError;
+          if (profileResponse.error) throw profileResponse.error;
           toast.success('Usuário criado com sucesso. Um email de confirmação foi enviado.');
         }
       }
@@ -170,12 +174,13 @@ export function UsersPanel() {
     if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
 
     try {
-      const { error } = await supabase
-        .from('users' as any)
+      // @ts-ignore - Supabase types will be generated after migration
+      const response: any = await supabase
+        .from('users')
         .delete()
-        .eq('id', userId) as any;
+        .eq('id', userId);
 
-      if (error) throw error;
+      if (response.error) throw response.error;
 
       toast.success('Usuário excluído com sucesso');
       fetchUsers();

@@ -109,6 +109,7 @@ serve(async (req) => {
     console.error('Error processing webhook:', error);
 
     // Try to log the error
+    const errorMessage = error instanceof Error ? error.message : String(error);
     try {
       await supabase
         .from('webhook_logs')
@@ -116,7 +117,7 @@ serve(async (req) => {
           payload: {},
           source: 'error',
           status: 'error',
-          error_message: error.message
+          error_message: errorMessage
         });
     } catch (logError) {
       console.error('Error logging error:', logError);
@@ -125,7 +126,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message 
+        error: errorMessage 
       }),
       { 
         status: 500, 

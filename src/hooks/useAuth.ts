@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-helper';
 
 export interface UserProfile {
   id: string;
@@ -52,8 +52,9 @@ export function useAuth() {
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      const { data, error } = (await supabase
-        .from('users' as any)
+      // @ts-ignore - Supabase types will be generated after migration
+      const response: any = await supabase
+        .from('users')
         .select(`
           id,
           name,
@@ -66,7 +67,9 @@ export function useAuth() {
           )
         `)
         .eq('id', userId)
-        .single()) as any;
+        .single();
+      
+      const { data, error } = response;
 
       if (error) throw error;
 
