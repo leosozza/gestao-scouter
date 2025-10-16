@@ -1,6 +1,17 @@
 /**
  * Repository para buscar leads do Supabase
  * Removida toda dependência do Google Sheets
+ * 
+ * ⚠️ ATENÇÃO DESENVOLVEDOR: FONTE ÚNICA DE VERDADE
+ * ================================================
+ * Este repositório usa EXCLUSIVAMENTE a tabela 'fichas' do Supabase.
+ * NUNCA utilize:
+ * - Tabela 'leads' (legacy/deprecated)
+ * - Tabela 'bitrix_leads' (apenas para referência histórica)
+ * - MockDataService (apenas para testes locais)
+ * - Fetch direto de Google Sheets (descontinuado)
+ * 
+ * Todas as operações de leads devem passar por este repositório centralizado.
  */
 
 import { supabase } from '@/lib/supabase-helper';
@@ -8,6 +19,7 @@ import type { Lead, LeadsFilters } from './types';
 
 /**
  * Busca leads do Supabase com filtros
+ * @returns Array de leads da tabela 'fichas'
  */
 export async function getLeads(params: LeadsFilters = {}): Promise<Lead[]> {
   return fetchAllLeadsFromSupabase(params);
@@ -103,10 +115,14 @@ async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> 
 
 /**
  * Busca leads da tabela bitrix_leads (comentado - tabela não existe ainda)
+ * 
+ * ⚠️ DESCONTINUADO: Esta função é mantida apenas para compatibilidade.
+ * A tabela bitrix_leads existe mas NÃO deve ser usada para buscar leads em produção.
+ * Use sempre getLeads() que consulta a tabela 'fichas' (fonte única de verdade).
  */
 export async function getBitrixLeads(params: LeadsFilters = {}): Promise<Lead[]> {
-  // Tabela bitrix_leads não existe no schema atual
-  console.warn('getBitrixLeads: tabela bitrix_leads não disponível');
+  // Tabela bitrix_leads não é mais fonte de dados para a aplicação
+  console.warn('getBitrixLeads: DESCONTINUADO - Use getLeads() que consulta a tabela "fichas"');
   return [];
 }
 

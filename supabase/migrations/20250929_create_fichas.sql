@@ -1,3 +1,21 @@
+-- ============================================================================
+-- Tabela 'fichas' - FONTE ÚNICA DE VERDADE
+-- ============================================================================
+-- Esta é a tabela centralizada para TODOS os dados de fichas/leads da aplicação.
+-- 
+-- ATENÇÃO DESENVOLVEDORES:
+-- - Esta tabela espelha dados da planilha Google Sheets
+-- - TODA busca de leads deve usar esta tabela (schema flexível)
+-- - NÃO use tabelas 'leads' ou 'bitrix_leads' como fonte principal
+-- - O campo 'raw' contém a linha completa como JSON para auditoria
+-- - O campo 'deleted' marca exclusão lógica (não deletar fisicamente)
+--
+-- Acesso via código:
+-- - Repository: leadsRepo.ts (função getLeads)
+-- - Hook: useFichas.ts
+-- - Dashboard: dashboardRepo.ts
+-- ============================================================================
+
 -- Tabela espelhada das fichas da planilha (schema flexível)
 create table if not exists public.fichas (
   id text primary key,                       -- ID estável vindo da planilha

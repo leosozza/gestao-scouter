@@ -1,4 +1,14 @@
 // Repositório central para ler do Supabase (espelho)
+// 
+// ⚠️ FONTE ÚNICA DE VERDADE: Tabela 'fichas'
+// ===========================================
+// Este repositório acessa a tabela 'fichas' no Supabase, que é o espelho
+// centralizado de todas as fichas/leads da aplicação.
+// 
+// Nunca busque dados de:
+// - Google Sheets diretamente (descontinuado)
+// - Tabela 'leads' (legacy)
+// - Tabela 'bitrix_leads' (apenas histórico)
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -6,6 +16,11 @@ const supabase = createClient(
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY!
 );
 
+/**
+ * Busca fichas da tabela 'fichas' do Supabase com filtros opcionais
+ * @param filters - Filtros de data, scouter e projeto
+ * @returns Array de fichas não deletadas
+ */
 export async function fetchFichasFromDB(filters?: { 
   start?: string; 
   end?: string; 

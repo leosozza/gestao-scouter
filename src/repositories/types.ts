@@ -60,7 +60,10 @@ export interface Ficha {
   data_criacao_ficha?: string;
 }
 
-// Para compatibilidade com o código existente  
+// Para compatibilidade com o código existente
+// ⚠️ IMPORTANTE: Lead e Ficha são o mesmo tipo
+// Ambos se referem aos dados da tabela 'fichas' do Supabase
+// Usamos Lead para manter compatibilidade com código legado
 export type Lead = Ficha;
 
 export interface AppSettings {
