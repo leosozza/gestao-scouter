@@ -16,7 +16,7 @@ export function useFichas(params: UseFichasParams = {}) {
     queryKey: ['fichas', params],
     queryFn: async (): Promise<FichaDataPoint[]> => {
       let query = supabase
-        .from('fichas')
+        .from('leads')
         .select('*')
         .eq('deleted', false);
 
