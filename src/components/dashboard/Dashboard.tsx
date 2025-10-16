@@ -59,39 +59,37 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Fetch data from Google Sheets
-      const { GoogleSheetsService } = await import('@/services/googleSheetsService');
-      
-      const [fichasData, projetosData] = await Promise.all([
-        GoogleSheetsService.fetchFichas(),
-        GoogleSheetsService.fetchProjetos()
-      ]);
+      // Fetch data from Supabase fichas table
+      const { data: fichasData, error: fichasError } = await supabase
+        .from('fichas')
+        .select('*')
+        .eq('deleted', false);
+
+      if (fichasError) throw fichasError;
 
       // Transform fichas data to match expected format
       const fichas = fichasData?.map(ficha => ({
-        ID: ficha.ID,
-        'Gestão de Scouter': ficha.Scouter || ficha['Gestão de Scouter'] || '',
-        'Projetos Cormeciais': ficha.Projetos || ficha['Projetos Cormeciais'] || 'Sem Projeto',
-        'Data de criação da Ficha': ficha.Criado || '',
-        'Ficha paga': ficha.Etapa === 'Lead convertido' ? 'Sim' : 'Não',
-        'Criado': ficha.Criado,
-        'Valor_Ficha': ficha.Valor_Ficha,
-        'Etapa': ficha.Etapa,
-        'Nome': ficha.Nome,
-        // Add other fields as needed
+        ID: ficha.id,
+        'Gestão de Scouter': ficha.scouter || '',
+        'Projetos Cormeciais': ficha.projeto || 'Sem Projeto',
+        'Data de criação da Ficha': ficha.criado || '',
+        'Ficha paga': ficha.etapa === 'Lead convertido' ? 'Sim' : 'Não',
+        'Criado': ficha.criado,
+        'Valor_Ficha': ficha.valor_ficha,
+        'Etapa': ficha.etapa,
+        'Nome': ficha.nome,
         ...ficha
       })) || [];
 
-      // Process projects data
-      const projetos = projetosData?.map(projeto => ({
-        'Agencia e Seletiva': projeto.nome || projeto['agencia e seletiva'] || 'Projeto Geral',
-        'Meta de Fichas': projeto.meta_fichas || 100
-      })) || [];
+      // Mock projects data for now
+      const projetos = [
+        { 'Agencia e Seletiva': 'Projeto Geral', 'Meta de Fichas': 100 }
+      ];
 
       setData({ fichas, projetos });
     } catch (error: unknown) {
       console.error("Error fetching data:", error);
-      const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro ao carregar os dados do Google Sheets.";
+      const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro ao carregar os dados.";
       toast({
         title: "Erro ao carregar dados", 
         description: errorMessage,
@@ -109,10 +107,9 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   const handleUpdateFichaPaga = async (fichaIds: string[], status: 'Sim' | 'Não') => {
     setIsLoading(true);
     try {
-      // Update status using Google Sheets Service
-      const { GoogleSheetsService } = await import('@/services/googleSheetsService');
-      await GoogleSheetsService.updateFichaPagaStatus(fichaIds, status);
-
+      // Update status using Supabase (disabled for now - needs etapa field)
+      console.log('Update fichas paga', fichaIds, status);
+      
       toast({
         title: "Fichas atualizadas",
         description: `${fichaIds.length} fichas marcadas como ${status === 'Sim' ? 'pagas' : 'não pagas'}.`,

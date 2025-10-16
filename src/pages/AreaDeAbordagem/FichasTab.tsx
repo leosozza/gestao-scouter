@@ -812,11 +812,11 @@ export function FichasTab() {
               variant="outline"
               size="default"
               onClick={() => refetch()}
-              disabled={isLoading || isFetching}
+              disabled={isLoading}
               className="min-w-[44px] min-h-[44px] touch-manipulation"
               title="Recarregar dados"
             >
-              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
         </div>
@@ -824,7 +824,7 @@ export function FichasTab() {
       
       <CardContent className="flex-1 p-0 relative">
         {/* Loading state */}
-        {(isLoading || isFetching) && (
+        {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
