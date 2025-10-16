@@ -81,7 +81,7 @@ export async function getLeadsByProject(params: LeadsFilters = {}): Promise<
  * Busca leads do Supabase
  */
 async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> {
-  let q = supabase.from('leads').select('*');
+  let q = supabase.from('fichas').select('*');
 
   // Aplicar filtros
   if (params.dataInicio) q = q.gte('criado', params.dataInicio);

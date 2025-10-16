@@ -14,7 +14,7 @@ export async function getDashboardData(filters: {
   projeto?: string 
 }): Promise<DashboardDataResult> {
   let query = supabase
-    .from('leads')
+    .from('fichas')
     .select('*');
 
   // Aplicar filtros
