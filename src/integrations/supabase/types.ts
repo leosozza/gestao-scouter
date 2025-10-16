@@ -569,6 +569,69 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_logs: {
+        Row: {
+          completed_at: string | null
+          errors: Json | null
+          id: string
+          processing_time_ms: number | null
+          records_failed: number
+          records_synced: number
+          started_at: string
+          sync_direction: string
+        }
+        Insert: {
+          completed_at?: string | null
+          errors?: Json | null
+          id?: string
+          processing_time_ms?: number | null
+          records_failed?: number
+          records_synced?: number
+          started_at?: string
+          sync_direction: string
+        }
+        Update: {
+          completed_at?: string | null
+          errors?: Json | null
+          id?: string
+          processing_time_ms?: number | null
+          records_failed?: number
+          records_synced?: number
+          started_at?: string
+          sync_direction?: string
+        }
+        Relationships: []
+      }
+      sync_status: {
+        Row: {
+          id: string
+          last_error: string | null
+          last_sync_at: string | null
+          last_sync_success: boolean | null
+          project_name: string
+          total_records: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          last_error?: string | null
+          last_sync_at?: string | null
+          last_sync_success?: boolean | null
+          project_name: string
+          total_records?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          last_error?: string | null
+          last_sync_at?: string | null
+          last_sync_success?: boolean | null
+          project_name?: string
+          total_records?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       telemarketing_agents: {
         Row: {
           ativo: boolean | null

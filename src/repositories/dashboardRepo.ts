@@ -19,10 +19,10 @@ export async function getDashboardData(filters: {
 
   // Aplicar filtros
   if (filters.start) {
-    query = query.gte('criado_em', filters.start);
+    query = query.gte('criado', filters.start);
   }
   if (filters.end) {
-    query = query.lte('criado_em', filters.end);
+    query = query.lte('criado', filters.end);
   }
   if (filters.scouter) {
     query = query.ilike('scouter', `%${filters.scouter}%`);
@@ -31,7 +31,7 @@ export async function getDashboardData(filters: {
     query = query.eq('projeto', filters.projeto);
   }
 
-  const { data, error } = await query.order('criado_em', { ascending: false });
+  const { data, error } = await query.order('criado', { ascending: false });
 
   if (error) {
     console.error('Erro ao buscar dados do dashboard:', error);

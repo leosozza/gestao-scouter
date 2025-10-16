@@ -1,1 +1,4 @@
-project_id = "gkvvtfqfggddzotxltxf"
+project_id = "ngestyxtopvfeyenyvgt"
+
+[functions.sync-tabulador]
+verify_jwt = false
