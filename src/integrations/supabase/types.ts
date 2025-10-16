@@ -105,6 +105,51 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_indicator_configs: {
+        Row: {
+          aggregation: string
+          chart_type: string | null
+          created_at: string | null
+          filter_condition: Json | null
+          format: string | null
+          id: string
+          indicator_key: string
+          position: number | null
+          source_column: string
+          title: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          aggregation?: string
+          chart_type?: string | null
+          created_at?: string | null
+          filter_condition?: Json | null
+          format?: string | null
+          id?: string
+          indicator_key: string
+          position?: number | null
+          source_column: string
+          title: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          aggregation?: string
+          chart_type?: string | null
+          created_at?: string | null
+          filter_condition?: Json | null
+          format?: string | null
+          id?: string
+          indicator_key?: string
+          position?: number | null
+          source_column?: string
+          title?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       fichas: {
         Row: {
           agendado: string | null

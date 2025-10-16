@@ -3,7 +3,7 @@
  * Removida toda dependência do Google Sheets
  */
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-helper';
 import type { Lead, LeadsFilters } from './types';
 
 /**
@@ -81,19 +81,19 @@ export async function getLeadsByProject(params: LeadsFilters = {}): Promise<
  * Busca leads do Supabase
  */
 async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> {
-  let q = supabase.from('fichas').select('*').eq('deleted', false);
+  let q = supabase.from('leads').select('*');
 
   // Aplicar filtros
-  if (params.dataInicio) q = q.gte('criado', params.dataInicio);
-  if (params.dataFim) q = q.lte('criado', params.dataFim);
+  if (params.dataInicio) q = q.gte('criado_em', params.dataInicio);
+  if (params.dataFim) q = q.lte('criado_em', params.dataFim);
   if (params.etapa) q = q.eq('etapa', params.etapa);
   if (params.scouter) q = q.ilike('scouter', `%${params.scouter}%`);
   if (params.projeto) q = q.ilike('projeto', `%${params.projeto}%`);
 
-  const { data, error } = await q.order('criado', { ascending: false });
+  const { data, error } = await q.order('criado_em', { ascending: false });
   
   if (error) {
-    console.error('Erro ao buscar fichas do Supabase', error);
+    console.error('Erro ao buscar leads do Supabase', error);
     return [];
   }
   
@@ -118,7 +118,7 @@ function normalizeFichaFromSupabase(r: any): Lead {
     id: Number(r.id) || 0,
     projetos: String(r.projeto || 'Sem Projeto'),
     scouter: String(r.scouter || 'Desconhecido'),
-    criado: r.criado,
+    criado: r.criado_em,
     hora_criacao_ficha: r.hora_criacao_ficha,
     valor_ficha: String(r.valor_ficha || '0'),
     etapa: String(r.etapa || 'Sem Etapa'),

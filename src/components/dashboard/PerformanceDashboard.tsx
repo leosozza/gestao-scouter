@@ -44,6 +44,11 @@ import {
   formatHoursToReadable,
   formatMinutesToReadable
 } from '@/utils/scouterMetrics';
+import { useIndicatorConfigs } from '@/hooks/useIndicatorConfigs';
+import { ConfigurableIndicator } from './ConfigurableIndicator';
+import { IndicatorConfigModal } from './IndicatorConfigModal';
+import { calculateIndicatorValue } from '@/utils/indicatorCalculations';
+import type { IndicatorConfig } from '@/types/indicator';
 
 interface PerformanceMetrics {
   totalFichas: number;
@@ -65,10 +70,12 @@ interface PerformanceMetrics {
 
 export function PerformanceDashboard() {
   const { settings } = useAppSettings();
+  const { configs, saveConfig, resetToDefaults } = useIndicatorConfigs();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<Date | null>(new Date());
+  const [editingIndicator, setEditingIndicator] = useState<IndicatorConfig | null>(null);
   const [metrics, setMetrics] = useState<PerformanceMetrics>({
     totalFichas: 0,
     comFoto: 0,
@@ -97,6 +104,8 @@ export function PerformanceDashboard() {
   });
   const [selectedScouters, setSelectedScouters] = useState<string[]>([]);
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
+
+  const availableColumns = ['id', 'projeto', 'scouter', 'criado_em', 'valor_ficha', 'etapa', 'nome'];
 
   useEffect(() => {
     loadData();
@@ -329,27 +338,58 @@ export function PerformanceDashboard() {
           <CheckCircle2 className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2">
-              <span>Dados sincronizados com Supabase</span>
+              <span>Dados sincronizados com TabuladorMax</span>
               <span className="text-xs text-muted-foreground">
-                Tabela: fichas
+                Tabela: leads
               </span>
               <Badge variant="outline" className="text-xs">
                 {metrics.totalFichas.toLocaleString('pt-BR')} registros
               </Badge>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSync}
-              disabled={isSyncing}
-              className="gap-2"
-            >
-              <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
-              Atualizar
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => resetToDefaults.mutate()}
+                className="gap-2"
+              >
+                Restaurar Padrão
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSync}
+                disabled={isSyncing}
+                className="gap-2"
+              >
+                <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
+                Atualizar
+              </Button>
+            </div>
           </AlertDescription>
         </Alert>
       </div>
+
+      {/* Configurable Indicators */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {configs.map((config) => (
+          <ConfigurableIndicator
+            key={config.indicator_key}
+            config={config}
+            value={calculateIndicatorValue(leads, config)}
+            onEdit={() => setEditingIndicator(config)}
+          />
+        ))}
+      </div>
+
+      {/* Indicator Config Modal */}
+      <IndicatorConfigModal
+        open={!!editingIndicator}
+        onOpenChange={(open) => !open && setEditingIndicator(null)}
+        config={editingIndicator}
+        onSave={(config) => saveConfig.mutate(config)}
+        availableColumns={availableColumns}
+      />
 
       {/* Charts & AI Insights */}
       <div className="grid gap-4 md:grid-cols-2">
