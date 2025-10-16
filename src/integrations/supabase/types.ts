@@ -72,6 +72,39 @@ export type Database = {
           },
         ]
       }
+      dashboard_configs: {
+        Row: {
+          config: Json
+          created_at: string | null
+          description: string | null
+          id: string
+          is_default: boolean | null
+          name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          config: Json
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       fichas: {
         Row: {
           agendado: string | null
