@@ -57,6 +57,7 @@ interface DataTableProps {
     delete?: (item: any) => void;
   };
   pageSize?: number;
+  onSelectionChange?: (selected: any[]) => void;
 }
 
 export function DataTable({
@@ -67,7 +68,8 @@ export function DataTable({
   exportable = true,
   selectable = false,
   actions,
-  pageSize = 10
+  pageSize = 10,
+  onSelectionChange
 }: DataTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortColumn, setSortColumn] = useState<string>('');
@@ -132,19 +134,26 @@ export function DataTable({
   const handleSelectRow = (row: any) => {
     setSelectedRows(prev => {
       const isSelected = prev.some(selected => selected.id === row.id);
-      if (isSelected) {
-        return prev.filter(selected => selected.id !== row.id);
-      } else {
-        return [...prev, row];
+      const newSelection = isSelected 
+        ? prev.filter(selected => selected.id !== row.id)
+        : [...prev, row];
+      
+      // Notify parent of selection change
+      if (onSelectionChange) {
+        onSelectionChange(newSelection);
       }
+      
+      return newSelection;
     });
   };
 
   const handleSelectAll = () => {
-    if (selectedRows.length === paginatedData.length) {
-      setSelectedRows([]);
-    } else {
-      setSelectedRows([...paginatedData]);
+    const newSelection = selectedRows.length === paginatedData.length ? [] : [...paginatedData];
+    setSelectedRows(newSelection);
+    
+    // Notify parent of selection change
+    if (onSelectionChange) {
+      onSelectionChange(newSelection);
     }
   };
 

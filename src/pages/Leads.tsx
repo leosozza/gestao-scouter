@@ -7,15 +7,19 @@ import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/shared/DataTable'
 import { FilterHeader } from '@/components/shared/FilterHeader'
 import { AIAnalysis } from '@/components/shared/AIAnalysis'
-import { Download, Users, TrendingUp, Calendar, Phone } from 'lucide-react'
+import { TinderAnalysisModal } from '@/components/leads/TinderAnalysisModal'
+import { Download, Users, TrendingUp, Calendar, Phone, Heart, ThumbsUp, ThumbsDown, Clock } from 'lucide-react'
 import { getLeads } from '@/repositories/leadsRepo'
 import type { Lead, LeadsFilters } from '@/repositories/types'
 import { formatDateBR } from '@/utils/dataHelpers'
+import { toast } from 'sonner'
 
 export default function Leads() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState<LeadsFilters>({})
+  const [selectedLeads, setSelectedLeads] = useState<Lead[]>([])
+  const [showTinderModal, setShowTinderModal] = useState(false)
 
   const filterOptions = [
     {
@@ -101,6 +105,35 @@ export default function Leads() {
       formatter: (value: number) => value || '-'
     },
     {
+      key: 'aprovado',
+      label: 'Aprovado',
+      sortable: true,
+      formatter: (value: boolean | null | undefined) => {
+        if (value === true) {
+          return (
+            <Badge variant="default" className="bg-green-500 rounded-xl">
+              <Heart className="w-3 h-3 mr-1" fill="white" />
+              Sim
+            </Badge>
+          );
+        } else if (value === false) {
+          return (
+            <Badge variant="destructive" className="rounded-xl">
+              <ThumbsDown className="w-3 h-3 mr-1" />
+              Não
+            </Badge>
+          );
+        } else {
+          return (
+            <Badge variant="outline" className="rounded-xl">
+              <Clock className="w-3 h-3 mr-1" />
+              Pendente
+            </Badge>
+          );
+        }
+      }
+    },
+    {
       key: 'indicadores',
       label: 'Indicadores',
       formatter: (value: any, row: Lead) => {
@@ -172,6 +205,26 @@ export default function Leads() {
     console.log('Exportar dados')
   }
 
+  const handleStartAnalysis = () => {
+    if (selectedLeads.length === 0) {
+      toast.error('Selecione ao menos um lead para análise')
+      return
+    }
+    setShowTinderModal(true)
+  }
+
+  const handleAnalysisComplete = async () => {
+    // Refetch leads to show updated aprovado status
+    await loadLeads()
+    // Clear selection
+    setSelectedLeads([])
+    setShowTinderModal(false)
+  }
+
+  const handleSelectionChange = (selected: Lead[]) => {
+    setSelectedLeads(selected)
+  }
+
   return (
     <AppShell sidebar={<Sidebar />}>
       <div className="space-y-6">
@@ -192,7 +245,7 @@ export default function Leads() {
         />
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
           <Card className="rounded-2xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total de Leads</CardTitle>
@@ -244,6 +297,49 @@ export default function Leads() {
               <p className="text-xs text-muted-foreground">Em negociação</p>
             </CardContent>
           </Card>
+
+          <Card className="rounded-2xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Aprovados</CardTitle>
+              <ThumbsUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                {leads.filter(l => l.aprovado === true).length}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {leads.length > 0 ? ((leads.filter(l => l.aprovado === true).length / leads.length) * 100).toFixed(1) : 0}% do total
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Reprovados</CardTitle>
+              <ThumbsDown className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">
+                {leads.filter(l => l.aprovado === false).length}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {leads.length > 0 ? ((leads.filter(l => l.aprovado === false).length / leads.length) * 100).toFixed(1) : 0}% do total
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Para Analisar</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-purple-600">
+                {leads.filter(l => l.aprovado === null || l.aprovado === undefined).length}
+              </div>
+              <p className="text-xs text-muted-foreground">Pendente análise</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Grid com Tabela e Análise AI */}
@@ -254,14 +350,25 @@ export default function Leads() {
               <CardHeader>
                 <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
                   <CardTitle>Lista de Leads</CardTitle>
-                  <Button 
-                    variant="outline" 
-                    className="rounded-xl"
-                    onClick={handleExport}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Exportar
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="default"
+                      className="rounded-xl bg-pink-500 hover:bg-pink-600"
+                      onClick={handleStartAnalysis}
+                      disabled={selectedLeads.length === 0}
+                    >
+                      <Heart className="h-4 w-4 mr-2" />
+                      Iniciar Análise ({selectedLeads.length})
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="rounded-xl"
+                      onClick={handleExport}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Exportar
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -270,6 +377,8 @@ export default function Leads() {
               columns={tableColumns}
               searchable={true}
               exportable={true}
+              selectable={true}
+              onSelectionChange={handleSelectionChange}
               actions={{
                 view: (row) => console.log('Ver lead:', row),
                 edit: (row) => console.log('Editar lead:', row)
@@ -288,6 +397,14 @@ export default function Leads() {
           </div>
         </div>
       </div>
+
+      {/* Tinder Analysis Modal */}
+      <TinderAnalysisModal
+        open={showTinderModal}
+        onClose={() => setShowTinderModal(false)}
+        leads={selectedLeads}
+        onComplete={handleAnalysisComplete}
+      />
     </AppShell>
   )
 }
