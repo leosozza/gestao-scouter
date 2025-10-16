@@ -89,7 +89,7 @@ interface Lead {
   foto?: string;
   updated_at?: string;
   created_at?: string;
-  [key: string]: any; // Permitir campos adicionais
+  [key: string]: unknown; // Permitir campos adicionais
 }
 
 interface Ficha {
@@ -110,7 +110,7 @@ interface Ficha {
   etapa?: string;
   ficha_confirmada?: string;
   foto?: string;
-  raw: any;
+  raw: Record<string, unknown>;
   updated_at?: string;
   deleted: boolean;
 }
@@ -204,7 +204,7 @@ function displayProgress(stats: MigrationStats) {
 /**
  * Busca todos os leads da tabela de origem
  */
-async function fetchAllLeads(tabuladorClient: any): Promise<Lead[]> {
+async function fetchAllLeads(tabuladorClient: ReturnType<typeof createClient>): Promise<Lead[]> {
   console.log('📥 Buscando leads da tabela de origem...');
   
   const allLeads: Lead[] = [];
@@ -240,7 +240,7 @@ async function fetchAllLeads(tabuladorClient: any): Promise<Lead[]> {
  * Processa um lote de leads e faz upsert na tabela fichas
  */
 async function processBatch(
-  gestaoClient: any,
+  gestaoClient: ReturnType<typeof createClient>,
   batch: Lead[],
   stats: MigrationStats,
   attempt = 1
@@ -353,10 +353,15 @@ async function runMigration() {
 // Execução
 // ============================================================================
 
-// Executar se for o script principal (funciona com tsx/ts-node)
-runMigration().catch(error => {
-  console.error('❌ Erro não tratado:', error);
-  process.exit(1);
-});
+// Executar apenas se for o script principal
+// Verifica se o script está sendo executado diretamente ou importado
+const isMainModule = process.argv[1] && process.argv[1].endsWith('syncLeadsToFichas.ts');
+
+if (isMainModule) {
+  runMigration().catch(error => {
+    console.error('❌ Erro não tratado:', error);
+    process.exit(1);
+  });
+}
 
 export { runMigration, normalizeLeadToFicha };
