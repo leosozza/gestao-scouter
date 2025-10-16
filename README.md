@@ -197,9 +197,144 @@ ID,Nome,Projeto,Scouter,Data,Telefone,Email,Idade,Valor,LAT,LNG
 
 ## 🔄 Sincronização com TabuladorMax
 
-A sincronização bidirecional é **automática** e ocorre a cada **5 minutos**.
+A sincronização entre a tabela `leads` (TabuladorMax) e a tabela `fichas` (Gestão Scouter) pode ser feita de duas formas:
 
-### Como Funciona
+### 1. Sincronização Automática via Triggers (Recomendado)
+
+Sincronização **em tempo real** usando triggers SQL no PostgreSQL. Qualquer alteração (INSERT, UPDATE, DELETE) na tabela `leads` é automaticamente propagada para a tabela `fichas`.
+
+#### Configuração dos Triggers
+
+**Passo 1: Habilitar extensão HTTP no projeto TabuladorMax**
+
+Execute no SQL Editor do Supabase (projeto TabuladorMax):
+
+```sql
+CREATE EXTENSION IF NOT EXISTS http;
+```
+
+**Passo 2: Configurar variáveis de ambiente**
+
+Execute no SQL Editor do Supabase (projeto TabuladorMax):
+
+```sql
+-- Configurar URL do Gestão Scouter
+ALTER DATABASE postgres SET app.gestao_scouter_url = 'https://ngestyxtopvfeyenyvgt.supabase.co';
+
+-- Configurar Service Key do Gestão Scouter
+ALTER DATABASE postgres SET app.gestao_scouter_service_key = 'sua_service_role_key_aqui';
+
+-- Recarregar configurações
+SELECT pg_reload_conf();
+```
+
+**Passo 3: Executar script de triggers**
+
+Execute o arquivo `supabase/functions/trigger_sync_leads_to_fichas.sql` no SQL Editor do Supabase (projeto TabuladorMax).
+
+```bash
+# Copie o conteúdo do arquivo e execute no SQL Editor
+cat supabase/functions/trigger_sync_leads_to_fichas.sql
+```
+
+**Passo 4: Verificar instalação**
+
+```sql
+-- Verificar se os triggers estão ativos
+SELECT tgname, tgenabled 
+FROM pg_trigger 
+WHERE tgrelid = 'public.leads'::regclass;
+
+-- Deve mostrar 3 triggers:
+-- - trigger_sync_lead_insert
+-- - trigger_sync_lead_update
+-- - trigger_sync_lead_delete
+```
+
+#### Monitoramento
+
+Os logs de sincronização podem ser visualizados nos logs do PostgreSQL no Supabase Dashboard:
+
+- **Database** → **Logs** → filtrar por "sync_lead_to_fichas"
+
+### 2. Migração Inicial de Dados
+
+Para fazer a **primeira carga** de dados da tabela `leads` para a tabela `fichas`, use o script TypeScript:
+
+**Passo 1: Configurar variáveis de ambiente**
+
+Edite o arquivo `.env` e adicione:
+
+```env
+# TabuladorMax (origem)
+TABULADOR_URL=https://gkvvtfqfggddzotxltxf.supabase.co
+TABULADOR_SERVICE_KEY=sua_service_role_key_tabulador
+
+# Gestão Scouter (destino)
+VITE_SUPABASE_URL=https://ngestyxtopvfeyenyvgt.supabase.co
+VITE_SUPABASE_SERVICE_KEY=sua_service_role_key_gestao
+```
+
+**Passo 2: Instalar dependências**
+
+```bash
+npm install
+```
+
+**Passo 3: Executar script de migração**
+
+```bash
+# Usando o script npm (recomendado)
+npm run migrate:leads
+
+# Ou diretamente com npx tsx
+npx tsx scripts/syncLeadsToFichas.ts
+```
+
+O script irá:
+- ✅ Buscar todos os leads da tabela `leads` (TabuladorMax)
+- ✅ Normalizar tipos de dados (especialmente datas)
+- ✅ Fazer upsert na tabela `fichas` (Gestão Scouter)
+- ✅ Incluir backup JSON completo no campo `raw`
+- ✅ Processar em lotes de 1000 registros
+- ✅ Exibir progresso em tempo real
+- ✅ Gerar relatório final com estatísticas
+
+**Exemplo de saída:**
+
+```
+🚀 Iniciando migração de Leads → Fichas
+================================================================================
+✅ Clientes Supabase configurados
+   TabuladorMax: https://gkvvtfqfggddzotxltxf.supabase.co
+   Gestão Scouter: https://ngestyxtopvfeyenyvgt.supabase.co
+
+📥 Buscando leads da tabela de origem...
+   Página 1: 1000 registros
+   Página 2: 1000 registros
+   ...
+✅ Total de 207000 leads encontrados
+
+🔄 Iniciando processamento em lotes...
+
+📊 Progresso: 207000/207000 (100.0%) | ✅ Inseridos: 207000 | ❌ Erros: 0 | ⚡ 2500.0 reg/s
+================================================================================
+✅ MIGRAÇÃO CONCLUÍDA
+
+📊 Estatísticas:
+   Total de leads: 207000
+   Processados: 207000
+   Inseridos/Atualizados: 207000
+   Erros: 0
+   Taxa de sucesso: 100.00%
+   Tempo total: 82.8s
+   Taxa média: 2500.0 registros/s
+================================================================================
+```
+
+### 3. Sincronização Bidirecional (Edge Function)
+
+A sincronização bidirecional via Edge Function continua disponível e ocorre a cada **5 minutos**:
 
 - **Gestão Scouter** ↔ **TabuladorMax**: Sincronização bidirecional
 - **Conflict Resolution**: Última modificação vence (`updated_at`)
