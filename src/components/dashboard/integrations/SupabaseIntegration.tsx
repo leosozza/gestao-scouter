@@ -53,7 +53,7 @@ export const SupabaseIntegration = () => {
   const [bitrixWebhookUrl, setBitrixWebhookUrl] = useState("");
   const [bitrixSecret, setBitrixSecret] = useState("");
   const [showSecret, setShowSecret] = useState(false);
-  const projectId = "nwgqynfcglcwwvibaypj";
+  const projectId = "gkvvtfqfggddzotxltxf";
 
   useEffect(() => {
     const url = `https://${projectId}.supabase.co/functions/v1/webhook-receiver`;
@@ -220,7 +220,7 @@ export const SupabaseIntegration = () => {
                   <span className="font-medium">Banco de Dados</span>
                 </div>
                 <p className="text-sm text-muted-foreground">PostgreSQL gerenciado</p>
-                <Badge variant="outline" className="mt-2">Tabela: fichas</Badge>
+                <Badge variant="outline" className="mt-2">Tabela: leads</Badge>
               </div>
 
               <div className="p-4 border rounded-lg">
@@ -300,16 +300,15 @@ export const SupabaseIntegration = () => {
               <pre className="bg-muted p-4 rounded-lg text-xs overflow-x-auto">
 {`{
   "source": "nome_do_crm",
-  "type": "ficha",
+  "type": "lead",
   "data": {
     "nome": "Nome do Cliente",
     "projeto": "Nome do Projeto",
     "scouter": "Nome do Scouter",
-    "criado": "DD/MM/YYYY",
-    "valor_ficha": "R$ 10,00",
-    "etapa": "Nova",
+    "criado_em": "2025-10-16T10:30:00Z",
     "telefone": "(11) 99999-9999",
-    "email": "cliente@email.com"
+    "email": "cliente@email.com",
+    "etapa": "Novo Lead"
   }
 }`}
               </pre>

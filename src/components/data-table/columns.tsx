@@ -1,48 +1,29 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 
-export const columns = (
-  setSelectedFichas: (fichas: Set<string>) => void,
-  selectedFichas: Set<string>,
-  handleUpdateFichaPaga: (fichaIds: string[], status: 'Sim' | 'Não') => Promise<void>
-): ColumnDef<any>[] => [
+export const columns = (): ColumnDef<any>[] => [
   {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={table.getIsAllPageRowsSelected()}
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Selecionar todos"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Selecionar linha"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "ID",
+    accessorKey: "id",
     header: "ID",
   },
   {
-    accessorKey: "Gestão de Scouter",
+    accessorKey: "criado_em",
+    header: "Criado em",
+    cell: ({ row }) => {
+      const date = new Date(row.getValue("criado_em"));
+      return (
+        <div className="text-sm">
+          {date.toLocaleDateString('pt-BR')} às {date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "scouter",
     header: "Scouter",
   },
   {
-    accessorKey: "Projetos Cormeciais",
-    header: "Projeto",
-  },
-  {
-    accessorKey: "Data de criação da Ficha",
-    header: "Data",
-  },
-  {
-    accessorKey: "Ficha paga",
-    header: "Status Pagamento",
+    accessorKey: "projeto",
+    header: "Projetos Comerciais",
   },
 ];

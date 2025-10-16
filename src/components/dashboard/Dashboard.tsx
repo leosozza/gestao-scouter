@@ -14,12 +14,13 @@ import { DateRange } from "react-day-picker";
 import { ProjectFilters } from "./ProjectFilters";
 import { FinancialControlPanel } from "./FinancialControlPanel";
 import { FinancialFilters, FinancialFilterState } from "./FinancialFilters";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase-helper";
 import { AIAnalysis } from "@/components/shared/AIAnalysis";
 import { toISODate } from "@/utils/normalize";
 import type { Ficha, Project } from "@/repositories/types";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface DashboardProps {
   onLogout: () => void;
@@ -70,34 +71,30 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Fetch data from Supabase fichas table
-      const { data: fichasData, error: fichasError } = await supabase
-        .from('fichas')
-        .select('*')
-        .eq('deleted', false);
+      // Fetch data from Supabase leads table
+      const { data: leadsData, error: leadsError } = await supabase
+        .from('leads')
+        .select('id, criado_em, scouter, projeto, nome, telefone, etapa, email');
 
-      if (fichasError) throw fichasError;
+      if (leadsError) throw leadsError;
 
-      // Transform fichas data to match expected format
-      const fichas = fichasData?.map(ficha => ({
-        ID: ficha.id,
-        'Gestão de Scouter': ficha.scouter || '',
-        'Projetos Cormeciais': ficha.projeto || 'Sem Projeto',
-        'Data de criação da Ficha': ficha.criado || '',
-        'Ficha paga': ficha.etapa === 'Lead convertido' ? 'Sim' : 'Não',
-        'Criado': ficha.criado,
-        'Valor_Ficha': ficha.valor_ficha,
-        'Etapa': ficha.etapa,
-        'Nome': ficha.nome,
-        ...ficha
+      // Transform leads data to match expected format
+      const fichas = leadsData?.map(lead => ({
+        id: lead.id,
+        criado_em: lead.criado_em,
+        scouter: lead.scouter || '',
+        projeto: lead.projeto || 'Sem Projeto',
+        nome: lead.nome,
+        telefone: lead.telefone,
+        email: lead.email,
+        etapa: lead.etapa,
       })) || [];
 
-      // Mock projects data for now
-      const projetos = [
-        { 'Agencia e Seletiva': 'Projeto Geral', 'Meta de Fichas': 100 }
-      ];
+      // Get unique projects from leads
+      const uniqueProjects = Array.from(new Set(fichas.map(f => f.projeto)))
+        .map(nome => ({ id: nome, nome }));
 
-      setData({ fichas, projetos });
+      setData({ fichas, projetos: uniqueProjects as any });
     } catch (error: unknown) {
       console.error("Error fetching data:", error);
       const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro ao carregar os dados.";
@@ -140,9 +137,9 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
     }
   };
 
-  const filteredFichas = data.fichas?.filter(ficha => {
+  const filteredFichas = data.fichas?.filter((ficha: any) => {
     if (filters.dateRange) {
-      const fichaDate = new Date(ficha['Data de criação da Ficha']);
+      const fichaDate = new Date(ficha.criado_em);
       const start = filters.dateRange.from;
       const end = filters.dateRange.to;
 
@@ -155,11 +152,11 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       }
     }
 
-    if (filters.projeto && ficha['Projetos Cormeciais'] !== filters.projeto) {
+    if (filters.projeto && ficha.projeto !== filters.projeto) {
       return false;
     }
 
-    if (filters.scouter && ficha['Gestão de Scouter'] !== filters.scouter) {
+    if (filters.scouter && ficha.scouter !== filters.scouter) {
       return false;
     }
 
@@ -199,6 +196,77 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
             </p>
           </div>
 
+          {/* Cards de Métricas */}
+          {data.fichas.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Total de Leads
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">{data.fichas.length}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Cadastrados no sistema
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Scouters Ativos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">
+                    {new Set(data.fichas.map((f: any) => f.scouter)).size}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Gerando leads
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Projetos Ativos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">
+                    {new Set(data.fichas.map((f: any) => f.projeto)).size}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Em andamento
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Leads Hoje
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">
+                    {data.fichas.filter((f: any) => {
+                      const today = new Date().toISOString().split('T')[0];
+                      const fichaDate = new Date(f.criado_em).toISOString().split('T')[0];
+                      return fichaDate === today;
+                    }).length}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Captados hoje
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {/* AI Analysis na primeira aba/seção do dashboard */}
           <div className="mt-2">
             <AIAnalysis
@@ -211,7 +279,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
               <AlertCircle className="h-4 w-4 text-warning" />
               <AlertTitle className="text-warning-foreground">Nenhum lead encontrado</AlertTitle>
               <AlertDescription className="text-muted-foreground">
-                <p className="mb-2">A tabela <code className="bg-muted px-1 py-0.5 rounded text-xs">fichas</code> no TabuladorMax está vazia.</p>
+                <p className="mb-2">A tabela <code className="bg-muted px-1 py-0.5 rounded text-xs">leads</code> no TabuladorMax está vazia.</p>
                 <p className="text-sm mb-2 font-medium">Verifique:</p>
                 <ul className="list-disc list-inside text-sm space-y-1 mb-4">
                   <li>Dados foram migrados do projeto antigo?</li>
@@ -249,7 +317,7 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
                 filters={filters}
                 setFilters={setFilters}
               />
-              <DataTable columns={columns(setSelectedFichas, selectedFichas, handleUpdateFichaPaga)} data={filteredFichas || []} isLoading={isLoading} />
+              <DataTable columns={columns()} data={filteredFichas || []} isLoading={isLoading} />
             </div>
           )}
 
