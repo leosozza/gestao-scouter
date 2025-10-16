@@ -1,5 +1,4 @@
 // @ts-nocheck
-import { getDataSource } from './datasource';
 import { supabase } from '@/integrations/supabase/client';
 import { normalize } from '@/utils/normalize';
 
@@ -40,13 +39,8 @@ interface FichaRecord {
 
 
 export async function getScoutersData(): Promise<ScouterData[]> {
-  const dataSource = getDataSource();
-  
-  if (dataSource === 'bitrix') {
-    return fetchScoutersFromSupabase();
-  } else {
-    return fetchScoutersFromSheets();
-  }
+  // Agora usamos apenas Google Sheets via Supabase
+  return fetchScoutersFromSheets();
 }
 
 export async function getScoutersSummary(): Promise<ScouterSummary> {
