@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { AlertCircle, CheckCircle2, Settings, Users, Plug, Shield, UserCog } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Settings, Users, Plug, Shield, UserCog, Database } from 'lucide-react'
 // DataSourceSelector removido - agora só usamos Supabase
 import { IntegrationsPanel } from '@/components/dashboard/integrations/IntegrationsPanel'
 import { UsersPanel } from '@/components/auth/UsersPanel'
@@ -117,7 +117,7 @@ export default function ConfiguracoesPage() {
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
           <p className="text-muted-foreground">
-            Gerencie parâmetros, classificações e integrações do sistema
+            Gerencie parâmetros, classificações e conexão com o Supabase
           </p>
         </div>
 
@@ -140,8 +140,8 @@ export default function ConfiguracoesPage() {
               Permissões
             </TabsTrigger>
             <TabsTrigger value="integracoes" className="rounded-xl">
-              <Plug className="h-4 w-4 mr-2" />
-              Integrações
+              <Database className="h-4 w-4 mr-2" />
+              Supabase
             </TabsTrigger>
           </TabsList>
 

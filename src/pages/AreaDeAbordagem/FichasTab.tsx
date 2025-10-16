@@ -19,6 +19,7 @@ import { Loader2, MapPin, Pencil, RefreshCw, X, Navigation, Flame, Maximize2, Mi
 import { useFichasFromSheets } from '@/hooks/useFichasFromSheets';
 import { getTileServerConfig, DEFAULT_TILE_SERVER } from '@/config/tileServers';
 import type { FichaMapData } from '@/services/googleSheetsMapService';
+import type { FichaDataPoint } from '@/types/ficha';
 import { DateFilter } from '@/components/FichasMap/DateFilter';
 import { AdvancedSummary } from '@/components/FichasMap/AdvancedSummary';
 import { AIAnalysisFloating } from '@/components/shared/AIAnalysisFloating';
@@ -54,14 +55,6 @@ interface GeomanDrawVertexEvent {
     getLatLngs: () => Array<Array<{ lat: number; lng: number }>>;
     getBounds: () => L.LatLngBounds;
   };
-}
-
-// Extended ficha type with metadata
-interface FichaDataPoint extends FichaMapData {
-  id?: string;
-  projeto?: string;
-  scouter?: string;
-  data?: string;
 }
 
 interface ProjetoSummary {
@@ -166,6 +159,8 @@ export function FichasTab() {
       projeto: f.projeto || 'Sem Projeto',
       scouter: f.scouter || 'Não Identificado',
       data: f.data || '',
+      lat: f.lat || f.latitude,
+      lng: f.lng || f.longitude,
     }));
 
     setAllFichas(enrichedFichas);
@@ -345,7 +340,9 @@ export function FichasTab() {
 
       // Get bounds for bbox pre-filtering
       const bounds = shape.getBounds();
-      const candidates = bboxFilter(filteredFichas, bounds);
+      // Filter to only fichas with valid coordinates
+      const validFichas = filteredFichas.filter(f => f.lat !== undefined && f.lng !== undefined) as Array<FichaDataPoint & { lat: number; lng: number }>;
+      const candidates = bboxFilter(validFichas, bounds);
 
       // Create polygon for Turf filtering
       const coords = latLngs.map((p: L.LatLng) => [p.lng, p.lat]);
@@ -384,7 +381,9 @@ export function FichasTab() {
 
       // Get bounds for pre-filtering
       const bounds = e.layer.getBounds();
-      const candidates = bboxFilter(filteredFichas, bounds);
+      // Filter to only fichas with valid coordinates
+      const validFichas = filteredFichas.filter(f => f.lat !== undefined && f.lng !== undefined) as Array<FichaDataPoint & { lat: number; lng: number }>;
+      const candidates = bboxFilter(validFichas, bounds);
 
       // Filter fichas inside polygon using Turf.js
       const polygon = turf.polygon([coords]);
@@ -466,13 +465,13 @@ export function FichasTab() {
       
       // Enhanced analysis
       // Etapa
-      if (ficha.etapa) {
+      if (ficha.etapa !== undefined) {
         etapaMap.set(ficha.etapa, (etapaMap.get(ficha.etapa) || 0) + 1);
       }
       
       // Confirmado
-      if (ficha.confirmado) {
-        const confirmadoKey = ficha.confirmado.toLowerCase();
+      if (ficha.confirmado !== undefined) {
+        const confirmadoKey = String(ficha.confirmado).toLowerCase();
         confirmadoMap.set(confirmadoKey, (confirmadoMap.get(confirmadoKey) || 0) + 1);
         
         if (confirmadoKey.includes('sim') || confirmadoKey.includes('confirmad')) {
@@ -481,16 +480,16 @@ export function FichasTab() {
       }
       
       // Foto
-      if (ficha.foto) {
-        const fotoValue = ficha.foto.toString().toLowerCase();
+      if (ficha.foto !== undefined) {
+        const fotoValue = String(ficha.foto).toLowerCase();
         if (fotoValue === 'sim' || fotoValue === '1' || fotoValue === 'true') {
           totalComFoto++;
         }
       }
       
       // Idade
-      if (ficha.idade) {
-        const idade = parseInt(ficha.idade.toString(), 10);
+      if (ficha.idade !== undefined) {
+        const idade = parseInt(String(ficha.idade), 10);
         if (!isNaN(idade) && idade > 0 && idade < 120) {
           somaIdades += idade;
           countIdades++;
@@ -498,8 +497,8 @@ export function FichasTab() {
       }
       
       // Valor
-      if (ficha.valor_ficha) {
-        const valorStr = ficha.valor_ficha.toString().replace(/[^\d,.-]/g, '').replace(',', '.');
+      if (ficha.valor_ficha !== undefined) {
+        const valorStr = String(ficha.valor_ficha).replace(/[^\d,.-]/g, '').replace(',', '.');
         const valor = parseFloat(valorStr);
         if (!isNaN(valor) && valor > 0) {
           somaValores += valor;
@@ -507,7 +506,7 @@ export function FichasTab() {
       }
       
       // Supervisor
-      if (ficha.supervisor) {
+      if (ficha.supervisor !== undefined) {
         supervisoresSet.add(ficha.supervisor);
       }
     });
@@ -857,7 +856,7 @@ export function FichasTab() {
           <AIAnalysisFloating
             data={{
               totalFichas: displayedFichas.length,
-              fichasComFoto: displayedFichas.filter(f => f.foto_1).length,
+              fichasComFoto: displayedFichas.filter(f => f.foto_1 !== undefined).length,
               projetos: Array.from(new Set(displayedFichas.map(f => f.projeto))),
               scouters: Array.from(new Set(displayedFichas.map(f => f.scouter)))
             }}

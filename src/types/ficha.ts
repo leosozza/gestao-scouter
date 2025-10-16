@@ -1,12 +1,12 @@
 // Tipo unificado para fichas com suporte a coordenadas e aliases
 export interface FichaDataPoint {
-  id: string | number;
+  id?: string | number;
   
-  // Coordenadas (com aliases)
+  // Coordenadas (com aliases) - todos opcionais
   latitude?: number;
   longitude?: number;
-  lat?: number;  // Alias para latitude
-  lng?: number;  // Alias para longitude
+  lat?: number;
+  lng?: number;
   
   // Campos principais
   projeto?: string;
