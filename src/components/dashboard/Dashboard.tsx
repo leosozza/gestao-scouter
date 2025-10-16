@@ -18,6 +18,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { AIAnalysis } from "@/components/shared/AIAnalysis";
 import { toISODate } from "@/utils/normalize";
 import type { Ficha, Project } from "@/repositories/types";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 interface DashboardProps {
   onLogout: () => void;
@@ -47,6 +49,15 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
   });
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Debug: verificar qual Supabase está sendo usado
+  useEffect(() => {
+    console.log('🔍 [Dashboard] Configuração Supabase TabuladorMax:', {
+      url: 'https://gkvvtfqfggddzotxltxf.supabase.co',
+      projeto: 'TabuladorMax (gkvvtfqfggddzotxltxf)',
+      timestamp: new Date().toISOString()
+    });
+  }, []);
 
   // garante busca inicial
   useEffect(() => {
@@ -194,6 +205,42 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
               title="Análise de Performance por IA"
             />
           </div>
+
+          {data.fichas.length === 0 && !isLoading && (
+            <Alert className="border-warning bg-warning/10">
+              <AlertCircle className="h-4 w-4 text-warning" />
+              <AlertTitle className="text-warning-foreground">Nenhum lead encontrado</AlertTitle>
+              <AlertDescription className="text-muted-foreground">
+                <p className="mb-2">A tabela <code className="bg-muted px-1 py-0.5 rounded text-xs">fichas</code> no TabuladorMax está vazia.</p>
+                <p className="text-sm mb-2 font-medium">Verifique:</p>
+                <ul className="list-disc list-inside text-sm space-y-1 mb-4">
+                  <li>Dados foram migrados do projeto antigo?</li>
+                  <li>Permissões RLS estão configuradas?</li>
+                  <li>Você está logado com o usuário correto?</li>
+                </ul>
+                <div className="flex gap-2 flex-wrap">
+                  <Button asChild size="sm" variant="outline">
+                    <a 
+                      href="https://supabase.com/dashboard/project/gkvvtfqfggddzotxltxf/editor/20517" 
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Abrir Editor Supabase
+                    </a>
+                  </Button>
+                  <Button asChild size="sm" variant="outline">
+                    <a 
+                      href="https://supabase.com/dashboard/project/gkvvtfqfggddzotxltxf/auth/users" 
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Gerenciar Usuários
+                    </a>
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
 
           {activeView === "table" && (
             <div className="space-y-4">

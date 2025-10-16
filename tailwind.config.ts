@@ -75,6 +75,7 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
 				looker: {
 					primary: '#4285F4',
 					success: '#34A853',
