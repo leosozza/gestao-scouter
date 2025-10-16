@@ -7,15 +7,19 @@ import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/shared/DataTable'
 import { FilterHeader } from '@/components/shared/FilterHeader'
 import { AIAnalysis } from '@/components/shared/AIAnalysis'
-import { Download, Users, TrendingUp, Calendar, Phone } from 'lucide-react'
+import { TinderAnalysisModal } from '@/components/leads/TinderAnalysisModal'
+import { Download, Users, TrendingUp, Calendar, Phone, Heart } from 'lucide-react'
 import { getLeads } from '@/repositories/leadsRepo'
 import type { Lead, LeadsFilters } from '@/repositories/types'
 import { formatDateBR } from '@/utils/dataHelpers'
+import { toast } from 'sonner'
 
 export default function Leads() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState<LeadsFilters>({})
+  const [selectedLeads, setSelectedLeads] = useState<Lead[]>([])
+  const [showTinderModal, setShowTinderModal] = useState(false)
 
   const filterOptions = [
     {
@@ -101,6 +105,23 @@ export default function Leads() {
       formatter: (value: number) => value || '-'
     },
     {
+      key: 'aprovado',
+      label: 'Aprovado',
+      sortable: true,
+      formatter: (value: boolean) => (
+        value ? (
+          <Badge variant="default" className="bg-green-500 rounded-xl">
+            <Heart className="w-3 h-3 mr-1" fill="white" />
+            Sim
+          </Badge>
+        ) : (
+          <Badge variant="secondary" className="rounded-xl">
+            Não
+          </Badge>
+        )
+      )
+    },
+    {
       key: 'indicadores',
       label: 'Indicadores',
       formatter: (value: any, row: Lead) => {
@@ -170,6 +191,26 @@ export default function Leads() {
 
   const handleExport = () => {
     console.log('Exportar dados')
+  }
+
+  const handleStartAnalysis = () => {
+    if (selectedLeads.length === 0) {
+      toast.error('Selecione ao menos um lead para análise')
+      return
+    }
+    setShowTinderModal(true)
+  }
+
+  const handleAnalysisComplete = async () => {
+    // Refetch leads to show updated aprovado status
+    await loadLeads()
+    // Clear selection
+    setSelectedLeads([])
+    setShowTinderModal(false)
+  }
+
+  const handleSelectionChange = (selected: Lead[]) => {
+    setSelectedLeads(selected)
   }
 
   return (
@@ -254,14 +295,25 @@ export default function Leads() {
               <CardHeader>
                 <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
                   <CardTitle>Lista de Leads</CardTitle>
-                  <Button 
-                    variant="outline" 
-                    className="rounded-xl"
-                    onClick={handleExport}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Exportar
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="default"
+                      className="rounded-xl bg-pink-500 hover:bg-pink-600"
+                      onClick={handleStartAnalysis}
+                      disabled={selectedLeads.length === 0}
+                    >
+                      <Heart className="h-4 w-4 mr-2" />
+                      Iniciar Análise ({selectedLeads.length})
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="rounded-xl"
+                      onClick={handleExport}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Exportar
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -270,6 +322,8 @@ export default function Leads() {
               columns={tableColumns}
               searchable={true}
               exportable={true}
+              selectable={true}
+              onSelectionChange={handleSelectionChange}
               actions={{
                 view: (row) => console.log('Ver lead:', row),
                 edit: (row) => console.log('Editar lead:', row)
@@ -288,6 +342,14 @@ export default function Leads() {
           </div>
         </div>
       </div>
+
+      {/* Tinder Analysis Modal */}
+      <TinderAnalysisModal
+        open={showTinderModal}
+        onClose={() => setShowTinderModal(false)}
+        leads={selectedLeads}
+        onComplete={handleAnalysisComplete}
+      />
     </AppShell>
   )
 }
