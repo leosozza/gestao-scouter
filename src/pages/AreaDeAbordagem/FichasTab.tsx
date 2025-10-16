@@ -16,9 +16,8 @@ import * as turf from '@turf/turf';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, MapPin, Pencil, RefreshCw, X, Navigation, Flame, Maximize2, Minimize2, Brain } from 'lucide-react';
-import { useFichasFromSheets } from '@/hooks/useFichasFromSheets';
+import { useFichas } from '@/hooks/useFichas';
 import { getTileServerConfig, DEFAULT_TILE_SERVER } from '@/config/tileServers';
-import type { FichaMapData } from '@/services/googleSheetsMapService';
 import type { FichaDataPoint } from '@/types/ficha';
 import { DateFilter } from '@/components/FichasMap/DateFilter';
 import { AdvancedSummary } from '@/components/FichasMap/AdvancedSummary';
@@ -108,7 +107,7 @@ export function FichasTab() {
   const [hasDateFilter, setHasDateFilter] = useState(false);
 
   // Fetch data from Supabase
-  const { data: fichas, isLoading, error, refetch, isFetching } = useFichasFromSheets();
+  const { data: fichas, isLoading, error, refetch } = useFichas({ withGeo: true });
 
   // Initialize map
   useEffect(() => {

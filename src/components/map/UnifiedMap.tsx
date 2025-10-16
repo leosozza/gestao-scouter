@@ -11,8 +11,8 @@ import 'leaflet.heat';
 import 'leaflet.markercluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
-import { useScoutersFromSheets } from '@/hooks/useScoutersFromSheets';
-import { useFichasFromSheets } from '@/hooks/useFichasFromSheets';
+import { useScouters } from '@/hooks/useScouters';
+import { useFichas } from '@/hooks/useFichas';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -75,8 +75,8 @@ export function UnifiedMap({
   const [totalFichas, setTotalFichas] = useState(0);
 
   // Fetch data from Supabase
-  const { data: scouters, isLoading: isLoadingScouters, error: errorScouters } = useScoutersFromSheets();
-  const { data: fichas, isLoading: isLoadingFichas, error: errorFichas, refetch: refetchFichas, isFetching: isFetchingFichas } = useFichasFromSheets();
+  const { data: scouters, isLoading: isLoadingScouters, error: errorScouters } = useScouters();
+  const { data: fichas, isLoading: isLoadingFichas, error: errorFichas, refetch: refetchFichas } = useFichas({ withGeo: true });
 
   const isLoading = isLoadingScouters || isLoadingFichas;
   const error = errorScouters || errorFichas;
@@ -397,9 +397,9 @@ export function UnifiedMap({
                 variant="outline"
                 size="sm"
                 onClick={handleReloadFichas}
-                disabled={isLoadingFichas || isFetchingFichas}
+                disabled={isLoadingFichas}
               >
-                <RefreshCw className={`h-4 w-4 mr-1 ${isFetchingFichas ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`h-4 w-4 mr-1 ${isLoadingFichas ? 'animate-spin' : ''}`} />
                 Recarregar Fichas
               </Button>
             )}

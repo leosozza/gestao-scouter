@@ -1,9 +1,8 @@
 // @ts-nocheck
-// Em todas as funções de Projeção (linear/avançada), ajustar:
+// Repositório de projeções - 100% Supabase
 import { getValorFichaFromRow, mediaValorPorFicha } from '@/utils/values';
 import { supabase } from '@/integrations/supabase/client';
-import { GoogleSheetsService } from '@/services/googleSheetsService';
-import { normalize, normalizeUpper, toISODate, parseDDMMYYYY } from '@/utils/normalize';
+import { toISODate } from '@/utils/normalize';
 
 export interface ProjectionData {
   name: string; // Pode ser scouter ou projeto
@@ -99,24 +98,35 @@ export async function fetchLinearProjection(p: ProjecaoFiltro): Promise<LinearPr
   const toISO = (d: Date) => toISODate(d)
   const dtTo = toISO(To)
 
-  // Busca do Sheets para ficar idêntico ao dashboard
-  const rows = await GoogleSheetsService.fetchFichas()
-  const scFil = normalizeUpper(p.scouter)
-  const prFil = normalizeUpper(p.projeto)
-
-  // filtro período + scouter/projeto
+  // Buscar fichas do Supabase
+  let query = supabase.from('fichas').select('*').eq('deleted', false);
+  
+  if (p.scouter) query = query.ilike('scouter', `%${p.scouter}%`);
+  if (p.projeto) query = query.ilike('projeto', `%${p.projeto}%`);
+  
+  const { data: rows, error } = await query;
+  if (error) throw error;
+  
+  if (!rows) return {
+    periodo: { inicio: p.inicio, hoje_limite: dtTo, fim: p.fim, dias_passados: 0, dias_restantes: 0, dias_totais: 0 },
+    realizado: { fichas: 0, valor: 0 },
+    projetado_restante: { fichas: 0, valor: 0 },
+    total_projetado: { fichas: 0, valor: 0 },
+    media_diaria: 0,
+    valor_medio_por_ficha: 0,
+    serie_real: [],
+    serie_proj: []
+  };
+  
+  // Filtrar por período
   const data = rows.filter((r: any) => {
-    const rawData = r["Criado"] || r["Data_criacao_Ficha"] || r["Data"] || r["criado"]
-    const iso = typeof rawData === "string" && rawData.includes("/")
-      ? parseDDMMYYYY(rawData)
-      : toISODate(new Date(rawData))
-    if (!iso) return false
-    if (iso < p.inicio || iso > p.fim) return false
-    if (scFil && normalizeUpper(r["Gestão de Scouter"] ?? r["Scouter"] ?? r["Gestão do Scouter"]) !== scFil) return false
-    if (prFil && normalizeUpper(r["Projetos Cormeciais"] ?? r["Projetos Comerciais"] ?? r["Projetos"] ?? r["Projeto"]) !== prFil) return false
-    ;(r as any).__iso = iso
-    return true
-  })
+    const rawData = r.criado;
+    const iso = toISODate(new Date(rawData));
+    if (!iso) return false;
+    if (iso < p.inicio || iso > p.fim) return false;
+    (r as any).__iso = iso;
+    return true;
+  });
 
   // (1) No "realizado" (período de análise): somar valor linha-a-linha
   // const valor_real = realizadas.reduce((acc, r) => acc + getValorFichaFromRow(r), 0);
@@ -202,30 +212,59 @@ export async function fetchProjectionAdvanced(p: ProjecaoFiltroAdvanced): Promis
   const projInicio = new Date(p.dataInicioProj)
   const projFim = new Date(p.dataFimProj)
   
-  // Fetch data from Sheets
-  const rows = await GoogleSheetsService.fetchFichas()
-  const scFil = normalizeUpper(p.scouter)
-  const prFil = normalizeUpper(p.projeto)
+  // Buscar fichas do Supabase
+  let query = supabase.from('fichas').select('*').eq('deleted', false);
   
-  // Helper to filter by date range and scouter/projeto
-  const filterData = (dataInicio: Date, dataFim: Date, scouterFilter?: string, projetoFilter?: string) => {
-    return rows.filter((r: any) => {
-      const rawData = r["Criado"] || r["Data_criacao_Ficha"] || r["Data"] || r["criado"]
-      const iso = typeof rawData === "string" && rawData.includes("/")
-        ? parseDDMMYYYY(rawData)
-        : toISODate(new Date(rawData))
-      if (!iso) return false
-      if (iso < toISO(dataInicio) || iso > toISO(dataFim)) return false
-      if (scouterFilter && normalizeUpper(r["Gestão de Scouter"] ?? r["Scouter"] ?? r["Gestão do Scouter"]) !== scouterFilter) return false
-      if (projetoFilter && normalizeUpper(r["Projetos Cormeciais"] ?? r["Projetos Comerciais"] ?? r["Projetos"] ?? r["Projeto"]) !== projetoFilter) return false
-      ;(r as any).__iso = iso
-      return true
-    })
+  if (p.scouter) query = query.ilike('scouter', `%${p.scouter}%`);
+  if (p.projeto) query = query.ilike('projeto', `%${p.projeto}%`);
+  
+  const { data: rows, error } = await query;
+  if (error) throw error;
+  
+  if (!rows || rows.length === 0) {
+    return {
+      periodoAnalise: {
+        inicio: p.dataInicioAnalise,
+        fim: p.dataFimAnalise,
+        dias: 0,
+        totalFichas: 0,
+        mediaDiaria: 0
+      },
+      periodoProjecao: {
+        inicio: p.dataInicioProj,
+        fim: p.dataFimProj,
+        dias: 0,
+        unidades: 0
+      },
+      granularidade: p.granularidade,
+      realizado: { fichas: 0, valor: 0 },
+      projetado: { fichas: 0, valor: 0 },
+      fallbackUsado,
+      valor_medio_por_ficha: 0,
+      serie_analise: [],
+      serie_projecao: []
+    };
   }
   
-  // Get data for analysis period with specific filter
-  let fichasAnalise = filterData(analiseInicio, analiseFim, scFil, prFil)
-  let fallbackUsado = false
+  // Helper para filtrar por período
+  const filterByPeriod = (start: Date, end: Date) => {
+    return rows.filter((r: any) => {
+      const iso = toISODate(new Date(r.criado));
+      if (!iso) return false;
+      return iso >= toISO(start) && iso <= toISO(end);
+    });
+  };
+  // Fallback: se não há dados específicos, usar média global
+  let fallbackUsado = false;
+  if (fichasAnalise.length === 0) {
+    // Tentar com todos os dados do período
+    const todasFichasAnalise = filterByPeriod(analiseInicio, analiseFim);
+    if (todasFichasAnalise.length > 0) {
+      fichasAnalise = todasFichasAnalise;
+      fallbackUsado = true;
+    }
+  }
+  
   
   // Fallback: if no data for specific scouter/projeto, use global average
   if (fichasAnalise.length === 0 && (scFil || prFil)) {
@@ -349,28 +388,28 @@ export async function fetchProjectionAdvanced(p: ProjecaoFiltroAdvanced): Promis
 
 export async function getAvailableFilters(): Promise<{ scouters: string[], projetos: string[] }> {
   try {
-    const rows = await GoogleSheetsService.fetchFichas() // mesma fonte do dashboard
-    const sc = new Set<string>()
-    const pr = new Set<string>()
-    for (const r of rows) {
-      const scouter =
-        r["Gestão de Scouter"] ??
-        r["Scouter"] ??
-        r["Gestão do Scouter"] ??
-        r["Gestao de Scouter"] ??
-        r["Gestão de  Scouter"]
-      const projeto =
-        r["Projetos Cormeciais"] ??
-        r["Projetos Comerciais"] ??
-        r["Projetos"] ??
-        r["Projeto"]
-      if (normalize(scouter)) sc.add(normalize(scouter))
-      if (normalize(projeto)) pr.add(normalize(projeto))
+    const { data: fichas, error } = await supabase
+      .from('fichas')
+      .select('scouter, projeto')
+      .eq('deleted', false);
+    
+    if (error) throw error;
+    
+    const sc = new Set<string>();
+    const pr = new Set<string>();
+    
+    for (const r of (fichas || [])) {
+      if (r.scouter) sc.add(r.scouter.trim());
+      if (r.projeto) pr.add(r.projeto.trim());
     }
-    return { scouters: Array.from(sc).sort(), projetos: Array.from(pr).sort() }
+    
+    return { 
+      scouters: Array.from(sc).sort(), 
+      projetos: Array.from(pr).sort() 
+    };
   } catch (e) {
-    console.error("getAvailableFilters failed:", e)
-    return { scouters: [], projetos: [] }
+    console.error("getAvailableFilters failed:", e);
+    return { scouters: [], projetos: [] };
   }
 }
 

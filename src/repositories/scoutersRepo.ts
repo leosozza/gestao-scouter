@@ -1,6 +1,7 @@
-// @ts-nocheck
+// Repositório para Scouters - Dados do Supabase
 import { supabase } from '@/integrations/supabase/client';
-import { normalize } from '@/utils/normalize';
+import { detectMissingFields } from '@/utils/fieldValidator';
+import type { FichaDataPoint } from '@/types/ficha';
 
 export interface ScouterData {
   id: string;
@@ -11,7 +12,10 @@ export interface ScouterData {
   total_fichas: number;
   converted_fichas: number;
   conversion_rate: number;
+  taxaConversao: number;
+  qualityScore: number;
   performance_status: string;
+  status: string;
   active: boolean;
 }
 
@@ -22,25 +26,14 @@ export interface ScouterSummary {
   averageConversion: number;
 }
 
-// Internal interfaces for processing
-interface ScouterFromTab {
-  nome?: string;
-  tier?: string;
-  status?: string;
-  meta_semanal?: number;
-  ativo?: boolean;
+export interface ScouterDataResult {
+  data: ScouterData[];
+  missingFields: string[];
 }
-
-interface FichaRecord {
-  status_normalizado?: string;
-  valor_por_ficha_num?: number;
-  [key: string]: unknown;
-}
-
 
 export async function getScoutersData(): Promise<ScouterData[]> {
-  // Agora usamos apenas Google Sheets via Supabase
-  return fetchScoutersFromSheets();
+  const result = await fetchScoutersFromSupabase();
+  return result.data;
 }
 
 export async function getScoutersSummary(): Promise<ScouterSummary> {
@@ -61,159 +54,125 @@ export async function getScoutersSummary(): Promise<ScouterSummary> {
   };
 }
 
-// Função para buscar dados do Supabase apenas para Google Sheets agora  
-async function fetchScoutersFromSupabase(): Promise<ScouterData[]> {
-  // Com a nova estrutura, vamos usar apenas Google Sheets
-  return fetchScoutersFromSheets();
-}
-
-async function fetchScoutersFromSheets(): Promise<ScouterData[]> {
+async function fetchScoutersFromSupabase(): Promise<ScouterDataResult> {
   try {
-    const { GoogleSheetsService } = await import('@/services/googleSheetsService');
+    // Buscar scouter_profiles e fichas do Supabase
+    const { data: profiles, error: profilesError } = await supabase
+      .from('scouter_profiles')
+      .select('*')
+      .eq('ativo', true);
     
-    // First, try to fetch from the dedicated Scouters tab
-    const scoutersFromTab = await GoogleSheetsService.fetchScouters();
+    if (profilesError) throw profilesError;
+
+    const { data: fichas, error: fichasError } = await supabase
+      .from('fichas')
+      .select('*')
+      .eq('deleted', false);
     
-    // Also fetch fichas for enrichment and fallback
-    const fichas = await GoogleSheetsService.fetchFichas();
+    if (fichasError) throw fichasError;
+
+    // Agrupar fichas por scouter
+    const fichasByScouter = new Map<string, FichaDataPoint[]>();
     
-    // If we have data from the Scouters tab, use it as the primary source
-    if (scoutersFromTab.length > 0) {
-      console.log(`scoutersRepo: Using data from Scouters tab (${scoutersFromTab.length} scouters found)`);
-      return enrichScoutersWithFichasData(scoutersFromTab, fichas);
+    for (const ficha of (fichas || [])) {
+      const scouterName = ficha.scouter?.trim();
+      if (scouterName) {
+        if (!fichasByScouter.has(scouterName)) {
+          fichasByScouter.set(scouterName, []);
+        }
+        fichasByScouter.get(scouterName)!.push(ficha as FichaDataPoint);
+      }
     }
+
+    // Converter profiles em ScouterData
+    const scoutersData: ScouterData[] = [];
     
-    // Fallback: derive scouters from fichas grouping
-    console.log('scoutersRepo: Scouters tab empty, falling back to deriving from fichas');
-    return deriveScoutersFromFichas(fichas);
+    for (const profile of (profiles || [])) {
+      const scouterFichas = fichasByScouter.get(profile.nome) || [];
+      const totalFichas = scouterFichas.length;
+      const convertedFichas = scouterFichas.filter(f => 
+        f.confirmado === 'Sim' || f.compareceu === 'Sim'
+      ).length;
+      const conversionRate = totalFichas > 0 ? (convertedFichas / totalFichas) * 100 : 0;
+      
+      // Calcular tier baseado em performance
+      const tierName = getTierFromFichas(totalFichas);
+      const weeklyGoal = getWeeklyGoalFromTier(tierName);
+      
+      scoutersData.push({
+        id: profile.id.toString(),
+        scouter_name: profile.nome,
+        tier_name: tierName,
+        weekly_goal: weeklyGoal,
+        fichas_value: totalFichas,
+        total_fichas: totalFichas,
+        converted_fichas: convertedFichas,
+        conversion_rate: conversionRate,
+        taxaConversao: conversionRate,
+        qualityScore: calculateQualityScore(scouterFichas),
+        performance_status: getPerformanceStatus(conversionRate),
+        status: profile.ativo ? 'ativo' : 'inativo',
+        active: profile.ativo
+      });
+    }
+
+    // Detectar campos ausentes
+    const missingFields = detectMissingFields(profiles || [], 'scouter_profiles');
+
+    return {
+      data: scoutersData,
+      missingFields
+    };
   } catch (error) {
-    console.error('Error fetching scouters from Sheets:', error);
-    return [];
+    console.error('Error fetching scouters from Supabase:', error);
+    return {
+      data: [],
+      missingFields: []
+    };
   }
 }
 
-// New function to enrich scouter data with fichas statistics
-function enrichScoutersWithFichasData(scoutersFromTab: ScouterFromTab[], fichas: FichaRecord[]): ScouterData[] {
-  console.log(`scoutersRepo: Enriching ${scoutersFromTab.length} scouters with fichas data from ${fichas.length} fichas`);
-  
-  // Group fichas by scouter for statistics
-  const fichasByScouterMap = new Map<string, FichaRecord[]>();
-  
-  fichas.forEach(ficha => {
-    const getNomeScouter = (row: Record<string, unknown>) =>
-      normalize(
-        row["Gestão de Scouter"] ??
-        row["Scouter"] ??
-        row["Gestão do Scouter"] ??
-        row["Gestao de Scouter"] ??
-        row["Gestão de  Scouter"]
-      );
-    const scouterName = getNomeScouter(ficha);
-    
-    if (scouterName) {
-      if (!fichasByScouterMap.has(scouterName)) {
-        fichasByScouterMap.set(scouterName, []);
-      }
-      fichasByScouterMap.get(scouterName)!.push(ficha);
-    }
-  });
-  
-  console.log(`scoutersRepo: Grouped fichas into ${fichasByScouterMap.size} unique scouter names`);
-  
-  // Map scouters from tab with fichas data
-  const result = scoutersFromTab.map((scouter, index) => {
-    const scouterName = normalize(scouter.nome || 'Sem Nome');
-    const scouterFichas = fichasByScouterMap.get(scouterName) || [];
-    
-    // Log first few matches for debugging
-    if (index < 3) {
-      console.log(`scoutersRepo: Scouter "${scouterName}" has ${scouterFichas.length} fichas, active=${scouter.ativo}`);
-    }
-    
-    const totalFichas = scouterFichas.length;
-    const convertedFichas = scouterFichas.filter(f => f.status_normalizado === 'Confirmado').length;
-    const conversionRate = totalFichas > 0 ? (convertedFichas / totalFichas) * 100 : 0;
-    
-    // Determine performance status based on conversion rate
-    let performanceStatus = 'Normal';
-    if (conversionRate >= 80) performanceStatus = 'Excelente';
-    else if (conversionRate >= 60) performanceStatus = 'Bom';
-    else if (conversionRate < 40) performanceStatus = 'Precisa Melhorar';
-    
-    const totalValue = scouterFichas.reduce((sum, f) => sum + (f.valor_por_ficha_num || 0), 0);
-    
-    return {
-      id: `scouter-${index}`,
-      scouter_name: scouterName,
-      tier_name: scouter.tier || 'Scouter Pleno',
-      weekly_goal: scouter.meta_semanal || 50,
-      fichas_value: totalValue,
-      total_fichas: totalFichas,
-      converted_fichas: convertedFichas,
-      conversion_rate: conversionRate,
-      performance_status: performanceStatus,
-      active: scouter.ativo !== undefined ? scouter.ativo : true
-    };
-  });
-  
-  const activeCount = result.filter(s => s.active).length;
-  console.log(`scoutersRepo: Enriched ${result.length} scouters (${activeCount} active, ${result.length - activeCount} inactive)`);
-  
-  return result;
+function getTierFromFichas(totalFichas: number): string {
+  if (totalFichas >= 80) return 'Scouter Coach Bronze';
+  if (totalFichas >= 60) return 'Scouter Premium';
+  if (totalFichas >= 40) return 'Scouter Pleno';
+  return 'Scouter Iniciante';
 }
 
-// Existing function to derive scouters from fichas (kept as fallback)
-function deriveScoutersFromFichas(fichas: FichaRecord[]): ScouterData[] {
-  // Group fichas by scouter
-  const scouterMap = new Map<string, { fichas: FichaRecord[]; tier_name: string; weekly_goal: number }>();
+function getWeeklyGoalFromTier(tier: string): number {
+  if (tier.includes('Coach')) return 90;
+  if (tier.includes('Premium')) return 80;
+  if (tier.includes('Pleno')) return 60;
+  return 40;
+}
+
+function getPerformanceStatus(conversionRate: number): string {
+  if (conversionRate >= 90) return 'excelente';
+  if (conversionRate >= 75) return 'bom';
+  if (conversionRate >= 60) return 'regular';
+  return 'baixo';
+}
+
+function calculateQualityScore(fichas: FichaDataPoint[]): number {
+  if (fichas.length === 0) return 0;
   
-  fichas.forEach(ficha => {
-    const getNomeScouter = (row: Record<string, unknown>) =>
-      normalize(
-        row["Gestão de Scouter"] ??
-        row["Scouter"] ??
-        row["Gestão do Scouter"] ??
-        row["Gestao de Scouter"] ??
-        row["Gestão de  Scouter"]
-      );
-    const scouterName = getNomeScouter(ficha) || 'Sem Scouter';
-    
-    if (!scouterMap.has(scouterName)) {
-      scouterMap.set(scouterName, {
-        fichas: [],
-        tier_name: 'Scouter Pleno', // Default tier
-        weekly_goal: 50 // Default goal
-      });
-    }
-    
-    scouterMap.get(scouterName).fichas.push(ficha);
-  });
+  let score = 0;
+  const weights = {
+    hasPhoto: 10,
+    hasEmail: 5,
+    hasPhone: 5,
+    confirmed: 20,
+    attended: 30
+  };
   
-  // Convert to ScouterData format
-  return Array.from(scouterMap.entries()).map(([scouterName, data], index) => {
-    const totalFichas = data.fichas.length;
-    const convertedFichas = data.fichas.filter((f: FichaRecord) => f.status_normalizado === 'Confirmado').length;
-    const conversionRate = totalFichas > 0 ? (convertedFichas / totalFichas) * 100 : 0;
-    
-    // Determine performance status based on conversion rate
-    let performanceStatus = 'Normal';
-    if (conversionRate >= 80) performanceStatus = 'Excelente';
-    else if (conversionRate >= 60) performanceStatus = 'Bom';
-    else if (conversionRate < 40) performanceStatus = 'Precisa Melhorar';
-    
-    const totalValue = data.fichas.reduce((sum: number, f: FichaRecord) => sum + (f.valor_por_ficha_num || 0), 0);
-    
-    return {
-      id: `scouter-${index}`,
-      scouter_name: scouterName,
-      tier_name: data.tier_name,
-      weekly_goal: data.weekly_goal,
-      fichas_value: totalValue,
-      total_fichas: totalFichas,
-      converted_fichas: convertedFichas,
-      conversion_rate: conversionRate,
-      performance_status: performanceStatus,
-      active: true
-    };
-  });
+  for (const ficha of fichas) {
+    if (ficha.foto || ficha.cadastro_existe_foto === 'Sim') score += weights.hasPhoto;
+    if (ficha.email) score += weights.hasEmail;
+    if (ficha.telefone) score += weights.hasPhone;
+    if (ficha.confirmado === 'Sim') score += weights.confirmed;
+    if (ficha.compareceu === 'Sim') score += weights.attended;
+  }
+  
+  const maxScore = fichas.length * (weights.hasPhoto + weights.hasEmail + weights.hasPhone + weights.confirmed + weights.attended);
+  return maxScore > 0 ? (score / maxScore) * 100 : 0;
 }

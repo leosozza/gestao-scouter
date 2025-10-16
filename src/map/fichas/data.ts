@@ -3,7 +3,7 @@
  * Handles loading and parsing of fichas data
  */
 
-import { fetchFichasData, FichaMapData } from '@/services/googleSheetsMapService';
+import { supabase } from '@/integrations/supabase/client';
 import type { FichaDataPoint as FichaDataPointBase } from '@/types/ficha';
 
 export type FichaDataPoint = FichaDataPointBase;
@@ -20,15 +20,22 @@ export interface FichasDataResult {
  */
 export async function loadFichasData(): Promise<FichasDataResult> {
   try {
-    console.log('📥 [Fichas Data] Loading fichas from Google Sheets...');
+    console.log('📥 [Fichas Data] Loading fichas from Supabase...');
     
-    const fichas = await fetchFichasData();
+    const { data: fichas, error } = await supabase
+      .from('fichas')
+      .select('*')
+      .eq('deleted', false)
+      .not('latitude', 'is', null)
+      .not('longitude', 'is', null);
     
-    console.log(`✅ [Fichas Data] Loaded ${fichas.length} fichas with coordinates`);
+    if (error) throw error;
+    
+    console.log(`✅ [Fichas Data] Loaded ${fichas?.length || 0} fichas with coordinates`);
     
     return {
-      fichas: fichas as FichaDataPoint[],
-      total: fichas.length,
+      fichas: (fichas || []) as FichaDataPoint[],
+      total: fichas?.length || 0,
       loaded: new Date(),
     };
   } catch (error) {
