@@ -16,7 +16,7 @@ export default function ConfiguracoesPage() {
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
           <p className="text-muted-foreground">
-            Gerencie usuários, permissões e integração com Supabase
+            Gerencie usuários, permissões, importação e sincronização com TabuladorMax
           </p>
         </div>
 
@@ -32,7 +32,7 @@ export default function ConfiguracoesPage() {
             </TabsTrigger>
             <TabsTrigger value="integracoes" className="rounded-xl">
               <Database className="h-4 w-4 mr-2" />
-              Supabase
+              Integrações
             </TabsTrigger>
           </TabsList>
 

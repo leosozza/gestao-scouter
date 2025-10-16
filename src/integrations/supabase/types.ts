@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          auto_sync_interval: number | null
+          created_at: string | null
+          default_tile_server: string | null
+          enable_offline_mode: boolean | null
+          id: string
+          max_file_size_mb: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          auto_sync_interval?: number | null
+          created_at?: string | null
+          default_tile_server?: string | null
+          enable_offline_mode?: boolean | null
+          id?: string
+          max_file_size_mb?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          auto_sync_interval?: number | null
+          created_at?: string | null
+          default_tile_server?: string | null
+          enable_offline_mode?: boolean | null
+          id?: string
+          max_file_size_mb?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       call_logs: {
         Row: {
           agent_id: number | null
