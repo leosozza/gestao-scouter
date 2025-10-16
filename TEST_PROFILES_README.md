@@ -120,7 +120,7 @@ Execute o arquivo SQL diretamente no seu banco de dados Supabase.
 - **Diferentes Projetos**: Vários projetos de moda e campanhas
 - **Fotos**: 9 perfis com foto, 1 sem foto (para testar esse cenário)
 - **Timestamps Variados**: Criados em diferentes momentos (últimas 5 dias)
-- **Todos não aprovados**: Campo `aprovado = false` para permitir teste da funcionalidade
+- **Todos pendentes de análise**: Campo `aprovado = NULL` para permitir teste da funcionalidade
 
 ## Testando a Funcionalidade Tinder
 

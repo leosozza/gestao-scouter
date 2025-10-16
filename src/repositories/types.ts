@@ -56,7 +56,7 @@ export interface Ficha {
   longitude?: number;
   created_at?: string;
   updated_at?: string;
-  aprovado?: boolean;
+  aprovado?: boolean | null;
   data_criacao_ficha?: string;
 }
 

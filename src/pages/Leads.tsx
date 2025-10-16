@@ -8,7 +8,7 @@ import { DataTable } from '@/components/shared/DataTable'
 import { FilterHeader } from '@/components/shared/FilterHeader'
 import { AIAnalysis } from '@/components/shared/AIAnalysis'
 import { TinderAnalysisModal } from '@/components/leads/TinderAnalysisModal'
-import { Download, Users, TrendingUp, Calendar, Phone, Heart } from 'lucide-react'
+import { Download, Users, TrendingUp, Calendar, Phone, Heart, ThumbsUp, ThumbsDown, Clock } from 'lucide-react'
 import { getLeads } from '@/repositories/leadsRepo'
 import type { Lead, LeadsFilters } from '@/repositories/types'
 import { formatDateBR } from '@/utils/dataHelpers'
@@ -108,18 +108,30 @@ export default function Leads() {
       key: 'aprovado',
       label: 'Aprovado',
       sortable: true,
-      formatter: (value: boolean) => (
-        value ? (
-          <Badge variant="default" className="bg-green-500 rounded-xl">
-            <Heart className="w-3 h-3 mr-1" fill="white" />
-            Sim
-          </Badge>
-        ) : (
-          <Badge variant="secondary" className="rounded-xl">
-            Não
-          </Badge>
-        )
-      )
+      formatter: (value: boolean | null | undefined) => {
+        if (value === true) {
+          return (
+            <Badge variant="default" className="bg-green-500 rounded-xl">
+              <Heart className="w-3 h-3 mr-1" fill="white" />
+              Sim
+            </Badge>
+          );
+        } else if (value === false) {
+          return (
+            <Badge variant="destructive" className="rounded-xl">
+              <ThumbsDown className="w-3 h-3 mr-1" />
+              Não
+            </Badge>
+          );
+        } else {
+          return (
+            <Badge variant="outline" className="rounded-xl">
+              <Clock className="w-3 h-3 mr-1" />
+              Pendente
+            </Badge>
+          );
+        }
+      }
     },
     {
       key: 'indicadores',
@@ -233,7 +245,7 @@ export default function Leads() {
         />
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
           <Card className="rounded-2xl">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total de Leads</CardTitle>
@@ -283,6 +295,49 @@ export default function Leads() {
                 {leads.filter(l => l.etapa === 'Contato').length}
               </div>
               <p className="text-xs text-muted-foreground">Em negociação</p>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Aprovados</CardTitle>
+              <ThumbsUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                {leads.filter(l => l.aprovado === true).length}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {leads.length > 0 ? ((leads.filter(l => l.aprovado === true).length / leads.length) * 100).toFixed(1) : 0}% do total
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Reprovados</CardTitle>
+              <ThumbsDown className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">
+                {leads.filter(l => l.aprovado === false).length}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {leads.length > 0 ? ((leads.filter(l => l.aprovado === false).length / leads.length) * 100).toFixed(1) : 0}% do total
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Para Analisar</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-purple-600">
+                {leads.filter(l => l.aprovado === null || l.aprovado === undefined).length}
+              </div>
+              <p className="text-xs text-muted-foreground">Pendente análise</p>
             </CardContent>
           </Card>
         </div>

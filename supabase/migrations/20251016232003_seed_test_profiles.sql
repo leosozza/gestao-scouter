@@ -43,7 +43,7 @@ INSERT INTO public.fichas (
     'SIM',
     'Sim',
     150.00,
-    false,
+    NULL,
     NOW() - INTERVAL '5 days'
   ),
   
@@ -67,7 +67,7 @@ INSERT INTO public.fichas (
     'SIM',
     'Sim',
     200.00,
-    false,
+    NULL,
     NOW() - INTERVAL '4 days'
   ),
   
@@ -91,7 +91,7 @@ INSERT INTO public.fichas (
     'SIM',
     'Sim',
     180.00,
-    false,
+    NULL,
     NOW() - INTERVAL '3 days'
   ),
   
@@ -115,7 +115,7 @@ INSERT INTO public.fichas (
     'SIM',
     null,
     150.00,
-    false,
+    NULL,
     NOW() - INTERVAL '2 days'
   ),
   
@@ -139,7 +139,7 @@ INSERT INTO public.fichas (
     'SIM',
     'Sim',
     170.00,
-    false,
+    NULL,
     NOW() - INTERVAL '1 day'
   ),
   
@@ -163,7 +163,7 @@ INSERT INTO public.fichas (
     'SIM',
     null,
     160.00,
-    false,
+    NULL,
     NOW() - INTERVAL '6 hours'
   ),
   
@@ -187,7 +187,7 @@ INSERT INTO public.fichas (
     'SIM',
     'Sim',
     190.00,
-    false,
+    NULL,
     NOW() - INTERVAL '12 hours'
   ),
   
@@ -211,7 +211,7 @@ INSERT INTO public.fichas (
     'NÃO',
     'Sim',
     140.00,
-    false,
+    NULL,
     NOW() - INTERVAL '3 hours'
   ),
   
@@ -235,7 +235,7 @@ INSERT INTO public.fichas (
     'SIM',
     null,
     155.00,
-    false,
+    NULL,
     NOW() - INTERVAL '2 hours'
   ),
   
@@ -259,7 +259,7 @@ INSERT INTO public.fichas (
     'SIM',
     'Sim',
     165.00,
-    false,
+    NULL,
     NOW() - INTERVAL '1 hour'
   );
 

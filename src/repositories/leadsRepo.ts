@@ -142,7 +142,7 @@ function normalizeFichaFromSupabase(r: any): Lead {
     longitude: r.longitude,
     created_at: r.created_at,
     updated_at: r.updated_at,
-    aprovado: r.aprovado ?? false,
+    aprovado: r.aprovado !== undefined ? r.aprovado : null,
     data_criacao_ficha: r.criado,
   };
 }
