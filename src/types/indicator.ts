@@ -1,16 +1,26 @@
+export interface IndicatorFilterCondition {
+  date_filter?: 'today' | 'week' | 'month' | 'custom';
+  date_range?: { start: string; end: string };
+  scouter?: string[];
+  projeto?: string[];
+  etapa?: string[];
+  confirmado?: string[];
+}
+
 export interface IndicatorConfig {
   id: string;
   indicator_key: string;
   title: string;
   source_column: string;
   aggregation: 'count' | 'sum' | 'avg' | 'count_distinct' | 'min' | 'max';
-  filter_condition?: Record<string, any>;
+  filter_condition?: IndicatorFilterCondition;
   chart_type: 'number' | 'bar' | 'line' | 'pie' | 'donut' | 'progress';
   format: 'number' | 'currency' | 'percentage';
   position: number;
   user_id?: string;
   created_at?: string;
   updated_at?: string;
+  color?: string;
 }
 
 export const DEFAULT_INDICATORS: Omit<IndicatorConfig, 'id' | 'user_id' | 'created_at' | 'updated_at'>[] = [

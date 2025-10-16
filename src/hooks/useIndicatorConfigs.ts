@@ -78,6 +78,31 @@ export function useIndicatorConfigs() {
     },
   });
 
+  const deleteConfig = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('dashboard_indicator_configs')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['indicator-configs'] });
+      toast({
+        title: 'Indicador removido',
+        description: 'O indicador foi removido com sucesso',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Erro ao remover',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   const resetToDefaults = useMutation({
     mutationFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -103,6 +128,7 @@ export function useIndicatorConfigs() {
     configs: configs || DEFAULT_INDICATORS,
     isLoading,
     saveConfig,
+    deleteConfig,
     resetToDefaults,
   };
 }

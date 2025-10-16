@@ -70,12 +70,13 @@ interface PerformanceMetrics {
 
 export function PerformanceDashboard() {
   const { settings } = useAppSettings();
-  const { configs, saveConfig, resetToDefaults } = useIndicatorConfigs();
+  const { configs, saveConfig, deleteConfig, resetToDefaults } = useIndicatorConfigs();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<Date | null>(new Date());
   const [editingIndicator, setEditingIndicator] = useState<IndicatorConfig | null>(null);
+  const [isCreatingIndicator, setIsCreatingIndicator] = useState(false);
   const [metrics, setMetrics] = useState<PerformanceMetrics>({
     totalFichas: 0,
     comFoto: 0,
@@ -105,7 +106,31 @@ export function PerformanceDashboard() {
   const [selectedScouters, setSelectedScouters] = useState<string[]>([]);
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
 
-  const availableColumns = ['id', 'projeto', 'scouter', 'criado_em', 'valor_ficha', 'etapa', 'nome'];
+  const availableColumns = ['id', 'projeto', 'scouter', 'criado_em', 'valor_ficha', 'etapa', 'nome', 'telefone', 'email', 'confirmado', 'ficha_confirmada'];
+
+  const handleCreateIndicator = () => {
+    const newIndicator: IndicatorConfig = {
+      id: crypto.randomUUID(),
+      indicator_key: `custom_${Date.now()}`,
+      title: 'Novo Indicador',
+      source_column: 'id',
+      aggregation: 'count',
+      chart_type: 'number',
+      format: 'number',
+      position: configs.length,
+    };
+    setEditingIndicator(newIndicator);
+    setIsCreatingIndicator(true);
+  };
+
+  const handleSaveIndicator = (config: Partial<IndicatorConfig>) => {
+    saveConfig.mutate(config);
+    setIsCreatingIndicator(false);
+  };
+
+  const handleDeleteIndicator = (id: string) => {
+    deleteConfig.mutate(id);
+  };
 
   useEffect(() => {
     loadData();
@@ -371,24 +396,45 @@ export function PerformanceDashboard() {
       </div>
 
       {/* Configurable Indicators */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {configs.map((config) => (
-          <ConfigurableIndicator
-            key={config.indicator_key}
-            config={config}
-            value={calculateIndicatorValue(leads, config)}
-            onEdit={() => setEditingIndicator(config)}
-          />
-        ))}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Indicadores Configuráveis</h2>
+          <Button onClick={handleCreateIndicator} size="sm" className="gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Novo Indicador
+          </Button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {configs.map((config) => (
+            <ConfigurableIndicator
+              key={config.indicator_key}
+              config={config}
+              value={calculateIndicatorValue(leads, config)}
+              data={leads}
+              onEdit={() => {
+                setEditingIndicator(config);
+                setIsCreatingIndicator(false);
+              }}
+              onDelete={config.id ? () => handleDeleteIndicator(config.id) : undefined}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Indicator Config Modal */}
       <IndicatorConfigModal
         open={!!editingIndicator}
-        onOpenChange={(open) => !open && setEditingIndicator(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditingIndicator(null);
+            setIsCreatingIndicator(false);
+          }
+        }}
         config={editingIndicator}
-        onSave={(config) => saveConfig.mutate(config)}
+        onSave={handleSaveIndicator}
         availableColumns={availableColumns}
+        data={leads}
+        isCreating={isCreatingIndicator}
       />
 
       {/* Charts & AI Insights */}
