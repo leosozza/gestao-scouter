@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { AlertCircle, CheckCircle2, Settings, Users, Plug, Shield, UserCog } from 'lucide-react'
-import { DataSourceSelector } from '@/components/dashboard/integrations/DataSourceSelector'
+// DataSourceSelector removido - agora só usamos Supabase
 import { IntegrationsPanel } from '@/components/dashboard/integrations/IntegrationsPanel'
 import { UsersPanel } from '@/components/auth/UsersPanel'
 import { PermissionsPanel } from '@/components/auth/PermissionsPanel'

@@ -28,9 +28,9 @@ export default function AreaDeAbordagem() {
   const [startDate, setStartDate] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
-  // Fetch data from Google Sheets
-  const { scouters, refetch: refetchScouters } = useScoutersFromSheets();
-  const { fichas, refetch: refetchFichas } = useFichasFromSheets();
+  // Fetch data from Supabase
+  const { data: scouters, refetch: refetchScouters } = useScoutersFromSheets();
+  const { data: fichas, refetch: refetchFichas } = useFichasFromSheets();
 
   // Stats
   const totalScouters = scouters?.length || 0;

@@ -74,9 +74,9 @@ export function UnifiedMap({
   const [totalScouters, setTotalScouters] = useState(0);
   const [totalFichas, setTotalFichas] = useState(0);
 
-  // Fetch data from Google Sheets
-  const { scouters, isLoading: isLoadingScouters, error: errorScouters } = useScoutersFromSheets();
-  const { fichas, isLoading: isLoadingFichas, error: errorFichas, refetch: refetchFichas, isFetching: isFetchingFichas } = useFichasFromSheets();
+  // Fetch data from Supabase
+  const { data: scouters, isLoading: isLoadingScouters, error: errorScouters } = useScoutersFromSheets();
+  const { data: fichas, isLoading: isLoadingFichas, error: errorFichas, refetch: refetchFichas, isFetching: isFetchingFichas } = useFichasFromSheets();
 
   const isLoading = isLoadingScouters || isLoadingFichas;
   const error = errorScouters || errorFichas;

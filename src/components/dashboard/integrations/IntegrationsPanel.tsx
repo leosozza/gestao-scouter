@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { BitrixIntegration } from "./BitrixIntegration";
 import { N8NIntegration } from "./N8NIntegration";
-import { DataSourceSelector } from "./DataSourceSelector";
+import { FieldMappingConfig } from "./FieldMappingConfig";
 import { GoogleSheetsIntegration } from "./GoogleSheetsIntegration";
 import { SupabaseIntegration } from "./SupabaseIntegration";
 
@@ -122,7 +122,14 @@ export const IntegrationsPanel = () => {
         </TabsContent>
 
         <TabsContent value="data-source">
-          <DataSourceSelector />
+          <Card>
+            <CardHeader>
+              <CardTitle>Fonte de Dados</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Sistema utiliza Supabase como fonte única de dados.</p>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="bitrix24">

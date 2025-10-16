@@ -114,8 +114,8 @@ export function FichasTab() {
   const [dateEnd, setDateEnd] = useState<string>('');
   const [hasDateFilter, setHasDateFilter] = useState(false);
 
-  // Fetch data from Google Sheets
-  const { fichas, isLoading, error, refetch, isFetching } = useFichasFromSheets();
+  // Fetch data from Supabase
+  const { data: fichas, isLoading, error, refetch, isFetching } = useFichasFromSheets();
 
   // Initialize map
   useEffect(() => {

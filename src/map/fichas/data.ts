@@ -1,17 +1,12 @@
 /**
  * Fichas Data Module
- * Handles loading and parsing of fichas data from Google Sheets CSV
- * Future-ready: Easy migration to Supabase
+ * Handles loading and parsing of fichas data
  */
 
 import { fetchFichasData, FichaMapData } from '@/services/googleSheetsMapService';
+import type { FichaDataPoint as FichaDataPointBase } from '@/types/ficha';
 
-export interface FichaDataPoint extends FichaMapData {
-  id?: string;
-  projeto?: string;
-  scouter?: string;
-  data?: string;
-}
+export type FichaDataPoint = FichaDataPointBase;
 
 export interface FichasDataResult {
   fichas: FichaDataPoint[];
@@ -51,11 +46,15 @@ export function filterFichasByBounds(
   bounds: { north: number; south: number; east: number; west: number }
 ): FichaDataPoint[] {
   return fichas.filter(ficha => {
+    const lat = ficha.lat || ficha.latitude;
+    const lng = ficha.lng || ficha.longitude;
     return (
-      ficha.lat >= bounds.south &&
-      ficha.lat <= bounds.north &&
-      ficha.lng >= bounds.west &&
-      ficha.lng <= bounds.east
+      lat !== undefined &&
+      lng !== undefined &&
+      lat >= bounds.south &&
+      lat <= bounds.north &&
+      lng >= bounds.west &&
+      lng <= bounds.east
     );
   });
 }

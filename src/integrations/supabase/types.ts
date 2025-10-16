@@ -222,6 +222,45 @@ export type Database = {
         }
         Relationships: []
       }
+      field_mappings: {
+        Row: {
+          created_at: string | null
+          data_type: string
+          description: string | null
+          entity_type: string
+          id: string
+          is_required: boolean | null
+          legacy_aliases: Json
+          supabase_field: string
+          transform_function: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data_type: string
+          description?: string | null
+          entity_type: string
+          id?: string
+          is_required?: boolean | null
+          legacy_aliases?: Json
+          supabase_field: string
+          transform_function?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data_type?: string
+          description?: string | null
+          entity_type?: string
+          id?: string
+          is_required?: boolean | null
+          legacy_aliases?: Json
+          supabase_field?: string
+          transform_function?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       permissions: {
         Row: {
           action: string
