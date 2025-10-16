@@ -4,7 +4,7 @@
  * Inclui suporte a Realtime updates
  */
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-helper';
 import { useEffect } from 'react';
 
 export interface FichaGeo {
@@ -53,7 +53,7 @@ export function useFichasGeo(params: FichasGeoParams) {
         {
           event: '*',
           schema: 'public',
-          table: 'fichas',
+          table: 'leads',
           filter: 'lat=not.is.null'
         },
         () => {

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase-helper';
 import { fichaMapper } from '@/services/fieldMappingService';
 import type { FichaDataPoint } from '@/types/ficha';
 
