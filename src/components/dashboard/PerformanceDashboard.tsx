@@ -329,11 +329,13 @@ export function PerformanceDashboard() {
           <CheckCircle2 className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2">
-              <span>Dados sincronizados</span>
+              <span>Dados sincronizados com Supabase</span>
               <span className="text-xs text-muted-foreground">
-                há menos de um minuto
+                Tabela: fichas
               </span>
-              <Button variant="outline" size="sm">Online</Button>
+              <Badge variant="outline" className="text-xs">
+                {metrics.totalFichas.toLocaleString('pt-BR')} registros
+              </Badge>
             </div>
             <Button
               variant="outline"
@@ -343,7 +345,7 @@ export function PerformanceDashboard() {
               className="gap-2"
             >
               <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
-              Sincronizar
+              Atualizar
             </Button>
           </AlertDescription>
         </Alert>
