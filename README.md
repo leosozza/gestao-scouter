@@ -1,31 +1,75 @@
-# Gestão Scouter - Sistema de Gerenciamento
+# Gestão Scouter - Dashboard Analytics
 
-Sistema completo de gerenciamento para scouters com dashboard analítico, controle financeiro e integração com Google Sheets e Supabase.
+Sistema de gestão e análise de desempenho para scouters com sincronização em tempo real com TabuladorMax.
 
-## 🚀 Funcionalidades
+## 🚀 Funcionalidades Principais
 
-- **Dashboard Analítico**: Métricas em tempo real com gráficos e indicadores
-- **Sistema IQS 2.0**: Índice de Qualidade do Scouter com pesos configuráveis
-- **Gerenciamento de Fichas**: Controle completo de leads e conversões
-- **Sistema de Pagamentos**: Gestão financeira com controle de ajuda de custo
-- **Integração Google Sheets**: Sincronização automática com planilhas
-- **Análise por IA**: Relatórios inteligentes baseados nos dados
-- **Sistema de Projeções**: Previsões e metas personalizadas
-- **Controle de Scouters**: Gestão de equipe e performance
-- **🗺️ Mapas Interativos**: Geolocalização em tempo real e heatmaps (100% gratuito)
+- **📊 Dashboard Analítico**: Métricas em tempo real com gráficos interativos
+- **📥 Importação Massiva**: Upload de CSV/XLSX até 300MB (200k+ registros)
+- **🔄 Sincronização Automática**: Supabase ↔ TabuladorMax (bidirecional, a cada 5 min)
+- **🗺️ Mapas Interativos**: Geolocalização em tempo real, heatmaps e clusters
+- **💰 Sistema de Pagamentos**: Gestão financeira com controle de ajuda de custo
+- **📈 Sistema IQS 2.0**: Índice de Qualidade do Scouter com pesos configuráveis
+- **🤖 Análise por IA**: Relatórios inteligentes baseados nos dados
+- **🎯 Sistema de Projeções**: Previsões e metas personalizadas
+- **👥 Controle de Equipes**: Gestão de scouters, supervisores e telemarketing
+- **🔐 Segurança**: Row Level Security (RLS) com permissões granulares
 
 ## 🛠️ Tecnologias
 
-- **Frontend**: React 18 + TypeScript + Vite 7
-- **UI Framework**: shadcn/ui + Tailwind CSS
-- **Backend**: Supabase (PostgreSQL + Auth + Storage)
-- **Mapas**: Leaflet + OpenStreetMap (solução 100% gratuita)
-- **Integrações**: Google Sheets API, Bitrix24
-- **Gráficos**: Recharts
-- **Relatórios**: jsPDF + AutoTable
-- **Estado**: TanStack Query + React Hooks
+### Frontend
+- React 18 + TypeScript + Vite 7
+- shadcn/ui + Tailwind CSS
+- React Query (TanStack Query)
+- ApexCharts + Recharts
+- Leaflet + OpenStreetMap (100% gratuito)
+- XLSX (processamento de planilhas)
 
-## 📊 Sistema IQS 2.0 (Índice de Qualidade do Scouter)
+### Backend
+- Supabase (PostgreSQL + Auth + Realtime)
+- Edge Functions (Deno)
+- Row Level Security (RLS)
+- Database migrations
+
+## 🏗️ Arquitetura
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  GESTÃO SCOUTER (ngestyxtopvfeyenyvgt)                      │
+│  - Aplicação principal                                       │
+│  - Dashboard, analytics, relatórios                          │
+│  - Tabela: fichas (207k+ registros)                         │
+└─────────────────────────────────────────────────────────────┘
+                          ↕ SYNC (5 min)
+┌─────────────────────────────────────────────────────────────┐
+│  TABULADORMAX (gkvvtfqfggddzotxltxf)                        │
+│  - Fonte de dados original                                   │
+│  - Sistema legado/externo                                    │
+│  - Sincronização bidirecional                                │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Estrutura do Projeto
+
+```
+gestao-scouter/
+├── src/
+│   ├── components/         # Componentes React
+│   │   ├── dashboard/      # Dashboard e importação
+│   │   ├── map/           # Mapas interativos
+│   │   ├── charts/        # Gráficos
+│   │   └── ui/            # Componentes UI (shadcn)
+│   ├── hooks/             # Custom hooks
+│   ├── pages/             # Páginas principais
+│   ├── repositories/      # Data access layer
+│   ├── services/          # Serviços e utils
+│   └── types/             # TypeScript types
+├── supabase/
+│   ├── functions/         # Edge Functions
+│   │   └── sync-tabulador/  # Sincronização automática
+│   └── migrations/        # Database migrations
+└── public/                # Assets estáticos
+```
 
 ### O que é o IQS?
 
@@ -76,36 +120,19 @@ IQS = (Soma dos pontos ponderados / Total de pesos aplicáveis) × 100
 - Total de pesos = soma de todos os pesos configurados
 - IQS = (2.0 / total_pesos) × 100
 
-### Atualização em Tempo Real
+## 📊 Sistema IQS 2.0 (Índice de Qualidade do Scouter)
 
 - ✅ Alterações nas configurações atualizam o dashboard automaticamente
 - ✅ IQS é recalculado sempre que os filtros ou settings mudam
 - ✅ Persistência real via Supabase (tabela `app_settings`)
 - ✅ Cache inteligente com React Query (5 minutos de stale time)
 
-## 🏗️ Arquitetura
-
-### Code Splitting & Performance
-- **Lazy Loading**: Páginas carregadas sob demanda
-- **Chunk Optimization**: Bundles otimizados por categoria
-  - React Core (~142KB)
-  - UI Components (~95KB) 
-  - Charts (~392KB)
-  - Date Utils (~58KB)
-  - Supabase (~123KB)
-- **Tree Shaking**: Importações otimizadas
-
-### Type Safety
-- **TypeScript**: Tipagem estrita em todo o projeto
-- **Interfaces Customizadas**: Tipos para Ficha, Project, Lead, etc.
-- **Error Handling**: Tratamento robusto de erros
-- **React Hooks**: Dependências otimizadas
-
 ## 🔧 Instalação e Uso
 
 ### Pré-requisitos
 - Node.js 18+ ([instalar com nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
 - npm ou yarn
+- Conta no Supabase
 
 ### Configuração Local
 
@@ -134,140 +161,70 @@ npm run preview
 ### Variáveis de Ambiente
 
 ```env
-VITE_SUPABASE_PROJECT_ID=seu_project_id
-VITE_SUPABASE_URL=https://seu_projeto.supabase.co
+VITE_SUPABASE_PROJECT_ID=ngestyxtopvfeyenyvgt
+VITE_SUPABASE_URL=https://ngestyxtopvfeyenyvgt.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=sua_chave_publica
 ```
 
-## 📊 Integrações de Dados
+## 📥 Importação Inicial de Dados
 
-### Google Sheets
-O sistema suporta integração com Google Sheets através de:
+### Passo 1: Preparar CSV
 
-1. **URL de Planilha**: Configuração via interface
-2. **Proxy CORS**: Bypass automático durante desenvolvimento
-3. **Fallback System**: Dados mock quando API indisponível
-4. **Formato Esperado**: Templates disponíveis no sistema
+Crie um arquivo CSV com as seguintes colunas (aceita variações de nomes):
 
-### Estrutura da Planilha de Fichas
-- **ID**: Identificador único
-- **Projetos Comerciais**: Nome do projeto
-- **Gestão de Scouter**: Nome do scouter
-- **Data de criação da Ficha**: DD/MM/AAAA HH:MM
-- **Valor por Fichas**: R$ X,XX
+**Campos principais:**
+- ID, Nome, Projeto, Scouter, Data, Telefone, Email, Idade, Valor, LAT, LNG
 
-## 🔄 Sincronização de Dados
-
-### Bitrix24 (Webhook)
-Sincronização automática de leads do Bitrix24 via webhooks. Quando um lead é criado ou atualizado no Bitrix24, os dados são enviados automaticamente para o Supabase.
-
-**Documentação completa**: [BITRIX_WEBHOOK_SETUP.md](./BITRIX_WEBHOOK_SETUP.md)
-
-**Recursos:**
-- Webhook automático para ONCRMLEADADD e ONCRMLEADUPDATE
-- Mapeamento de campos padrão e customizados
-- Upsert idempotente baseado em bitrix_id
-- Logs de sincronização para troubleshooting
-- Suporte a autenticação via X-Secret header
-
-### Google Sheets (Sync Automático)
-Sincronização em tempo real entre Google Sheets e Supabase usando Apps Script.
-
-**Documentação completa**: [SHEETS_SYNC_SETUP.md](./SHEETS_SYNC_SETUP.md)
-
-**Configuração rápida:**
-1) Publique a Edge Function `sheets-upsert`:
-   ```bash
-   supabase functions deploy sheets-upsert
-   ```
-
-2) Configure as variáveis de ambiente:
-   ```env
-   SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key
-   SHEETS_SYNC_SHARED_SECRET=seu_segredo_compartilhado
-   SHEETS_EXPECTED_COLUMNS="ID,Projetos Comerciais,Gestão de Scouter,Criado,Valor por Fichas"
-   ```
-
-3) No Google Sheets, crie um Apps Script com o código abaixo:
-
-```javascript
-// Google Apps Script para sincronização com Supabase
-const EDGE_FUNCTION_URL = 'https://SEU_PROJETO.supabase.co/functions/v1/sheets-upsert';
-const SHARED_SECRET = 'seu_segredo_compartilhado';
-
-function onEdit(e) {
-  // Envia linha editada em tempo real
-  const range = e.range;
-  const sheet = range.getSheet();
-  
-  if (sheet.getName() !== 'Fichas') return;
-  
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const rowData = sheet.getRange(range.getRow(), 1, 1, sheet.getLastColumn()).getValues()[0];
-  
-  const rowObject = {};
-  headers.forEach((header, index) => {
-    rowObject[header] = rowData[index];
-  });
-  
-  syncToSupabase([rowObject]);
-}
-
-function syncAll() {
-  // Menu personalizado para sincronização completa
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Fichas');
-  const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  const rows = data.slice(1);
-  
-  const rowObjects = rows.map(row => {
-    const obj = {};
-    headers.forEach((header, index) => {
-      obj[header] = row[index];
-    });
-    return obj;
-  });
-  
-  syncToSupabase(rowObjects);
-}
-
-function syncToSupabase(rows) {
-  try {
-    const response = UrlFetchApp.fetch(EDGE_FUNCTION_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Secret': SHARED_SECRET
-      },
-      payload: JSON.stringify({ rows: rows })
-    });
-    
-    if (response.getResponseCode() === 200) {
-      const result = JSON.parse(response.getContentText());
-      Logger.log(`Sincronização concluída: ${result.upserted} fichas atualizadas`);
-    } else {
-      Logger.log(`Erro na sincronização: ${response.getContentText()}`);
-    }
-  } catch (error) {
-    Logger.log(`Erro: ${error.toString()}`);
-  }
-}
-
-function onOpen() {
-  // Adiciona menu personalizado
-  const ui = SpreadsheetApp.getUi();
-  ui.createMenu('Sync')
-    .addItem('Sincronizar tudo', 'syncAll')
-    .addToUi();
-}
+**Exemplo:**
+```csv
+ID,Nome,Projeto,Scouter,Data,Telefone,Email,Idade,Valor,LAT,LNG
+1,João Silva,Projeto A,Maria,15/01/2025,(11) 98765-4321,joao@email.com,25,R$ 50,00,-23.5505,-46.6333
 ```
 
-4) Configure os triggers:
-   - `onEdit`: Trigger automático para edições
-   - `onOpen`: Adiciona menu personalizado
-   - `syncAll`: Função para sincronização completa
+### Passo 2: Importar via Dashboard
 
-5) Após validar, altere `DATA_SOURCE` para `"supabase"` nas telas (Dashboard/Leads/Projeção/Pagamentos).
+1. Acesse Dashboard → Botão "Importação Massiva (CSV)"
+2. Selecione o arquivo CSV/XLSX (até 300MB)
+3. Clique em "Iniciar Importação"
+4. Aguarde processamento (progress bar em tempo real)
+
+**Capacidade:**
+- Até 300 MB por arquivo
+- Até 200.000+ registros
+- Processamento em ~8 minutos (200k registros)
+
+📖 **Documentação completa**: [CSV_IMPORT_GUIDE.md](./CSV_IMPORT_GUIDE.md)
+
+## 🔄 Sincronização com TabuladorMax
+
+A sincronização bidirecional é **automática** e ocorre a cada **5 minutos**.
+
+### Como Funciona
+
+- **Gestão Scouter** ↔ **TabuladorMax**: Sincronização bidirecional
+- **Conflict Resolution**: Última modificação vence (`updated_at`)
+- **Logs de Auditoria**: Tabela `sync_logs` registra todas as operações
+- **Status em Tempo Real**: Tabela `sync_status` monitora saúde da sync
+
+### Monitorar Sincronização
+
+```sql
+-- Ver últimas sincronizações
+SELECT * FROM sync_logs 
+ORDER BY started_at DESC 
+LIMIT 10;
+
+-- Ver status atual
+SELECT * FROM sync_status;
+
+-- Ver registros modificados recentemente
+SELECT id, nome, projeto, updated_at 
+FROM fichas 
+WHERE updated_at > NOW() - INTERVAL '1 hour'
+ORDER BY updated_at DESC;
+```
+
+📖 **Documentação completa**: [SYNC_ARCHITECTURE.md](./SYNC_ARCHITECTURE.md)
 
 ## 🗺️ Sistema de Mapas
 
