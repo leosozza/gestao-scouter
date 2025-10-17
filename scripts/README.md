@@ -4,6 +4,103 @@ Este diretório contém scripts para sincronização e migração de dados entre
 
 ## 📁 Arquivos
 
+### `syncDiagnostics.ts` ⭐ NOVO
+
+Script de diagnóstico automatizado que valida configuração, conectividade e permissões para sincronização.
+
+**Funcionalidades:**
+- ✅ Valida variáveis de ambiente obrigatórias
+- ✅ Testa leitura em TabuladorMax (public.leads)
+- ✅ Testa leitura em Gestão Scouter (public.fichas)
+- ✅ Testa escrita em Gestão Scouter (opcional, com cleanup)
+- ✅ Busca amostra de leads e testa normalização
+- ✅ Preview de payload (dry-run, sem gravar)
+- ✅ Relatório detalhado com latências e estatísticas
+- ✅ Códigos de saída (0=sucesso, 1=warnings, 2=erro fatal)
+
+**Pré-requisitos:**
+
+1. Variáveis de ambiente configuradas no `.env`:
+   ```env
+   TABULADOR_URL=https://gkvvtfqfggddzotxltxf.supabase.co
+   TABULADOR_SERVICE_KEY=sua_service_role_key_tabulador
+   VITE_SUPABASE_URL=https://ngestyxtopvfeyenyvgt.supabase.co
+   VITE_SUPABASE_SERVICE_KEY=sua_service_role_key_gestao
+   ```
+
+2. Dependências instaladas:
+   ```bash
+   npm install
+   ```
+
+**Uso:**
+
+```bash
+# Usando npm scripts (recomendado)
+npm run diagnostics:sync              # Dry-run (não grava)
+npm run diagnostics:sync:write        # Testa escrita
+
+# Ou diretamente com flags
+npx tsx scripts/syncDiagnostics.ts --dry-run
+npx tsx scripts/syncDiagnostics.ts --write-check
+npx tsx scripts/syncDiagnostics.ts --sample 50 --write-check --verbose
+```
+
+**Flags:**
+- `--dry-run`: Apenas simula, não grava dados (padrão: true)
+- `--write-check`: Habilita teste de escrita com cleanup
+- `--sample N`: Número de registros para amostra (padrão: 10)
+- `--verbose`: Exibe logs detalhados
+- `--help`: Mostra ajuda
+
+**Exemplo de Saída:**
+
+```
+🔍 DIAGNÓSTICO DE SINCRONIZAÇÃO
+================================================================================
+
+[1/5] Validando Variáveis de Ambiente...
+  ✅ PASS: TABULADOR_URL configurada
+  ✅ PASS: TABULADOR_SERVICE_KEY configurada
+  ✅ PASS: VITE_SUPABASE_URL configurada
+  ✅ PASS: VITE_SUPABASE_SERVICE_KEY configurada
+  ✅ PASS: URLs de projetos diferentes confirmadas
+
+[2/5] Testando Leitura em TabuladorMax (public.leads)...
+  ✅ PASS: Leitura em TabuladorMax bem-sucedida (142ms)
+     Total de registros: 207458
+
+[3/5] Testando Leitura em Gestão Scouter (public.fichas)...
+  ✅ PASS: Leitura em Gestão Scouter bem-sucedida (95ms)
+     Total de registros: 207000
+
+[4/5] Teste de Escrita (SKIPPED - use --write-check)
+
+[5/5] Buscando Amostra de Leads (10 registros)...
+  ✅ PASS: Normalização concluída: 10/10 registros (234ms)
+
+================================================================================
+✅ DIAGNÓSTICO CONCLUÍDO COM SUCESSO
+
+📊 Resumo:
+  - Testes Executados: 11
+  - ✅ Passou: 11
+  - ❌ Falhou: 0
+  - ⚠️ Avisos: 0
+
+💡 Próximos Passos:
+  1. ✅ Sistema pronto para sincronização!
+  2. Execute com --write-check para testar escrita
+  3. Execute npm run migrate:leads para sincronização inicial
+  4. Configure triggers para sincronização em tempo real
+
+Código de Saída: 0 (sucesso)
+```
+
+**📚 Documentação Completa**: [docs/SYNC_DIAGNOSTICS.md](../docs/SYNC_DIAGNOSTICS.md)
+
+---
+
 ### `syncLeadsToFichas.ts`
 
 Script principal de migração inicial que copia todos os registros da tabela `leads` (TabuladorMax) para a tabela `fichas` (Gestão Scouter).
@@ -146,10 +243,18 @@ npx tsx scripts/testMigration.ts
 ### "Erro de configuração: TABULADOR_URL não configurada"
 - Verifique se o arquivo `.env` existe na raiz do projeto
 - Confirme que todas as variáveis estão definidas corretamente
+- Execute `npm run diagnostics:sync` para validar configuração
 
 ### "Erro ao buscar leads: permission denied"
 - Verifique se a service role key está correta
 - Confirme que a service role key tem permissões para acessar a tabela `leads`
+- Execute `npm run diagnostics:sync` para testar conectividade
+
+### "Connection refused" ou "Invalid JWT"
+- Verifique as URLs dos projetos no `.env`
+- Confirme que as service keys são válidas
+- Copie novamente as credenciais do Supabase Dashboard
+- Execute `npm run diagnostics:sync` para diagnóstico completo
 
 ### "Erro ao processar lote após 3 tentativas"
 - Verifique a conectividade com o Supabase
@@ -160,6 +265,30 @@ npx tsx scripts/testMigration.ts
 - Verifique a latência de rede
 - Considere aumentar o `BATCH_SIZE` no script (padrão: 1000)
 - Verifique se há rate limiting ativo no Supabase
+
+### Diagnóstico Automatizado
+
+**Sempre execute o diagnóstico antes de reportar problemas:**
+
+```bash
+# Diagnóstico completo
+npm run diagnostics:sync
+
+# Com teste de escrita
+npm run diagnostics:sync:write
+
+# Com logs detalhados
+npx tsx scripts/syncDiagnostics.ts --verbose
+```
+
+**Interpretação dos Códigos de Saída:**
+- `0` = ✅ Tudo OK, pode prosseguir
+- `1` = ⚠️ Warnings, revisar antes de prosseguir
+- `2` = ❌ Erro fatal, corrigir antes de prosseguir
+
+**Documentação Completa de Troubleshooting:**
+- [docs/ANALISE_SYNC_TABULADOR.md](../docs/ANALISE_SYNC_TABULADOR.md#troubleshooting)
+- [docs/SYNC_DIAGNOSTICS.md](../docs/SYNC_DIAGNOSTICS.md#ações-recomendadas)
 
 ## 📧 Suporte
 
