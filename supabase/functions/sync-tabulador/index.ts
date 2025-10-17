@@ -7,7 +7,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
 };
 
 // Mapeia uma ficha (Gestão Scouter) para um lead (TabuladorMax)
@@ -78,17 +78,38 @@ serve(async (req) => {
   const errors: string[] = [];
 
   try {
+    console.log('🔄 [Sync] Iniciando sincronização bidirecional...');
+    console.log('📡 [Sync] Gestão Scouter URL:', Deno.env.get('SUPABASE_URL'));
+    console.log('📡 [Sync] TabuladorMax URL:', Deno.env.get('TABULADOR_URL'));
+
     // Cliente Gestão Scouter (ngestyxtopvfeyenyvgt)
     const gestaoUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const gestaoKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-    const gestao = createClient(gestaoUrl, gestaoKey);
+    const gestao = createClient(gestaoUrl, gestaoKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
 
     // Cliente TabuladorMax (gkvvtfqfggddzotxltxf)
     const tabuladorUrl = Deno.env.get('TABULADOR_URL') ?? '';
     const tabuladorKey = Deno.env.get('TABULADOR_SERVICE_KEY') ?? '';
-    const tabulador = createClient(tabuladorUrl, tabuladorKey);
+    const tabulador = createClient(tabuladorUrl, tabuladorKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+      global: {
+        headers: {
+          'Prefer': 'return=representation',
+          'Content-Type': 'application/json',
+        },
+      },
+    });
 
     // 1. Buscar última sincronização
+    console.log('🕐 [Sync] Buscando última sincronização...');
     const { data: lastSync } = await gestao
       .from('sync_status')
       .select('last_sync_at')
@@ -99,9 +120,11 @@ serve(async (req) => {
       ? new Date(lastSync.last_sync_at).toISOString()
       : new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(); // Últimas 24h se primeira sync
 
-    console.log(`Última sincronização: ${lastSyncDate}`);
+    console.log(`📅 [Sync] Última sincronização: ${lastSyncDate}`);
 
     // 2. Buscar registros modificados em Gestão Scouter
+    console.log('📥 [Sync] Buscando atualizações de Gestão Scouter...');
+    console.log('🎯 [Sync] Tabela: fichas');
     const { data: gestaoUpdates, error: gestaoError } = await gestao
       .from('fichas')
       .select('*')
@@ -110,10 +133,17 @@ serve(async (req) => {
       .order('updated_at', { ascending: true });
 
     if (gestaoError) {
+      console.error('❌ [Sync] Erro ao buscar de Gestão Scouter:', gestaoError);
       errors.push(`Erro ao buscar de Gestão Scouter: ${gestaoError.message}`);
+    } else {
+      console.log(`✅ [Sync] Encontrados ${gestaoUpdates?.length || 0} registros atualizados em Gestão`);
     }
 
     // 3. Buscar registros modificados em TabuladorMax (tabela LEADS)
+    console.log('📥 [Sync] Buscando atualizações de TabuladorMax...');
+    console.log('🎯 [Sync] Tabela: leads');
+    console.log('📡 [Sync] Endpoint:', `${tabuladorUrl}/rest/v1/leads`);
+    
     const { data: tabuladorUpdates, error: tabuladorError } = await tabulador
       .from('leads')
       .select('*')
@@ -121,7 +151,16 @@ serve(async (req) => {
       .order('updated_at', { ascending: true });
 
     if (tabuladorError) {
-      errors.push(`Erro ao buscar de TabuladorMax: ${tabuladorError.message}`);
+      console.error('❌ [Sync] Erro ao buscar de TabuladorMax:', tabuladorError);
+      
+      // Handle 406 error specifically
+      if (tabuladorError.code === '406' || tabuladorError.message?.includes('406')) {
+        errors.push(`Erro 406 ao buscar de TabuladorMax: Verifique os headers da requisição. ${tabuladorError.message}`);
+      } else {
+        errors.push(`Erro ao buscar de TabuladorMax: ${tabuladorError.message}`);
+      }
+    } else {
+      console.log(`✅ [Sync] Encontrados ${tabuladorUpdates?.length || 0} registros atualizados em TabuladorMax`);
     }
 
     let gestaoToTabuladorCount = 0;
@@ -137,6 +176,9 @@ serve(async (req) => {
     if (gestaoUpdates && gestaoUpdates.length > 0) {
       const toSync = gestaoUpdates.filter(f => !conflictIds.includes(f.id));
       
+      console.log(`🔄 [Sync] Sincronizando ${toSync.length} registros: Gestão → TabuladorMax`);
+      console.log('📡 [Sync] Endpoint:', `${tabuladorUrl}/rest/v1/leads`);
+      
       if (toSync.length > 0) {
         // Mapear fichas para leads
         const leadsToSync = toSync.map(mapFichaToLead);
@@ -147,9 +189,17 @@ serve(async (req) => {
           .select('id');
 
         if (error) {
-          errors.push(`Erro ao sincronizar para TabuladorMax: ${error.message}`);
+          console.error('❌ [Sync] Erro ao sincronizar para TabuladorMax:', error);
+          
+          // Handle 406 error specifically
+          if (error.code === '406' || error.message?.includes('406')) {
+            errors.push(`Erro 406 ao sincronizar para TabuladorMax: Verifique os headers. ${error.message}`);
+          } else {
+            errors.push(`Erro ao sincronizar para TabuladorMax: ${error.message}`);
+          }
         } else {
           gestaoToTabuladorCount = data?.length || 0;
+          console.log(`✅ [Sync] Sincronizados ${gestaoToTabuladorCount} registros para TabuladorMax`);
         }
       }
     }
@@ -157,6 +207,9 @@ serve(async (req) => {
     // 6. Sincronizar TabuladorMax → Gestão (exceto conflitos)
     if (tabuladorUpdates && tabuladorUpdates.length > 0) {
       const toSync = tabuladorUpdates.filter(f => !conflictIds.includes(f.id));
+      
+      console.log(`🔄 [Sync] Sincronizando ${toSync.length} registros: TabuladorMax → Gestão`);
+      console.log('📡 [Sync] Endpoint:', `${gestaoUrl}/rest/v1/fichas`);
       
       if (toSync.length > 0) {
         // Mapear leads para fichas
@@ -168,14 +221,18 @@ serve(async (req) => {
           .select('id');
 
         if (error) {
+          console.error('❌ [Sync] Erro ao sincronizar para Gestão:', error);
           errors.push(`Erro ao sincronizar para Gestão: ${error.message}`);
         } else {
           tabuladorToGestaoCount = data?.length || 0;
+          console.log(`✅ [Sync] Sincronizados ${tabuladorToGestaoCount} registros para Gestão`);
         }
       }
     }
 
     // 7. Resolver conflitos (última modificação vence)
+    console.log(`🔀 [Sync] Resolvendo ${conflictIds.length} conflitos...`);
+    
     for (const conflictId of conflictIds) {
       const gestaoRecord = gestaoUpdates?.find(f => f.id === conflictId);
       const tabuladorRecord = tabuladorUpdates?.find(f => f.id === conflictId);
@@ -185,25 +242,41 @@ serve(async (req) => {
       const gestaoTime = new Date(gestaoRecord.updated_at).getTime();
       const tabuladorTime = new Date(tabuladorRecord.updated_at).getTime();
 
+      console.log(`🔀 [Sync] Conflito no ID ${conflictId}:`);
+      console.log(`   Gestão: ${new Date(gestaoTime).toISOString()}`);
+      console.log(`   TabuladorMax: ${new Date(tabuladorTime).toISOString()}`);
+
       // O mais recente vence
       if (gestaoTime > tabuladorTime) {
         // Gestão é mais recente → atualizar TabuladorMax
+        console.log(`   ✅ Gestão vence, atualizando TabuladorMax`);
         const leadToSync = mapFichaToLead(gestaoRecord);
         const { error } = await tabulador
           .from('leads')
           .upsert([leadToSync], { onConflict: 'id' });
         
-        if (!error) conflictsResolved++;
+        if (!error) {
+          conflictsResolved++;
+        } else {
+          console.error(`   ❌ Erro ao resolver conflito:`, error);
+        }
       } else {
         // TabuladorMax é mais recente → atualizar Gestão
+        console.log(`   ✅ TabuladorMax vence, atualizando Gestão`);
         const fichaToSync = mapLeadToFicha(tabuladorRecord);
         const { error } = await gestao
           .from('fichas')
           .upsert([fichaToSync], { onConflict: 'id' });
         
-        if (!error) conflictsResolved++;
+        if (!error) {
+          conflictsResolved++;
+        } else {
+          console.error(`   ❌ Erro ao resolver conflito:`, error);
+        }
       }
     }
+    
+    console.log(`✅ [Sync] Conflitos resolvidos: ${conflictsResolved}`);
 
     // 8. Atualizar status de sincronização
     const now = new Date().toISOString();
@@ -241,7 +314,13 @@ serve(async (req) => {
       processing_time_ms: Date.now() - startTime
     };
 
-    console.log('Sincronização concluída:', result);
+    console.log('✅ [Sync] Sincronização concluída:', result);
+    console.log('📊 [Sync] Resumo:');
+    console.log(`   • Gestão → TabuladorMax: ${gestaoToTabuladorCount}`);
+    console.log(`   • TabuladorMax → Gestão: ${tabuladorToGestaoCount}`);
+    console.log(`   • Conflitos resolvidos: ${conflictsResolved}`);
+    console.log(`   • Erros: ${errors.length}`);
+    console.log(`   • Tempo total: ${result.processing_time_ms}ms`);
 
     return new Response(
       JSON.stringify(result),

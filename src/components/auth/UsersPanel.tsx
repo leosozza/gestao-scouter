@@ -69,8 +69,8 @@ export function UsersPanel() {
 
   const fetchUsers = async () => {
     try {
-      // @ts-ignore - Supabase types will be generated after migration
-      const response: any = await supabase
+      console.log('🔍 Buscando usuários...');
+      const response = await supabase
         .from('users')
         .select(`
           id,
@@ -85,7 +85,12 @@ export function UsersPanel() {
         `)
         .order('name');
 
-      if (response.error) throw response.error;
+      if (response.error) {
+        console.error('❌ Erro ao buscar usuários:', response.error);
+        throw response.error;
+      }
+      
+      console.log('✅ Usuários carregados:', response.data?.length || 0);
       setUsers((response.data || []) as User[]);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -97,13 +102,18 @@ export function UsersPanel() {
 
   const fetchRoles = async () => {
     try {
-      // @ts-ignore - Supabase types will be generated after migration
-      const response: any = await supabase
+      console.log('🔍 Buscando roles...');
+      const response = await supabase
         .from('roles')
         .select('*')
         .order('name');
 
-      if (response.error) throw response.error;
+      if (response.error) {
+        console.error('❌ Erro ao buscar roles:', response.error);
+        throw response.error;
+      }
+      
+      console.log('✅ Roles carregados:', response.data?.length || 0);
       setRoles((response.data || []) as Role[]);
     } catch (error) {
       console.error('Error fetching roles:', error);
@@ -116,8 +126,7 @@ export function UsersPanel() {
     try {
       if (editingUser) {
         // Update existing user
-        // @ts-ignore - Supabase types will be generated after migration
-        const response: any = await supabase
+        const response = await supabase
           .from('users')
           .update({
             name: formData.name,
@@ -125,7 +134,8 @@ export function UsersPanel() {
             role_id: parseInt(formData.role_id),
             scouter_id: formData.scouter_id ? parseInt(formData.scouter_id) : null,
           })
-          .eq('id', editingUser.id);
+          .eq('id', editingUser.id)
+          .select();
 
         if (response.error) throw response.error;
         toast.success('Usuário atualizado com sucesso');
@@ -145,8 +155,7 @@ export function UsersPanel() {
 
         if (authData.user) {
           // Create user profile
-          // @ts-ignore - Supabase types will be generated after migration
-          const profileResponse: any = await supabase
+          const profileResponse = await supabase
             .from('users')
             .insert({
               id: authData.user.id,
@@ -154,19 +163,30 @@ export function UsersPanel() {
               email: formData.email,
               role_id: parseInt(formData.role_id),
               scouter_id: formData.scouter_id ? parseInt(formData.scouter_id) : null,
-            });
+            })
+            .select();
 
-          if (profileResponse.error) throw profileResponse.error;
+          if (profileResponse.error) {
+            console.error('Erro ao criar perfil:', profileResponse.error);
+            throw profileResponse.error;
+          }
+          
+          console.log('✅ Usuário criado com sucesso:', profileResponse.data);
           toast.success('Usuário criado com sucesso. Um email de confirmação foi enviado.');
         }
       }
 
       setIsDialogOpen(false);
       resetForm();
-      fetchUsers();
-    } catch (error: any) {
-      console.error('Error saving user:', error);
-      toast.error(error.message || 'Erro ao salvar usuário');
+      
+      // Force refresh of users list
+      console.log('🔄 Recarregando lista de usuários...');
+      await fetchUsers();
+      
+    } catch (error: unknown) {
+      console.error('Erro ao salvar usuário:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      toast.error(errorMessage || 'Erro ao salvar usuário');
     }
   };
 
@@ -174,17 +194,24 @@ export function UsersPanel() {
     if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
 
     try {
-      // @ts-ignore - Supabase types will be generated after migration
-      const response: any = await supabase
+      console.log('🗑️ Excluindo usuário:', userId);
+      const response = await supabase
         .from('users')
         .delete()
-        .eq('id', userId);
+        .eq('id', userId)
+        .select();
 
-      if (response.error) throw response.error;
+      if (response.error) {
+        console.error('❌ Erro ao excluir usuário:', response.error);
+        throw response.error;
+      }
 
+      console.log('✅ Usuário excluído com sucesso');
       toast.success('Usuário excluído com sucesso');
-      fetchUsers();
-    } catch (error: any) {
+      
+      // Refresh users list
+      await fetchUsers();
+    } catch (error: unknown) {
       console.error('Error deleting user:', error);
       toast.error('Erro ao excluir usuário');
     }
