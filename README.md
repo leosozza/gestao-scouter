@@ -393,6 +393,53 @@ ORDER BY updated_at DESC;
 
 📖 **Documentação completa**: [SYNC_ARCHITECTURE.md](./SYNC_ARCHITECTURE.md)
 
+## 🔧 Configuração da Tabela gestao_scouter_config no TabuladorMax
+
+Para eliminar o erro 404 ao salvar as configurações de integração, é necessário criar a tabela `gestao_scouter_config` no projeto TabuladorMax (gkvvtfqfggddzotxltxf).
+
+### Quick Setup (5 minutos)
+
+1. **Obter credenciais do Gestão Scouter**
+   - Acesse: https://supabase.com/dashboard/project/ngestyxtopvfeyenyvgt/settings/api
+   - Copie a **anon/public key**
+
+2. **Executar migração no TabuladorMax**
+   - Acesse: https://supabase.com/dashboard/project/gkvvtfqfggddzotxltxf/sql/new
+   - Abra: `supabase/migrations/tabuladormax_gestao_scouter_config.sql`
+   - Substitua `'sua_anon_key_aqui'` pela chave real
+   - Execute o SQL
+
+3. **Verificar instalação**
+   ```sql
+   SELECT id, project_url, active, sync_enabled 
+   FROM public.gestao_scouter_config;
+   ```
+
+### Documentação Completa
+
+- **[Quick Setup Guide](./QUICK_SETUP_GESTAO_SCOUTER_CONFIG.md)** - Configuração rápida em 5 minutos
+- **[Setup Completo](./TABULADORMAX_CONFIG_TABLE_SETUP.md)** - Instruções detalhadas e troubleshooting
+- **[Arquitetura](./GESTAO_SCOUTER_CONFIG_ARCHITECTURE.md)** - Diagramas e fluxos de sincronização
+
+### Estrutura da Tabela
+
+```sql
+CREATE TABLE gestao_scouter_config (
+  id serial PRIMARY KEY,
+  project_url text NOT NULL,      -- URL do Gestão Scouter
+  anon_key text NOT NULL,         -- Anon key do Gestão Scouter
+  active boolean DEFAULT true,    -- Config ativa?
+  sync_enabled boolean DEFAULT false,  -- Sync automático?
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+```
+
+### RLS Policies
+
+✅ **SELECT**: Todos podem ler  
+✅ **INSERT/UPDATE/DELETE**: Apenas autenticados
+
 ## 🗺️ Sistema de Mapas
 
 A aplicação usa uma **solução 100% gratuita** e confiável para visualização geográfica:
