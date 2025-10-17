@@ -17,6 +17,7 @@ import { toast } from 'sonner'
 export default function Leads() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState<LeadsFilters>({})
   const [selectedLeads, setSelectedLeads] = useState<Lead[]>([])
   const [showTinderModal, setShowTinderModal] = useState(false)
@@ -168,10 +169,26 @@ export default function Leads() {
   const loadLeads = async () => {
     try {
       setLoading(true)
+      setError(null)
+      console.log('🔄 [Leads] Carregando leads com filtros:', filters)
       const data = await getLeads(filters)
+      console.log('✅ [Leads] Leads carregados:', data.length)
       setLeads(data)
+      
+      if (data.length === 0) {
+        console.warn('⚠️ [Leads] Nenhum lead encontrado. Verifique:')
+        console.warn('   - Se existem dados na tabela "fichas" do Supabase')
+        console.warn('   - Se os filtros não estão muito restritivos')
+        console.warn('   - Se a conexão com Supabase está funcionando')
+      }
     } catch (error) {
-      console.error('Erro ao carregar leads:', error)
+      console.error('❌ [Leads] Erro ao carregar leads:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao carregar leads'
+      setError(errorMessage)
+      toast.error('Erro ao carregar leads', {
+        description: errorMessage,
+        duration: 5000,
+      })
     } finally {
       setLoading(false)
     }
@@ -234,6 +251,35 @@ export default function Leads() {
             Gerencie todos os leads capturados pela equipe de scouting
           </p>
         </div>
+
+        {/* Error Alert */}
+        {error && (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-3">
+                <div className="rounded-full bg-red-100 p-2">
+                  <svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-red-900">Erro ao Carregar Dados</h3>
+                  <p className="mt-1 text-sm text-red-700">{error}</p>
+                  <div className="mt-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={loadLeads}
+                      className="border-red-300 text-red-700 hover:bg-red-100"
+                    >
+                      Tentar Novamente
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Filtros Avançados */}
         <FilterHeader

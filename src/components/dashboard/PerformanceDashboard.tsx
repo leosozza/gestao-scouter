@@ -73,6 +73,7 @@ export function PerformanceDashboard() {
   const { configs, saveConfig, deleteConfig, resetToDefaults } = useIndicatorConfigs();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<Date | null>(new Date());
   const [editingIndicator, setEditingIndicator] = useState<IndicatorConfig | null>(null);
@@ -146,6 +147,7 @@ export function PerformanceDashboard() {
   const loadData = async () => {
     try {
       setIsLoading(true);
+      setError(null);
       const filters = {
         dataInicio: dataInicio || undefined,
         dataFim: dataFim || undefined,
@@ -153,11 +155,23 @@ export function PerformanceDashboard() {
         projeto: selectedProjects.length === 1 ? selectedProjects[0] : undefined,
       };
 
+      console.log('🔄 [Dashboard] Carregando dados com filtros:', filters);
       const data = await getLeads(filters);
+      console.log('✅ [Dashboard] Dados carregados:', data.length, 'fichas');
+      
       setLeads(data);
       calculateMetrics(data);
+      
+      if (data.length === 0) {
+        console.warn('⚠️ [Dashboard] Nenhuma ficha encontrada. Verifique:');
+        console.warn('   - Se existem dados na tabela "fichas" do Supabase');
+        console.warn('   - Se os filtros de data não estão muito restritivos');
+        console.warn('   - Se a conexão com Supabase está funcionando');
+      }
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
+      console.error('❌ [Dashboard] Erro ao carregar dados:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -293,6 +307,27 @@ export function PerformanceDashboard() {
             <span className="text-sm text-muted-foreground">IQS Médio: {metrics.iqsMedio}</span>
           </div>
         </div>
+
+        {/* Error Alert */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between w-full">
+              <div>
+                <strong>Erro ao carregar dados:</strong> {error}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadData}
+                className="ml-4"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Tentar Novamente
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Filters */}
         <Card>
