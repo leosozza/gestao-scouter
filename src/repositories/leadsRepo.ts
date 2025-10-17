@@ -93,24 +93,64 @@ export async function getLeadsByProject(params: LeadsFilters = {}): Promise<
  * Busca leads do Supabase
  */
 async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> {
-  let q = supabase.from('fichas').select('*');
+  try {
+    console.log('🔍 [LeadsRepo] Iniciando busca de leads com filtros:', params);
+    
+    let q = supabase.from('fichas').select('*');
 
-  // Aplicar filtros
-  if (params.dataInicio) q = q.gte('criado', params.dataInicio);
-  if (params.dataFim) q = q.lte('criado', params.dataFim);
-  if (params.etapa) q = q.eq('etapa', params.etapa);
-  if (params.scouter) q = q.ilike('scouter', `%${params.scouter}%`);
-  if (params.projeto) q = q.ilike('projeto', `%${params.projeto}%`);
+    // Aplicar filtros
+    if (params.dataInicio) {
+      console.log('📅 [LeadsRepo] Aplicando filtro dataInicio:', params.dataInicio);
+      q = q.gte('criado', params.dataInicio);
+    }
+    if (params.dataFim) {
+      console.log('📅 [LeadsRepo] Aplicando filtro dataFim:', params.dataFim);
+      q = q.lte('criado', params.dataFim);
+    }
+    if (params.etapa) {
+      console.log('📊 [LeadsRepo] Aplicando filtro etapa:', params.etapa);
+      q = q.eq('etapa', params.etapa);
+    }
+    if (params.scouter) {
+      console.log('👤 [LeadsRepo] Aplicando filtro scouter:', params.scouter);
+      q = q.ilike('scouter', `%${params.scouter}%`);
+    }
+    if (params.projeto) {
+      console.log('📁 [LeadsRepo] Aplicando filtro projeto:', params.projeto);
+      q = q.ilike('projeto', `%${params.projeto}%`);
+    }
 
-  const { data, error } = await q.order('criado', { ascending: false });
-  
-  if (error) {
-    console.error('Erro ao buscar leads do Supabase', error);
-    return [];
+    console.log('🚀 [LeadsRepo] Executando query no Supabase...');
+    const { data, error } = await q.order('criado', { ascending: false });
+    
+    if (error) {
+      console.error('❌ [LeadsRepo] Erro ao buscar leads do Supabase:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      throw new Error(`Erro ao buscar dados do Supabase: ${error.message}`);
+    }
+    
+    console.log(`✅ [LeadsRepo] Dados recebidos com sucesso: ${data?.length || 0} registros`);
+    
+    if (!data || data.length === 0) {
+      console.warn('⚠️ [LeadsRepo] Nenhum registro encontrado na tabela fichas');
+      return [];
+    }
+    
+    const normalized = data.map(normalizeFichaFromSupabase);
+    const filtered = normalized.filter(l => applyClientSideFilters(l, params));
+    
+    console.log(`📊 [LeadsRepo] Após normalização e filtros: ${filtered.length} leads`);
+    
+    return filtered;
+  } catch (error) {
+    console.error('❌ [LeadsRepo] Exceção durante busca de leads:', error);
+    // Re-throw para que o componente possa tratar
+    throw error;
   }
-  
-  return (data ?? []).map(normalizeFichaFromSupabase)
-    .filter(l => applyClientSideFilters(l, params));
 }
 
 /**
