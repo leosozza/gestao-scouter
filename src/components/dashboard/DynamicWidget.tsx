@@ -23,6 +23,8 @@ import { ApexLineChart } from './charts/ApexLineChart';
 import { ApexAreaChart } from './charts/ApexAreaChart';
 import { ApexPieChart } from './charts/ApexPieChart';
 import { ApexDonutChart } from './charts/ApexDonutChart';
+import { TreemapChart } from './charts/TreemapChart';
+import { ScatterChart } from './charts/ScatterChart';
 
 interface DynamicWidgetProps {
   config: DashboardWidget;
@@ -52,6 +54,7 @@ export function DynamicWidget({ config, onEdit, onDelete }: DynamicWidgetProps) 
       case 'heatmap': return <Grid3x3 className="h-4 w-4" />;
       case 'pivot': return <Table2 className="h-4 w-4" />;
       case 'scatter': return <TrendingUp className="h-4 w-4" />;
+      case 'treemap': return <Grid3x3 className="h-4 w-4" />;
       default: return null;
     }
   };
@@ -262,6 +265,40 @@ function WidgetContent({ config, data }: WidgetContentProps) {
           valueKey={firstMetric}
           aggregation="sum"
           showTotals={true}
+        />
+      );
+    
+    case 'treemap':
+      return (
+        <TreemapChart
+          data={data.map(d => ({
+            name: String(d[dimensionKey]),
+            value: Number(d[firstMetric]) || 0
+          }))}
+          colors={config.theme?.colorScheme}
+          height={350}
+          showLegend={config.theme?.showLegend}
+        />
+      );
+    
+    case 'scatter':
+      if (config.metrics.length < 2) {
+        return <div className="text-center py-8 text-muted-foreground">Gráfico de dispersão requer pelo menos 2 métricas</div>;
+      }
+      const xMetric = config.metrics[0];
+      const yMetric = config.metrics[1];
+      return (
+        <ScatterChart
+          data={data.map(d => ({
+            x: Number(d[xMetric]) || 0,
+            y: Number(d[yMetric]) || 0,
+            label: String(d[dimensionKey])
+          }))}
+          xLabel={METRIC_LABELS[xMetric]}
+          yLabel={METRIC_LABELS[yMetric]}
+          colors={config.theme?.colorScheme}
+          height={350}
+          showLegend={config.theme?.showLegend}
         />
       );
     
