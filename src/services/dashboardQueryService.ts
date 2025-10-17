@@ -5,7 +5,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { DashboardWidget, DimensionType, MetricType, DateGrouping } from '@/types/dashboard';
-import { format, startOfWeek, startOfMonth, startOfYear } from 'date-fns';
+import { format, startOfWeek, startOfMonth, startOfYear, startOfQuarter } from 'date-fns';
 
 interface GroupedData {
   [key: string]: any[];
@@ -117,6 +117,9 @@ function groupByDimension(
           break;
         case 'month':
           key = format(startOfMonth(date), 'yyyy-MM');
+          break;
+        case 'quarter':
+          key = format(startOfQuarter(date), 'yyyy-[Q]Q');
           break;
         case 'year':
           key = format(startOfYear(date), 'yyyy');

@@ -15,6 +15,7 @@ const Pagamentos = lazy(() => import("./pages/Pagamentos"));
 const AreaDeAbordagem = lazy(() => import("./pages/AreaDeAbordagem"));
 const ConfiguracoesPage = lazy(() => import("./pages/Configuracoes"));
 const DashboardBuilder = lazy(() => import("./pages/DashboardBuilder"));
+const AdvancedDashboard = lazy(() => import("./pages/AdvancedDashboard"));
 const SyncMonitor = lazy(() => import("./pages/SyncMonitor"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const BitrixCallback = lazy(() => import("./pages/BitrixCallback"));
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/area-de-abordagem" element={<AreaDeAbordagem />} />
             <Route path="/configuracoes" element={<ConfiguracoesPage />} />
             <Route path="/dashboard-builder" element={<DashboardBuilder />} />
+            <Route path="/dashboard-advanced" element={<AdvancedDashboard />} />
             <Route path="/sync-monitor" element={<SyncMonitor />} />
             <Route path="/bitrix-callback" element={<BitrixCallback />} />
             {/* TestFichas route disabled - functionality now in /area-de-abordagem */}

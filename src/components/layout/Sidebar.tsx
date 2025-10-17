@@ -1,4 +1,4 @@
-import { LayoutDashboard, TrendingUp, ClipboardList, Users, Wallet, MapPin, Settings, BarChart3 } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, ClipboardList, Users, Wallet, MapPin, Settings, BarChart3, Sparkles } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Sidebar as SidebarUI,
@@ -20,6 +20,7 @@ export function Sidebar() {
   const items = [
     { key: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { key: '/dashboard-builder', icon: BarChart3, label: 'Dashboard Builder' },
+    { key: '/dashboard-advanced', icon: Sparkles, label: 'Dashboard Avançado' },
     { key: '/projecao', icon: TrendingUp, label: 'Projeção' },
     { key: '/leads', icon: ClipboardList, label: 'Leads' },
     { key: '/scouters', icon: Users, label: 'Scouters' },
