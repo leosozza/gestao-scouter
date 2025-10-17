@@ -20,6 +20,29 @@ interface QueueItem {
   retry_count: number;
 }
 
+/**
+ * Normaliza data para formato ISO string
+ */
+function normalizeDate(dateValue: any): string | null {
+  if (!dateValue) return null;
+  try {
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) return null;
+    return date.toISOString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extrai data de atualização com fallback para outros campos
+ */
+function getUpdatedAtDate(record: any): string {
+  // Prioridade: updated_at -> updated -> modificado -> criado -> now
+  const dateValue = record.updated_at || record.updated || record.modificado || record.criado;
+  return normalizeDate(dateValue) || new Date().toISOString();
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -109,7 +132,7 @@ serve(async (req) => {
           latitude: item.payload.latitude,
           longitude: item.payload.longitude,
           local_da_abordagem: item.payload.local_da_abordagem,
-          criado: item.payload.criado,
+          criado: normalizeDate(item.payload.criado),
           valor_ficha: item.payload.valor_ficha,
           etapa: item.payload.etapa,
           ficha_confirmada: item.payload.ficha_confirmada,
@@ -119,7 +142,7 @@ serve(async (req) => {
           agendado: item.payload.agendado,
           compareceu: item.payload.compareceu,
           confirmado: item.payload.confirmado,
-          updated_at: item.payload.updated_at || new Date().toISOString()
+          updated_at: getUpdatedAtDate(item.payload)
         };
 
         // Fazer upsert no TabuladorMax
@@ -171,23 +194,31 @@ serve(async (req) => {
     }
 
     // Registrar log
-    await gestao
-      .from('sync_logs')
-      .insert({
-        sync_direction: 'gestao_to_tabulador',
-        records_synced: succeeded,
-        records_failed: failed,
-        errors: failed > 0 ? { message: `${failed} itens falharam` } : null,
-        started_at: new Date(startTime).toISOString(),
-        completed_at: new Date().toISOString(),
-        processing_time_ms: Date.now() - startTime,
-        metadata: {
-          source: 'sync_queue',
-          total_items: queueItems.length,
-          succeeded,
-          failed
-        }
-      });
+    try {
+      const { error: logError } = await gestao
+        .from('sync_logs')
+        .insert({
+          sync_direction: 'gestao_to_tabulador',
+          records_synced: succeeded,
+          records_failed: failed,
+          errors: failed > 0 ? { message: `${failed} itens falharam` } : null,
+          started_at: new Date(startTime).toISOString(),
+          completed_at: new Date().toISOString(),
+          processing_time_ms: Date.now() - startTime,
+          metadata: {
+            source: 'sync_queue',
+            total_items: queueItems.length,
+            succeeded,
+            failed
+          }
+        });
+      
+      if (logError) {
+        console.error('Erro ao registrar log de sincronização:', logError);
+      }
+    } catch (error) {
+      console.error('Erro ao inserir sync_logs:', error);
+    }
 
     const result = {
       success: failed === 0,

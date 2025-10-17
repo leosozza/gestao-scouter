@@ -56,9 +56,34 @@ function validateRecord(record: any): { valid: boolean; error?: string } {
 }
 
 /**
+ * Normaliza data para formato ISO string
+ */
+function normalizeDate(dateValue: any): string | null {
+  if (!dateValue) return null;
+  try {
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) return null;
+    return date.toISOString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extrai data de atualização com fallback para outros campos
+ */
+function getUpdatedAtDate(lead: any): string {
+  // Prioridade: updated_at -> updated -> modificado -> criado -> now
+  const dateValue = lead.updated_at || lead.updated || lead.modificado || lead.criado;
+  return normalizeDate(dateValue) || new Date().toISOString();
+}
+
+/**
  * Normaliza um lead do TabuladorMax para ficha
  */
 function normalizeLeadToFicha(lead: any): any {
+  const now = new Date().toISOString();
+  
   return {
     id: String(lead.id),
     nome: lead.nome?.trim() || 'Sem nome',
@@ -72,7 +97,7 @@ function normalizeLeadToFicha(lead: any): any {
     latitude: lead.latitude,
     longitude: lead.longitude,
     local_da_abordagem: lead.local_da_abordagem,
-    criado: lead.criado ? new Date(lead.criado).toISOString() : null,
+    criado: normalizeDate(lead.criado),
     valor_ficha: lead.valor_ficha,
     etapa: lead.etapa,
     ficha_confirmada: lead.ficha_confirmada,
@@ -85,11 +110,11 @@ function normalizeLeadToFicha(lead: any): any {
     cadastro_existe_foto: lead.cadastro_existe_foto,
     presenca_confirmada: lead.presenca_confirmada,
     raw: lead,
-    updated_at: lead.updated_at || new Date().toISOString(),
+    updated_at: getUpdatedAtDate(lead),
     deleted: false,
     // Metadado de sincronização
     sync_source: 'TabuladorMax',
-    last_synced_at: new Date().toISOString()
+    last_synced_at: now
   };
 }
 
@@ -255,12 +280,24 @@ serve(async (req) => {
             .select('id');
 
           if (error) {
-            console.error('Erro ao inserir:', error);
+            console.error('Erro ao inserir fichas:', error);
+            console.error('Detalhes do erro:', {
+              message: error.message,
+              details: error.details,
+              hint: error.hint,
+              code: error.code
+            });
+            console.error('Amostra de registro com erro:', JSON.stringify(toInsert[0], null, 2));
             errorDetails.push({
               batch_start: i,
               batch_size: toInsert.length,
               operation: 'insert',
-              error: error.message
+              error: error.message,
+              error_details: {
+                code: error.code,
+                details: error.details,
+                hint: error.hint
+              }
             });
           } else {
             inserted += data?.length || 0;
@@ -276,11 +313,22 @@ serve(async (req) => {
               .eq('id', record.id);
 
             if (error) {
-              console.error(`Erro ao atualizar ${record.id}:`, error);
+              console.error(`Erro ao atualizar ficha ${record.id}:`, error);
+              console.error('Detalhes do erro:', {
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+                code: error.code
+              });
               errorDetails.push({
                 id: record.id,
                 operation: 'update',
-                error: error.message
+                error: error.message,
+                error_details: {
+                  code: error.code,
+                  details: error.details,
+                  hint: error.hint
+                }
               });
             } else {
               updated++;
@@ -301,37 +349,54 @@ serve(async (req) => {
     // Registrar log de sincronização
     const processingTime = Date.now() - startTime;
     
-    await supabase
-      .from('sync_logs')
-      .insert({
-        sync_direction: 'tabulador_to_gestao',
-        records_synced: inserted + updated,
-        records_failed: invalidRecords.length + errorDetails.length,
-        errors: errorDetails.length > 0 ? { errors: errorDetails } : null,
-        started_at: new Date(startTime).toISOString(),
-        completed_at: new Date().toISOString(),
-        processing_time_ms: processingTime,
-        metadata: {
-          batch_id: payload.sync_metadata?.batch_id,
-          source: payload.source,
-          total_received: payload.records.length,
-          inserted,
-          updated,
-          duplicates_skipped: duplicatesSkipped
-        }
-      });
+    try {
+      const { error: logError } = await supabase
+        .from('sync_logs')
+        .insert({
+          sync_direction: 'tabulador_to_gestao',
+          records_synced: inserted + updated,
+          records_failed: invalidRecords.length + errorDetails.length,
+          errors: errorDetails.length > 0 ? { errors: errorDetails } : null,
+          started_at: new Date(startTime).toISOString(),
+          completed_at: new Date().toISOString(),
+          processing_time_ms: processingTime,
+          metadata: {
+            batch_id: payload.sync_metadata?.batch_id,
+            source: payload.source,
+            total_received: payload.records.length,
+            inserted,
+            updated,
+            duplicates_skipped: duplicatesSkipped
+          }
+        });
+      
+      if (logError) {
+        console.error('Erro ao registrar log de sincronização:', logError);
+      }
+    } catch (error) {
+      console.error('Erro ao inserir sync_logs:', error);
+    }
 
     // Atualizar status de sincronização
-    await supabase
-      .from('sync_status')
-      .upsert({
-        project_name: 'tabulador_max',
-        last_sync_at: new Date().toISOString(),
-        last_sync_success: errorDetails.length === 0,
-        total_records: inserted + updated,
-        last_error: errorDetails.length > 0 ? JSON.stringify(errorDetails.slice(0, 5)) : null,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'project_name' });
+    try {
+      const { error: statusError } = await supabase
+        .from('sync_status')
+        .upsert({
+          id: 'tabulador_max',
+          project_name: 'tabulador_max',
+          last_sync_at: new Date().toISOString(),
+          last_sync_success: errorDetails.length === 0,
+          total_records: inserted + updated,
+          last_error: errorDetails.length > 0 ? JSON.stringify(errorDetails.slice(0, 5)) : null,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+      
+      if (statusError) {
+        console.error('Erro ao atualizar status de sincronização:', statusError);
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar sync_status:', error);
+    }
 
     const result: ProcessingResult = {
       success: errorDetails.length === 0,
