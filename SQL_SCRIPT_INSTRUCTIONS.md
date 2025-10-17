@@ -1,5 +1,16 @@
 # Como Executar o Script SQL de Leads Fictícios
 
+## ⚠️ Problemas com Firewall?
+
+**Se você receber erro de DNS block ou firewall ao executar `node scripts/insertFakeLeads.js`:**
+
+O script Node.js tenta conectar diretamente ao Supabase via internet, o que pode ser bloqueado por:
+- Firewalls corporativos
+- Ambientes de CI/CD com restrições de rede
+- Redes com políticas de segurança restritivas
+
+**SOLUÇÃO:** Use o script SQL ao invés do Node.js! O SQL é executado diretamente no Supabase Dashboard (que você acessa pelo navegador), evitando bloqueios de firewall.
+
 ## 📋 Pré-requisitos
 
 - Acesso ao Supabase Dashboard
@@ -8,7 +19,7 @@
 
 ## 🚀 Passo a Passo
 
-### Opção 1: Via Supabase Dashboard (Recomendado)
+### Opção 1: Via Supabase Dashboard (✅ RECOMENDADO - Evita Firewall)
 
 1. **Acesse o Supabase Dashboard**
    - URL: https://supabase.com/dashboard
@@ -46,7 +57,7 @@
    - Selecione a tabela `fichas`
    - Você deve ver 20 novos registros
 
-### Opção 2: Via Supabase CLI (Avançado)
+### Opção 2: Via Supabase CLI (⚠️ Pode ter problemas de firewall)
 
 ```bash
 # 1. Instalar Supabase CLI (se não tiver)
@@ -182,6 +193,36 @@ TRUNCATE TABLE public.fichas RESTART IDENTITY CASCADE;
 ```
 
 ## 🐛 Solução de Problemas
+
+### ❌ Erro: DNS block / Firewall bloqueou ngestyxtopvfeyenyvgt.supabase.co
+
+**Sintoma:** 
+```
+Tentei conectar aos seguintes endereços, mas fui bloqueado pelas regras do firewall:
+ngestyxtopvfeyenyvgt.supabase.co
+Comando de disparo: node scripts/insertFakeLeads.js (dns block)
+```
+
+**Causa:** 
+Seu ambiente (rede corporativa, CI/CD, etc.) bloqueia conexões diretas ao Supabase.
+
+**Solução:** 
+**NÃO é possível impedir o firewall de bloquear diretamente.** Em vez disso, use o **script SQL** que funciona através do navegador:
+
+1. ✅ **Use `scripts/insertFakeLeads.sql` ao invés de `.js`**
+2. Execute pelo Supabase Dashboard (web browser)
+3. O navegador já tem acesso permitido, então não há bloqueio
+
+**Por que isso funciona?**
+- O script Node.js (`insertFakeLeads.js`) tenta conectar diretamente ao Supabase via código
+- O script SQL é executado no navegador, que já passou pela autenticação web
+- Firewalls geralmente permitem tráfego HTTPS do navegador, mas bloqueiam scripts
+
+**Alternativas se precisar usar Node.js:**
+1. Configure um proxy ou VPN
+2. Execute em um ambiente sem restrições de rede
+3. Peça ao administrador de rede para adicionar `*.supabase.co` na whitelist
+4. Use um ambiente de desenvolvimento local sem firewall restritivo
 
 ### Erro: "permission denied for table fichas"
 **Solução:** Verifique se você tem permissões adequadas no Supabase. Você pode precisar:
