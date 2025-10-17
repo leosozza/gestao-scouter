@@ -22,11 +22,12 @@ export function useFichas(params: UseFichasParams = {}) {
         .select('*')
         .or('deleted.is.false,deleted.is.null');
 
+      // Apply date filters with fallback for criado and created_at
       if (params.startDate) {
-        query = query.gte('criado', params.startDate);
+        query = query.or(`criado.gte.${params.startDate},created_at.gte.${params.startDate}`);
       }
       if (params.endDate) {
-        query = query.lte('criado', params.endDate);
+        query = query.or(`criado.lte.${params.endDate},created_at.lte.${params.endDate}`);
       }
       if (params.projeto) {
         query = query.eq('projeto', params.projeto);
