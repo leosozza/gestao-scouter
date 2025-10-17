@@ -90,7 +90,7 @@ export async function getLeadsByProject(params: LeadsFilters = {}): Promise<
 }
 
 /**
- * Busca leads do Supabase
+ * Busca leads do Supabase (fonte única)
  */
 async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> {
   try {
@@ -99,15 +99,16 @@ async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> 
     
     let q = supabase.from('fichas').select('*', { count: 'exact' });
 
-    // Aplicar filtros
+    // ✅ Filtros compatíveis com 'criado' OU 'created_at'
     if (params.dataInicio) {
       console.log('📅 [LeadsRepo] Aplicando filtro dataInicio:', params.dataInicio);
-      q = q.gte('criado', params.dataInicio);
+      q = q.or(`criado.gte.${params.dataInicio},created_at.gte.${params.dataInicio}`);
     }
     if (params.dataFim) {
       console.log('📅 [LeadsRepo] Aplicando filtro dataFim:', params.dataFim);
-      q = q.lte('criado', params.dataFim);
+      q = q.or(`criado.lte.${params.dataFim},created_at.lte.${params.dataFim}`);
     }
+
     if (params.etapa) {
       console.log('📊 [LeadsRepo] Aplicando filtro etapa:', params.etapa);
       q = q.eq('etapa', params.etapa);
@@ -123,54 +124,31 @@ async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> 
 
     console.log('🚀 [LeadsRepo] Executando query no Supabase...');
     const { data, error, count } = await q.order('criado', { ascending: false });
-    
+
     if (error) {
-      console.error('❌ [LeadsRepo] Erro ao buscar leads do Supabase:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
-      });
+      console.error('❌ [LeadsRepo] Erro ao buscar leads do Supabase:', error);
       throw new Error(`Erro ao buscar dados do Supabase: ${error.message}`);
     }
-    
+
     console.log(`✅ [LeadsRepo] Query executada com sucesso!`);
     console.log(`📊 [LeadsRepo] Total de registros na tabela "fichas" (com filtros): ${count ?? 'N/A'}`);
     console.log(`📦 [LeadsRepo] Registros retornados nesta query: ${data?.length || 0}`);
-    
+
     if (!data || data.length === 0) {
       console.warn('⚠️ [LeadsRepo] Nenhum registro encontrado na tabela "fichas"');
-      console.warn('💡 [LeadsRepo] Verifique se:');
-      console.warn('   1. A tabela "fichas" contém dados no Supabase');
-      console.warn('   2. Os filtros aplicados não estão muito restritivos');
-      console.warn('   3. As políticas RLS permitem acesso aos dados');
+      console.warn('💡 Verifique: se há dados, filtros ou RLS.');
       return [];
     }
-    
+
     const normalized = data.map(normalizeFichaFromSupabase);
     const filtered = normalized.filter(l => applyClientSideFilters(l, params));
-    
+
     console.log(`📋 [LeadsRepo] Após normalização e filtros client-side: ${filtered.length} leads`);
-    
     return filtered;
   } catch (error) {
     console.error('❌ [LeadsRepo] Exceção durante busca de leads:', error);
-    // Re-throw para que o componente possa tratar
     throw error;
   }
-}
-
-/**
- * Busca leads da tabela bitrix_leads (comentado - tabela não existe ainda)
- * 
- * ⚠️ DESCONTINUADO: Esta função é mantida apenas para compatibilidade.
- * A tabela bitrix_leads existe mas NÃO deve ser usada para buscar leads em produção.
- * Use sempre getLeads() que consulta a tabela 'fichas' (fonte única de verdade).
- */
-export async function getBitrixLeads(params: LeadsFilters = {}): Promise<Lead[]> {
-  // Tabela bitrix_leads não é mais fonte de dados para a aplicação
-  console.warn('getBitrixLeads: DESCONTINUADO - Use getLeads() que consulta a tabela "fichas"');
-  return [];
 }
 
 /**
@@ -211,124 +189,11 @@ function normalizeFichaFromSupabase(r: any): Lead {
 }
 
 /**
- * Normaliza lead da tabela bitrix_leads
- */
-function normalizeBitrixLead(r: any): Lead {
-  return {
-    id: r.bitrix_id || 0,
-    projetos: 'Sem Projeto',
-    scouter: r.primeiro_nome ?? 'Desconhecido',
-    criado: r.data_de_criacao_da_ficha ?? r.created_at ?? undefined,
-    hora_criacao_ficha: r.data_de_criacao_da_ficha ?? undefined,
-    valor_ficha: '0',
-    etapa: r.etapa ?? 'Sem Etapa',
-    nome: r.primeiro_nome ?? 'Sem nome',
-    modelo: r.nome_do_modelo ?? '',
-    local_da_abordagem: r.local_da_abordagem ?? undefined,
-    idade: r.altura_cm ?? '',
-    telefone: r.telefone_de_trabalho ?? r.celular ?? undefined,
-    created_at: r.created_at,
-    updated_at: r.updated_at,
-  };
-}
-
-/**
- * Aplicar filtros client-side adicionais
+ * Filtros client-side
  */
 function applyClientSideFilters(l: Lead, p: LeadsFilters): boolean {
   if (p.scouter && !l.scouter?.toLowerCase().includes(p.scouter.toLowerCase())) return false;
   if (p.projeto && !l.projetos?.toLowerCase().includes(p.projeto.toLowerCase())) return false;
   if (p.etapa && l.etapa !== p.etapa) return false;
-
-  // Filtros de data já são aplicados no query Supabase
   return true;
-}
-
-/**
- * Cria um novo lead na tabela fichas
- */
-export async function createLead(lead: Partial<Lead>): Promise<Lead> {
-  try {
-    console.log('📝 [LeadsRepo] Criando novo lead:', lead);
-    
-    const { data, error } = await supabase
-      .from('fichas')
-      .insert([{
-        nome: lead.nome || 'Sem nome',
-        telefone: lead.telefone,
-        email: lead.email,
-        idade: lead.idade,
-        projeto: lead.projetos || 'Sem Projeto',
-        scouter: lead.scouter || 'Sistema',
-        supervisor: lead.supervisor_do_scouter,
-        localizacao: lead.localizacao,
-        latitude: lead.latitude,
-        longitude: lead.longitude,
-        local_da_abordagem: lead.local_da_abordagem,
-        modelo: lead.modelo,
-        etapa: lead.etapa || 'Contato',
-        ficha_confirmada: lead.ficha_confirmada || 'Aguardando',
-        foto: lead.foto,
-        cadastro_existe_foto: lead.cadastro_existe_foto,
-        presenca_confirmada: lead.presenca_confirmada,
-        valor_ficha: lead.valor_ficha || '0',
-        tabulacao: lead.tabulacao,
-        agendado: lead.agendado,
-        compareceu: lead.compareceu,
-        confirmado: lead.confirmado,
-        aprovado: lead.aprovado !== undefined ? lead.aprovado : null,
-        criado: lead.criado || new Date().toISOString(),
-        hora_criacao_ficha: lead.hora_criacao_ficha,
-      }])
-      .select()
-      .single();
-
-    if (error) {
-      console.error('❌ [LeadsRepo] Erro ao criar lead:', error);
-      throw new Error(`Erro ao criar lead: ${error.message}`);
-    }
-
-    console.log('✅ [LeadsRepo] Lead criado com sucesso:', data);
-    return normalizeFichaFromSupabase(data);
-  } catch (error) {
-    console.error('❌ [LeadsRepo] Exceção ao criar lead:', error);
-    throw error;
-  }
-}
-
-/**
- * Deleta múltiplos leads do Supabase
- * @param leadIds Array de IDs dos leads a serem deletados
- * @returns Número de registros deletados
- */
-export async function deleteLeads(leadIds: number[]): Promise<number> {
-  try {
-    console.log('🗑️ [LeadsRepo] Iniciando exclusão de leads:', leadIds);
-    
-    if (!leadIds || leadIds.length === 0) {
-      console.warn('⚠️ [LeadsRepo] Nenhum ID fornecido para exclusão');
-      return 0;
-    }
-    
-    const { error, count } = await supabase
-      .from('fichas')
-      .delete()
-      .in('id', leadIds);
-    
-    if (error) {
-      console.error('❌ [LeadsRepo] Erro ao deletar leads:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
-      });
-      throw new Error(`Erro ao deletar leads: ${error.message}`);
-    }
-    
-    console.log(`✅ [LeadsRepo] ${leadIds.length} lead(s) deletado(s) com sucesso`);
-    return leadIds.length;
-  } catch (error) {
-    console.error('❌ [LeadsRepo] Exceção durante exclusão de leads:', error);
-    throw error;
-  }
 }
