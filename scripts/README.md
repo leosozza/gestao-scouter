@@ -1,8 +1,61 @@
 # Scripts de Migração e Sincronização
 
-Este diretório contém scripts para sincronização e migração de dados entre os projetos TabuladorMax e Gestão Scouter.
+Este diretório contém scripts para sincronização e migração de dados entre os projetos TabuladorMax e Gestão Scouter, além de scripts para popular dados de teste.
 
 ## 📁 Arquivos
+
+### 🆕 Scripts de Dados de Teste
+
+#### ✅ `insertFakeLeads.sql` (RECOMENDADO para dados de teste)
+Script SQL para inserir 20 leads fictícios na tabela `fichas`.
+
+**Vantagens:**
+- ✅ Funciona em qualquer ambiente (sem problemas de firewall)
+- ✅ Execute diretamente no Supabase SQL Editor
+- ✅ Não requer Node.js ou dependências
+- ✅ Rápido e confiável
+
+**Como usar:**
+1. Abra o Supabase Dashboard → SQL Editor
+2. Copie o conteúdo de `scripts/insertFakeLeads.sql`
+3. Cole no editor e clique em "Run"
+4. Pronto! 20 leads inseridos ✅
+
+**Dados inseridos:**
+- 5 projetos diferentes (4 leads cada)
+- 5 scouters diferentes (4 leads cada)
+- 3 etapas: Contato (8), Agendado (6), Convertido (6)
+- Dados realistas com GPS, valores e status de aprovação
+
+📚 **Instruções detalhadas:** [`SQL_SCRIPT_INSTRUCTIONS.md`](../SQL_SCRIPT_INSTRUCTIONS.md)
+
+#### ⚠️ `insertFakeLeads.js` (Node.js - PODE TER PROBLEMAS DE FIREWALL)
+Script Node.js alternativo para inserir leads fictícios.
+
+**Limitações:**
+- ❌ Pode ser bloqueado por firewalls corporativos
+- ❌ Requer conexão direta à internet
+- ❌ Não funciona em ambientes de CI/CD com restrições
+
+**Erro comum:**
+```
+Tentei conectar aos seguintes endereços, mas fui bloqueado pelas regras do firewall:
+ngestyxtopvfeyenyvgt.supabase.co
+Comando de disparo: node scripts/insertFakeLeads.js (dns block)
+```
+
+**Solução:** Use `insertFakeLeads.sql` ao invés deste script! O SQL evita completamente problemas de firewall porque é executado através do navegador web no Supabase Dashboard.
+
+**Quando usar:**
+- Apenas se você tem acesso direto à internet sem restrições de firewall
+- Em ambiente de desenvolvimento local sem proxy/firewall
+
+**Como usar:**
+```bash
+node scripts/insertFakeLeads.js
+```
+
+---
 
 ### `syncDiagnostics.ts` ⭐ NOVO
 

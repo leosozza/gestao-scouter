@@ -245,6 +245,58 @@ function applyClientSideFilters(l: Lead, p: LeadsFilters): boolean {
 }
 
 /**
+ * Cria um novo lead na tabela fichas
+ */
+export async function createLead(lead: Partial<Lead>): Promise<Lead> {
+  try {
+    console.log('📝 [LeadsRepo] Criando novo lead:', lead);
+    
+    const { data, error } = await supabase
+      .from('fichas')
+      .insert([{
+        nome: lead.nome || 'Sem nome',
+        telefone: lead.telefone,
+        email: lead.email,
+        idade: lead.idade,
+        projeto: lead.projetos || 'Sem Projeto',
+        scouter: lead.scouter || 'Sistema',
+        supervisor: lead.supervisor_do_scouter,
+        localizacao: lead.localizacao,
+        latitude: lead.latitude,
+        longitude: lead.longitude,
+        local_da_abordagem: lead.local_da_abordagem,
+        modelo: lead.modelo,
+        etapa: lead.etapa || 'Contato',
+        ficha_confirmada: lead.ficha_confirmada || 'Aguardando',
+        foto: lead.foto,
+        cadastro_existe_foto: lead.cadastro_existe_foto,
+        presenca_confirmada: lead.presenca_confirmada,
+        valor_ficha: lead.valor_ficha || '0',
+        tabulacao: lead.tabulacao,
+        agendado: lead.agendado,
+        compareceu: lead.compareceu,
+        confirmado: lead.confirmado,
+        aprovado: lead.aprovado !== undefined ? lead.aprovado : null,
+        criado: lead.criado || new Date().toISOString(),
+        hora_criacao_ficha: lead.hora_criacao_ficha,
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ [LeadsRepo] Erro ao criar lead:', error);
+      throw new Error(`Erro ao criar lead: ${error.message}`);
+    }
+
+    console.log('✅ [LeadsRepo] Lead criado com sucesso:', data);
+    return normalizeFichaFromSupabase(data);
+  } catch (error) {
+    console.error('❌ [LeadsRepo] Exceção ao criar lead:', error);
+    throw error;
+  }
+}
+
+/**
  * Deleta múltiplos leads do Supabase
  * @param leadIds Array de IDs dos leads a serem deletados
  * @returns Número de registros deletados
