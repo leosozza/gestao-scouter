@@ -11,11 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
-import type { DashboardWidget, DimensionType, MetricType, ChartType, DateGrouping } from '@/types/dashboard';
+import type { DashboardWidget, DimensionType, MetricType, ChartType, DateGrouping, CustomFormula } from '@/types/dashboard';
 import { DIMENSION_LABELS, METRIC_LABELS, CHART_TYPE_LABELS, DATE_GROUPING_LABELS, COLOR_SCHEMES } from '@/types/dashboard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { FormulaBuilder } from './FormulaBuilder';
+import { Badge } from '@/components/ui/badge';
+import { Code, Plus, Trash2 } from 'lucide-react';
 
 interface WidgetConfigModalProps {
   open: boolean;
@@ -40,6 +43,10 @@ export function WidgetConfigModal({ open, onOpenChange, onSave, initialWidget }:
   const [showGrid, setShowGrid] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
   
+  // Custom formula support
+  const [customFormula, setCustomFormula] = useState<CustomFormula | undefined>();
+  const [formulaBuilderOpen, setFormulaBuilderOpen] = useState(false);
+  
   useEffect(() => {
     if (initialWidget) {
       setTitle(initialWidget.title);
@@ -54,6 +61,7 @@ export function WidgetConfigModal({ open, onOpenChange, onSave, initialWidget }:
       setColorScheme('default');
       setShowGrid(initialWidget.theme?.showGrid ?? true);
       setShowLabels(initialWidget.theme?.showLabels ?? true);
+      setCustomFormula(initialWidget.customFormula);
     } else {
       // Reset para valores padrão
       setTitle('');
@@ -68,6 +76,7 @@ export function WidgetConfigModal({ open, onOpenChange, onSave, initialWidget }:
       setColorScheme('default');
       setShowGrid(true);
       setShowLabels(true);
+      setCustomFormula(undefined);
     }
   }, [initialWidget, open]);
   
@@ -97,7 +106,8 @@ export function WidgetConfigModal({ open, onOpenChange, onSave, initialWidget }:
         colorScheme: COLOR_SCHEMES[colorScheme as keyof typeof COLOR_SCHEMES],
         showGrid,
         showLabels
-      }
+      },
+      customFormula
     };
     
     onSave(widget);
@@ -121,7 +131,7 @@ export function WidgetConfigModal({ open, onOpenChange, onSave, initialWidget }:
   const availableChartTypes: ChartType[] = [
     'table', 'bar', 'line', 'area', 'pie', 'donut', 
     'kpi_card', 'radar', 'funnel', 'gauge', 'heatmap', 
-    'pivot', 'scatter'
+    'pivot', 'scatter', 'treemap'
   ];
   
   return (
@@ -135,9 +145,10 @@ export function WidgetConfigModal({ open, onOpenChange, onSave, initialWidget }:
         </DialogHeader>
         
         <Tabs defaultValue="basic" className="mt-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="basic">Configuração Básica</TabsTrigger>
             <TabsTrigger value="visual">Aparência</TabsTrigger>
+            <TabsTrigger value="formula">Fórmula</TabsTrigger>
             <TabsTrigger value="advanced">Avançado</TabsTrigger>
           </TabsList>
           
@@ -333,6 +344,75 @@ export function WidgetConfigModal({ open, onOpenChange, onSave, initialWidget }:
               </div>
             </TabsContent>
             
+            <TabsContent value="formula" className="space-y-4 mt-4">
+              <h3 className="font-semibold text-sm">Fórmula Personalizada</h3>
+              <Separator />
+              
+              {customFormula ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-muted rounded-lg space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Code className="h-4 w-4" />
+                        <span className="font-semibold">{customFormula.name}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setCustomFormula(undefined)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {customFormula.description && (
+                      <p className="text-sm text-muted-foreground">
+                        {customFormula.description}
+                      </p>
+                    )}
+                    <code className="block text-xs bg-background p-2 rounded border">
+                      {customFormula.expression}
+                    </code>
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    onClick={() => setFormulaBuilderOpen(true)}
+                    className="w-full"
+                  >
+                    <Code className="mr-2 h-4 w-4" />
+                    Editar Fórmula
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="text-center py-8 space-y-4">
+                    <Code className="h-12 w-12 mx-auto text-muted-foreground" />
+                    <div>
+                      <h4 className="font-semibold mb-1">Nenhuma fórmula personalizada</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Crie uma fórmula para calcular métricas customizadas
+                      </p>
+                    </div>
+                    <Button
+                      onClick={() => setFormulaBuilderOpen(true)}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Criar Fórmula
+                    </Button>
+                  </div>
+                  
+                  <div className="p-4 bg-muted rounded-md space-y-2">
+                    <p className="text-sm font-semibold">Exemplos de fórmulas:</p>
+                    <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                      <li><code>PERCENT(COUNT_DISTINCT(id), COUNT(*))</code> - Taxa de conversão</li>
+                      <li><code>DIVIDE(SUM(valor_ficha), COUNT(*))</code> - Ticket médio</li>
+                      <li><code>MULTIPLY(AVG(valor_ficha), 1.1)</code> - Média com acréscimo</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+            
             <TabsContent value="advanced" className="space-y-4 mt-4">
               <h3 className="font-semibold text-sm">Configurações Avançadas</h3>
               <Separator />
@@ -372,6 +452,18 @@ export function WidgetConfigModal({ open, onOpenChange, onSave, initialWidget }:
           </Button>
         </DialogFooter>
       </DialogContent>
+      
+      {/* Formula Builder Dialog */}
+      <FormulaBuilder
+        open={formulaBuilderOpen}
+        onOpenChange={setFormulaBuilderOpen}
+        onSave={(formula) => {
+          setCustomFormula(formula);
+          setFormulaBuilderOpen(false);
+        }}
+        initialFormula={customFormula}
+        availableFields={['id', 'valor_ficha', 'scouter', 'projeto', 'data']}
+      />
     </Dialog>
   );
 }
