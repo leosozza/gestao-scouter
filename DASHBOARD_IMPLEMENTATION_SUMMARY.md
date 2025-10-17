@@ -1,5 +1,7 @@
 # Dashboard Avançado - Resumo da Implementação
 
+> **🔄 ATUALIZAÇÃO:** Esta funcionalidade foi unificada na página principal do Dashboard (`/`). As páginas `/dashboard-advanced` e `/dashboard-builder` foram removidas. Toda a funcionalidade avançada de criação de dashboards customizados agora está acessível através da aba "Dashboard Customizado" na página principal.
+
 ## 🎯 Objetivo Alcançado
 
 Foi desenvolvido um sistema de dashboard avançado que **supera** as ferramentas atuais (Looker Studio, PowerBI) com recursos profissionais de:
@@ -11,6 +13,7 @@ Foi desenvolvido um sistema de dashboard avançado que **supera** as ferramentas
 - ✅ Integração com Supabase
 - ✅ Experiência profissional e moderna
 - ✅ Centralização de funções no dashboard principal
+- ✅ **NOVO:** Sistema unificado com abas para Performance e Dashboard Customizado
 
 ---
 
