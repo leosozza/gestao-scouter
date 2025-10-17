@@ -10,6 +10,29 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * Normaliza data para formato ISO string
+ */
+function normalizeDate(dateValue: any): string | null {
+  if (!dateValue) return null;
+  try {
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) return null;
+    return date.toISOString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extrai data de atualização com fallback para outros campos
+ */
+function getUpdatedAtDate(record: any): string {
+  // Prioridade: updated_at -> updated -> modificado -> criado -> now
+  const dateValue = record.updated_at || record.updated || record.modificado || record.criado;
+  return normalizeDate(dateValue) || new Date().toISOString();
+}
+
 // Mapeia uma ficha (Gestão Scouter) para um lead (TabuladorMax)
 function mapFichaToLead(ficha: any) {
   return {
@@ -25,12 +48,12 @@ function mapFichaToLead(ficha: any) {
     latitude: ficha.latitude,
     longitude: ficha.longitude,
     local_da_abordagem: ficha.local_da_abordagem,
-    criado: ficha.criado ? new Date(ficha.criado).toISOString() : null,
+    criado: normalizeDate(ficha.criado),
     valor_ficha: ficha.valor_ficha,
     etapa: ficha.etapa,
     ficha_confirmada: ficha.ficha_confirmada,
     foto: ficha.foto,
-    updated_at: ficha.updated_at || new Date().toISOString()
+    updated_at: getUpdatedAtDate(ficha)
   };
 }
 
@@ -49,14 +72,16 @@ function mapLeadToFicha(lead: any) {
     latitude: lead.latitude,
     longitude: lead.longitude,
     local_da_abordagem: lead.local_da_abordagem,
-    criado: lead.criado ? new Date(lead.criado).toISOString() : null,
+    criado: normalizeDate(lead.criado),
     valor_ficha: lead.valor_ficha,
     etapa: lead.etapa,
     ficha_confirmada: lead.ficha_confirmada,
     foto: lead.foto,
     raw: lead,
-    updated_at: lead.updated_at || new Date().toISOString(),
-    deleted: false
+    updated_at: getUpdatedAtDate(lead),
+    deleted: false,
+    sync_source: 'TabuladorMax',
+    last_synced_at: new Date().toISOString()
   };
 }
 
@@ -102,11 +127,13 @@ serve(async (req) => {
     console.log(`Última sincronização: ${lastSyncDate}`);
 
     // 2. Buscar registros modificados em Gestão Scouter
+    // Excluir registros que foram recentemente sincronizados do TabuladorMax (prevenção de loop)
     const { data: gestaoUpdates, error: gestaoError } = await gestao
       .from('fichas')
       .select('*')
       .gte('updated_at', lastSyncDate)
       .eq('deleted', false)
+      .or(`sync_source.is.null,sync_source.neq.TabuladorMax,last_synced_at.is.null,last_synced_at.lt.${new Date(Date.now() - 60000).toISOString()}`)
       .order('updated_at', { ascending: true });
 
     if (gestaoError) {
@@ -208,29 +235,46 @@ serve(async (req) => {
     // 8. Atualizar status de sincronização
     const now = new Date().toISOString();
     
-    await gestao
-      .from('sync_status')
-      .upsert({
-        project_name: 'tabulador_max',
-        last_sync_at: now,
-        last_sync_success: errors.length === 0,
-        total_records: gestaoToTabuladorCount + tabuladorToGestaoCount,
-        last_error: errors.length > 0 ? errors.join('; ') : null,
-        updated_at: now
-      }, { onConflict: 'project_name' });
+    try {
+      const { error: statusError } = await gestao
+        .from('sync_status')
+        .upsert({
+          id: 'tabulador_max',
+          project_name: 'tabulador_max',
+          last_sync_at: now,
+          last_sync_success: errors.length === 0,
+          total_records: gestaoToTabuladorCount + tabuladorToGestaoCount,
+          last_error: errors.length > 0 ? errors.join('; ') : null,
+          updated_at: now
+        }, { onConflict: 'id' });
+      
+      if (statusError) {
+        console.error('Erro ao atualizar sync_status:', statusError);
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar status de sincronização:', error);
+    }
 
     // 9. Registrar log
-    await gestao
-      .from('sync_logs')
-      .insert({
-        sync_direction: 'bidirectional',
-        records_synced: gestaoToTabuladorCount + tabuladorToGestaoCount,
-        records_failed: errors.length,
-        errors: errors.length > 0 ? { errors } : null,
-        started_at: new Date(startTime).toISOString(),
-        completed_at: now,
-        processing_time_ms: Date.now() - startTime
-      });
+    try {
+      const { error: logError } = await gestao
+        .from('sync_logs')
+        .insert({
+          sync_direction: 'bidirectional',
+          records_synced: gestaoToTabuladorCount + tabuladorToGestaoCount,
+          records_failed: errors.length,
+          errors: errors.length > 0 ? { errors } : null,
+          started_at: new Date(startTime).toISOString(),
+          completed_at: now,
+          processing_time_ms: Date.now() - startTime
+        });
+      
+      if (logError) {
+        console.error('Erro ao registrar log de sincronização:', logError);
+      }
+    } catch (error) {
+      console.error('Erro ao inserir sync_logs:', error);
+    }
 
     const result: SyncResult = {
       success: errors.length === 0,
