@@ -243,3 +243,40 @@ function applyClientSideFilters(l: Lead, p: LeadsFilters): boolean {
   // Filtros de data já são aplicados no query Supabase
   return true;
 }
+
+/**
+ * Deleta múltiplos leads do Supabase
+ * @param leadIds Array de IDs dos leads a serem deletados
+ * @returns Número de registros deletados
+ */
+export async function deleteLeads(leadIds: number[]): Promise<number> {
+  try {
+    console.log('🗑️ [LeadsRepo] Iniciando exclusão de leads:', leadIds);
+    
+    if (!leadIds || leadIds.length === 0) {
+      console.warn('⚠️ [LeadsRepo] Nenhum ID fornecido para exclusão');
+      return 0;
+    }
+    
+    const { error, count } = await supabase
+      .from('fichas')
+      .delete()
+      .in('id', leadIds);
+    
+    if (error) {
+      console.error('❌ [LeadsRepo] Erro ao deletar leads:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      throw new Error(`Erro ao deletar leads: ${error.message}`);
+    }
+    
+    console.log(`✅ [LeadsRepo] ${leadIds.length} lead(s) deletado(s) com sucesso`);
+    return leadIds.length;
+  } catch (error) {
+    console.error('❌ [LeadsRepo] Exceção durante exclusão de leads:', error);
+    throw error;
+  }
+}

@@ -8,8 +8,18 @@ import { DataTable } from '@/components/shared/DataTable'
 import { FilterHeader } from '@/components/shared/FilterHeader'
 import { AIAnalysis } from '@/components/shared/AIAnalysis'
 import { TinderAnalysisModal } from '@/components/leads/TinderAnalysisModal'
-import { Download, Users, TrendingUp, Calendar, Phone, Heart, ThumbsUp, ThumbsDown, Clock } from 'lucide-react'
-import { getLeads } from '@/repositories/leadsRepo'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Download, Users, TrendingUp, Calendar, Phone, Heart, ThumbsUp, ThumbsDown, Clock, Trash2 } from 'lucide-react'
+import { getLeads, deleteLeads } from '@/repositories/leadsRepo'
 import type { Lead, LeadsFilters } from '@/repositories/types'
 import { formatDateBR } from '@/utils/dataHelpers'
 import { toast } from 'sonner'
@@ -21,6 +31,8 @@ export default function Leads() {
   const [filters, setFilters] = useState<LeadsFilters>({})
   const [selectedLeads, setSelectedLeads] = useState<Lead[]>([])
   const [showTinderModal, setShowTinderModal] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const filterOptions = [
     {
@@ -242,6 +254,48 @@ export default function Leads() {
     setSelectedLeads(selected)
   }
 
+  const handleDeleteClick = () => {
+    if (selectedLeads.length === 0) {
+      toast.error('Nenhum lead selecionado')
+      return
+    }
+    setShowDeleteDialog(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (selectedLeads.length === 0) return
+    
+    try {
+      setIsDeleting(true)
+      const leadIds = selectedLeads.map(lead => lead.id).filter((id): id is number => id !== undefined && id !== 0)
+      
+      if (leadIds.length === 0) {
+        toast.error('Nenhum lead válido selecionado para exclusão')
+        return
+      }
+      
+      await deleteLeads(leadIds)
+      
+      toast.success(`${leadIds.length} lead(s) excluído(s) com sucesso`)
+      
+      // Refresh the leads list
+      await loadLeads()
+      
+      // Clear selection
+      setSelectedLeads([])
+      setShowDeleteDialog(false)
+    } catch (error) {
+      console.error('Erro ao deletar leads:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido ao deletar leads'
+      toast.error('Erro ao deletar leads', {
+        description: errorMessage,
+        duration: 5000,
+      })
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   return (
     <AppShell sidebar={<Sidebar />}>
       <div className="space-y-6">
@@ -396,7 +450,18 @@ export default function Leads() {
               <CardHeader>
                 <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
                   <CardTitle>Lista de Leads</CardTitle>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    {selectedLeads.length > 0 && (
+                      <Button 
+                        variant="destructive"
+                        className="rounded-xl"
+                        onClick={handleDeleteClick}
+                        disabled={isDeleting}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Excluir Selecionados ({selectedLeads.length})
+                      </Button>
+                    )}
                     <Button 
                       variant="default"
                       className="rounded-xl bg-pink-500 hover:bg-pink-600"
@@ -451,6 +516,29 @@ export default function Leads() {
         leads={selectedLeads}
         onComplete={handleAnalysisComplete}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você tem certeza que deseja excluir {selectedLeads.length} lead(s) selecionado(s)? 
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? 'Excluindo...' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   )
 }
