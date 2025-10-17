@@ -9,7 +9,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
 };
 
 interface MigrationResult {
@@ -91,16 +91,35 @@ serve(async (req) => {
 
   try {
     console.log('🚀 Iniciando migração inicial de leads...');
+    console.log('📡 Endpoint:', `${Deno.env.get('TABULADOR_URL')}/rest/v1/leads`);
+    console.log('🎯 Tabela origem: leads (TabuladorMax)');
+    console.log('🎯 Tabela destino: fichas (Gestão Scouter)');
 
     // Cliente Gestão Scouter
     const gestaoUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const gestaoKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-    const gestao = createClient(gestaoUrl, gestaoKey);
+    const gestao = createClient(gestaoUrl, gestaoKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
 
     // Cliente TabuladorMax
     const tabuladorUrl = Deno.env.get('TABULADOR_URL') ?? '';
     const tabuladorKey = Deno.env.get('TABULADOR_SERVICE_KEY') ?? '';
-    const tabulador = createClient(tabuladorUrl, tabuladorKey);
+    const tabulador = createClient(tabuladorUrl, tabuladorKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+      global: {
+        headers: {
+          'Prefer': 'return=representation',
+          'Content-Type': 'application/json',
+        },
+      },
+    });
 
     // Buscar TODOS os leads do TabuladorMax
     console.log('📥 Buscando todos os leads do TabuladorMax...');
@@ -110,6 +129,8 @@ serve(async (req) => {
     let hasMore = true;
 
     while (hasMore) {
+      console.log(`📄 Buscando página ${page + 1}...`);
+      
       const { data, error } = await tabulador
         .from('leads')
         .select('*')
@@ -117,12 +138,19 @@ serve(async (req) => {
         .order('id', { ascending: true });
 
       if (error) {
+        console.error(`❌ Erro ao buscar leads (página ${page}):`, error);
+        
+        // Handle 406 error specifically
+        if (error.code === '406' || error.message?.includes('406')) {
+          throw new Error(`Erro 406 na página ${page}: Verifique os headers da requisição. O TabuladorMax pode estar exigindo headers específicos. Erro original: ${error.message}`);
+        }
+        
         throw new Error(`Erro ao buscar leads (página ${page}): ${error.message}`);
       }
 
       if (data && data.length > 0) {
         allLeads.push(...data);
-        console.log(`   Página ${page + 1}: ${data.length} registros`);
+        console.log(`   ✅ Página ${page + 1}: ${data.length} registros`);
         page++;
       } else {
         hasMore = false;
@@ -130,6 +158,11 @@ serve(async (req) => {
     }
 
     console.log(`✅ Total de ${allLeads.length} leads encontrados`);
+    console.log('📊 Status da busca:', {
+      páginas_processadas: page,
+      total_registros: allLeads.length,
+      tempo_parcial: `${Date.now() - startTime}ms`,
+    });
 
     if (allLeads.length === 0) {
       const result: MigrationResult = {
