@@ -7,13 +7,22 @@ import { executeDashboardQuery } from '@/services/dashboardQueryService';
 import type { DashboardWidget } from '@/types/dashboard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-// Charts will be implemented later
 import { SimpleDataTable } from '@/components/shared/SimpleDataTable';
 import { DIMENSION_LABELS, METRIC_LABELS } from '@/types/dashboard';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Edit, Trash2 } from 'lucide-react';
+import { AlertCircle, Edit, Trash2, Activity, Filter as FilterIcon, Gauge as GaugeIcon, Grid3x3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { BarChart3, LineChart as LineChartIcon, Table2, PieChart, FileText, AreaChart } from 'lucide-react';
+import { BarChart3, LineChart as LineChartIcon, Table2, PieChart, FileText, AreaChart, TrendingUp } from 'lucide-react';
+import { RadarChart } from './charts/RadarChart';
+import { FunnelChart } from './charts/FunnelChart';
+import { GaugeChart } from './charts/GaugeChart';
+import { HeatmapChart } from './charts/HeatmapChart';
+import { PivotTable } from './charts/PivotTable';
+import { ApexBarChart } from './charts/ApexBarChart';
+import { ApexLineChart } from './charts/ApexLineChart';
+import { ApexAreaChart } from './charts/ApexAreaChart';
+import { ApexPieChart } from './charts/ApexPieChart';
+import { ApexDonutChart } from './charts/ApexDonutChart';
 
 interface DynamicWidgetProps {
   config: DashboardWidget;
@@ -34,8 +43,15 @@ export function DynamicWidget({ config, onEdit, onDelete }: DynamicWidgetProps) 
       case 'line': return <LineChartIcon className="h-4 w-4" />;
       case 'area': return <AreaChart className="h-4 w-4" />;
       case 'pie': return <PieChart className="h-4 w-4" />;
+      case 'donut': return <PieChart className="h-4 w-4" />;
       case 'table': return <Table2 className="h-4 w-4" />;
       case 'kpi_card': return <FileText className="h-4 w-4" />;
+      case 'radar': return <Activity className="h-4 w-4" />;
+      case 'funnel': return <FilterIcon className="h-4 w-4" />;
+      case 'gauge': return <GaugeIcon className="h-4 w-4" />;
+      case 'heatmap': return <Grid3x3 className="h-4 w-4" />;
+      case 'pivot': return <Table2 className="h-4 w-4" />;
+      case 'scatter': return <TrendingUp className="h-4 w-4" />;
       default: return null;
     }
   };
@@ -117,18 +133,136 @@ function WidgetContent({ config, data }: WidgetContentProps) {
     );
   }
   
+  const dimensionKey = config.dimension;
+  const valueKeys = config.metrics;
+  const firstMetric = config.metrics[0];
+
   switch (config.chartType) {
     case 'table':
       return <TableView config={config} data={data} />;
     
     case 'bar':
+      return (
+        <ApexBarChart
+          data={data}
+          categoryKey={dimensionKey}
+          valueKeys={valueKeys}
+          colors={config.theme?.colorScheme}
+          height={350}
+          showLegend={config.theme?.showLegend}
+        />
+      );
+    
     case 'line':
+      return (
+        <ApexLineChart
+          data={data}
+          categoryKey={dimensionKey}
+          valueKeys={valueKeys}
+          colors={config.theme?.colorScheme}
+          height={350}
+          showLegend={config.theme?.showLegend}
+        />
+      );
+    
     case 'area':
+      return (
+        <ApexAreaChart
+          data={data}
+          categoryKey={dimensionKey}
+          valueKeys={valueKeys}
+          colors={config.theme?.colorScheme}
+          height={350}
+          showLegend={config.theme?.showLegend}
+        />
+      );
+    
     case 'pie':
       return (
-        <div className="text-center py-8 text-muted-foreground">
-          Gráficos serão implementados em breve. Use tabela ou KPI por enquanto.
-        </div>
+        <ApexPieChart
+          data={data}
+          categoryKey={dimensionKey}
+          valueKey={firstMetric}
+          colors={config.theme?.colorScheme}
+          height={350}
+          showLegend={config.theme?.showLegend}
+        />
+      );
+    
+    case 'donut':
+      return (
+        <ApexDonutChart
+          data={data}
+          categoryKey={dimensionKey}
+          valueKey={firstMetric}
+          colors={config.theme?.colorScheme}
+          height={350}
+          showLegend={config.theme?.showLegend}
+        />
+      );
+    
+    case 'radar':
+      return (
+        <RadarChart
+          data={data}
+          categoryKey={dimensionKey}
+          valueKeys={valueKeys}
+          colors={config.theme?.colorScheme}
+          height={350}
+          showLegend={config.theme?.showLegend}
+        />
+      );
+    
+    case 'funnel':
+      return (
+        <FunnelChart
+          data={data.map(d => ({
+            stage: String(d[dimensionKey]),
+            value: Number(d[firstMetric]) || 0
+          }))}
+          height={350}
+          showPercentages={true}
+          showValues={true}
+        />
+      );
+    
+    case 'gauge':
+      const gaugeValue = data[0] ? Number(data[0][firstMetric]) || 0 : 0;
+      return (
+        <GaugeChart
+          value={gaugeValue}
+          label={METRIC_LABELS[firstMetric]}
+          height={350}
+        />
+      );
+    
+    case 'heatmap':
+      if (config.metrics.length < 1) {
+        return <div className="text-center py-8 text-muted-foreground">Mapa de calor requer pelo menos 1 métrica</div>;
+      }
+      return (
+        <HeatmapChart
+          data={data}
+          xKey={dimensionKey}
+          yKey={dimensionKey}
+          valueKey={firstMetric}
+          height={350}
+        />
+      );
+    
+    case 'pivot':
+      if (config.metrics.length < 1) {
+        return <div className="text-center py-8 text-muted-foreground">Tabela dinâmica requer pelo menos 1 métrica</div>;
+      }
+      return (
+        <PivotTable
+          data={data}
+          rowKey={dimensionKey}
+          columnKey={dimensionKey}
+          valueKey={firstMetric}
+          aggregation="sum"
+          showTotals={true}
+        />
       );
     
     case 'kpi_card':

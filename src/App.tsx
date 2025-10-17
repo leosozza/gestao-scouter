@@ -17,6 +17,7 @@ const Pagamentos = lazy(() => import("./pages/Pagamentos"));
 const AreaDeAbordagem = lazy(() => import("./pages/AreaDeAbordagem"));
 const ConfiguracoesPage = lazy(() => import("./pages/Configuracoes"));
 const DashboardBuilder = lazy(() => import("./pages/DashboardBuilder"));
+const AdvancedDashboard = lazy(() => import("./pages/AdvancedDashboard"));
 const SyncMonitor = lazy(() => import("./pages/SyncMonitor"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const BitrixCallback = lazy(() => import("./pages/BitrixCallback"));
@@ -43,11 +44,10 @@ const App = () => (
         <BrowserRouter>
           <Suspense fallback={<LoadingSpinner />}>
             <Routes>
-              {/* Public routes */}
+              {/* Rotas públicas */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
-              
-              {/* Protected routes */}
+              {/* Rotas protegidas */}
               <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/projecao" element={<ProtectedRoute><ProjecaoPage /></ProtectedRoute>} />
               <Route path="/leads" element={<ProtectedRoute><Leads /></ProtectedRoute>} />
@@ -56,6 +56,7 @@ const App = () => (
               <Route path="/area-de-abordagem" element={<ProtectedRoute><AreaDeAbordagem /></ProtectedRoute>} />
               <Route path="/configuracoes" element={<ProtectedRoute><ConfiguracoesPage /></ProtectedRoute>} />
               <Route path="/dashboard-builder" element={<ProtectedRoute><DashboardBuilder /></ProtectedRoute>} />
+              <Route path="/dashboard-advanced" element={<ProtectedRoute><AdvancedDashboard /></ProtectedRoute>} />
               <Route path="/sync-monitor" element={<ProtectedRoute><SyncMonitor /></ProtectedRoute>} />
               <Route path="/bitrix-callback" element={<ProtectedRoute><BitrixCallback /></ProtectedRoute>} />
               {/* TestFichas route disabled - functionality now in /area-de-abordagem */}
