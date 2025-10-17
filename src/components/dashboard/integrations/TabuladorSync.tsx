@@ -107,6 +107,43 @@ export function TabuladorSync() {
     }
   };
 
+  const testConnection = async () => {
+    toast({
+      title: 'Testando conexão',
+      description: 'Verificando conectividade com TabuladorMax...'
+    });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('test-tabulador-connection');
+
+      if (error) throw error;
+
+      // Mostrar resultado detalhado
+      const leadsInfo = data.tables?.leads;
+      if (leadsInfo?.status?.includes('✅')) {
+        toast({
+          title: 'Conexão bem-sucedida!',
+          description: `Encontrados ${leadsInfo.total_count || 0} leads na tabela. ${data.tables.available?.length || 0} tabelas disponíveis.`
+        });
+      } else {
+        toast({
+          title: 'Problema na conexão',
+          description: leadsInfo?.error || 'Verifique os logs da edge function para mais detalhes',
+          variant: 'destructive'
+        });
+      }
+
+      console.log('📊 Diagnóstico completo:', data);
+    } catch (error) {
+      console.error('Erro no teste:', error);
+      toast({
+        title: 'Erro ao testar conexão',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const triggerInitialMigration = async () => {
     setIsMigrating(true);
     toast({
@@ -191,6 +228,15 @@ export function TabuladorSync() {
               </div>
             </div>
             <div className="flex gap-2">
+              <Button 
+                onClick={testConnection} 
+                disabled={isMigrating || isSyncing}
+                size="sm"
+                variant="outline"
+              >
+                <AlertCircle className="h-4 w-4 mr-2" />
+                Testar Conexão
+              </Button>
               <Button 
                 onClick={triggerInitialMigration} 
                 disabled={isMigrating || isSyncing}
