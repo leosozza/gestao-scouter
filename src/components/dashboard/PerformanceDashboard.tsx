@@ -298,10 +298,6 @@ export function PerformanceDashboard() {
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Análise de Performance</h1>
-            <p className="text-muted-foreground">Dashboard com métricas e indicadores de qualidade dos scouters</p>
-          </div>
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">{metrics.totalFichas.toLocaleString('pt-BR')} fichas encontradas</span>
             <span className="text-sm text-muted-foreground">IQS Médio: {metrics.iqsMedio}</span>
