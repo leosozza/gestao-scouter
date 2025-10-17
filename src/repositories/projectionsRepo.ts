@@ -99,7 +99,7 @@ export async function fetchLinearProjection(p: ProjecaoFiltro): Promise<LinearPr
   const dtTo = toISO(To)
 
   // Buscar fichas do Supabase
-  let query = supabase.from('fichas').select('*').eq('deleted', false);
+  let query = supabase.from('fichas').select('*').or('deleted.is.false,deleted.is.null');
   
   if (p.scouter) query = query.ilike('scouter', `%${p.scouter}%`);
   if (p.projeto) query = query.ilike('projeto', `%${p.projeto}%`);
@@ -213,7 +213,7 @@ export async function fetchProjectionAdvanced(p: ProjecaoFiltroAdvanced): Promis
   const projFim = new Date(p.dataFimProj)
   
   // Buscar fichas do Supabase
-  let query = supabase.from('fichas').select('*').eq('deleted', false);
+  let query = supabase.from('fichas').select('*').or('deleted.is.false,deleted.is.null');
   
   if (p.scouter) query = query.ilike('scouter', `%${p.scouter}%`);
   if (p.projeto) query = query.ilike('projeto', `%${p.projeto}%`);
@@ -391,7 +391,7 @@ export async function getAvailableFilters(): Promise<{ scouters: string[], proje
     const { data: fichas, error } = await supabase
       .from('fichas')
       .select('scouter, projeto')
-      .eq('deleted', false);
+      .or('deleted.is.false,deleted.is.null');
     
     if (error) throw error;
     

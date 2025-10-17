@@ -38,7 +38,7 @@ export function InteractiveFilterPanel({ onFilterChange }: FilterPanelProps) {
       const { data } = await supabase
         .from('fichas')
         .select('projeto')
-        .eq('deleted', false);
+        .or('deleted.is.false,deleted.is.null');
       return [...new Set(data?.map(d => d.projeto).filter(Boolean))];
     }
   });
@@ -49,7 +49,7 @@ export function InteractiveFilterPanel({ onFilterChange }: FilterPanelProps) {
       const { data } = await supabase
         .from('fichas')
         .select('scouter')
-        .eq('deleted', false);
+        .or('deleted.is.false,deleted.is.null');
       return [...new Set(data?.map(d => d.scouter).filter(Boolean))];
     }
   });

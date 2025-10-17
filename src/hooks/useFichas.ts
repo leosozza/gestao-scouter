@@ -20,7 +20,7 @@ export function useFichas(params: UseFichasParams = {}) {
       let query = supabase
         .from('fichas')
         .select('*')
-        .eq('deleted', false);
+        .or('deleted.is.false,deleted.is.null');
 
       if (params.startDate) {
         query = query.gte('criado', params.startDate);

@@ -148,7 +148,7 @@ serve(async (req) => {
       .from('fichas')
       .select('*')
       .gte('updated_at', lastSyncDate)
-      .eq('deleted', false)
+      .or('deleted.is.false,deleted.is.null')
       .order('updated_at', { ascending: true });
 
     if (gestaoError) {

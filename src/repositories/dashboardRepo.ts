@@ -27,12 +27,12 @@ export async function getDashboardData(filters: {
     .from('fichas')
     .select('*');
 
-  // Aplicar filtros
+  // Aplicar filtros com fallback para criado e created_at
   if (filters.start) {
-    query = query.gte('criado', filters.start);
+    query = query.or(`criado.gte.${filters.start},created_at.gte.${filters.start}`);
   }
   if (filters.end) {
-    query = query.lte('criado', filters.end);
+    query = query.or(`criado.lte.${filters.end},created_at.lte.${filters.end}`);
   }
   if (filters.scouter) {
     query = query.ilike('scouter', `%${filters.scouter}%`);
@@ -41,7 +41,18 @@ export async function getDashboardData(filters: {
     query = query.eq('projeto', filters.projeto);
   }
 
-  const { data, error } = await query.order('criado', { ascending: false });
+  // Try ordering by 'criado' first, fallback to 'created_at' if error
+  let data, error;
+  try {
+    const result = await query.order('criado', { ascending: false });
+    data = result.data;
+    error = result.error;
+  } catch (e) {
+    console.warn('Warning: Could not order by "criado", trying "created_at":', e);
+    const result = await query.order('created_at', { ascending: false });
+    data = result.data;
+    error = result.error;
+  }
 
   if (error) {
     console.error('Erro ao buscar dados do dashboard:', error);

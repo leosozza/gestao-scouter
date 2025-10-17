@@ -67,7 +67,7 @@ async function fetchScoutersFromSupabase(): Promise<ScouterDataResult> {
     const { data: fichas, error: fichasError } = await supabase
       .from('fichas')
       .select('*')
-      .eq('deleted', false);
+      .or('deleted.is.false,deleted.is.null');
     
     if (fichasError) throw fichasError;
 
