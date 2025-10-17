@@ -8,6 +8,8 @@ import { supabase } from '@/lib/supabase-helper';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { createSyncLog } from '@/repositories/syncLogsRepo';
+import { getTabuladorConfig } from '@/repositories/tabuladorConfigRepo';
 
 interface SyncStatus {
   id: string;
@@ -75,17 +77,62 @@ export function TabuladorSync() {
 
   const triggerSync = async () => {
     setIsSyncing(true);
+    const startTime = Date.now();
+    
+    console.log('🔄 [TabuladorSync] Iniciando sincronização manual...');
+    
     toast({
       title: 'Sincronização iniciada',
       description: 'Aguarde enquanto sincronizamos com TabuladorMax...'
     });
 
     try {
+      // Get TabuladorMax config
+      const config = await getTabuladorConfig();
+      console.log('📋 [TabuladorSync] Configuração carregada:', {
+        url: config?.url,
+        enabled: config?.enabled,
+      });
+
+      const endpoint = `${supabase.supabaseUrl}/functions/v1/sync-tabulador`;
+      console.log('📡 [TabuladorSync] Endpoint:', endpoint);
+      console.log('🎯 [TabuladorSync] Tabela: leads (TabuladorMax) ↔️ fichas (Gestão)');
+      
       const { data, error } = await supabase.functions.invoke('sync-tabulador', {
         body: { manual: true }
       });
 
-      if (error) throw error;
+      const executionTime = Date.now() - startTime;
+      
+      if (error) {
+        console.error('❌ [TabuladorSync] Erro na sincronização:', error);
+        
+        // Log error
+        await createSyncLog({
+          endpoint,
+          table_name: 'leads ↔️ fichas',
+          status: 'error',
+          error_message: error.message,
+          execution_time_ms: executionTime,
+        });
+        
+        throw error;
+      }
+
+      console.log('✅ [TabuladorSync] Sincronização concluída:', data);
+      console.log(`📊 [TabuladorSync] Enviados: ${data?.gestao_to_tabulador || 0}`);
+      console.log(`📥 [TabuladorSync] Recebidos: ${data?.tabulador_to_gestao || 0}`);
+      console.log(`⏱️ [TabuladorSync] Tempo: ${executionTime}ms`);
+
+      // Log success
+      await createSyncLog({
+        endpoint,
+        table_name: 'leads ↔️ fichas',
+        status: 'success',
+        records_count: (data?.gestao_to_tabulador || 0) + (data?.tabulador_to_gestao || 0),
+        execution_time_ms: executionTime,
+        response_data: data,
+      });
 
       toast({
         title: 'Sincronização concluída',
@@ -96,7 +143,7 @@ export function TabuladorSync() {
       await loadSyncStatus();
       await loadSyncLogs();
     } catch (error) {
-      console.error('Erro na sincronização:', error);
+      console.error('❌ [TabuladorSync] Exceção na sincronização:', error);
       toast({
         title: 'Erro na sincronização',
         description: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -108,24 +155,80 @@ export function TabuladorSync() {
   };
 
   const testConnection = async () => {
+    const startTime = Date.now();
+    
+    console.log('🧪 [TabuladorSync] Testando conexão com TabuladorMax...');
+    
     toast({
       title: 'Testando conexão',
       description: 'Verificando conectividade com TabuladorMax...'
     });
 
     try {
+      // Get TabuladorMax config
+      const config = await getTabuladorConfig();
+      console.log('📋 [TabuladorSync] Usando configuração:', {
+        url: config?.url,
+        projectId: config?.project_id,
+      });
+
+      const endpoint = `${supabase.supabaseUrl}/functions/v1/test-tabulador-connection`;
+      console.log('📡 [TabuladorSync] Endpoint de teste:', endpoint);
+      console.log('🎯 [TabuladorSync] Tabela alvo: leads');
+      
       const { data, error } = await supabase.functions.invoke('test-tabulador-connection');
 
-      if (error) throw error;
+      const executionTime = Date.now() - startTime;
+      
+      if (error) {
+        console.error('❌ [TabuladorSync] Erro no teste:', error);
+        
+        // Log error
+        await createSyncLog({
+          endpoint,
+          table_name: 'leads (teste)',
+          status: 'error',
+          error_message: error.message,
+          execution_time_ms: executionTime,
+        });
+        
+        throw error;
+      }
 
       // Mostrar resultado detalhado
       const leadsInfo = data.tables?.leads;
+      console.log('📊 [TabuladorSync] Resultado do teste:', {
+        status: leadsInfo?.status,
+        total: leadsInfo?.total_count,
+        tabelas_disponíveis: data.tables?.available?.length,
+      });
+
       if (leadsInfo?.status?.includes('✅')) {
+        // Log success
+        await createSyncLog({
+          endpoint,
+          table_name: 'leads (teste)',
+          status: 'success',
+          records_count: leadsInfo.total_count || 0,
+          execution_time_ms: executionTime,
+          response_data: data,
+        });
+
         toast({
           title: 'Conexão bem-sucedida!',
           description: `Encontrados ${leadsInfo.total_count || 0} leads na tabela. ${data.tables.available?.length || 0} tabelas disponíveis.`
         });
       } else {
+        // Log warning/error
+        await createSyncLog({
+          endpoint,
+          table_name: 'leads (teste)',
+          status: 'error',
+          error_message: leadsInfo?.error || 'Problema na conexão',
+          execution_time_ms: executionTime,
+          response_data: data,
+        });
+
         toast({
           title: 'Problema na conexão',
           description: leadsInfo?.error || 'Verifique os logs da edge function para mais detalhes',
@@ -133,9 +236,9 @@ export function TabuladorSync() {
         });
       }
 
-      console.log('📊 Diagnóstico completo:', data);
+      console.log('📊 [TabuladorSync] Diagnóstico completo:', data);
     } catch (error) {
-      console.error('Erro no teste:', error);
+      console.error('❌ [TabuladorSync] Exceção no teste:', error);
       toast({
         title: 'Erro ao testar conexão',
         description: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -146,24 +249,83 @@ export function TabuladorSync() {
 
   const triggerInitialMigration = async () => {
     setIsMigrating(true);
+    const startTime = Date.now();
+    
+    console.log('🚀 [TabuladorSync] Iniciando migração inicial...');
+    
     toast({
       title: 'Migração inicial iniciada',
       description: 'Buscando todos os leads do TabuladorMax...'
     });
 
     try {
+      // Get TabuladorMax config
+      const config = await getTabuladorConfig();
+      console.log('📋 [TabuladorSync] Configuração carregada:', {
+        url: config?.url,
+        projectId: config?.project_id,
+      });
+
+      const endpoint = `${supabase.supabaseUrl}/functions/v1/initial-sync-leads`;
+      console.log('📡 [TabuladorSync] Endpoint:', endpoint);
+      console.log('🎯 [TabuladorSync] Tabela origem: leads (TabuladorMax)');
+      console.log('🎯 [TabuladorSync] Tabela destino: fichas (Gestão)');
+      console.log('📥 [TabuladorSync] Buscando TODOS os leads do TabuladorMax...');
+      
       const { data, error } = await supabase.functions.invoke('initial-sync-leads', {
         body: { manual: true }
       });
 
-      if (error) throw error;
+      const executionTime = Date.now() - startTime;
+      
+      if (error) {
+        console.error('❌ [TabuladorSync] Erro na migração:', error);
+        
+        // Log error
+        await createSyncLog({
+          endpoint,
+          table_name: 'leads → fichas (migração)',
+          status: 'error',
+          error_message: error.message,
+          execution_time_ms: executionTime,
+        });
+        
+        throw error;
+      }
+
+      console.log('✅ [TabuladorSync] Migração concluída:', data);
+      console.log(`📊 [TabuladorSync] Total de leads: ${data?.total_leads || 0}`);
+      console.log(`✅ [TabuladorSync] Migrados: ${data?.migrated || 0}`);
+      console.log(`❌ [TabuladorSync] Falharam: ${data?.failed || 0}`);
+      console.log(`⏱️ [TabuladorSync] Tempo: ${executionTime}ms`);
 
       if (data.success) {
+        // Log success
+        await createSyncLog({
+          endpoint,
+          table_name: 'leads → fichas (migração)',
+          status: 'success',
+          records_count: data.migrated,
+          execution_time_ms: executionTime,
+          response_data: data,
+        });
+
         toast({
           title: 'Migração concluída com sucesso!',
           description: `${data.migrated} leads migrados de ${data.total_leads} encontrados`
         });
       } else {
+        // Log partial success
+        await createSyncLog({
+          endpoint,
+          table_name: 'leads → fichas (migração)',
+          status: data.failed > 0 ? 'error' : 'success',
+          records_count: data.migrated,
+          error_message: data.errors?.join('; '),
+          execution_time_ms: executionTime,
+          response_data: data,
+        });
+
         toast({
           title: 'Migração parcialmente concluída',
           description: `${data.migrated} migrados, ${data.failed} falharam`,
@@ -175,7 +337,7 @@ export function TabuladorSync() {
       await loadSyncStatus();
       await loadSyncLogs();
     } catch (error) {
-      console.error('Erro na migração:', error);
+      console.error('❌ [TabuladorSync] Exceção na migração:', error);
       toast({
         title: 'Erro na migração inicial',
         description: error instanceof Error ? error.message : 'Erro desconhecido',
