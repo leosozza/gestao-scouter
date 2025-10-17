@@ -10,7 +10,9 @@ console.log('🔑 [Supabase] Cliente configurado com persistência de sessão');
 (async () => {
   try {
     console.log('🧪 [Supabase] Testando conexão...');
-    const { data, error } = await baseSupabase
+    
+    // Get count of all records in fichas table
+    const { data, error, count } = await baseSupabase
       .from('fichas')
       .select('id', { count: 'exact', head: true });
     
@@ -18,6 +20,17 @@ console.log('🔑 [Supabase] Cliente configurado com persistência de sessão');
       console.error('❌ [Supabase] Erro no teste de conexão:', error);
     } else {
       console.log('✅ [Supabase] Conexão estabelecida com sucesso');
+      console.log(`📊 [Supabase] Total de registros na tabela "fichas": ${count ?? 0}`);
+      
+      if (count === 0) {
+        console.warn('⚠️ [Supabase] A tabela "fichas" está VAZIA!');
+        console.warn('💡 [Supabase] Para adicionar dados de teste, execute no Supabase SQL Editor:');
+        console.warn(`
+INSERT INTO fichas (nome, scouter, projeto, etapa, criado) VALUES
+  ('João Silva', 'Maria Santos', 'Projeto Alpha', 'Contato', NOW()),
+  ('Ana Costa', 'Pedro Lima', 'Projeto Beta', 'Agendado', NOW() - INTERVAL '1 day');
+        `);
+      }
     }
   } catch (err) {
     console.error('❌ [Supabase] Exceção ao testar conexão:', err);

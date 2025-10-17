@@ -95,8 +95,9 @@ export async function getLeadsByProject(params: LeadsFilters = {}): Promise<
 async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> {
   try {
     console.log('🔍 [LeadsRepo] Iniciando busca de leads com filtros:', params);
+    console.log('🗂️  [LeadsRepo] Tabela sendo consultada: "fichas"');
     
-    let q = supabase.from('fichas').select('*');
+    let q = supabase.from('fichas').select('*', { count: 'exact' });
 
     // Aplicar filtros
     if (params.dataInicio) {
@@ -121,7 +122,7 @@ async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> 
     }
 
     console.log('🚀 [LeadsRepo] Executando query no Supabase...');
-    const { data, error } = await q.order('criado', { ascending: false });
+    const { data, error, count } = await q.order('criado', { ascending: false });
     
     if (error) {
       console.error('❌ [LeadsRepo] Erro ao buscar leads do Supabase:', {
@@ -133,17 +134,23 @@ async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> 
       throw new Error(`Erro ao buscar dados do Supabase: ${error.message}`);
     }
     
-    console.log(`✅ [LeadsRepo] Dados recebidos com sucesso: ${data?.length || 0} registros`);
+    console.log(`✅ [LeadsRepo] Query executada com sucesso!`);
+    console.log(`📊 [LeadsRepo] Total de registros na tabela "fichas" (com filtros): ${count ?? 'N/A'}`);
+    console.log(`📦 [LeadsRepo] Registros retornados nesta query: ${data?.length || 0}`);
     
     if (!data || data.length === 0) {
-      console.warn('⚠️ [LeadsRepo] Nenhum registro encontrado na tabela fichas');
+      console.warn('⚠️ [LeadsRepo] Nenhum registro encontrado na tabela "fichas"');
+      console.warn('💡 [LeadsRepo] Verifique se:');
+      console.warn('   1. A tabela "fichas" contém dados no Supabase');
+      console.warn('   2. Os filtros aplicados não estão muito restritivos');
+      console.warn('   3. As políticas RLS permitem acesso aos dados');
       return [];
     }
     
     const normalized = data.map(normalizeFichaFromSupabase);
     const filtered = normalized.filter(l => applyClientSideFilters(l, params));
     
-    console.log(`📊 [LeadsRepo] Após normalização e filtros: ${filtered.length} leads`);
+    console.log(`📋 [LeadsRepo] Após normalização e filtros client-side: ${filtered.length} leads`);
     
     return filtered;
   } catch (error) {
