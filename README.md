@@ -205,6 +205,32 @@ ID,Nome,Projeto,Scouter,Data,Telefone,Email,Idade,Valor,LAT,LNG
 
 A sincronização entre a tabela `leads` (TabuladorMax) e a tabela `fichas` (Gestão Scouter) pode ser feita de duas formas:
 
+### 📊 Diagnóstico e Monitoramento
+
+**NOVO**: Sistema completo de diagnóstico e monitoramento de sincronização!
+
+```bash
+# Executar diagnóstico completo (dry-run, não grava dados)
+npm run diagnostics:sync
+
+# Executar diagnóstico com teste de escrita
+npm run diagnostics:sync:write
+
+# Diagnóstico customizado
+npx tsx scripts/syncDiagnostics.ts --sample 50 --write-check --verbose
+```
+
+O script de diagnóstico valida:
+- ✅ Configuração de variáveis de ambiente
+- ✅ Conectividade com ambos os projetos Supabase
+- ✅ Permissões de leitura (TabuladorMax) e escrita (Gestão Scouter)
+- ✅ Integridade do mapeamento de dados
+- ✅ Simulação de sincronização (preview de payload)
+
+**📚 Documentação Completa**:
+- [Análise de Sincronização](./docs/ANALISE_SYNC_TABULADOR.md) - Arquitetura, troubleshooting e queries
+- [Guia de Diagnóstico](./docs/SYNC_DIAGNOSTICS.md) - Como usar o script de diagnóstico
+
 ### 1. Sincronização Automática via Triggers (Recomendado)
 
 Sincronização **em tempo real** usando triggers SQL no PostgreSQL. Qualquer alteração (INSERT, UPDATE, DELETE) na tabela `leads` é automaticamente propagada para a tabela `fichas`.
