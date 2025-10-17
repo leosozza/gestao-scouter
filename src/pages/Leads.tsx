@@ -8,7 +8,8 @@ import { DataTable } from '@/components/shared/DataTable'
 import { FilterHeader } from '@/components/shared/FilterHeader'
 import { AIAnalysis } from '@/components/shared/AIAnalysis'
 import { TinderAnalysisModal } from '@/components/leads/TinderAnalysisModal'
-import { Download, Users, TrendingUp, Calendar, Phone, Heart, ThumbsUp, ThumbsDown, Clock } from 'lucide-react'
+import { CreateLeadDialog } from '@/components/leads/CreateLeadDialog'
+import { Plus, Users, TrendingUp, Calendar, Phone, Heart, ThumbsUp, ThumbsDown, Clock } from 'lucide-react'
 import { getLeads } from '@/repositories/leadsRepo'
 import type { Lead, LeadsFilters } from '@/repositories/types'
 import { formatDateBR } from '@/utils/dataHelpers'
@@ -21,6 +22,7 @@ export default function Leads() {
   const [filters, setFilters] = useState<LeadsFilters>({})
   const [selectedLeads, setSelectedLeads] = useState<Lead[]>([])
   const [showTinderModal, setShowTinderModal] = useState(false)
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
 
   const filterOptions = [
     {
@@ -218,8 +220,8 @@ export default function Leads() {
     console.log('Buscar:', term)
   }
 
-  const handleExport = () => {
-    console.log('Exportar dados')
+  const handleCreateSuccess = async () => {
+    await loadLeads()
   }
 
   const handleStartAnalysis = () => {
@@ -399,20 +401,20 @@ export default function Leads() {
                   <div className="flex gap-2">
                     <Button 
                       variant="default"
+                      className="rounded-xl"
+                      onClick={() => setShowCreateDialog(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Criar Lead
+                    </Button>
+                    <Button 
+                      variant="default"
                       className="rounded-xl bg-pink-500 hover:bg-pink-600"
                       onClick={handleStartAnalysis}
                       disabled={selectedLeads.length === 0}
                     >
                       <Heart className="h-4 w-4 mr-2" />
                       Iniciar Análise ({selectedLeads.length})
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      className="rounded-xl"
-                      onClick={handleExport}
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Exportar
                     </Button>
                   </div>
                 </div>
@@ -450,6 +452,13 @@ export default function Leads() {
         onClose={() => setShowTinderModal(false)}
         leads={selectedLeads}
         onComplete={handleAnalysisComplete}
+      />
+
+      {/* Create Lead Dialog */}
+      <CreateLeadDialog
+        open={showCreateDialog}
+        onClose={() => setShowCreateDialog(false)}
+        onSuccess={handleCreateSuccess}
       />
     </AppShell>
   )
