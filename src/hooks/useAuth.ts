@@ -94,7 +94,7 @@ export function useAuth() {
       email,
       password,
     });
-    return { error };
+    return { error: error as Error | null };
   };
 
   const signUp = async (email: string, password: string, name: string) => {
@@ -110,7 +110,7 @@ export function useAuth() {
         },
       },
     });
-    return { error };
+    return { error: error as Error | null };
   };
 
   const signOut = async () => {
@@ -120,7 +120,7 @@ export function useAuth() {
       setSession(null);
       setUserProfile(null);
     }
-    return { error };
+    return { error: error as Error | null };
   };
 
   const hasPermission = (module: string, action: string): boolean => {
