@@ -15,8 +15,10 @@ export function useFichas(params: UseFichasParams = {}) {
   return useQuery({
     queryKey: ['fichas', params],
     queryFn: async (): Promise<FichaDataPoint[]> => {
+      // ⚠️ IMPORTANTE: Sempre usar a tabela 'fichas' como fonte única de verdade
+      // Nunca use 'leads' ou 'bitrix_leads' - todas as fichas são centralizadas em 'fichas'
       let query = supabase
-        .from('leads')
+        .from('fichas')
         .select('*')
         .eq('deleted', false);
 

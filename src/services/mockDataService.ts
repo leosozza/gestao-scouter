@@ -1,5 +1,16 @@
 // Mock data service to simulate Google Sheets data for development/testing
 // This provides realistic sample data when external APIs are unavailable
+// 
+// ⚠️ ATENÇÃO: APENAS PARA DESENVOLVIMENTO LOCAL
+// ==============================================
+// Este serviço fornece dados mockados APENAS para testes e desenvolvimento local.
+// Em PRODUÇÃO, a aplicação deve usar EXCLUSIVAMENTE a tabela 'fichas' do Supabase
+// através do repositório centralizado (leadsRepo.ts).
+// 
+// NÃO importe este serviço em código de produção. Use sempre:
+// - import { getLeads } from '@/repositories/leadsRepo'
+// - Hooks: useFichas, useLeadsFilters
+// - Repos: leadsRepo.ts, dashboardRepo.ts, fichasRepo.ts
 import type { Ficha, Project } from '@/repositories/types';
 
 export class MockDataService {

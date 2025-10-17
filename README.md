@@ -33,12 +33,18 @@ Sistema de gestão e análise de desempenho para scouters com sincronização em
 
 ## 🏗️ Arquitetura
 
+### 📊 Fonte Única de Dados: Tabela 'fichas'
+
+**⚠️ IMPORTANTE**: Esta aplicação utiliza **EXCLUSIVAMENTE** a tabela `fichas` do Supabase como fonte de dados para leads/fichas. 
+
+Para informações completas sobre a arquitetura de dados, consulte: [LEADS_DATA_SOURCE.md](./LEADS_DATA_SOURCE.md)
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  GESTÃO SCOUTER (ngestyxtopvfeyenyvgt)                      │
 │  - Aplicação principal                                       │
 │  - Dashboard, analytics, relatórios                          │
-│  - Tabela: fichas (207k+ registros)                         │
+│  - Tabela: fichas (207k+ registros) ← FONTE ÚNICA           │
 └─────────────────────────────────────────────────────────────┘
                           ↕ SYNC (5 min)
 ┌─────────────────────────────────────────────────────────────┐

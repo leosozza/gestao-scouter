@@ -1,4 +1,9 @@
 // Repositório para Dashboard - Dados do Supabase
+// 
+// ⚠️ FONTE ÚNICA: Tabela 'fichas'
+// ================================
+// Este repositório busca dados exclusivamente da tabela 'fichas' do Supabase.
+// Todos os dashboards e visualizações devem usar esta fonte centralizada.
 import { supabase } from '@/lib/supabase-helper';
 import type { FichaDataPoint } from '@/types/ficha';
 
@@ -7,6 +12,11 @@ export interface DashboardDataResult {
   missingFields: string[];
 }
 
+/**
+ * Busca dados do dashboard da tabela 'fichas' com filtros
+ * @param filters - Filtros de período, scouter e projeto
+ * @returns Dados de fichas para exibição em dashboard
+ */
 export async function getDashboardData(filters: { 
   start?: string; 
   end?: string; 

@@ -2,6 +2,16 @@
  * Script de Exemplo e Validação do Migration Script
  * ==================================================
  * 
+ * ⚠️ FONTE ÚNICA DE VERDADE: Tabela 'fichas'
+ * ===========================================
+ * Este script demonstra como usar o script de migração para popular
+ * a tabela 'fichas', que é a FONTE ÚNICA de dados de leads na aplicação.
+ * 
+ * IMPORTANTE para desenvolvedores:
+ * - Sempre popule a tabela 'fichas' ao criar dados de teste
+ * - Nunca use 'leads' ou 'bitrix_leads' como fonte principal
+ * - MockDataService é apenas para testes locais offline
+ * 
  * Este arquivo demonstra como usar o script de migração e valida
  * a função de normalização de dados.
  */

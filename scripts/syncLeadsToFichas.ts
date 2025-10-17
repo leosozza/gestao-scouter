@@ -3,6 +3,17 @@
  * Script de Migração Inicial: Leads → Fichas
  * ===========================================
  * 
+ * ⚠️ IMPORTANTE: FONTE ÚNICA DE VERDADE
+ * ======================================
+ * Este script migra dados de uma tabela 'leads' legada para a tabela 'fichas',
+ * que é a FONTE ÚNICA DE VERDADE da aplicação Gestão Scouter.
+ * 
+ * Após executar este script:
+ * - TODA a aplicação deve buscar dados da tabela 'fichas'
+ * - NÃO use mais a tabela 'leads' em queries
+ * - NÃO use 'bitrix_leads' como fonte principal
+ * - NÃO use MockDataService em produção
+ * 
  * Este script realiza a primeira carga de dados da tabela `leads` (TabuladorMax)
  * para a tabela `fichas` (Gestão Scouter), normalizando tipos de dados e
  * mantendo backup JSON no campo `raw`.

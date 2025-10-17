@@ -1,6 +1,10 @@
 /**
  * Fichas Data Module
  * Handles loading and parsing of fichas data
+ * 
+ * ⚠️ FONTE ÚNICA: Tabela 'fichas' do Supabase
+ * Este módulo busca dados exclusivamente da tabela 'fichas'.
+ * Não usar Google Sheets, 'leads' ou outras fontes.
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -15,8 +19,10 @@ export interface FichasDataResult {
 }
 
 /**
- * Load fichas data from Google Sheets
+ * Load fichas data from Supabase table 'fichas'
  * Returns array of fichas with lat/lng coordinates
+ * 
+ * @returns Promise with fichas data from 'fichas' table
  */
 export async function loadFichasData(): Promise<FichasDataResult> {
   try {

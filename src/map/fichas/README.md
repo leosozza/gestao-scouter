@@ -7,7 +7,7 @@ Este módulo implementa funcionalidades completas para visualização e análise
 - **Heatmap Persistente**: Visualização de densidade que permanece visível em todos os níveis de zoom
 - **Seleção Espacial**: Seleção de fichas por área usando retângulo ou polígono
 - **Resumo Estatístico**: Agregação automática por projeto e scouter
-- **Fonte de Dados**: Google Sheets (CSV) com arquitetura pronta para migração ao Supabase
+- **Fonte de Dados**: Tabela 'fichas' do Supabase (migrado do Google Sheets)
 
 ## Estrutura dos Módulos
 
@@ -296,42 +296,61 @@ function FichasMapComponent() {
 
 ## Fonte de Dados
 
-### Google Sheets (Atual)
+### ⚠️ FONTE ÚNICA DE VERDADE: Tabela 'fichas' do Supabase
 
-Os dados são carregados diretamente do Google Sheets via CSV:
-- **Spreadsheet ID**: `14l4A_BOFZM-TwLuam-bKzUgInNAA7fOCeamdkE1nt_o`
-- **GID Fichas**: `452792639`
-- **Coluna de Localização**: "Localização" (formato: "lat,lng")
+Os dados são carregados da tabela `fichas` do Supabase, que é a fonte centralizada da aplicação.
 
-**Serviço utilizado:**
+**Repository utilizado:**
 ```typescript
-import { fetchFichasData } from '@/services/googleSheetsMapService';
+import { fetchFichasFromDB } from '@/repositories/fichasRepo';
+// ou
+import { getLeads } from '@/repositories/leadsRepo';
 ```
 
-### Migração Futura para Supabase
-
-A arquitetura modular facilita a migração. Basta atualizar o `data.ts`:
-
+**Hook React:**
 ```typescript
-// Exemplo de migração
-import { supabase } from '@/lib/supabase';
+import { useFichas } from '@/hooks/useFichas';
 
-export async function loadFichasData(): Promise<FichasDataResult> {
-  const { data: fichas, error } = await supabase
-    .from('fichas')
-    .select('lat, lng, localizacao, projeto, scouter, data')
-    .not('lat', 'is', null)
-    .not('lng', 'is', null);
-  
-  if (error) throw error;
-  
-  return {
-    fichas: fichas as FichaDataPoint[],
-    total: fichas.length,
-    loaded: new Date(),
-  };
+function MapComponent() {
+  const { data: fichas, isLoading } = useFichas({ withGeo: true });
+  // fichas agora contém apenas dados com latitude/longitude
 }
 ```
+
+**Consulta direta:**
+```typescript
+import { supabase } from '@/lib/supabase-helper';
+
+const { data: fichas } = await supabase
+  .from('fichas')
+  .select('*')
+  .not('latitude', 'is', null)
+  .not('longitude', 'is', null)
+  .eq('deleted', false);
+```
+
+### Estrutura de Dados Esperada
+
+```typescript
+interface FichaDataPoint {
+  lat?: number;          // ou latitude
+  lng?: number;          // ou longitude
+  localizacao?: string;  // formato: "lat,lng" (backup)
+  id?: string;
+  projeto?: string;
+  scouter?: string;
+  data?: string;
+  criado?: string;
+}
+```
+
+### ❌ NÃO USE (Descontinuado)
+
+- ~~Google Sheets direto via CSV~~ - Causa problemas de CORS
+- ~~Tabela 'leads'~~ - Tabela legada
+- ~~MockDataService~~ - Apenas para testes locais
+
+Para mais informações sobre a fonte de dados, consulte: `/LEADS_DATA_SOURCE.md`
 
 ## Dependências
 
