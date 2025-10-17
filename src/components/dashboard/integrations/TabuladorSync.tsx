@@ -33,6 +33,7 @@ export function TabuladorSync() {
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isMigrating, setIsMigrating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -88,7 +89,7 @@ export function TabuladorSync() {
 
       toast({
         title: 'Sincronização concluída',
-        description: `${data?.result?.records_synced || 0} registros sincronizados`
+        description: `${data?.gestao_to_tabulador || 0} enviados, ${data?.tabulador_to_gestao || 0} recebidos`
       });
 
       // Recarregar status e logs
@@ -103,6 +104,48 @@ export function TabuladorSync() {
       });
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const triggerInitialMigration = async () => {
+    setIsMigrating(true);
+    toast({
+      title: 'Migração inicial iniciada',
+      description: 'Buscando todos os leads do TabuladorMax...'
+    });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('initial-sync-leads', {
+        body: { manual: true }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast({
+          title: 'Migração concluída com sucesso!',
+          description: `${data.migrated} leads migrados de ${data.total_leads} encontrados`
+        });
+      } else {
+        toast({
+          title: 'Migração parcialmente concluída',
+          description: `${data.migrated} migrados, ${data.failed} falharam`,
+          variant: 'default'
+        });
+      }
+
+      // Recarregar status e logs
+      await loadSyncStatus();
+      await loadSyncLogs();
+    } catch (error) {
+      console.error('Erro na migração:', error);
+      toast({
+        title: 'Erro na migração inicial',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsMigrating(false);
     }
   };
 
@@ -147,14 +190,25 @@ export function TabuladorSync() {
                 </CardDescription>
               </div>
             </div>
-            <Button 
-              onClick={triggerSync} 
-              disabled={isSyncing}
-              size="sm"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
-              Sincronizar Agora
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={triggerInitialMigration} 
+                disabled={isMigrating || isSyncing}
+                size="sm"
+                variant="outline"
+              >
+                <Database className={`h-4 w-4 mr-2 ${isMigrating ? 'animate-spin' : ''}`} />
+                Migração Inicial
+              </Button>
+              <Button 
+                onClick={triggerSync} 
+                disabled={isSyncing || isMigrating}
+                size="sm"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+                Sincronizar Agora
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

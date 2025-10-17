@@ -144,13 +144,13 @@ interface MigrationStats {
  * Normaliza um lead para o formato de ficha
  */
 function normalizeLeadToFicha(lead: Lead): Ficha {
-  // Normalizar data para formato ISO (YYYY-MM-DD)
+  // Normalizar data para formato ISO completo
   let criadoNormalized: string | undefined;
   if (lead.criado) {
     try {
       const date = new Date(lead.criado);
       if (!isNaN(date.getTime())) {
-        criadoNormalized = date.toISOString().split('T')[0];
+        criadoNormalized = date.toISOString(); // ISO completo com timestamp
       }
     } catch (e) {
       console.warn(`Erro ao normalizar data para lead ${lead.id}:`, e);

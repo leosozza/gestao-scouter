@@ -1,9 +1,18 @@
 -- ============================================================================
--- Trigger Function: Sincronização Automática de Leads → Fichas
+-- Trigger Function: Sincronização Automática de Leads → Fichas (OPCIONAL)
 -- ============================================================================
--- Este arquivo deve ser executado no projeto TabuladorMax (gkvvtfqfggddzotxltxf)
--- para sincronizar automaticamente a tabela `leads` com a tabela `fichas`
--- do projeto Gestão Scouter (ngestyxtopvfeyenyvgt).
+-- ⚠️ ATENÇÃO: Este arquivo deve ser executado MANUALMENTE no projeto TabuladorMax
+-- ⚠️ Não pode ser executado via Lovable pois é um projeto externo
+-- 
+-- Este trigger sincroniza em TEMPO REAL a tabela `leads` (TabuladorMax) com
+-- a tabela `fichas` (Gestão Scouter). É OPCIONAL, pois a sincronização
+-- bidirecional automática a cada 5 minutos já está configurada via Edge Function.
+--
+-- PASSOS PARA INSTALAÇÃO MANUAL:
+-- 1. Acessar: https://supabase.com/dashboard/project/gkvvtfqfggddzotxltxf/sql
+-- 2. Copiar e colar TODO este arquivo SQL
+-- 3. Executar
+-- 4. Configurar as variáveis de ambiente (ver seção de configuração abaixo)
 --
 -- Pré-requisitos:
 -- 1. Configurar variáveis de ambiente no projeto TabuladorMax:

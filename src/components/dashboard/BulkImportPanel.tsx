@@ -82,15 +82,16 @@ export const BulkImportPanel = ({ onComplete }: BulkImportPanelProps) => {
     if (!dateStr) return null;
     const str = String(dateStr).trim();
     
-    // Formato DD/MM/YYYY
-    const brMatch = str.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    // Formato DD/MM/YYYY ou DD/MM/YYYY HH:MM:SS
+    const brMatch = str.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}):(\d{2}))?/);
     if (brMatch) {
-      return `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`;
+      const [, day, month, year, hour = '00', minute = '00', second = '00'] = brMatch;
+      return `${year}-${month}-${day}T${hour}:${minute}:${second}.000Z`;
     }
     
-    // Tentar parse direto
+    // Tentar parse direto e retornar ISO completo
     const d = new Date(str);
-    return isNaN(+d) ? null : d.toISOString().split('T')[0];
+    return isNaN(+d) ? null : d.toISOString();
   };
 
   const parseBRL = (input: unknown): number => {

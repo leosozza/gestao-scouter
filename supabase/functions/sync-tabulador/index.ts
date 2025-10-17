@@ -10,6 +10,56 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Mapeia uma ficha (Gestão Scouter) para um lead (TabuladorMax)
+function mapFichaToLead(ficha: any) {
+  return {
+    id: ficha.id,
+    nome: ficha.nome,
+    telefone: ficha.telefone,
+    email: ficha.email,
+    idade: ficha.idade,
+    projeto: ficha.projeto,
+    scouter: ficha.scouter,
+    supervisor: ficha.supervisor,
+    localizacao: ficha.localizacao,
+    latitude: ficha.latitude,
+    longitude: ficha.longitude,
+    local_da_abordagem: ficha.local_da_abordagem,
+    criado: ficha.criado ? new Date(ficha.criado).toISOString() : null,
+    valor_ficha: ficha.valor_ficha,
+    etapa: ficha.etapa,
+    ficha_confirmada: ficha.ficha_confirmada,
+    foto: ficha.foto,
+    updated_at: ficha.updated_at || new Date().toISOString()
+  };
+}
+
+// Mapeia um lead (TabuladorMax) para uma ficha (Gestão Scouter)
+function mapLeadToFicha(lead: any) {
+  return {
+    id: String(lead.id),
+    nome: lead.nome,
+    telefone: lead.telefone,
+    email: lead.email,
+    idade: lead.idade ? String(lead.idade) : null,
+    projeto: lead.projeto,
+    scouter: lead.scouter,
+    supervisor: lead.supervisor,
+    localizacao: lead.localizacao,
+    latitude: lead.latitude,
+    longitude: lead.longitude,
+    local_da_abordagem: lead.local_da_abordagem,
+    criado: lead.criado ? new Date(lead.criado).toISOString() : null,
+    valor_ficha: lead.valor_ficha,
+    etapa: lead.etapa,
+    ficha_confirmada: lead.ficha_confirmada,
+    foto: lead.foto,
+    raw: lead,
+    updated_at: lead.updated_at || new Date().toISOString(),
+    deleted: false
+  };
+}
+
 interface SyncResult {
   success: boolean;
   gestao_to_tabulador: number;
@@ -63,12 +113,11 @@ serve(async (req) => {
       errors.push(`Erro ao buscar de Gestão Scouter: ${gestaoError.message}`);
     }
 
-    // 3. Buscar registros modificados em TabuladorMax
+    // 3. Buscar registros modificados em TabuladorMax (tabela LEADS)
     const { data: tabuladorUpdates, error: tabuladorError } = await tabulador
-      .from('fichas')
+      .from('leads')
       .select('*')
       .gte('updated_at', lastSyncDate)
-      .eq('deleted', false)
       .order('updated_at', { ascending: true });
 
     if (tabuladorError) {
@@ -89,9 +138,12 @@ serve(async (req) => {
       const toSync = gestaoUpdates.filter(f => !conflictIds.includes(f.id));
       
       if (toSync.length > 0) {
+        // Mapear fichas para leads
+        const leadsToSync = toSync.map(mapFichaToLead);
+        
         const { data, error } = await tabulador
-          .from('fichas')
-          .upsert(toSync, { onConflict: 'id' })
+          .from('leads')
+          .upsert(leadsToSync, { onConflict: 'id' })
           .select('id');
 
         if (error) {
@@ -107,9 +159,12 @@ serve(async (req) => {
       const toSync = tabuladorUpdates.filter(f => !conflictIds.includes(f.id));
       
       if (toSync.length > 0) {
+        // Mapear leads para fichas
+        const fichasToSync = toSync.map(mapLeadToFicha);
+        
         const { data, error } = await gestao
           .from('fichas')
-          .upsert(toSync, { onConflict: 'id' })
+          .upsert(fichasToSync, { onConflict: 'id' })
           .select('id');
 
         if (error) {
@@ -133,16 +188,18 @@ serve(async (req) => {
       // O mais recente vence
       if (gestaoTime > tabuladorTime) {
         // Gestão é mais recente → atualizar TabuladorMax
+        const leadToSync = mapFichaToLead(gestaoRecord);
         const { error } = await tabulador
-          .from('fichas')
-          .upsert([gestaoRecord], { onConflict: 'id' });
+          .from('leads')
+          .upsert([leadToSync], { onConflict: 'id' });
         
         if (!error) conflictsResolved++;
       } else {
         // TabuladorMax é mais recente → atualizar Gestão
+        const fichaToSync = mapLeadToFicha(tabuladorRecord);
         const { error } = await gestao
           .from('fichas')
-          .upsert([tabuladorRecord], { onConflict: 'id' });
+          .upsert([fichaToSync], { onConflict: 'id' });
         
         if (!error) conflictsResolved++;
       }
