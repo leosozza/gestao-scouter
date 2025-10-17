@@ -84,3 +84,26 @@ export interface AppSettings {
   ajuda_custo_tier: Record<string, number>;
   updated_at?: string;
 }
+
+export interface TabuladorMaxConfig {
+  id?: string;
+  project_id: string;
+  url: string;
+  publishable_key: string;
+  enabled: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SyncLog {
+  id?: string;
+  endpoint: string;
+  table_name: string;
+  status: 'success' | 'error' | 'pending';
+  request_params?: Record<string, unknown>;
+  response_data?: unknown;
+  error_message?: string;
+  records_count?: number;
+  execution_time_ms?: number;
+  created_at?: string;
+}
