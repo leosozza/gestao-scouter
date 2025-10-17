@@ -118,9 +118,10 @@ export async function fetchLinearProjection(p: ProjecaoFiltro): Promise<LinearPr
     serie_proj: []
   };
   
-  // Filtrar por período
+  // Filtrar por período - support both criado and created_at
   const data = rows.filter((r: any) => {
-    const rawData = r.criado;
+    const rawData = r.criado || r.created_at;
+    if (!rawData) return false;
     const iso = toISODate(new Date(rawData));
     if (!iso) return false;
     if (iso < p.inicio || iso > p.fim) return false;
@@ -246,10 +247,12 @@ export async function fetchProjectionAdvanced(p: ProjecaoFiltroAdvanced): Promis
     };
   }
   
-  // Helper para filtrar por período
+  // Helper para filtrar por período - support both criado and created_at
   const filterByPeriod = (start: Date, end: Date) => {
     return rows.filter((r: any) => {
-      const iso = toISODate(new Date(r.criado));
+      const dateStr = r.criado || r.created_at;
+      if (!dateStr) return false;
+      const iso = toISODate(new Date(dateStr));
       if (!iso) return false;
       return iso >= toISO(start) && iso <= toISO(end);
     });
@@ -422,7 +425,7 @@ async function fetchProjectionsFromSupabase(type: ProjectionType, selectedFilter
     let query = supabase
       .from('fichas')
       .select('*')
-      .gte('criado', thirtyDaysAgo.toISOString().split('T')[0]);
+      .or(`criado.gte.${thirtyDaysAgo.toISOString().split('T')[0]},created_at.gte.${thirtyDaysAgo.toISOString().split('T')[0]}`);
 
     // Aplicar filtro específico se selecionado
     if (selectedFilter) {
@@ -461,7 +464,7 @@ async function fetchProjectionsFromSupabase(type: ProjectionType, selectedFilter
       groupedData.get(groupKey).fichas.push(ficha);
       
       // Agrupar por semana para calcular performance semanal
-      const weekKey = getWeekKey(ficha.criado);
+      const weekKey = getWeekKey(ficha.criado || ficha.created_at);
       const weeklyData = groupedData.get(groupKey).weeklyData;
       if (!weeklyData.has(weekKey)) {
         weeklyData.set(weekKey, []);
@@ -616,9 +619,9 @@ function generateDailySeries(
   const current = new Date(startDate);
   let acumulado = 0;
   
-  // Group fichas by date
+  // Group fichas by date - support both criado and created_at
   const fichasByDate = fichas.reduce((acc: Record<string, number>, ficha: any) => {
-    const dateKey = parseDate(ficha.criado);
+    const dateKey = parseDate(ficha.criado || ficha.created_at);
     if (dateKey) {
       acc[dateKey] = (acc[dateKey] || 0) + 1;
     }
