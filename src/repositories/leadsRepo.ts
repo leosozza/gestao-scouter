@@ -146,7 +146,8 @@ async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> 
     console.log('🔍 [LeadsRepo] Iniciando busca de leads com filtros:', params);
     console.log('🗂️  [LeadsRepo] Tabela sendo consultada: "fichas"');
     
-    let q = supabase.from('fichas').select('*', { count: 'exact' });
+    let q = supabase.from('fichas').select('*', { count: 'exact' })
+      .or('deleted.is.false,deleted.is.null'); // ✅ Filtro para excluir registros deletados
 
     // ✅ Filtros compatíveis com 'criado' OU 'created_at'
     if (params.dataInicio) {
