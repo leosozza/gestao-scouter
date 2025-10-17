@@ -157,7 +157,7 @@ serve(async (req) => {
     let query = gestao
       .from('fichas')
       .select('*')
-      .eq('deleted', false);
+      .or('deleted.is.false,deleted.is.null');
 
     if (request.filters?.updated_since) {
       query = query.gte('updated_at', request.filters.updated_since);

@@ -25,7 +25,7 @@ export async function executeDashboardQuery(widget: DashboardWidget) {
   let query = supabase
     .from('fichas')
     .select('*')
-    .eq('deleted', false);
+    .or('deleted.is.false,deleted.is.null');
   
   // Aplicar filtros
   if (filters?.dataInicio) {
@@ -226,7 +226,7 @@ export async function getFilterOptions(field: string): Promise<string[]> {
   const { data, error } = await supabase
     .from('fichas')
     .select(field)
-    .eq('deleted', false)
+    .or('deleted.is.false,deleted.is.null')
     .not(field, 'is', null);
   
   if (error) {

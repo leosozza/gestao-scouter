@@ -30,10 +30,11 @@ export async function fetchFichasFromDB(filters?: {
   let q = supabase
     .from("fichas")
     .select("id, scouter, projeto, criado, valor_ficha, raw, deleted")
-    .eq("deleted", false);
+    .or('deleted.is.false,deleted.is.null');
     
-  if (filters?.start) q = q.gte("criado", filters.start);
-  if (filters?.end)   q = q.lte("criado", filters.end);
+  // Add fallback for criado and created_at fields
+  if (filters?.start) q = q.or(`criado.gte.${filters.start},created_at.gte.${filters.start}`);
+  if (filters?.end)   q = q.or(`criado.lte.${filters.end},created_at.lte.${filters.end}`);
   if (filters?.scouter) q = q.eq("scouter", filters.scouter);
   if (filters?.projeto) q = q.eq("projeto", filters.projeto);
   

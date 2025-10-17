@@ -128,7 +128,7 @@ serve(async (req: Request) => {
       const { data, error, count } = await gestaoClient
         .from('fichas')
         .select('id', { count: 'exact' })
-        .eq('deleted', false)
+        .or('deleted.is.false,deleted.is.null')
         .limit(1);
 
       const gestaoLatency = Date.now() - gestaoStart;

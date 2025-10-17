@@ -25,6 +25,55 @@ export async function getLeads(params: LeadsFilters = {}): Promise<Lead[]> {
   return fetchAllLeadsFromSupabase(params);
 }
 
+/**
+ * Cria um novo lead no Supabase
+ * @param lead - Dados do lead a ser criado
+ * @returns Lead criado
+ */
+export async function createLead(lead: Partial<Lead>): Promise<Lead> {
+  const { data, error } = await supabase
+    .from('fichas')
+    .insert([{
+      projeto: lead.projetos,
+      scouter: lead.scouter,
+      nome: lead.nome,
+      valor_ficha: lead.valor_ficha,
+      etapa: lead.etapa,
+      modelo: lead.modelo,
+      localizacao: lead.localizacao,
+      telefone: lead.telefone,
+      email: lead.email,
+      idade: lead.idade,
+      supervisor: lead.supervisor_do_scouter,
+      deleted: false,
+    }])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Erro ao criar lead:', error);
+    throw new Error(`Erro ao criar lead: ${error.message}`);
+  }
+
+  return normalizeFichaFromSupabase(data);
+}
+
+/**
+ * Deleta leads (soft delete) marcando como deleted = true
+ * @param leadIds - IDs dos leads a serem deletados
+ */
+export async function deleteLeads(leadIds: number[]): Promise<void> {
+  const { error } = await supabase
+    .from('fichas')
+    .update({ deleted: true })
+    .in('id', leadIds);
+
+  if (error) {
+    console.error('Erro ao deletar leads:', error);
+    throw new Error(`Erro ao deletar leads: ${error.message}`);
+  }
+}
+
 export interface LeadsSummary {
   totalLeads: number;
   convertedLeads: number;
@@ -152,6 +201,26 @@ async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> 
 }
 
 /**
+ * Normaliza valor booleano para string padronizada
+ * Aceita: 'sim', 'Sim', 'SIM', 'true', '1', true, 1
+ * Retorna: 'Sim' ou valor original se não for booleano
+ */
+function normalizeBooleanIndicator(value: any): string {
+  if (value === null || value === undefined) return '';
+  
+  const strValue = String(value).toLowerCase().trim();
+  
+  if (strValue === 'sim' || strValue === 'true' || strValue === '1') {
+    return 'Sim';
+  }
+  if (strValue === 'não' || strValue === 'nao' || strValue === 'false' || strValue === '0') {
+    return 'Não';
+  }
+  
+  return String(value);
+}
+
+/**
  * Normaliza ficha do Supabase para formato Lead
  */
 function normalizeFichaFromSupabase(r: any): Lead {
@@ -166,17 +235,17 @@ function normalizeFichaFromSupabase(r: any): Lead {
     nome: String(r.nome || 'Sem nome'),
     modelo: String(r.modelo || ''),
     localizacao: r.localizacao,
-    ficha_confirmada: r.ficha_confirmada,
+    ficha_confirmada: normalizeBooleanIndicator(r.ficha_confirmada),
     idade: r.idade,
     local_da_abordagem: r.local_da_abordagem,
-    cadastro_existe_foto: r.cadastro_existe_foto,
-    presenca_confirmada: r.presenca_confirmada,
+    cadastro_existe_foto: normalizeBooleanIndicator(r.cadastro_existe_foto),
+    presenca_confirmada: normalizeBooleanIndicator(r.presenca_confirmada),
     supervisor_do_scouter: r.supervisor,
     foto: r.foto,
-    compareceu: r.compareceu,
-    confirmado: r.confirmado,
+    compareceu: normalizeBooleanIndicator(r.compareceu),
+    confirmado: normalizeBooleanIndicator(r.confirmado),
     tabulacao: r.tabulacao,
-    agendado: r.agendado,
+    agendado: normalizeBooleanIndicator(r.agendado),
     telefone: r.telefone,
     email: r.email,
     latitude: r.latitude,
