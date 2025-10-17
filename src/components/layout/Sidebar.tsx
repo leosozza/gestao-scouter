@@ -1,4 +1,4 @@
-import { LayoutDashboard, TrendingUp, ClipboardList, Users, Wallet, MapPin, Settings, BarChart3, Sparkles } from 'lucide-react'
+import { LayoutDashboard, TrendingUp, ClipboardList, Users, Wallet, MapPin, Settings, BarChart3, Sparkles, LogOut } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Sidebar as SidebarUI,
@@ -9,13 +9,18 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarFooter,
   useSidebar,
 } from '@/components/ui/sidebar'
+import { useAuthContext } from '@/contexts/AuthContext'
+import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 
 export function Sidebar() {
   const location = useLocation()
   const navigate = useNavigate()
   const { state } = useSidebar()
+  const { signOut, userProfile } = useAuthContext()
   
   const items = [
     { key: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -28,6 +33,16 @@ export function Sidebar() {
     { key: '/area-de-abordagem', icon: MapPin, label: 'Área de Abordagem' },
     { key: '/configuracoes', icon: Settings, label: 'Configurações' },
   ]
+
+  const handleLogout = async () => {
+    const { error } = await signOut()
+    if (error) {
+      toast.error('Erro ao fazer logout')
+    } else {
+      toast.success('Logout realizado com sucesso')
+      navigate('/login')
+    }
+  }
   
   return (
     <SidebarUI>
@@ -56,6 +71,29 @@ export function Sidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <div className="px-2 py-2">
+              {userProfile && (
+                <div className="mb-2 text-xs text-muted-foreground">
+                  <div className="font-medium text-foreground truncate">{userProfile.name}</div>
+                  <div className="truncate">{userProfile.email}</div>
+                </div>
+              )}
+              <Button
+                onClick={handleLogout}
+                variant="outline"
+                size="sm"
+                className="w-full justify-start"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sair
+              </Button>
+            </div>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </SidebarUI>
   )
 }
