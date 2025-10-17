@@ -16,8 +16,6 @@ const Scouters = lazy(() => import("./pages/Scouters"));
 const Pagamentos = lazy(() => import("./pages/Pagamentos"));
 const AreaDeAbordagem = lazy(() => import("./pages/AreaDeAbordagem"));
 const ConfiguracoesPage = lazy(() => import("./pages/Configuracoes"));
-const DashboardBuilder = lazy(() => import("./pages/DashboardBuilder"));
-const AdvancedDashboard = lazy(() => import("./pages/AdvancedDashboard"));
 const SyncMonitor = lazy(() => import("./pages/SyncMonitor"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const BitrixCallback = lazy(() => import("./pages/BitrixCallback"));
@@ -25,6 +23,9 @@ const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 // TestFichas route disabled - functionality now integrated in /area-de-abordagem
 // const TestFichas = lazy(() => import("./pages/TestFichas"));
+// DashboardBuilder and AdvancedDashboard removed - functionality now unified in main Dashboard
+// const DashboardBuilder = lazy(() => import("./pages/DashboardBuilder"));
+// const AdvancedDashboard = lazy(() => import("./pages/AdvancedDashboard"));
 
 const queryClient = new QueryClient();
 
@@ -55,12 +56,13 @@ const App = () => (
               <Route path="/pagamentos" element={<ProtectedRoute><Pagamentos /></ProtectedRoute>} />
               <Route path="/area-de-abordagem" element={<ProtectedRoute><AreaDeAbordagem /></ProtectedRoute>} />
               <Route path="/configuracoes" element={<ProtectedRoute><ConfiguracoesPage /></ProtectedRoute>} />
-              <Route path="/dashboard-builder" element={<ProtectedRoute><DashboardBuilder /></ProtectedRoute>} />
-              <Route path="/dashboard-advanced" element={<ProtectedRoute><AdvancedDashboard /></ProtectedRoute>} />
               <Route path="/sync-monitor" element={<ProtectedRoute><SyncMonitor /></ProtectedRoute>} />
               <Route path="/bitrix-callback" element={<ProtectedRoute><BitrixCallback /></ProtectedRoute>} />
               {/* TestFichas route disabled - functionality now in /area-de-abordagem */}
               {/* <Route path="/test-fichas" element={<ProtectedRoute><TestFichas /></ProtectedRoute>} /> */}
+              {/* DashboardBuilder and AdvancedDashboard routes removed - functionality now unified in main Dashboard */}
+              {/* <Route path="/dashboard-builder" element={<ProtectedRoute><DashboardBuilder /></ProtectedRoute>} /> */}
+              {/* <Route path="/dashboard-advanced" element={<ProtectedRoute><AdvancedDashboard /></ProtectedRoute>} /> */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
