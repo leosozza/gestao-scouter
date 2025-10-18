@@ -1,6 +1,16 @@
 # Módulo Fichas - Resumo de Implementação
 
-## ✅ Status: IMPLEMENTAÇÃO COMPLETA
+## ⚠️ NOTA: Este documento está parcialmente obsoleto
+
+**Status**: ⚠️ PARCIALMENTE OBSOLETO - A aplicação agora utiliza exclusivamente a tabela 'leads' do Supabase como fonte única de verdade.
+
+Para informações atualizadas sobre a arquitetura de dados, consulte:
+- [LEADS_DATA_SOURCE.md](./LEADS_DATA_SOURCE.md) - Guia completo da arquitetura atual
+- [CENTRALIZACAO_LEADS_SUMMARY.md](./CENTRALIZACAO_LEADS_SUMMARY.md) - Resumo da migração
+
+---
+
+## ✅ Status: IMPLEMENTAÇÃO COMPLETA (Documentação Histórica)
 
 Data: 2024
 PR Branch: `copilot/fix-9ee4277d-296d-4cbc-8afb-b7835702530a`
@@ -54,10 +64,10 @@ PR Branch: `copilot/fix-9ee4277d-296d-4cbc-8afb-b7835702530a`
   - Formatação em texto e HTML
 
 ### 4. Fonte de Dados
-- **Status**: ✅ Funcionando
-- **Atual**: Google Sheets CSV (GID 452792639)
-- **Fallback**: Mock data (7 fichas em São Paulo)
-- **Arquitetura**: Pronta para migração ao Supabase
+- **Status**: ✅ Atualizado - Agora usa tabela 'leads' do Supabase
+- **Atual**: Supabase (tabela 'leads')
+- **Fallback**: Mock data (apenas para desenvolvimento local)
+- **Arquitetura**: Migrada para Supabase como fonte única
 
 ## 🧪 Testes Realizados
 
