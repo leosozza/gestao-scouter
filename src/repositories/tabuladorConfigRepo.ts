@@ -35,10 +35,11 @@ export async function getTabuladorConfig(): Promise<TabuladorMaxConfig | null> {
     }
 
     if (data) {
+      const typedData = data as TabuladorMaxConfig;
       // Store in localStorage for quick access
-      localStorage.setItem('tabuladormax_config', JSON.stringify(data));
+      localStorage.setItem('tabuladormax_config', JSON.stringify(typedData));
       console.log('✅ [TabuladorConfigRepo] Configuração carregada do Supabase');
-      return data as TabuladorMaxConfig;
+      return typedData;
     }
 
     return getDefaultConfig();

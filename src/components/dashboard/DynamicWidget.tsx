@@ -171,65 +171,70 @@ function WidgetContent({ config, data }: WidgetContentProps) {
   const valueKeys = config.metrics;
   const firstMetric = config.metrics[0];
 
+  // Helper function to transform data for charts
+  const getCategories = () => data.map(d => String(d[dimensionKey] || 'N/A'));
+  
+  const getSeries = (metrics: string[]) => {
+    return metrics.map(metric => ({
+      name: METRIC_LABELS[metric] || metric,
+      data: data.map(d => Number(d[metric]) || 0)
+    }));
+  };
+
   switch (config.chartType) {
     case 'table':
       return <TableView config={config} data={data} />;
     
     case 'bar': {
-      const barData = transformDataForApexCharts(data, dimensionKey, valueKeys);
       return (
         <ApexBarChart
           title={config.title}
-          categories={barData.categories}
-          series={barData.series}
+          categories={getCategories()}
+          series={getSeries(valueKeys)}
           height={350}
         />
       );
     }
     
     case 'line': {
-      const lineData = transformDataForApexCharts(data, dimensionKey, valueKeys);
       return (
         <ApexLineChart
           title={config.title}
-          categories={lineData.categories}
-          series={lineData.series}
+          categories={getCategories()}
+          series={getSeries(valueKeys)}
           height={350}
         />
       );
     }
     
     case 'area': {
-      const areaData = transformDataForApexCharts(data, dimensionKey, valueKeys);
       return (
         <ApexAreaChart
           title={config.title}
-          categories={areaData.categories}
-          series={areaData.series}
+          categories={getCategories()}
+          series={getSeries(valueKeys)}
           height={350}
         />
       );
     }
     
     case 'pie': {
-      const pieData = transformDataForPieCharts(data, dimensionKey, firstMetric);
       return (
         <ApexPieChart
           title={config.title}
-          labels={pieData.labels}
-          series={pieData.series}
+          labels={getCategories()}
+          series={data.map(d => Number(d[firstMetric]) || 0)}
           height={350}
         />
       );
     }
     
     case 'donut': {
-      const donutData = transformDataForPieCharts(data, dimensionKey, firstMetric);
       return (
         <ApexDonutChart
           title={config.title}
-          labels={donutData.labels}
-          series={donutData.series}
+          labels={getCategories()}
+          series={data.map(d => Number(d[firstMetric]) || 0)}
           height={350}
         />
       );

@@ -5,6 +5,7 @@ import { supabase as baseSupabase } from '@/integrations/supabase/client';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
 // Log Supabase connection initialization
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 console.log('🔌 [Supabase] Inicializando cliente Supabase');
 console.log('📡 [Supabase] URL:', SUPABASE_URL);
 console.log('🔑 [Supabase] Cliente configurado com persistência de sessão');
