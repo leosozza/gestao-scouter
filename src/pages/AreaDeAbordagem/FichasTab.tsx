@@ -151,7 +151,7 @@ export function FichasTab() {
       return;
     }
 
-    // Convert to FichaDataPoint - now using real data from Google Sheets
+    // Convert to FichaDataPoint - now using real data from Supabase
     const enrichedFichas: FichaDataPoint[] = fichas.map((f, index) => ({
       ...f,
       id: `ficha-${index}`,

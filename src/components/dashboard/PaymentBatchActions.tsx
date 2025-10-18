@@ -269,7 +269,7 @@ export const PaymentBatchActions = ({
                       )}
                       , no valor total de <strong>{formatBRL(valorTotalAPagar)}</strong>.
                       <br /><br />
-                      Esta ação atualizará a planilha do Google Sheets automaticamente.
+                      Esta ação atualizará o banco de dados automaticamente.
                       <br /><br />
                       Deseja continuar?
                     </AlertDialogDescription>

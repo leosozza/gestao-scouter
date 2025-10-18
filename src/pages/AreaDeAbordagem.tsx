@@ -1,7 +1,7 @@
 /**
  * Página de Área de Abordagem
  * Mostra mapa único com toggle: Scouters (clustering) ou Fichas (heatmap + desenho)
- * Dados lidos diretamente do Google Sheets
+ * Dados lidos diretamente do Supabase
  */
 import { useState, useEffect } from 'react';
 import { AppShell } from '@/layouts/AppShell';
@@ -178,8 +178,8 @@ export default function AreaDeAbordagem() {
               Números indicam quantidade de itens. Clique para aproximar e separar.
             </p>
             <p>
-              <strong>Fonte de Dados:</strong> Lê direto do Google Sheets (GIDs 1351167110 e 452792639). 
-              Botão "Recarregar" atualiza dados em tempo real.
+              <strong>Fonte de Dados:</strong> Dados carregados do Supabase em tempo real. 
+              Botão "Recarregar" atualiza dados.
             </p>
             <p>
               <strong>Mobile:</strong> Controles otimizados para toque. Botões ≥44px. 

@@ -127,7 +127,7 @@ export const mockMetasScouter: MetaScouter[] = [
 ];
 
 // Função comentada - dados devem vir do Supabase
-// import { GoogleSheetsService } from '@/services/googleSheetsService';
+// Legado: import de serviços externos descontinuado
 
 export const fetchSheetData = async (sheetType: 'fichas' | 'projetos' | 'metas'): Promise<any[]> => {
   console.warn('fetchSheetData deprecated - use Supabase hooks instead');
