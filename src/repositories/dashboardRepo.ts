@@ -14,6 +14,9 @@ export interface DashboardDataResult {
 
 /**
  * Busca dados do dashboard da tabela 'leads' com filtros
+ * 
+ * ⚠️ IMPORTANTE: Esta função busca EXCLUSIVAMENTE da tabela 'leads'
+ * 
  * @param filters - Filtros de período, scouter e projeto
  * @returns Dados de leads para exibição em dashboard
  */
@@ -23,21 +26,30 @@ export async function getDashboardData(filters: {
   scouter?: string; 
   projeto?: string 
 }): Promise<DashboardDataResult> {
+  console.log('🔍 [dashboardRepo] Iniciando busca de dados do dashboard');
+  console.log('🗂️  [dashboardRepo] Tabela: "leads"');
+  console.log('🗂️  [dashboardRepo] Filtros:', filters);
+  
   let query = supabase
     .from('leads')
-    .select('*');
+    .select('*')
+    .or('deleted.is.false,deleted.is.null'); // Excluir registros deletados
 
   // Aplicar filtros usando 'criado' (coluna de data)
   if (filters.start) {
+    console.log('📅 [dashboardRepo] Filtro data início:', filters.start);
     query = query.gte('criado', filters.start);
   }
   if (filters.end) {
+    console.log('📅 [dashboardRepo] Filtro data fim:', filters.end);
     query = query.lte('criado', filters.end);
   }
   if (filters.scouter) {
+    console.log('👤 [dashboardRepo] Filtro scouter:', filters.scouter);
     query = query.ilike('scouter', `%${filters.scouter}%`);
   }
   if (filters.projeto) {
+    console.log('📁 [dashboardRepo] Filtro projeto:', filters.projeto);
     query = query.eq('projeto', filters.projeto);
   }
 
@@ -45,9 +57,11 @@ export async function getDashboardData(filters: {
   const { data, error } = await query.order('criado', { ascending: false });
 
   if (error) {
-    console.error('Erro ao buscar dados do dashboard:', error);
+    console.error('❌ [dashboardRepo] Erro ao buscar dados do dashboard:', error);
     throw error;
   }
+
+  console.log(`✅ [dashboardRepo] ${data?.length || 0} registros retornados da tabela "leads"`);
 
   return {
     data: (data || []) as FichaDataPoint[],
