@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-helper';
+import { getUsersWithRolesSafe, getRoles, type User, type Role } from '@/repositories/usersRepo';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,22 +31,6 @@ import {
 import { UserPlus, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role_id: number;
-  scouter_id?: number | null;
-  supervisor_id?: string | null;
-  roles?: { name: string };
-}
-
-interface Role {
-  id: number;
-  name: string;
-  description: string;
-}
-
 export function UsersPanel() {
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -70,28 +55,9 @@ export function UsersPanel() {
   const fetchUsers = async () => {
     try {
       console.log('🔍 Buscando usuários...');
-      const response = await supabase
-        .from('users')
-        .select(`
-          id,
-          name,
-          email,
-          role_id,
-          scouter_id,
-          supervisor_id,
-          roles (
-            name
-          )
-        `)
-        .order('name');
-
-      if (response.error) {
-        console.error('❌ Erro ao buscar usuários:', response.error);
-        throw response.error;
-      }
-      
-      console.log('✅ Usuários carregados:', response.data?.length || 0);
-      setUsers((response.data || []) as User[]);
+      const usersData = await getUsersWithRolesSafe();
+      console.log('✅ Usuários carregados:', usersData.length);
+      setUsers(usersData);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('Erro ao carregar usuários');
@@ -103,18 +69,9 @@ export function UsersPanel() {
   const fetchRoles = async () => {
     try {
       console.log('🔍 Buscando roles...');
-      const response = await supabase
-        .from('roles')
-        .select('*')
-        .order('name');
-
-      if (response.error) {
-        console.error('❌ Erro ao buscar roles:', response.error);
-        throw response.error;
-      }
-      
-      console.log('✅ Roles carregados:', response.data?.length || 0);
-      setRoles((response.data || []) as Role[]);
+      const rolesData = await getRoles();
+      console.log('✅ Roles carregados:', rolesData.length);
+      setRoles(rolesData);
     } catch (error) {
       console.error('Error fetching roles:', error);
     }
@@ -365,7 +322,7 @@ export function UsersPanel() {
                 <TableCell className="font-medium">{user.name}</TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell className="capitalize">
-                  {(user.roles as any)?.name || 'N/A'}
+                  {user.role_name || user.roles?.name || 'N/A'}
                 </TableCell>
                 <TableCell>{user.scouter_id || '-'}</TableCell>
                 <TableCell className="text-right">

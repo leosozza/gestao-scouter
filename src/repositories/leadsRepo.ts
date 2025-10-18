@@ -21,6 +21,7 @@
 
 import { supabase } from '@/lib/supabase-helper';
 import type { Lead, LeadsFilters } from './types';
+import { toYMD } from '@/utils/dataHelpers';
 
 /**
  * Busca leads do Supabase com filtros
@@ -165,14 +166,20 @@ async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> 
     let q = supabase.from('leads').select('*', { count: 'exact' })
       .or('deleted.is.false,deleted.is.null'); // ✅ Filtro para excluir registros deletados
 
-    // ✅ Usar 'criado' (date field) — compatível e existente na tabela 'leads'
+    // ✅ Usar 'criado' (DATE field) — normalizar para YYYY-MM-DD
     if (params.dataInicio) {
-      console.log('📅 [LeadsRepo] Aplicando filtro dataInicio:', params.dataInicio);
-      q = q.gte('criado', params.dataInicio);
+      const normalizedStart = toYMD(params.dataInicio);
+      if (normalizedStart) {
+        console.log('📅 [LeadsRepo] Aplicando filtro dataInicio:', normalizedStart);
+        q = q.gte('criado', normalizedStart);
+      }
     }
     if (params.dataFim) {
-      console.log('📅 [LeadsRepo] Aplicando filtro dataFim:', params.dataFim);
-      q = q.lte('criado', params.dataFim);
+      const normalizedEnd = toYMD(params.dataFim);
+      if (normalizedEnd) {
+        console.log('📅 [LeadsRepo] Aplicando filtro dataFim:', normalizedEnd);
+        q = q.lte('criado', normalizedEnd);
+      }
     }
 
     if (params.etapa) {
@@ -190,8 +197,32 @@ async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> 
 
     console.log('🚀 [LeadsRepo] Executando query no Supabase...');
     
-    // Ordenar apenas por 'criado' (coluna que existe)
-    const { data, error, count } = await q.order('criado', { ascending: false });
+    // Ordenar por 'criado' (coluna DATE que existe); fallback para 'created_at' se falhar
+    let result = await q.order('criado', { ascending: false });
+
+    // Se falhar ao ordenar por 'criado', tentar 'created_at' como fallback
+    if (result.error && result.error.message?.includes('criado')) {
+      console.warn('⚠️ [LeadsRepo] Falha ao ordenar por "criado", tentando "created_at"');
+      q = supabase.from('leads').select('*', { count: 'exact' })
+        .or('deleted.is.false,deleted.is.null');
+      
+      // Re-aplicar filtros
+      if (params.dataInicio) {
+        const normalizedStart = toYMD(params.dataInicio);
+        if (normalizedStart) q = q.gte('created_at', new Date(normalizedStart).toISOString());
+      }
+      if (params.dataFim) {
+        const normalizedEnd = toYMD(params.dataFim);
+        if (normalizedEnd) q = q.lte('created_at', new Date(normalizedEnd).toISOString());
+      }
+      if (params.etapa) q = q.eq('etapa', params.etapa);
+      if (params.scouter) q = q.ilike('scouter', `%${params.scouter}%`);
+      if (params.projeto) q = q.ilike('projeto', `%${params.projeto}%`);
+      
+      result = await q.order('created_at', { ascending: false });
+    }
+
+    const { data, error, count } = result;
 
     if (error) {
       console.error('❌ [LeadsRepo] Erro ao buscar leads do Supabase:', error);

@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { TabuladorMaxConfig } from './types';
+import { createTabuladorClient } from './tabulador/createTabuladorClient';
 
 /**
  * Get TabuladorMax configuration from localStorage (temporary storage)
@@ -132,14 +133,8 @@ export async function testTabuladorConnection(config: TabuladorMaxConfig): Promi
     console.log('📡 [TabuladorConfigRepo] URL:', config.url);
     console.log('🔑 [TabuladorConfigRepo] Project ID:', config.project_id);
 
-    // Create a temporary Supabase client with TabuladorMax credentials
-    const { createClient } = await import('@supabase/supabase-js');
-    const tabuladorClient = createClient(config.url, config.publishable_key, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    });
+    // Create a Supabase client for TabuladorMax with isolated auth storage
+    const tabuladorClient = createTabuladorClient(config.url, config.publishable_key);
 
     // Try to query the leads table
     const { data, error, count } = await tabuladorClient

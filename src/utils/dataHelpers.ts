@@ -60,3 +60,27 @@ export function normalizeText(text: string): string {
   if (!text) return '';
   return text.toString().trim();
 }
+
+/**
+ * Converts a date to YYYY-MM-DD format for PostgREST DATE columns
+ * Accepts ISO strings, Date objects, or YYYY-MM-DD strings
+ */
+export function toYMD(date: string | Date | undefined | null): string {
+  if (!date) return '';
+  
+  try {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    
+    // Check if valid date
+    if (isNaN(d.getTime())) return '';
+    
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+  } catch (error) {
+    console.warn('Failed to convert date to YMD:', date, error);
+    return '';
+  }
+}
