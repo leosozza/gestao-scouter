@@ -125,7 +125,7 @@ serve(async (req) => {
 
     // Buscar TODOS os leads do TabuladorMax
     console.log('📥 Buscando todos os leads do TabuladorMax...');
-    let allLeads: Lead[] = [];
+    const allLeads: Lead[] = [];
     let page = 0;
     const pageSize = 1000;
     let hasMore = true;

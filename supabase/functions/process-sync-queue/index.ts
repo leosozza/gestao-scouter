@@ -19,7 +19,7 @@ interface QueueItem {
   row_id?: string;
   ficha_id?: number;
   operation: string;
-  payload: any;
+  payload: Record<string, unknown>;
   retry_count: number;
   status: string;
 }
@@ -27,10 +27,10 @@ interface QueueItem {
 /**
  * Normaliza data para formato ISO string
  */
-function normalizeDate(dateValue: any): string | null {
+function normalizeDate(dateValue: unknown): string | null {
   if (!dateValue) return null;
   try {
-    const date = new Date(dateValue);
+    const date = new Date(dateValue as string | number);
     if (isNaN(date.getTime())) return null;
     return date.toISOString();
   } catch {
@@ -41,7 +41,7 @@ function normalizeDate(dateValue: any): string | null {
 /**
  * Extrai data de atualização com fallback para outros campos
  */
-function getUpdatedAtDate(record: any): string {
+function getUpdatedAtDate(record: Record<string, unknown>): string {
   // Prioridade: updated_at -> updated -> modificado -> criado -> now
   const dateValue = record.updated_at || record.updated || record.modificado || record.criado;
   return normalizeDate(dateValue) || new Date().toISOString();
@@ -130,7 +130,7 @@ serve(async (req) => {
           .eq('id', item.id);
 
         // Preparar dados para sincronizar baseado na tabela
-        let dataToSync: any;
+        let dataToSync: Record<string, unknown>;
         
         if (tableName === 'leads') {
           // Mapear lead

@@ -18,10 +18,10 @@ const corsHeaders = {
 /**
  * Normaliza data para formato ISO string
  */
-function normalizeDate(dateValue: any): string | null {
+function normalizeDate(dateValue: unknown): string | null {
   if (!dateValue) return null;
   try {
-    const date = new Date(dateValue);
+    const date = new Date(dateValue as string | number);
     if (isNaN(date.getTime())) return null;
     return date.toISOString();
   } catch {
@@ -32,7 +32,7 @@ function normalizeDate(dateValue: any): string | null {
 /**
  * Extrai data de atualização com fallback para outros campos
  */
-function getUpdatedAtDate(record: any): string {
+function getUpdatedAtDate(record: Record<string, unknown>): string {
   const dateValue = record.updated_at || record.updated || record.modificado || record.criado;
   return normalizeDate(dateValue) || new Date().toISOString();
 }
@@ -40,7 +40,7 @@ function getUpdatedAtDate(record: any): string {
 /**
  * Mapeia um lead (Gestão Scouter) para lead (TabuladorMax)
  */
-function mapLocalToTabulador(lead: any) {
+function mapLocalToTabulador(lead: Record<string, unknown>) {
   return {
     id: lead.id,
     nome: lead.nome,
@@ -66,7 +66,7 @@ function mapLocalToTabulador(lead: any) {
 /**
  * Mapeia um lead (TabuladorMax) para lead (Gestão Scouter)
  */
-function mapTabuladorToLocal(lead: any) {
+function mapTabuladorToLocal(lead: Record<string, unknown>) {
   return {
     id: String(lead.id),
     nome: lead.nome,
@@ -157,7 +157,7 @@ serve(async (req) => {
     console.log(`📅 [Sync] Direção: ${direction}`);
 
     let recordsSynced = 0;
-    let conflictsResolved = 0;
+    const conflictsResolved = 0;
 
     if (direction === 'pull') {
       // PULL: TabuladorMax -> Gestão Scouter
