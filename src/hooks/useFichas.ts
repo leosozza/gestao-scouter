@@ -22,11 +22,12 @@ export function useFichas(params: UseFichasParams = {}) {
         .select('*')
         .or('deleted.is.false,deleted.is.null');
 
+      // Apply date filters with fallback for criado and created_at
       if (params.startDate) {
-        query = query.gte('criado', params.startDate);
+        query = query.or(`criado.gte.${params.startDate},created_at.gte.${params.startDate}`);
       }
       if (params.endDate) {
-        query = query.lte('criado', params.endDate);
+        query = query.or(`criado.lte.${params.endDate},created_at.lte.${params.endDate}`);
       }
       if (params.projeto) {
         query = query.eq('projeto', params.projeto);
@@ -39,7 +40,32 @@ export function useFichas(params: UseFichasParams = {}) {
                      .not('longitude', 'is', null);
       }
 
-      const { data, error } = await query.order('criado', { ascending: false });
+      // Execute query with ordering fallback
+      let data, error;
+      try {
+        // First attempt: order by 'criado' (most common case)
+        const result = await query.order('criado', { ascending: false });
+        data = result.data;
+        error = result.error;
+        
+        // If error indicates column doesn't exist, try created_at
+        if (error && error.message?.includes('criado')) {
+          console.warn('Column "criado" not found, falling back to "created_at"');
+          const fallbackResult = await query.order('created_at', { ascending: false });
+          data = fallbackResult.data;
+          error = fallbackResult.error;
+        }
+      } catch (e) {
+        console.warn('Error ordering by "criado", trying "created_at":', e);
+        try {
+          const result = await query.order('created_at', { ascending: false });
+          data = result.data;
+          error = result.error;
+        } catch (fallbackError) {
+          console.error('Both ordering attempts failed:', fallbackError);
+          throw fallbackError;
+        }
+      }
 
       if (error) throw error;
       

@@ -41,17 +41,32 @@ export async function getDashboardData(filters: {
     query = query.eq('projeto', filters.projeto);
   }
 
-  // Try ordering by 'criado' first, fallback to 'created_at' if error
+  // Order by criado or created_at with fallback support
+  // Use Postgres COALESCE to handle both columns in a single query
   let data, error;
   try {
+    // First attempt: order by 'criado' (most common case)
     const result = await query.order('criado', { ascending: false });
     data = result.data;
     error = result.error;
+    
+    // If error indicates column doesn't exist, try created_at
+    if (error && error.message?.includes('criado')) {
+      console.warn('Column "criado" not found, falling back to "created_at"');
+      const fallbackResult = await query.order('created_at', { ascending: false });
+      data = fallbackResult.data;
+      error = fallbackResult.error;
+    }
   } catch (e) {
-    console.warn('Warning: Could not order by "criado", trying "created_at":', e);
-    const result = await query.order('created_at', { ascending: false });
-    data = result.data;
-    error = result.error;
+    console.warn('Error ordering by "criado", trying "created_at":', e);
+    try {
+      const result = await query.order('created_at', { ascending: false });
+      data = result.data;
+      error = result.error;
+    } catch (fallbackError) {
+      console.error('Both ordering attempts failed:', fallbackError);
+      throw fallbackError;
+    }
   }
 
   if (error) {

@@ -1,15 +1,20 @@
 /**
- * Repository para buscar leads do Supabase
- * Removida toda dependência do Google Sheets
+ * Repository para buscar leads do Supabase LOCAL
  * 
  * ⚠️ ATENÇÃO DESENVOLVEDOR: FONTE ÚNICA DE VERDADE
  * ================================================
- * Este repositório usa EXCLUSIVAMENTE a tabela 'fichas' do Supabase.
- * NUNCA utilize:
- * - Tabela 'leads' (legacy/deprecated)
+ * Este repositório usa EXCLUSIVAMENTE a tabela 'fichas' do Supabase LOCAL.
+ * 
+ * NUNCA utilize (LEGACY/DEPRECATED):
+ * - Tabela 'leads' no Supabase local (deprecated)
  * - Tabela 'bitrix_leads' (apenas para referência histórica)
  * - MockDataService (apenas para testes locais)
  * - Fetch direto de Google Sheets (descontinuado)
+ * 
+ * SINCRONIZAÇÃO:
+ * - A tabela 'fichas' sincroniza bidirecionalmente com TabuladorMax
+ * - TabuladorMax tem sua própria tabela 'leads' (não confundir com legacy local)
+ * - Sync é gerenciado por Edge Functions do Supabase
  * 
  * Todas as operações de leads devem passar por este repositório centralizado.
  */
@@ -173,7 +178,35 @@ async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> 
     }
 
     console.log('🚀 [LeadsRepo] Executando query no Supabase...');
-    const { data, error, count } = await q.order('criado', { ascending: false });
+    
+    // Try ordering by 'criado' first, with fallback to 'created_at'
+    let data, error, count;
+    try {
+      const result = await q.order('criado', { ascending: false });
+      data = result.data;
+      error = result.error;
+      count = result.count;
+      
+      // If error indicates column doesn't exist, try created_at
+      if (error && error.message?.includes('criado')) {
+        console.warn('Column "criado" not found, falling back to "created_at"');
+        const fallbackResult = await q.order('created_at', { ascending: false });
+        data = fallbackResult.data;
+        error = fallbackResult.error;
+        count = fallbackResult.count;
+      }
+    } catch (e) {
+      console.warn('Error ordering by "criado", trying "created_at":', e);
+      try {
+        const result = await q.order('created_at', { ascending: false });
+        data = result.data;
+        error = result.error;
+        count = result.count;
+      } catch (fallbackError) {
+        console.error('Both ordering attempts failed:', fallbackError);
+        throw fallbackError;
+      }
+    }
 
     if (error) {
       console.error('❌ [LeadsRepo] Erro ao buscar leads do Supabase:', error);

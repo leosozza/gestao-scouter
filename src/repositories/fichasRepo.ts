@@ -1,13 +1,16 @@
-// Repositório central para ler do Supabase (espelho)
+// Repositório central para ler do Supabase LOCAL (espelho)
 // 
-// ⚠️ FONTE ÚNICA DE VERDADE: Tabela 'fichas'
-// ===========================================
-// Este repositório acessa a tabela 'fichas' no Supabase, que é o espelho
+// ⚠️ FONTE ÚNICA DE VERDADE: Tabela 'fichas' no Supabase LOCAL
+// =============================================================
+// Este repositório acessa a tabela 'fichas' no Supabase LOCAL, que é o espelho
 // centralizado de todas as fichas/leads da aplicação.
 // 
-// Nunca busque dados de:
+// A tabela 'fichas' sincroniza bidirecionalmente com TabuladorMax.
+// TabuladorMax possui sua própria tabela 'leads' (não confundir com legacy local).
+// 
+// Nunca busque dados de (LEGACY/DEPRECATED):
 // - Google Sheets diretamente (descontinuado)
-// - Tabela 'leads' (legacy)
+// - Tabela 'leads' local (legacy - use 'fichas')
 // - Tabela 'bitrix_leads' (apenas histórico)
 import { createClient } from "@supabase/supabase-js";
 

@@ -116,7 +116,14 @@ function getDefaultConfig(): TabuladorMaxConfig {
 }
 
 /**
- * Test connection to TabuladorMax
+ * Test connection to TabuladorMax (EXTERNAL DATABASE)
+ * 
+ * ⚠️ IMPORTANTE: Esta função consulta o banco TabuladorMax EXTERNO
+ * ================================================================
+ * A tabela 'leads' aqui referenciada é do banco TabuladorMax, NÃO do Supabase local.
+ * É correto usar 'leads' aqui pois é o schema do banco externo.
+ * 
+ * O Supabase LOCAL usa 'fichas' e sincroniza com TabuladorMax 'leads'.
  */
 export async function testTabuladorConnection(config: TabuladorMaxConfig): Promise<{ success: boolean; message: string; count?: number }> {
   try {

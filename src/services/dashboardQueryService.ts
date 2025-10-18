@@ -27,12 +27,12 @@ export async function executeDashboardQuery(widget: DashboardWidget) {
     .select('*')
     .or('deleted.is.false,deleted.is.null');
   
-  // Aplicar filtros
+  // Aplicar filtros com fallback para criado e created_at
   if (filters?.dataInicio) {
-    query = query.gte('criado', filters.dataInicio);
+    query = query.or(`criado.gte.${filters.dataInicio},created_at.gte.${filters.dataInicio}`);
   }
   if (filters?.dataFim) {
-    query = query.lte('criado', filters.dataFim);
+    query = query.or(`criado.lte.${filters.dataFim},created_at.lte.${filters.dataFim}`);
   }
   if (filters?.scouter?.length) {
     query = query.in('scouter', filters.scouter);
@@ -108,9 +108,11 @@ function groupByDimension(
   data.forEach(row => {
     let key: string;
     
-    if (dimension === 'data' && row.criado) {
+    if (dimension === 'data' && (row.criado || row.created_at)) {
       // Agrupamento por data com diferentes granularidades
-      const date = new Date(row.criado);
+      // Use criado if available, otherwise created_at
+      const dateStr = row.criado || row.created_at;
+      const date = new Date(dateStr);
       switch (dateGrouping) {
         case 'week':
           key = format(startOfWeek(date), 'yyyy-MM-dd');

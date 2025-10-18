@@ -19,21 +19,6 @@ export const DashboardHeader = ({ onLogout, setIsConfigOpen }: DashboardHeaderPr
             Acompanhe o desempenho dos scouters e projetos
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Fonte:</span>
-          <select 
-            className="text-sm border rounded px-2 py-1"
-            onChange={(e) => {
-              const newSource = e.target.value as 'sheets' | 'bitrix';
-              localStorage.setItem('gestao-scouter.datasource', newSource);
-              window.location.reload();
-            }}
-            defaultValue={typeof window !== 'undefined' ? (localStorage.getItem('gestao-scouter.datasource') || 'sheets') : 'sheets'}
-          >
-            <option value="sheets">Google Sheets</option>
-            <option value="bitrix">Bitrix24</option>
-          </select>
-        </div>
       </div>
       <div className="flex items-center space-x-4">
         <Button

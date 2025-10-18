@@ -88,6 +88,7 @@ language sql security definer set search_path=public as $$
 $$;
 
 -- 2) Geo de fichas para heatmap
+-- Updated to support both 'criado' and 'created_at' columns with fallback
 create or replace function public.get_fichas_geo(
   p_start date,
   p_end date,
@@ -95,9 +96,17 @@ create or replace function public.get_fichas_geo(
   p_scouter text default null
 ) returns table(id bigint, lat double precision, lng double precision, created_at timestamptz, projeto text, scouter text)
 language sql security definer set search_path=public as $$
-  select f.id, f.lat, f.lng, f.created_at, f.projeto, f.scouter
+  select 
+    f.id::bigint, 
+    f.lat, 
+    f.lng, 
+    coalesce(f.created_at, f.criado::timestamptz) as created_at,
+    f.projeto, 
+    f.scouter
   from public.fichas f
-  where f.created_at::date between p_start and p_end
+  where (
+    coalesce(f.created_at::date, f.criado) between p_start and p_end
+  )
     and f.lat is not null and f.lng is not null
     and (p_project is null or f.projeto = p_project)
     and (p_scouter is null or f.scouter = p_scouter);
