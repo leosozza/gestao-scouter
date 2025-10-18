@@ -33,18 +33,22 @@ Sistema de gestão e análise de desempenho para scouters com sincronização em
 
 ## 🏗️ Arquitetura
 
-### 📊 Fonte Única de Dados: Tabela 'fichas'
+### 📊 Fonte Única de Dados: Tabela 'leads'
 
-**⚠️ IMPORTANTE**: Esta aplicação utiliza **EXCLUSIVAMENTE** a tabela `fichas` do Supabase como fonte de dados para leads/fichas. 
+**⚠️ IMPORTANTE**: Esta aplicação utiliza **EXCLUSIVAMENTE** a tabela `leads` do Supabase como fonte de dados para leads/fichas. 
 
-Para informações completas sobre a arquitetura de dados, consulte: [LEADS_DATA_SOURCE.md](./LEADS_DATA_SOURCE.md)
+**Migração Concluída**: A tabela 'fichas' foi migrada para 'leads' em 2024-10-18.
+
+Para informações completas sobre a arquitetura de dados, consulte: 
+- [LEADS_DATA_SOURCE.md](./LEADS_DATA_SOURCE.md) - Guia completo
+- [CENTRALIZACAO_LEADS_SUMMARY.md](./CENTRALIZACAO_LEADS_SUMMARY.md) - Resumo da migração
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  GESTÃO SCOUTER (ngestyxtopvfeyenyvgt)                      │
 │  - Aplicação principal                                       │
 │  - Dashboard, analytics, relatórios                          │
-│  - Tabela: fichas (207k+ registros) ← FONTE ÚNICA           │
+│  - Tabela: leads (migrada de fichas) ← FONTE ÚNICA          │
 └─────────────────────────────────────────────────────────────┘
                           ↕ SYNC (5 min)
 ┌─────────────────────────────────────────────────────────────┐
@@ -513,3 +517,66 @@ Este projeto está sob licença MIT. Veja o arquivo [LICENSE](LICENSE) para deta
 ---
 
 **Desenvolvido com ❤️ para otimização de processos de scouting**
+
+## 📦 Migração Fichas → Leads (2024-10-18)
+
+### 🎯 Resumo da Migração
+
+Em 2024-10-18, a aplicação migrou de usar a tabela `fichas` para a tabela `leads` como fonte única de verdade. Esta migração:
+
+- ✅ Criou nova tabela `leads` com schema completo (70+ colunas)
+- ✅ Migrou todos os dados de `fichas` para `leads`
+- ✅ Atualizou 25+ arquivos TypeScript
+- ✅ Atualizou todas as Edge Functions
+- ✅ Manteve compatibilidade com APIs existentes
+- ✅ Criou view `fichas_compat` para rollback
+
+### 📋 Como Aplicar a Migração
+
+**1. Execute a migration SQL no Supabase:**
+
+```bash
+# No Supabase SQL Editor, execute:
+supabase/migrations/20251018_migrate_fichas_to_leads.sql
+```
+
+**2. Verifique a migração:**
+
+```bash
+# Execute o script de verificação
+npm run verify:leads
+```
+
+**3. Monitore os logs:**
+
+Após deploy, verifique:
+- Queries funcionando corretamente
+- Dados migrados com integridade
+- Sincronização operacional
+
+### ⚠️ Rollback (Se Necessário)
+
+Se precisar reverter temporariamente:
+
+1. A view `fichas_compat` mapeia `leads` → `fichas`
+2. A tabela `fichas` ainda existe (não foi dropada)
+3. Reverta o código para commit anterior
+
+### 🧹 Cleanup (Após 2 Semanas)
+
+Após validação completa:
+
+```sql
+-- Dropar tabela antiga
+DROP TABLE IF EXISTS public.fichas CASCADE;
+
+-- Dropar view de compatibilidade
+DROP VIEW IF EXISTS public.fichas_compat;
+```
+
+### 📚 Documentação Completa
+
+- [CENTRALIZACAO_LEADS_SUMMARY.md](./CENTRALIZACAO_LEADS_SUMMARY.md) - Resumo técnico da migração
+- [LEADS_DATA_SOURCE.md](./LEADS_DATA_SOURCE.md) - Guia de desenvolvimento
+- `scripts/verify-leads-centralization.sh` - Script de verificação
+
