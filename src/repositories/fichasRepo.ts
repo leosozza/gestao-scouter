@@ -35,9 +35,9 @@ export async function fetchFichasFromDB(filters?: {
     .select("id, scouter, projeto, criado, valor_ficha, raw, deleted")
     .or('deleted.is.false,deleted.is.null');
     
-  // Add fallback for criado and created_at fields
-  if (filters?.start) q = q.or(`criado.gte.${filters.start},created_at.gte.${filters.start}`);
-  if (filters?.end)   q = q.or(`criado.lte.${filters.end},created_at.lte.${filters.end}`);
+  // Use apenas criado (não created_at) pois a tabela fichas tem criado
+  if (filters?.start) q = q.gte("criado", filters.start);
+  if (filters?.end)   q = q.lte("criado", filters.end);
   if (filters?.scouter) q = q.eq("scouter", filters.scouter);
   if (filters?.projeto) q = q.eq("projeto", filters.projeto);
   

@@ -58,9 +58,14 @@ export function useSupabaseData<T = any>(
         });
       }
 
-      // Ordenação
+      // Ordenação com fallback para fichas (criado vs created_at)
       if (orderBy) {
-        queryBuilder = queryBuilder.order(orderBy.column, { ascending: orderBy.ascending ?? false });
+        if (table === 'fichas' && orderBy.column === 'created_at') {
+          // Use criado em vez de created_at para a tabela fichas
+          queryBuilder = queryBuilder.order('criado', { ascending: orderBy.ascending ?? false });
+        } else {
+          queryBuilder = queryBuilder.order(orderBy.column, { ascending: orderBy.ascending ?? false });
+        }
       }
 
       // Limite

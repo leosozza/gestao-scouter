@@ -154,14 +154,14 @@ async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> 
     let q = supabase.from('fichas').select('*', { count: 'exact' })
       .or('deleted.is.false,deleted.is.null'); // ✅ Filtro para excluir registros deletados
 
-    // ✅ Filtros compatíveis com 'criado' OU 'created_at'
+    // ✅ Usar apenas 'criado' (coluna que existe na tabela fichas)
     if (params.dataInicio) {
       console.log('📅 [LeadsRepo] Aplicando filtro dataInicio:', params.dataInicio);
-      q = q.or(`criado.gte.${params.dataInicio},created_at.gte.${params.dataInicio}`);
+      q = q.gte('criado', params.dataInicio);
     }
     if (params.dataFim) {
       console.log('📅 [LeadsRepo] Aplicando filtro dataFim:', params.dataFim);
-      q = q.or(`criado.lte.${params.dataFim},created_at.lte.${params.dataFim}`);
+      q = q.lte('criado', params.dataFim);
     }
 
     if (params.etapa) {
@@ -179,34 +179,8 @@ async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> 
 
     console.log('🚀 [LeadsRepo] Executando query no Supabase...');
     
-    // Try ordering by 'criado' first, with fallback to 'created_at'
-    let data, error, count;
-    try {
-      const result = await q.order('criado', { ascending: false });
-      data = result.data;
-      error = result.error;
-      count = result.count;
-      
-      // If error indicates column doesn't exist, try created_at
-      if (error && error.message?.includes('criado')) {
-        console.warn('Column "criado" not found, falling back to "created_at"');
-        const fallbackResult = await q.order('created_at', { ascending: false });
-        data = fallbackResult.data;
-        error = fallbackResult.error;
-        count = fallbackResult.count;
-      }
-    } catch (e) {
-      console.warn('Error ordering by "criado", trying "created_at":', e);
-      try {
-        const result = await q.order('created_at', { ascending: false });
-        data = result.data;
-        error = result.error;
-        count = result.count;
-      } catch (fallbackError) {
-        console.error('Both ordering attempts failed:', fallbackError);
-        throw fallbackError;
-      }
-    }
+    // Ordenar apenas por 'criado' (coluna que existe)
+    const { data, error, count } = await q.order('criado', { ascending: false });
 
     if (error) {
       console.error('❌ [LeadsRepo] Erro ao buscar leads do Supabase:', error);

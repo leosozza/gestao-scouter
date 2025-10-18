@@ -27,12 +27,12 @@ export async function executeDashboardQuery(widget: DashboardWidget) {
     .select('*')
     .or('deleted.is.false,deleted.is.null');
   
-  // Aplicar filtros com fallback para criado e created_at
+  // Aplicar filtros usando apenas 'criado' (coluna que existe)
   if (filters?.dataInicio) {
-    query = query.or(`criado.gte.${filters.dataInicio},created_at.gte.${filters.dataInicio}`);
+    query = query.gte('criado', filters.dataInicio);
   }
   if (filters?.dataFim) {
-    query = query.or(`criado.lte.${filters.dataFim},created_at.lte.${filters.dataFim}`);
+    query = query.lte('criado', filters.dataFim);
   }
   if (filters?.scouter?.length) {
     query = query.in('scouter', filters.scouter);
@@ -108,10 +108,10 @@ function groupByDimension(
   data.forEach(row => {
     let key: string;
     
-    if (dimension === 'data' && (row.criado || row.created_at)) {
+    if (dimension === 'data' && row.criado) {
       // Agrupamento por data com diferentes granularidades
-      // Use criado if available, otherwise created_at
-      const dateStr = row.criado || row.created_at;
+      // Use criado (coluna que existe na tabela fichas)
+      const dateStr = row.criado;
       const date = new Date(dateStr);
       switch (dateGrouping) {
         case 'week':
