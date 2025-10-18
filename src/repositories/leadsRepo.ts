@@ -1,15 +1,20 @@
 /**
- * Repository para buscar leads do Supabase
- * Removida toda dependência do Google Sheets
+ * Repository para buscar leads do Supabase LOCAL
  * 
  * ⚠️ ATENÇÃO DESENVOLVEDOR: FONTE ÚNICA DE VERDADE
  * ================================================
- * Este repositório usa EXCLUSIVAMENTE a tabela 'fichas' do Supabase.
- * NUNCA utilize:
- * - Tabela 'leads' (legacy/deprecated)
+ * Este repositório usa EXCLUSIVAMENTE a tabela 'fichas' do Supabase LOCAL.
+ * 
+ * NUNCA utilize (LEGACY/DEPRECATED):
+ * - Tabela 'leads' no Supabase local (deprecated)
  * - Tabela 'bitrix_leads' (apenas para referência histórica)
  * - MockDataService (apenas para testes locais)
  * - Fetch direto de Google Sheets (descontinuado)
+ * 
+ * SINCRONIZAÇÃO:
+ * - A tabela 'fichas' sincroniza bidirecionalmente com TabuladorMax
+ * - TabuladorMax tem sua própria tabela 'leads' (não confundir com legacy local)
+ * - Sync é gerenciado por Edge Functions do Supabase
  * 
  * Todas as operações de leads devem passar por este repositório centralizado.
  */

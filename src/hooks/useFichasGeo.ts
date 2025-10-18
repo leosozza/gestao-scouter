@@ -44,7 +44,7 @@ export function useFichasGeo(params: FichasGeoParams) {
     enabled: !!startDate && !!endDate,
   });
 
-  // Subscribe to realtime updates on fichas
+  // Subscribe to realtime updates on fichas table (not legacy 'leads' table)
   useEffect(() => {
     const channel = supabase
       .channel('fichas_geo_changes')
@@ -53,7 +53,7 @@ export function useFichasGeo(params: FichasGeoParams) {
         {
           event: '*',
           schema: 'public',
-          table: 'leads',
+          table: 'fichas',
           filter: 'lat=not.is.null'
         },
         () => {
