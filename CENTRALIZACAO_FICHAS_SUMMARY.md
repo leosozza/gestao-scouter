@@ -1,8 +1,24 @@
-# Resumo da Centralização - Tabela 'fichas' como Fonte Única
+# ⚠️ DEPRECATED - Resumo da Centralização - Tabela 'fichas' (LEGACY)
+
+> **⚠️ ESTE DOCUMENTO ESTÁ DEPRECATED**  
+> **Data de Depreciação:** 2025-10-18  
+> **Substituído por:** CENTRALIZACAO_LEADS_SUMMARY.md  
+> **Motivo:** A tabela `fichas` foi substituída pela tabela `leads` como fonte única de verdade.  
+> **Mantido apenas para referência histórica.**
+
+---
+
+# Resumo da Centralização - Tabela 'fichas' como Fonte Única (LEGACY)
 
 ## 📋 Resumo Executivo
 
-Esta implementação garante que **toda a aplicação Gestão Scouter** busca, lista e trata leads **exclusivamente** a partir da tabela `fichas` do Supabase, eliminando dependências de mocks locais, outras tabelas (como `leads` ou `bitrix_leads`), ou serviços alternativos.
+**NOTA IMPORTANTE:** Esta implementação descreve a arquitetura ANTIGA onde a tabela `fichas` era usada. 
+A partir de 18/10/2025, **toda a aplicação Gestão Scouter** busca, lista e trata leads **exclusivamente** a partir da tabela `leads` do Supabase.
+
+Para a documentação atualizada, veja:
+- **CENTRALIZACAO_LEADS_SUMMARY.md** - Centralização atual usando leads
+- **LEADS_DATA_SOURCE.md** - Leads como fonte única
+- **LEGACY_DOCS_NOTICE.md** - Aviso sobre documentos legados
 
 ## ✅ Objetivos Alcançados
 
