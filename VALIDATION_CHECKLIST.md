@@ -19,7 +19,6 @@ Validar que toda a aplicação Gestão Scouter usa exclusivamente a tabela `fich
 
 #### Imports e Dependências
 - [ ] Nenhum import de `MockDataService` em código de produção
-- [ ] Nenhum import direto de Google Sheets em componentes
 - [ ] Páginas principais (Leads, Dashboard) importam de repositories corretos
 - [ ] Hooks personalizados usam tabela `fichas`
 
