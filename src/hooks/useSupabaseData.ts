@@ -19,6 +19,8 @@ interface UseSupabaseDataOptions {
 
 /**
  * Hook unificado para buscar dados do Supabase com detecção de campos ausentes
+ * 
+ * ⚠️ IMPORTANTE: Para leads, sempre use a tabela 'leads' como fonte única
  */
 export function useSupabaseData<T = any>(
   options: UseSupabaseDataOptions
@@ -42,6 +44,8 @@ export function useSupabaseData<T = any>(
   const query = useQuery({
     queryKey: ['supabase-data', table, select, filters, orderBy, limit],
     queryFn: async (): Promise<SupabaseDataResult<T>> => {
+      console.log(`🔍 [useSupabaseData] Consultando tabela: "${table}"`);
+      
       // Use any para evitar problemas de tipo com tabelas dinâmicas
       let queryBuilder = supabase.from(table as any).select(select);
 
@@ -58,14 +62,9 @@ export function useSupabaseData<T = any>(
         });
       }
 
-      // Ordenação com fallback para fichas (criado vs created_at)
+      // Ordenação com fallback seguro
       if (orderBy) {
-        if (table === 'fichas' && orderBy.column === 'created_at') {
-          // Use criado em vez de created_at para a tabela fichas
-          queryBuilder = queryBuilder.order('criado', { ascending: orderBy.ascending ?? false });
-        } else {
-          queryBuilder = queryBuilder.order(orderBy.column, { ascending: orderBy.ascending ?? false });
-        }
+        queryBuilder = queryBuilder.order(orderBy.column, { ascending: orderBy.ascending ?? false });
       }
 
       // Limite
@@ -76,13 +75,15 @@ export function useSupabaseData<T = any>(
       const { data, error } = await queryBuilder;
 
       if (error) {
-        console.error(`Erro ao buscar dados de ${table}:`, error);
+        console.error(`❌ [useSupabaseData] Erro ao buscar dados de ${table}:`, error);
         throw error;
       }
 
-      // Detectar campos ausentes apenas se table for uma das validadas
+      console.log(`✅ [useSupabaseData] ${data?.length || 0} registros retornados de "${table}"`);
+
+      // Detectar campos ausentes apenas para tabelas validadas
       let missingFields: string[] = [];
-      if (table === 'fichas' || table === 'scouter_profiles') {
+      if (table === 'leads' || table === 'scouter_profiles') {
         missingFields = detectMissingFields(data || [], table);
       }
 

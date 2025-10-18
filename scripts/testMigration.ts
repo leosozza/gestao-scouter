@@ -1,18 +1,19 @@
 /**
- * Script de Exemplo e Validação do Migration Script
- * ==================================================
+ * Script de Exemplo e Validação do Migration/Sync Script
+ * =======================================================
  * 
- * ⚠️ FONTE ÚNICA DE VERDADE: Tabela 'fichas'
- * ===========================================
- * Este script demonstra como usar o script de migração para popular
- * a tabela 'fichas', que é a FONTE ÚNICA de dados de leads na aplicação.
+ * ⚠️ FONTE ÚNICA DE VERDADE: Tabela 'leads'
+ * ==========================================
+ * Este script demonstra como usar o script de sincronização para popular
+ * a tabela 'leads', que é a FONTE ÚNICA de dados de leads na aplicação.
  * 
  * IMPORTANTE para desenvolvedores:
- * - Sempre popule a tabela 'fichas' ao criar dados de teste
- * - Nunca use 'leads' ou 'bitrix_leads' como fonte principal
+ * - Sempre popule a tabela 'leads' ao criar dados de teste
+ * - NUNCA use 'fichas' (deprecated/migrada para 'leads')
+ * - NUNCA use 'bitrix_leads' como fonte principal
  * - MockDataService é apenas para testes locais offline
  * 
- * Este arquivo demonstra como usar o script de migração e valida
+ * Este arquivo demonstra como usar o script de sincronização e valida
  * a função de normalização de dados.
  */
 
@@ -23,7 +24,7 @@ import { normalizeLeadToFicha } from './syncLeadsToFichas.js';
 // Testes de Normalização
 // ============================================================================
 
-console.log('🧪 Testando normalização de Leads → Fichas\n');
+console.log('🧪 Testando normalização de Leads TabuladorMax → Leads Gestão Scouter\n');
 console.log('=' .repeat(80));
 
 // Exemplo 1: Lead completo com todos os campos
@@ -49,12 +50,13 @@ const leadCompleto = {
   campo_extra: 'valor extra não mapeado'
 };
 
-const fichaCompleta = normalizeLeadToFicha(leadCompleto);
+const leadCompleta = normalizeLeadToFicha(leadCompleto);
 console.log('\n✅ Teste 1: Lead Completo');
 console.log('Input:', JSON.stringify(leadCompleto, null, 2));
-console.log('Output:', JSON.stringify(fichaCompleta, null, 2));
+console.log('Output:', JSON.stringify(leadCompleta, null, 2));
 console.log('✓ Backup JSON preservado no campo raw');
 console.log('✓ Todos os campos mapeados corretamente');
+console.log('✓ Data normalizada para formato YYYY-MM-DD');
 
 // Exemplo 2: Lead com campos mínimos
 const leadMinimo = {
@@ -62,10 +64,10 @@ const leadMinimo = {
   nome: 'Ana Costa'
 };
 
-const fichaMinima = normalizeLeadToFicha(leadMinimo);
+const leadMinima = normalizeLeadToFicha(leadMinimo);
 console.log('\n✅ Teste 2: Lead Mínimo');
 console.log('Input:', JSON.stringify(leadMinimo, null, 2));
-console.log('Output:', JSON.stringify(fichaMinima, null, 2));
+console.log('Output:', JSON.stringify(leadMinima, null, 2));
 console.log('✓ Campos opcionais como undefined');
 console.log('✓ ID numérico convertido para string');
 console.log('✓ Campo deleted definido como false');
@@ -80,8 +82,8 @@ const leadsComDatas = [
 
 console.log('\n✅ Teste 3: Normalização de Datas');
 leadsComDatas.forEach(lead => {
-  const ficha = normalizeLeadToFicha(lead);
-  console.log(`   ${lead.criado} → ${ficha.criado || 'undefined'}`);
+  const leadRecord = normalizeLeadToFicha(lead);
+  console.log(`   ${lead.criado} → ${leadRecord.criado || 'undefined'}`);
 });
 console.log('✓ Datas normalizadas para formato ISO (YYYY-MM-DD)');
 
@@ -95,10 +97,10 @@ const leadComTiposMistos = {
   longitude: -46.6333, // number
 };
 
-const fichaTiposMistos = normalizeLeadToFicha(leadComTiposMistos);
+const leadTiposMistos = normalizeLeadToFicha(leadComTiposMistos);
 console.log('\n✅ Teste 4: Conversão de Tipos');
 console.log('Input idade (string):', typeof leadComTiposMistos.idade, leadComTiposMistos.idade);
-console.log('Output idade (string):', typeof fichaTiposMistos.idade, fichaTiposMistos.idade);
+console.log('Output idade (string):', typeof leadTiposMistos.idade, leadTiposMistos.idade);
 console.log('✓ Idade sempre convertida para string');
 console.log('✓ Latitude/Longitude preservadas como number');
 
@@ -106,10 +108,10 @@ console.log('\n' + '=' .repeat(80));
 console.log('✅ Todos os testes passaram!\n');
 
 // ============================================================================
-// Exemplo de Uso do Script de Migração
+// Exemplo de Uso do Script de Sincronização
 // ============================================================================
 
-console.log('📖 Como usar o script de migração:');
+console.log('📖 Como usar o script de sincronização:');
 console.log('');
 console.log('1. Configure as variáveis de ambiente no arquivo .env:');
 console.log('   TABULADOR_URL=https://gkvvtfqfggddzotxltxf.supabase.co');
@@ -125,4 +127,6 @@ console.log('');
 console.log('3. Monitore o progresso:');
 console.log('   O script exibirá progresso em tempo real e um relatório final');
 console.log('');
+console.log('🎯 Tabela alvo: "leads" (Gestão Scouter - FONTE ÚNICA DE VERDADE)');
+console.log('📋 Tabela origem: "leads" (TabuladorMax)');
 console.log('=' .repeat(80));

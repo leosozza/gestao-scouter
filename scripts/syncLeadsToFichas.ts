@@ -1,22 +1,22 @@
 #!/usr/bin/env node
 /**
- * Script de Migração Inicial: Leads → Fichas
- * ===========================================
+ * Script de Migração/Sincronização: TabuladorMax Leads → Gestão Scouter Leads
+ * ============================================================================
  * 
- * ⚠️ IMPORTANTE: FONTE ÚNICA DE VERDADE
- * ======================================
- * Este script migra dados de uma tabela 'leads' legada para a tabela 'fichas',
- * que é a FONTE ÚNICA DE VERDADE da aplicação Gestão Scouter.
+ * ⚠️ IMPORTANTE: FONTE ÚNICA DE VERDADE - Tabela 'leads'
+ * =======================================================
+ * Este script sincroniza dados da tabela 'leads' do TabuladorMax para a 
+ * tabela 'leads' do Gestão Scouter (projeto Supabase local).
  * 
- * Após executar este script:
- * - TODA a aplicação deve buscar dados da tabela 'fichas'
- * - NÃO use mais a tabela 'leads' em queries
- * - NÃO use 'bitrix_leads' como fonte principal
- * - NÃO use MockDataService em produção
+ * APÓS EXECUTAR ESTE SCRIPT:
+ * - TODA a aplicação deve buscar dados da tabela 'leads' (Supabase local)
+ * - NUNCA use a tabela 'fichas' (deprecated/migrada para 'leads')
+ * - NUNCA use 'bitrix_leads' como fonte principal
+ * - NUNCA use MockDataService em produção
  * 
- * Este script realiza a primeira carga de dados da tabela `leads` (TabuladorMax)
- * para a tabela `fichas` (Gestão Scouter), normalizando tipos de dados e
- * mantendo backup JSON no campo `raw`.
+ * Este script realiza a primeira carga ou sincronização de dados da tabela 
+ * 'leads' do TabuladorMax para a tabela 'leads' do Gestão Scouter,
+ * normalizando tipos de dados e mantendo backup JSON no campo 'raw'.
  * 
  * Pré-requisitos:
  * ---------------
@@ -103,7 +103,7 @@ interface Lead {
   [key: string]: unknown; // Permitir campos adicionais
 }
 
-interface Ficha {
+interface LeadRecord {
   id: string;
   nome?: string;
   telefone?: string;
@@ -141,16 +141,16 @@ interface MigrationStats {
 // ============================================================================
 
 /**
- * Normaliza um lead para o formato de ficha
+ * Normaliza um lead do TabuladorMax para o formato da tabela 'leads' local
  */
-function normalizeLeadToFicha(lead: Lead): Ficha {
-  // Normalizar data para formato ISO completo
+function normalizeLeadToFicha(lead: Lead): LeadRecord {
+  // Normalizar data para formato YYYY-MM-DD (date only, not timestamp)
   let criadoNormalized: string | undefined;
   if (lead.criado) {
     try {
       const date = new Date(lead.criado);
       if (!isNaN(date.getTime())) {
-        criadoNormalized = date.toISOString(); // ISO completo com timestamp
+        criadoNormalized = date.toISOString().split('T')[0]; // YYYY-MM-DD format
       }
     } catch (e) {
       console.warn(`Erro ao normalizar data para lead ${lead.id}:`, e);
@@ -248,7 +248,7 @@ async function fetchAllLeads(tabuladorClient: ReturnType<typeof createClient>): 
 }
 
 /**
- * Processa um lote de leads e faz upsert na tabela fichas
+ * Processa um lote de leads e faz upsert na tabela 'leads' do Gestão Scouter
  */
 async function processBatch(
   gestaoClient: ReturnType<typeof createClient>,
@@ -257,13 +257,16 @@ async function processBatch(
   attempt = 1
 ): Promise<void> {
   try {
-    // Normalizar leads para fichas
-    const fichas = batch.map(normalizeLeadToFicha);
+    // Normalizar leads do TabuladorMax para formato da tabela leads local
+    const leadsNormalized = batch.map(normalizeLeadToFicha);
 
-    // Fazer upsert
+    console.log(`   📦 Processando lote de ${leadsNormalized.length} registros...`);
+    console.log(`   🗂️  Tabela alvo: "leads" (Gestão Scouter)`);
+
+    // Fazer upsert na tabela 'leads'
     const { data, error } = await gestaoClient
       .from('leads')
-      .upsert(fichas, { 
+      .upsert(leadsNormalized, { 
         onConflict: 'id',
         ignoreDuplicates: false 
       })
@@ -291,10 +294,12 @@ async function processBatch(
 }
 
 /**
- * Executa a migração completa
+ * Executa a migração/sincronização completa
  */
 async function runMigration() {
-  console.log('🚀 Iniciando migração de Leads → Fichas\n');
+  console.log('🚀 Iniciando sincronização TabuladorMax Leads → Gestão Scouter Leads\n');
+  console.log('📋 Fonte: TabuladorMax (tabela leads)');
+  console.log('🎯 Destino: Gestão Scouter (tabela leads)');
   console.log('=' .repeat(80));
 
   // Validar configuração

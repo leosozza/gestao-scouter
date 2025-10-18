@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 
 /**
- * Script para inserir 20 leads fictícios na tabela fichas do Supabase
+ * Script para inserir 20 leads fictícios na tabela leads do Supabase
+ * 
+ * ⚠️ FONTE ÚNICA DE VERDADE: Tabela 'leads'
+ * ==========================================
+ * Este script insere dados de teste EXCLUSIVAMENTE na tabela 'leads'.
+ * NUNCA use a tabela 'fichas' (deprecated/legacy).
+ * 
  * Para executar: node scripts/insertFakeLeads.js
  */
 
@@ -61,7 +67,7 @@ function randomDate(daysAgo) {
 }
 
 async function insertFakeLeads() {
-  console.log('🚀 Iniciando inserção de 20 leads fictícios...')
+  console.log('🚀 Iniciando inserção de 20 leads fictícios na tabela "leads"...')
   
   const allNames = [...nomesMasculinos, ...nomesFemininos]
   const fakeLeads = []
@@ -82,19 +88,24 @@ async function insertFakeLeads() {
       ficha_confirmada: randomItem(['Sim', 'Não', 'Aguardando']),
       cadastro_existe_foto: randomItem(['SIM', 'NÃO']),
       presenca_confirmada: randomItem(['Sim', 'Não', 'Pendente']),
-      criado: randomDate(60), // Últimos 60 dias
+      criado: randomDate(60).split('T')[0], // YYYY-MM-DD format (date only)
       latitude: -23.5 + (Math.random() * 0.5), // São Paulo region
       longitude: -46.6 + (Math.random() * 0.5),
       local_da_abordagem: randomItem(['Shopping', 'Rua', 'Evento', 'Academia', 'Parque']),
       aprovado: randomItem([true, false, null]),
+      deleted: false, // Explicitly set deleted to false
+      raw: {}, // Required field for leads table
     }
+    // Fill raw with complete data backup
+    lead.raw = { ...lead }
     fakeLeads.push(lead)
   }
 
-  console.log(`📝 Inserindo ${fakeLeads.length} leads...`)
+  console.log(`📝 Inserindo ${fakeLeads.length} leads na tabela "leads"...`)
+  console.log('🗂️  Tabela alvo: "leads" (FONTE ÚNICA DE VERDADE)')
   
   const { data, error } = await supabase
-    .from('fichas')
+    .from('leads')
     .insert(fakeLeads)
     .select()
 
