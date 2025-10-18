@@ -49,10 +49,11 @@ export async function createSyncLog(log: Omit<SyncLog, 'id' | 'created_at'>): Pr
 
 /**
  * Get recent sync logs
+ * Attempts to fetch from sync_logs_detailed, falls back to sync_logs, then localStorage
  */
 export async function getSyncLogs(limit: number = 50): Promise<SyncLog[]> {
   try {
-    // Try to get from Supabase first
+    // Try to get from sync_logs_detailed first
     const { data, error } = await supabase
       .from('sync_logs_detailed')
       .select('*')
@@ -60,10 +61,44 @@ export async function getSyncLogs(limit: number = 50): Promise<SyncLog[]> {
       .limit(limit);
 
     if (error) {
-      // If table doesn't exist, get from localStorage
-      if (error.code === 'PGRST116' || error.code === '42P01') {
-        console.log('ℹ️ [SyncLogsRepo] Usando logs do localStorage');
-        return getLocalSyncLogs().slice(0, limit);
+      // If sync_logs_detailed doesn't exist, try sync_logs as fallback
+      if (error.code === 'PGRST116' || error.code === '42P01' || error.code === 'PGRST204' || error.code === 'PGRST205') {
+        console.log('ℹ️ [SyncLogsRepo] Tabela sync_logs_detailed não encontrada, tentando sync_logs...');
+        
+        try {
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('sync_logs')
+            .select('*')
+            .order('started_at', { ascending: false })
+            .limit(limit);
+
+          if (fallbackError) {
+            // If both tables don't exist, use localStorage
+            if (fallbackError.code === 'PGRST116' || fallbackError.code === '42P01' || fallbackError.code === 'PGRST204' || fallbackError.code === 'PGRST205') {
+              console.log('ℹ️ [SyncLogsRepo] Tabela sync_logs também não encontrada, usando localStorage');
+              return getLocalSyncLogs().slice(0, limit);
+            }
+            throw fallbackError;
+          }
+
+          // Map sync_logs format to SyncLog format
+          const mapped = (fallbackData || []).map(log => ({
+            id: log.id,
+            endpoint: 'sync_logs',
+            table_name: log.sync_direction || 'unknown',
+            status: log.errors ? 'error' : 'success',
+            records_count: log.records_synced || 0,
+            execution_time_ms: log.processing_time_ms,
+            error_message: log.errors ? JSON.stringify(log.errors) : undefined,
+            created_at: log.started_at,
+          }));
+
+          console.log(`✅ [SyncLogsRepo] ${mapped.length} logs carregados de sync_logs (fallback)`);
+          return mapped as SyncLog[];
+        } catch (fallbackError) {
+          console.log('⚠️ [SyncLogsRepo] Erro ao buscar de sync_logs, usando localStorage');
+          return getLocalSyncLogs().slice(0, limit);
+        }
       }
       throw error;
     }
