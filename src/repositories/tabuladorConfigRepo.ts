@@ -35,10 +35,11 @@ export async function getTabuladorConfig(): Promise<TabuladorMaxConfig | null> {
     }
 
     if (data) {
+      const typedData = data as TabuladorMaxConfig;
       // Store in localStorage for quick access
-      localStorage.setItem('tabuladormax_config', JSON.stringify(data));
+      localStorage.setItem('tabuladormax_config', JSON.stringify(typedData));
       console.log('✅ [TabuladorConfigRepo] Configuração carregada do Supabase');
-      return data;
+      return typedData;
     }
 
     return getDefaultConfig();
@@ -56,6 +57,7 @@ export async function saveTabuladorConfig(config: Omit<TabuladorMaxConfig, 'id' 
     console.log('💾 [TabuladorConfigRepo] Salvando configuração do TabuladorMax...');
     
     const configWithTimestamp: TabuladorMaxConfig = {
+      id: undefined, // Will be set by database
       ...config,
       updated_at: new Date().toISOString(),
     };
@@ -79,7 +81,7 @@ export async function saveTabuladorConfig(config: Omit<TabuladorMaxConfig, 'id' 
 
         if (error) throw error;
         console.log('✅ [TabuladorConfigRepo] Configuração atualizada no Supabase');
-        return data;
+        return data as TabuladorMaxConfig;
       } else {
         // Insert new
         const { data, error } = await supabase
@@ -90,7 +92,7 @@ export async function saveTabuladorConfig(config: Omit<TabuladorMaxConfig, 'id' 
 
         if (error) throw error;
         console.log('✅ [TabuladorConfigRepo] Configuração criada no Supabase');
-        return data;
+        return data as TabuladorMaxConfig;
       }
     } catch (dbError) {
       // If Supabase save fails, that's OK - we have localStorage
