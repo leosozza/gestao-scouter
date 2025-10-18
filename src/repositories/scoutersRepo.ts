@@ -64,23 +64,23 @@ async function fetchScoutersFromSupabase(): Promise<ScouterDataResult> {
     
     if (profilesError) throw profilesError;
 
-    const { data: fichas, error: fichasError } = await supabase
-      .from('fichas')
+    const { data: leads, error: leadsError } = await supabase
+      .from('leads')
       .select('*')
       .or('deleted.is.false,deleted.is.null');
     
-    if (fichasError) throw fichasError;
+    if (leadsError) throw leadsError;
 
-    // Agrupar fichas por scouter
-    const fichasByScouter = new Map<string, FichaDataPoint[]>();
+    // Agrupar leads por scouter
+    const leadsByScouter = new Map<string, FichaDataPoint[]>();
     
-    for (const ficha of (fichas || [])) {
-      const scouterName = ficha.scouter?.trim();
+    for (const lead of (leads || [])) {
+      const scouterName = lead.scouter?.trim();
       if (scouterName) {
-        if (!fichasByScouter.has(scouterName)) {
-          fichasByScouter.set(scouterName, []);
+        if (!leadsByScouter.has(scouterName)) {
+          leadsByScouter.set(scouterName, []);
         }
-        fichasByScouter.get(scouterName)!.push(ficha as FichaDataPoint);
+        leadsByScouter.get(scouterName)!.push(lead as FichaDataPoint);
       }
     }
 
@@ -88,9 +88,9 @@ async function fetchScoutersFromSupabase(): Promise<ScouterDataResult> {
     const scoutersData: ScouterData[] = [];
     
     for (const profile of (profiles || [])) {
-      const scouterFichas = fichasByScouter.get(profile.nome) || [];
-      const totalFichas = scouterFichas.length;
-      const convertedFichas = scouterFichas.filter(f => 
+      const scouterLeads = leadsByScouter.get(profile.nome) || [];
+      const totalFichas = scouterLeads.length;
+      const convertedFichas = scouterLeads.filter(f => 
         f.confirmado === 'Sim' || f.compareceu === 'Sim'
       ).length;
       const conversionRate = totalFichas > 0 ? (convertedFichas / totalFichas) * 100 : 0;

@@ -1,8 +1,8 @@
 // Repositório para Dashboard - Dados do Supabase
 // 
-// ⚠️ FONTE ÚNICA: Tabela 'fichas'
+// ⚠️ FONTE ÚNICA: Tabela 'leads'
 // ================================
-// Este repositório busca dados exclusivamente da tabela 'fichas' do Supabase.
+// Este repositório busca dados exclusivamente da tabela 'leads' do Supabase.
 // Todos os dashboards e visualizações devem usar esta fonte centralizada.
 import { supabase } from '@/lib/supabase-helper';
 import type { FichaDataPoint } from '@/types/ficha';
@@ -13,9 +13,9 @@ export interface DashboardDataResult {
 }
 
 /**
- * Busca dados do dashboard da tabela 'fichas' com filtros
+ * Busca dados do dashboard da tabela 'leads' com filtros
  * @param filters - Filtros de período, scouter e projeto
- * @returns Dados de fichas para exibição em dashboard
+ * @returns Dados de leads para exibição em dashboard
  */
 export async function getDashboardData(filters: { 
   start?: string; 
@@ -24,7 +24,7 @@ export async function getDashboardData(filters: {
   projeto?: string 
 }): Promise<DashboardDataResult> {
   let query = supabase
-    .from('fichas')
+    .from('leads')
     .select('*');
 
   // Aplicar filtros usando apenas 'criado' (coluna que existe)

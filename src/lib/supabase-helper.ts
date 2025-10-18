@@ -15,22 +15,22 @@ console.log('🔑 [Supabase] Cliente configurado com persistência de sessão');
   try {
     console.log('🧪 [Supabase] Testando conexão...');
     
-    // Get count of all records in fichas table
+    // Get count of all records in leads table
     const { data, error, count } = await baseSupabase
-      .from('fichas')
+      .from('leads')
       .select('id', { count: 'exact', head: true });
     
     if (error) {
       console.error('❌ [Supabase] Erro no teste de conexão:', error);
     } else {
       console.log('✅ [Supabase] Conexão estabelecida com sucesso');
-      console.log(`📊 [Supabase] Total de registros na tabela "fichas": ${count ?? 0}`);
+      console.log(`📊 [Supabase] Total de registros na tabela "leads": ${count ?? 0}`);
       
       if (count === 0) {
-        console.warn('⚠️ [Supabase] A tabela "fichas" está VAZIA!');
+        console.warn('⚠️ [Supabase] A tabela "leads" está VAZIA!');
         console.warn('💡 [Supabase] Para adicionar dados de teste, execute no Supabase SQL Editor:');
         console.warn(`
-INSERT INTO fichas (nome, scouter, projeto, etapa, criado) VALUES
+INSERT INTO leads (nome, scouter, projeto, etapa, criado) VALUES
   ('João Silva', 'Maria Santos', 'Projeto Alpha', 'Contato', NOW()),
   ('Ana Costa', 'Pedro Lima', 'Projeto Beta', 'Agendado', NOW() - INTERVAL '1 day');
         `);

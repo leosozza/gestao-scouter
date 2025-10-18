@@ -23,7 +23,7 @@ export async function executeDashboardQuery(widget: DashboardWidget) {
   
   // Base query
   let query = supabase
-    .from('fichas')
+    .from('leads')
     .select('*')
     .or('deleted.is.false,deleted.is.null');
   
@@ -226,7 +226,7 @@ function calculateMetric(rows: any[], metric: MetricType): number {
  */
 export async function getFilterOptions(field: string): Promise<string[]> {
   const { data, error } = await supabase
-    .from('fichas')
+    .from('leads')
     .select(field)
     .or('deleted.is.false,deleted.is.null')
     .not(field, 'is', null);
