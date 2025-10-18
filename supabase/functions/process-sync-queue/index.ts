@@ -156,7 +156,7 @@ serve(async (req) => {
 
         // Atualizar ficha com informação de sincronização
         await gestao
-          .from('fichas')
+          .from('leads')
           .update({ 
             last_synced_at: new Date().toISOString(),
             sync_source: 'Gestao'

@@ -99,7 +99,7 @@ export async function fetchLinearProjection(p: ProjecaoFiltro): Promise<LinearPr
   const dtTo = toISO(To)
 
   // Buscar fichas do Supabase
-  let query = supabase.from('fichas').select('*').or('deleted.is.false,deleted.is.null');
+  let query = supabase.from('leads').select('*').or('deleted.is.false,deleted.is.null');
   
   if (p.scouter) query = query.ilike('scouter', `%${p.scouter}%`);
   if (p.projeto) query = query.ilike('projeto', `%${p.projeto}%`);
@@ -214,7 +214,7 @@ export async function fetchProjectionAdvanced(p: ProjecaoFiltroAdvanced): Promis
   const projFim = new Date(p.dataFimProj)
   
   // Buscar fichas do Supabase
-  let query = supabase.from('fichas').select('*').or('deleted.is.false,deleted.is.null');
+  let query = supabase.from('leads').select('*').or('deleted.is.false,deleted.is.null');
   
   if (p.scouter) query = query.ilike('scouter', `%${p.scouter}%`);
   if (p.projeto) query = query.ilike('projeto', `%${p.projeto}%`);
@@ -392,7 +392,7 @@ export async function fetchProjectionAdvanced(p: ProjecaoFiltroAdvanced): Promis
 export async function getAvailableFilters(): Promise<{ scouters: string[], projetos: string[] }> {
   try {
     const { data: fichas, error } = await supabase
-      .from('fichas')
+      .from('leads')
       .select('scouter, projeto')
       .or('deleted.is.false,deleted.is.null');
     
@@ -423,7 +423,7 @@ async function fetchProjectionsFromSupabase(type: ProjectionType, selectedFilter
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
     let query = supabase
-      .from('fichas')
+      .from('leads')
       .select('*')
       .or(`criado.gte.${thirtyDaysAgo.toISOString().split('T')[0]},created_at.gte.${thirtyDaysAgo.toISOString().split('T')[0]}`);
 

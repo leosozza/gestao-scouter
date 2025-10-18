@@ -36,7 +36,7 @@ export function InteractiveFilterPanel({ onFilterChange }: FilterPanelProps) {
     queryKey: ['unique-projects'],
     queryFn: async () => {
       const { data } = await supabase
-        .from('fichas')
+        .from('leads')
         .select('projeto')
         .or('deleted.is.false,deleted.is.null');
       return [...new Set(data?.map(d => d.projeto).filter(Boolean))];
@@ -47,7 +47,7 @@ export function InteractiveFilterPanel({ onFilterChange }: FilterPanelProps) {
     queryKey: ['unique-scouters'],
     queryFn: async () => {
       const { data } = await supabase
-        .from('fichas')
+        .from('leads')
         .select('scouter')
         .or('deleted.is.false,deleted.is.null');
       return [...new Set(data?.map(d => d.scouter).filter(Boolean))];

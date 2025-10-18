@@ -3,17 +3,17 @@
  * 
  * ⚠️ ATENÇÃO DESENVOLVEDOR: FONTE ÚNICA DE VERDADE
  * ================================================
- * Este repositório usa EXCLUSIVAMENTE a tabela 'fichas' do Supabase LOCAL.
+ * Este repositório usa EXCLUSIVAMENTE a tabela 'leads' do Supabase LOCAL.
  * 
  * NUNCA utilize (LEGACY/DEPRECATED):
- * - Tabela 'leads' no Supabase local (deprecated)
+ * - Tabela 'fichas' (migrada para 'leads')
  * - Tabela 'bitrix_leads' (apenas para referência histórica)
  * - MockDataService (apenas para testes locais)
  * - Fetch direto de Google Sheets (descontinuado)
  * 
  * SINCRONIZAÇÃO:
- * - A tabela 'fichas' sincroniza bidirecionalmente com TabuladorMax
- * - TabuladorMax tem sua própria tabela 'leads' (não confundir com legacy local)
+ * - A tabela 'leads' sincroniza bidirecionalmente com TabuladorMax
+ * - TabuladorMax tem sua própria tabela 'leads'
  * - Sync é gerenciado por Edge Functions do Supabase
  * 
  * Todas as operações de leads devem passar por este repositório centralizado.
@@ -24,7 +24,7 @@ import type { Lead, LeadsFilters } from './types';
 
 /**
  * Busca leads do Supabase com filtros
- * @returns Array de leads da tabela 'fichas'
+ * @returns Array de leads da tabela 'leads'
  */
 export async function getLeads(params: LeadsFilters = {}): Promise<Lead[]> {
   return fetchAllLeadsFromSupabase(params);
@@ -58,7 +58,7 @@ export async function createLead(lead: Partial<Lead>): Promise<Lead> {
   insertData.raw = { ...lead };
 
   const { data, error } = await supabase
-    .from('fichas')
+    .from('leads')
     .insert([insertData])
     .select()
     .single();
@@ -77,7 +77,7 @@ export async function createLead(lead: Partial<Lead>): Promise<Lead> {
  */
 export async function deleteLeads(leadIds: (string | number)[]): Promise<void> {
   const { error } = await supabase
-    .from('fichas')
+    .from('leads')
     .update({ deleted: true })
     .in('id', leadIds);
 
@@ -157,12 +157,12 @@ export async function getLeadsByProject(params: LeadsFilters = {}): Promise<
 async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> {
   try {
     console.log('🔍 [LeadsRepo] Iniciando busca de leads com filtros:', params);
-    console.log('🗂️  [LeadsRepo] Tabela sendo consultada: "fichas"');
+    console.log('🗂️  [LeadsRepo] Tabela sendo consultada: "leads"');
     
-    let q = supabase.from('fichas').select('*', { count: 'exact' })
+    let q = supabase.from('leads').select('*', { count: 'exact' })
       .or('deleted.is.false,deleted.is.null'); // ✅ Filtro para excluir registros deletados
 
-    // ✅ Usar apenas 'criado' (coluna que existe na tabela fichas)
+    // ✅ Usar 'criado' (date field) - keeping same as fichas for compatibility
     if (params.dataInicio) {
       console.log('📅 [LeadsRepo] Aplicando filtro dataInicio:', params.dataInicio);
       q = q.gte('criado', params.dataInicio);
@@ -196,11 +196,11 @@ async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> 
     }
 
     console.log(`✅ [LeadsRepo] Query executada com sucesso!`);
-    console.log(`📊 [LeadsRepo] Total de registros na tabela "fichas" (com filtros): ${count ?? 'N/A'}`);
+    console.log(`📊 [LeadsRepo] Total de registros na tabela "leads" (com filtros): ${count ?? 'N/A'}`);
     console.log(`📦 [LeadsRepo] Registros retornados nesta query: ${data?.length || 0}`);
 
     if (!data || data.length === 0) {
-      console.warn('⚠️ [LeadsRepo] Nenhum registro encontrado na tabela "fichas"');
+      console.warn('⚠️ [LeadsRepo] Nenhum registro encontrado na tabela "leads"');
       console.warn('💡 Verifique: se há dados, filtros ou RLS.');
       return [];
     }

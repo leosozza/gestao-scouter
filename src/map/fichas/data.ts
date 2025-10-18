@@ -29,7 +29,7 @@ export async function loadFichasData(): Promise<FichasDataResult> {
     console.log('📥 [Fichas Data] Loading fichas from Supabase...');
     
     const { data: fichas, error } = await supabase
-      .from('fichas')
+      .from('leads')
       .select('*')
       .eq('deleted', false)
       .not('latitude', 'is', null)

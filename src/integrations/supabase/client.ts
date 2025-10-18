@@ -29,7 +29,7 @@ console.log('[Supabase] Client pronto. Testando leitura de "fichas"...')
 async function testarConexaoSupabase() {
   try {
     const { error, count } = await supabase
-      .from('fichas')
+      .from('leads')
       .select('id', { count: 'exact', head: true })
 
     if (error) console.error('[Supabase] Erro de leitura inicial:', error)

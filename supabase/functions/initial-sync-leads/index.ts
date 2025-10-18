@@ -197,7 +197,7 @@ serve(async (req) => {
       
       try {
         const { data, error } = await gestao
-          .from('fichas')
+          .from('leads')
           .upsert(batch, { 
             onConflict: 'id',
             ignoreDuplicates: false 

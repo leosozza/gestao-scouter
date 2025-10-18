@@ -15,14 +15,14 @@ export function useFichas(params: UseFichasParams = {}) {
   return useQuery({
     queryKey: ['fichas', params],
     queryFn: async (): Promise<FichaDataPoint[]> => {
-      // ⚠️ IMPORTANTE: Sempre usar a tabela 'fichas' como fonte única de verdade
-      // Nunca use 'leads' ou 'bitrix_leads' - todas as fichas são centralizadas em 'fichas'
+      // ⚠️ IMPORTANTE: Sempre usar a tabela 'leads' como fonte única de verdade
+      // A tabela 'fichas' foi migrada para 'leads'
       let query = supabase
-        .from('fichas')
+        .from('leads')
         .select('*')
         .or('deleted.is.false,deleted.is.null');
 
-      // Apply date filters usando apenas 'criado' (coluna que existe)
+      // Apply date filters usando 'criado' (date field)
       if (params.startDate) {
         query = query.gte('criado', params.startDate);
       }
@@ -40,7 +40,7 @@ export function useFichas(params: UseFichasParams = {}) {
                      .not('longitude', 'is', null);
       }
 
-      // Execute query - ordenar apenas por 'criado'
+      // Execute query - ordenar por 'criado'
       const { data, error } = await query.order('criado', { ascending: false });
 
       if (error) throw error;

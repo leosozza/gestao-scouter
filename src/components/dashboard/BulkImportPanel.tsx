@@ -190,7 +190,7 @@ export const BulkImportPanel = ({ onComplete }: BulkImportPanelProps) => {
         
         try {
           const { data, error } = await supabase
-            .from('fichas')
+            .from('leads')
             .upsert(chunk, { 
               onConflict: 'id',
               ignoreDuplicates: false 

@@ -63,7 +63,7 @@ serve(async (req) => {
 
       // Insert into fichas table
       const { error: insertError } = await supabase
-        .from('fichas')
+        .from('leads')
         .insert(transformedData);
 
       if (insertError) {

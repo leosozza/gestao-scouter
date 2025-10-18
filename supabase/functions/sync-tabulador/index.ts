@@ -145,7 +145,7 @@ serve(async (req) => {
     const ignoreSource = Deno.env.get('SYNC_IGNORE_SOURCE') || 'TabuladorMax';
 
     const { data: gestaoUpdatesRaw, error: gestaoError } = await gestao
-      .from('fichas')
+      .from('leads')
       .select('*')
       .gte('updated_at', lastSyncDate)
       .or('deleted.is.false,deleted.is.null')
@@ -204,7 +204,7 @@ serve(async (req) => {
     if (toSyncTabulador.length > 0) {
       const fichasToSync = toSyncTabulador.map(mapLeadToFicha);
       const { data, error } = await gestao
-        .from('fichas')
+        .from('leads')
         .upsert(fichasToSync, { onConflict: 'id' })
         .select('id');
       if (!error) tabuladorToGestaoCount = data?.length || 0;
@@ -226,7 +226,7 @@ serve(async (req) => {
         conflictsResolved++;
       } else {
         const fichaToSync = mapLeadToFicha(tabuladorRecord);
-        await gestao.from('fichas').upsert([fichaToSync], { onConflict: 'id' });
+        await gestao.from('leads').upsert([fichaToSync], { onConflict: 'id' });
         conflictsResolved++;
       }
     }

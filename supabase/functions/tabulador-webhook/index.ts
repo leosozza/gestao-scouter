@@ -245,7 +245,7 @@ serve(async (req) => {
         // Verificar quais IDs já existem
         const ids = batch.map(r => r.id);
         const { data: existingRecords } = await supabase
-          .from('fichas')
+          .from('leads')
           .select('id, updated_at')
           .in('id', ids);
 
@@ -275,7 +275,7 @@ serve(async (req) => {
         // Inserir novos
         if (toInsert.length > 0) {
           const { data, error } = await supabase
-            .from('fichas')
+            .from('leads')
             .insert(toInsert)
             .select('id');
 
@@ -308,7 +308,7 @@ serve(async (req) => {
         if (toUpdate.length > 0) {
           for (const record of toUpdate) {
             const { error } = await supabase
-              .from('fichas')
+              .from('leads')
               .update(record)
               .eq('id', record.id);
 

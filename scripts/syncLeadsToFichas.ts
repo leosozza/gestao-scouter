@@ -262,7 +262,7 @@ async function processBatch(
 
     // Fazer upsert
     const { data, error } = await gestaoClient
-      .from('fichas')
+      .from('leads')
       .upsert(fichas, { 
         onConflict: 'id',
         ignoreDuplicates: false 
