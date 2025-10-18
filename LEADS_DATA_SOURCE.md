@@ -31,15 +31,14 @@ Esta aplicação utiliza **EXCLUSIVAMENTE** a tabela `leads` do Supabase como fo
 
 **Serviços descontinuados:**
 - ~~`MockDataService`~~ - Apenas para testes locais offline
-- ~~Fetch direto de Google Sheets~~ - Descontinuado (causava problemas de CORS)
 
 ## 📋 Fluxo de Dados
 
 ```
-Google Sheets → Edge Function → Tabela 'leads' → Repository → Hook → Componente
+TabuladorMax → Supabase Edge Function → Tabela 'leads' → Repository → Hook → Componente
 ```
 
-1. **Origem**: Google Sheets (planilha de controle) ou TabuladorMax
+1. **Origem**: TabuladorMax (sistema legado/externo)
 2. **Sincronização**: Edge Functions do Supabase (sync functions)
 3. **Armazenamento**: Tabela `leads` no Supabase
 4. **Acesso**: Repositories centralizados
@@ -196,10 +195,7 @@ Ao trabalhar com dados de leads/fichas:
 **Solução:** Certifique-se de usar `getLeads()` de `leadsRepo.ts` que consulta a tabela 'leads'
 
 ### Problema: "Dados desatualizados"
-**Solução:** Verifique se a sincronização com TabuladorMax/Google Sheets está ativa
-
-### Problema: "Erro de CORS ao buscar dados"
-**Solução:** Não tente buscar direto do Google Sheets, use a tabela `leads`
+**Solução:** Verifique se a sincronização com TabuladorMax está ativa
 
 ### Problema: "MockDataService em produção"
 **Solução:** Remova imports do MockDataService do código de produção

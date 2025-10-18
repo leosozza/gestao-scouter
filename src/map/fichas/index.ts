@@ -2,7 +2,7 @@
  * Fichas Module - Main Entry Point
  * 
  * Complete module for fichas visualization with:
- * - Data loading from Google Sheets
+ * - Data loading from Supabase
  * - Persistent heatmap at all zoom levels
  * - Spatial selection (rectangle/polygon)
  * - Summary by projeto and scouter

@@ -1,53 +1,43 @@
 # Importação de Dados - Gestão Scouter
 
+## ⚠️ NOTA: Este documento está parcialmente obsoleto
+
+**Status**: ⚠️ PARCIALMENTE OBSOLETO - A aplicação agora utiliza exclusivamente a tabela 'leads' do Supabase como fonte única de verdade, sincronizada com TabuladorMax.
+
+**Arquitetura Atual**: TabuladorMax → Supabase (tabela 'leads') → Repository → Hook → Componente
+
+**Métodos de Importação Atuais**:
+1. **Sincronização Automática com TabuladorMax** (Recomendado) - Via Edge Functions
+2. **Importação Manual de CSV/Excel** - Via dashboard da aplicação
+
+Para informações atualizadas, consulte:
+- [LEADS_DATA_SOURCE.md](../LEADS_DATA_SOURCE.md) - Guia completo da arquitetura atual
+- [CSV_IMPORT_GUIDE.md](../CSV_IMPORT_GUIDE.md) - Guia de importação de CSV
+- [README.md](../README.md) - Seção de sincronização com TabuladorMax
+
+---
+
+## Descrição Original (Obsoleta)
+
 ## Objetivo
 
-Este documento descreve os processos de importação de dados para a tabela `fichas` do banco de dados Gestão Scouter, incluindo importação de Google Sheets, arquivos CSV/Excel, e sincronização com TabuladorMax.
+Este documento descreve processos de importação históricos para a tabela `fichas` (agora migrada para 'leads'), incluindo sincronização com TabuladorMax.
 
 ## Pré-requisitos
 
-- Schema do banco de dados configurado (ver `docs/VALIDACAO_SCHEMA.md`)
+- Schema do banco de dados configurado
 - Acesso ao Supabase Dashboard ou Supabase CLI
-- Dados fonte disponíveis (Google Sheets, CSV, ou TabuladorMax)
+- Dados fonte disponíveis (CSV ou TabuladorMax)
 
-## Métodos de Importação
+## Métodos de Importação (Obsoletos - Use TabuladorMax sync ou CSV Import)
 
-### Método 1: Google Sheets via Edge Function (Recomendado)
+### Método 1: Sincronização com TabuladorMax (Atual e Recomendado)
 
-Este é o método automático que sincroniza continuamente dados do Google Sheets.
+A sincronização automática com TabuladorMax é gerenciada por Edge Functions do Supabase. Consulte o README.md principal para detalhes.
 
-#### 1.1 Configurar Apps Script no Google Sheets
+### Método 2: Google Sheets via Edge Function (OBSOLETO - Não usar)
 
-1. **Abrir a planilha do Google Sheets**
-2. **Ir em Extensões → Apps Script**
-3. **Colar o seguinte código:**
-
-```javascript
-// Configuração
-const SUPABASE_URL = 'https://SEU_PROJECT_ID.supabase.co';
-const SUPABASE_FUNCTION = '/functions/v1/sync-fichas';
-const SHARED_SECRET = 'SEU_SECRET_AQUI'; // Mesmo do Supabase
-
-function syncFichasToSupabase() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Fichas');
-  const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  const rows = data.slice(1);
-  
-  // Converter para array de objetos
-  const fichas = rows.map(row => {
-    const obj = {};
-    headers.forEach((header, index) => {
-      obj[header.toLowerCase().replace(/\s+/g, '_')] = row[index];
-    });
-    return obj;
-  });
-  
-  // Enviar para Supabase
-  const url = SUPABASE_URL + SUPABASE_FUNCTION;
-  const options = {
-    method: 'post',
-    contentType: 'application/json',
+Este método não é mais suportado. Use sincronização com TabuladorMax ou importação de CSV.
     headers: {
       'X-Secret': SHARED_SECRET
     },

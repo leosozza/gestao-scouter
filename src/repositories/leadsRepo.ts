@@ -9,7 +9,6 @@
  * - Tabela 'fichas' (migrada para 'leads' — deprecated, será removida)
  * - Tabela 'bitrix_leads' (apenas para referência histórica)
  * - MockDataService (apenas para testes locais)
- * - Fetch direto de Google Sheets (descontinuado)
  * 
  * SINCRONIZAÇÃO:
  * - A tabela 'leads' sincroniza bidirecionalmente com TabuladorMax

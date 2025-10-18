@@ -1,8 +1,7 @@
 /**
  * Unified Map Component
  * Single map with toggle between Scouter view (clusters) and Fichas heatmap view
- * Reads data directly from Google Sheets CSV exports
- * Future-ready: Easy to swap to Supabase data source
+ * Reads data directly from Supabase
  */
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
@@ -331,7 +330,7 @@ export function UnifiedMap({
     }
   };
 
-  // Reload fichas data from Google Sheets
+  // Reload fichas data from Supabase
   const handleReloadFichas = async () => {
     console.log('🔄 Reloading fichas...');
     try {

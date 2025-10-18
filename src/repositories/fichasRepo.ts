@@ -9,7 +9,6 @@
 // TabuladorMax possui sua própria tabela 'leads'.
 // 
 // Nunca busque dados de (LEGACY/DEPRECATED):
-// - Google Sheets diretamente (descontinuado)
 // - Tabela 'fichas' (migrada para 'leads')
 // - Tabela 'bitrix_leads' (apenas histórico)
 import { createClient } from "@supabase/supabase-js";

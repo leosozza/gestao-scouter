@@ -51,21 +51,21 @@ Este módulo implementa funcionalidades de geolocalização em tempo real para a
 
 ### 2. Edge Functions
 
-#### `sheets-locations-sync`
+#### `scouter-locations-sync`
 
-**Propósito**: Sincroniza localizações de scouters do Google Sheets (Grid 1351167110)
+**Propósito**: Sincroniza localizações de scouters do TabuladorMax
 
-**Formato de Entrada** (colunas da planilha):
+**Formato de Entrada** (dados da tabela):
 ```
-scouter            | coords_raw                     | tier
--------------------|--------------------------------|-------
-Taciana melo       | -23.5491761,-46.6881783 (, )  | Bronze
-Herick- Teste      | -23.5491761,-46.6881783        | Prata
+scouter            | latitude        | longitude       | tier
+-------------------|-----------------|-----------------|-------
+Taciana melo       | -23.5491761     | -46.6881783     | Bronze
+Herick- Teste      | -23.5491761     | -46.6881783     | Prata
 ```
 
 **Processo**:
-1. Lê dados do Grid 1351167110
-2. Parseia coordenadas (aceita formatos com ou sem sufixo `(, )`)
+1. Lê dados da tabela de scouters
+2. Valida coordenadas
 3. Faz upsert em `scouters` (por nome)
 4. Insere nova localização em `scouter_locations`
 

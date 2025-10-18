@@ -1,13 +1,29 @@
 # Dashboard Synchronization Solution
 
-## Problem Solved
-The dashboard was showing "0 fichas encontradas" (0 records found) due to synchronization errors when trying to fetch data from Google Sheets.
+## ⚠️ NOTA: Este documento está obsoleto
 
-## Root Causes Identified
-1. **CORS Errors**: Direct browser requests to Google Sheets were blocked by CORS policy
-2. **Date Format Mismatch**: Filter dates (YYYY-MM-DD) vs. data dates (DD/MM/YYYY) 
-3. **Missing Error Handling**: No fallback when external API fails
-4. **Network Dependencies**: App completely dependent on external Google Sheets access
+**Status**: ❌ OBSOLETO - A aplicação agora utiliza exclusivamente a tabela 'leads' do Supabase como fonte única de verdade.
+
+Este documento descreve uma solução antiga que dependia de sincronização com Google Sheets. A nova arquitetura elimina essa dependência.
+
+**Arquitetura Atual**: TabuladorMax → Supabase (tabela 'leads') → Repository → Hook → Componente
+
+Para informações atualizadas, consulte:
+- [LEADS_DATA_SOURCE.md](./LEADS_DATA_SOURCE.md) - Guia completo da arquitetura atual
+- [CENTRALIZACAO_LEADS_SUMMARY.md](./CENTRALIZACAO_LEADS_SUMMARY.md) - Resumo da migração
+
+---
+
+## Descrição Original (Obsoleta)
+
+## Problem Solved
+O dashboard agora carrega dados diretamente da tabela 'leads' do Supabase, eliminando problemas de sincronização e CORS.
+
+## Root Causes (Histórico)
+1. **CORS Errors**: Resolvido - não há mais acesso direto a fontes externas via browser
+2. **Date Format Mismatch**: Padronizado na tabela 'leads'
+3. **Missing Error Handling**: Implementado nos repositories
+4. **Network Dependencies**: Eliminado - dados vêm do Supabase
 
 ## Solution Architecture
 

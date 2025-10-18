@@ -1,10 +1,10 @@
-// Mock data service to simulate Google Sheets data for development/testing
-// This provides realistic sample data when external APIs are unavailable
+// Mock data service to simulate data for development/testing
+// This provides realistic sample data when the database is unavailable
 // 
 // ⚠️ ATENÇÃO: APENAS PARA DESENVOLVIMENTO LOCAL
 // ==============================================
 // Este serviço fornece dados mockados APENAS para testes e desenvolvimento local.
-// Em PRODUÇÃO, a aplicação deve usar EXCLUSIVAMENTE a tabela 'fichas' do Supabase
+// Em PRODUÇÃO, a aplicação deve usar EXCLUSIVAMENTE a tabela 'leads' do Supabase
 // através do repositório centralizado (leadsRepo.ts).
 // 
 // NÃO importe este serviço em código de produção. Use sempre:
@@ -191,7 +191,7 @@ export class MockDataService {
     
     console.log('MockDataService: Usando dados simulados de fichas');
     
-    // Process mock data similar to GoogleSheetsService
+    // Process mock data with the same structure as Supabase data
     const processedFichas = this.sampleFichas.map(ficha => ({
       ...ficha,
       // Campos processados

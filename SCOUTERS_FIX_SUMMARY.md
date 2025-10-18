@@ -1,7 +1,24 @@
 # Scouters Data Issue - Fix Summary
 
 ## Issue Description
-**Problem**: The system shows 0 active scouters, but the Google Sheets spreadsheet has 64 active scouters in the Scouters tab.
+# Scouters Fix Summary
+
+## ⚠️ NOTA: Este documento está obsoleto
+
+**Status**: ❌ OBSOLETO - A aplicação agora utiliza exclusivamente a tabela 'leads' do Supabase como fonte única de verdade.
+
+Este documento descreve uma correção antiga relacionada a sincronização com Google Sheets. A nova arquitetura elimina essa dependência.
+
+**Arquitetura Atual**: TabuladorMax → Supabase (tabela 'leads') → Repository → Hook → Componente
+
+Para informações atualizadas, consulte:
+- [LEADS_DATA_SOURCE.md](./LEADS_DATA_SOURCE.md) - Guia completo da arquitetura atual
+
+---
+
+## Descrição Original (Obsoleta)
+
+**Problem**: O sistema agora carrega dados de scouters diretamente do Supabase, sincronizados com TabuladorMax.
 
 **Spreadsheet URL**: https://docs.google.com/spreadsheets/d/14l4A_BOFZM-TwLuam-bKzUgInNAA7fOCeamdkE1nt_o/edit?gid=1351167110#gid=1351167110
 

@@ -151,7 +151,7 @@ export function FichasTab() {
       return;
     }
 
-    // Convert to FichaDataPoint - now using real data from Google Sheets
+    // Convert to FichaDataPoint - now using real data from Supabase
     const enrichedFichas: FichaDataPoint[] = fichas.map((f, index) => ({
       ...f,
       id: `ficha-${index}`,
@@ -613,11 +613,11 @@ export function FichasTab() {
       return;
     }
 
-    // Parse Brazilian date format (DD/MM/YYYY) from Google Sheets
+    // Parse Brazilian date format (DD/MM/YYYY) from data
     const parseBrazilianDate = (dateStr: string): Date | null => {
       if (!dateStr) return null;
       
-      // Try DD/MM/YYYY format first (from Google Sheets)
+      // Try DD/MM/YYYY format first (from imported data)
       const brMatch = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
       if (brMatch) {
         const [, day, month, year] = brMatch;

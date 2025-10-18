@@ -1,3 +1,15 @@
+## ⚠️ NOTA: Este documento está obsoleto ou parcialmente obsoleto
+
+**Status**: ⚠️ Este documento contém referências a implementações antigas que dependiam de Google Sheets.
+
+**Arquitetura Atual**: TabuladorMax → Supabase (tabela 'leads') → Repository → Hook → Componente
+
+Para informações atualizadas, consulte:
+- [LEADS_DATA_SOURCE.md](./LEADS_DATA_SOURCE.md) ou [../LEADS_DATA_SOURCE.md](../LEADS_DATA_SOURCE.md)
+- [README.md](./README.md) ou [../README.md](../README.md)
+
+---
+
 # Scouters Data Fix Documentation
 
 ## Problem
