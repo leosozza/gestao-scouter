@@ -6,7 +6,7 @@
  * Este repositório usa EXCLUSIVAMENTE a tabela 'leads' do Supabase LOCAL.
  * 
  * NUNCA utilize (LEGACY/DEPRECATED):
- * - Tabela 'fichas' (migrada para 'leads')
+ * - Tabela 'fichas' (migrada para 'leads' — deprecated, será removida)
  * - Tabela 'bitrix_leads' (apenas para referência histórica)
  * - MockDataService (apenas para testes locais)
  * - Fetch direto de Google Sheets (descontinuado)
@@ -14,6 +14,7 @@
  * SINCRONIZAÇÃO:
  * - A tabela 'leads' sincroniza bidirecionalmente com TabuladorMax
  * - TabuladorMax tem sua própria tabela 'leads'
+ * - A tabela 'leads' foi criada com o mesmo schema do TabuladorMax para evitar erros
  * - Sync é gerenciado por Edge Functions do Supabase
  * 
  * Todas as operações de leads devem passar por este repositório centralizado.
@@ -37,7 +38,7 @@ export async function getLeads(params: LeadsFilters = {}): Promise<Lead[]> {
  */
 export async function createLead(lead: Partial<Lead>): Promise<Lead> {
   // Preparar dados para inserção
-  const insertData = {
+  const insertData: any = {
     projeto: lead.projetos,
     scouter: lead.scouter,
     nome: lead.nome,
@@ -162,7 +163,7 @@ async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> 
     let q = supabase.from('leads').select('*', { count: 'exact' })
       .or('deleted.is.false,deleted.is.null'); // ✅ Filtro para excluir registros deletados
 
-    // ✅ Usar 'criado' (date field) - keeping same as fichas for compatibility
+    // ✅ Usar 'criado' (date field) — compatível e existente na tabela 'leads'
     if (params.dataInicio) {
       console.log('📅 [LeadsRepo] Aplicando filtro dataInicio:', params.dataInicio);
       q = q.gte('criado', params.dataInicio);

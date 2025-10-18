@@ -38,96 +38,103 @@ export async function getScoutersData(): Promise<ScouterData[]> {
 
 export async function getScoutersSummary(): Promise<ScouterSummary> {
   const scoutersData = await getScoutersData();
-  
+
   const totalScouters = scoutersData.length;
-  const activeScouters = scoutersData.filter(s => s.active).length;
+  const activeScouters = scoutersData.filter((s) => s.active).length;
   const totalFichas = scoutersData.reduce((sum, s) => sum + s.total_fichas, 0);
-  const averageConversion = scoutersData.length > 0 
-    ? scoutersData.reduce((sum, s) => sum + s.conversion_rate, 0) / scoutersData.length 
-    : 0;
-  
+  const averageConversion =
+    scoutersData.length > 0
+      ? scoutersData.reduce((sum, s) => sum + s.conversion_rate, 0) / scoutersData.length
+      : 0;
+
   return {
     totalScouters,
     activeScouters,
     totalFichas,
-    averageConversion
+    averageConversion,
   };
+}
+
+// Normaliza valores "positivos" para booleano
+function isAffirmative(v: any): boolean {
+  if (v === true || v === 1) return true;
+  const s = String(v ?? '').trim().toLowerCase();
+  return s === 'sim' || s === '1' || s === 'true' || s === 'yes' || s === 'confirmado';
 }
 
 async function fetchScoutersFromSupabase(): Promise<ScouterDataResult> {
   try {
-    // Buscar scouter_profiles e fichas do Supabase
+    // Buscar perfis ativos
     const { data: profiles, error: profilesError } = await supabase
       .from('scouter_profiles')
       .select('*')
       .eq('ativo', true);
-    
+
     if (profilesError) throw profilesError;
 
-    const { data: fichas, error: fichasError } = await supabase
+    // Buscar leads (fonte única)
+    const { data: leads, error: leadsError } = await supabase
       .from('leads')
       .select('*')
       .or('deleted.is.false,deleted.is.null');
-    
-    if (fichasError) throw fichasError;
 
-    // Agrupar fichas por scouter
-    const fichasByScouter = new Map<string, FichaDataPoint[]>();
-    
-    for (const ficha of (fichas || [])) {
-      const scouterName = ficha.scouter?.trim();
+    if (leadsError) throw leadsError;
+
+    // Agrupar leads por scouter
+    const leadsByScouter = new Map<string, FichaDataPoint[]>();
+    for (const lead of leads || []) {
+      const scouterName = lead.scouter?.toString().trim();
       if (scouterName) {
-        if (!fichasByScouter.has(scouterName)) {
-          fichasByScouter.set(scouterName, []);
-        }
-        fichasByScouter.get(scouterName)!.push(ficha as FichaDataPoint);
+        if (!leadsByScouter.has(scouterName)) leadsByScouter.set(scouterName, []);
+        leadsByScouter.get(scouterName)!.push(lead as FichaDataPoint);
       }
     }
 
     // Converter profiles em ScouterData
     const scoutersData: ScouterData[] = [];
-    
-    for (const profile of (profiles || [])) {
-      const scouterFichas = fichasByScouter.get(profile.nome) || [];
-      const totalFichas = scouterFichas.length;
-      const convertedFichas = scouterFichas.filter(f => 
-        f.confirmado === 'Sim' || f.compareceu === 'Sim'
+    for (const profile of profiles || []) {
+      const scouterLeads = leadsByScouter.get(String(profile.nome)) || [];
+      const totalFichas = scouterLeads.length;
+
+      const convertedFichas = scouterLeads.filter(
+        (f) => isAffirmative(f.confirmado) || isAffirmative(f.compareceu)
       ).length;
+
       const conversionRate = totalFichas > 0 ? (convertedFichas / totalFichas) * 100 : 0;
-      
-      // Calcular tier baseado em performance
+
+      // Tier e meta semanal
       const tierName = getTierFromFichas(totalFichas);
       const weeklyGoal = getWeeklyGoalFromTier(tierName);
-      
+
       scoutersData.push({
-        id: profile.id.toString(),
-        scouter_name: profile.nome,
+        id: String(profile.id),
+        scouter_name: String(profile.nome),
         tier_name: tierName,
         weekly_goal: weeklyGoal,
-        fichas_value: totalFichas,
+        fichas_value: totalFichas, // pode ser substituído por valor somado, se necessário
         total_fichas: totalFichas,
         converted_fichas: convertedFichas,
         conversion_rate: conversionRate,
         taxaConversao: conversionRate,
-        qualityScore: calculateQualityScore(scouterFichas),
+        qualityScore: calculateQualityScore(scouterLeads),
         performance_status: getPerformanceStatus(conversionRate),
         status: profile.ativo ? 'ativo' : 'inativo',
-        active: profile.ativo
+        active: !!profile.ativo,
       });
     }
 
-    // Detectar campos ausentes
+    // Detectar campos ausentes em scouter_profiles
     const missingFields = detectMissingFields(profiles || [], 'scouter_profiles');
 
     return {
       data: scoutersData,
-      missingFields
+      missingFields,
     };
   } catch (error) {
     console.error('Error fetching scouters from Supabase:', error);
     return {
       data: [],
-      missingFields: []
+      missingFields: [],
     };
   }
 }
@@ -154,25 +161,29 @@ function getPerformanceStatus(conversionRate: number): string {
 }
 
 function calculateQualityScore(fichas: FichaDataPoint[]): number {
-  if (fichas.length === 0) return 0;
-  
+  if (!fichas || fichas.length === 0) return 0;
+
   let score = 0;
   const weights = {
     hasPhoto: 10,
     hasEmail: 5,
     hasPhone: 5,
     confirmed: 20,
-    attended: 30
+    attended: 30,
   };
-  
+
   for (const ficha of fichas) {
-    if (ficha.foto || ficha.cadastro_existe_foto === 'Sim') score += weights.hasPhoto;
+    if (ficha.foto || String(ficha.cadastro_existe_foto ?? '').trim().toLowerCase() === 'sim') {
+      score += weights.hasPhoto;
+    }
     if (ficha.email) score += weights.hasEmail;
     if (ficha.telefone) score += weights.hasPhone;
-    if (ficha.confirmado === 'Sim') score += weights.confirmed;
-    if (ficha.compareceu === 'Sim') score += weights.attended;
+    if (isAffirmative(ficha.confirmado)) score += weights.confirmed;
+    if (isAffirmative(ficha.compareceu)) score += weights.attended;
   }
-  
-  const maxScore = fichas.length * (weights.hasPhoto + weights.hasEmail + weights.hasPhone + weights.confirmed + weights.attended);
+
+  const maxScore =
+    fichas.length *
+    (weights.hasPhoto + weights.hasEmail + weights.hasPhone + weights.confirmed + weights.attended);
   return maxScore > 0 ? (score / maxScore) * 100 : 0;
 }

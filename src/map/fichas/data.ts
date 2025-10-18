@@ -1,10 +1,10 @@
 /**
- * Fichas Data Module
- * Handles loading and parsing of fichas data
+ * Leads Data Module
+ * Handles loading and parsing of leads data
  * 
- * ⚠️ FONTE ÚNICA: Tabela 'fichas' do Supabase
- * Este módulo busca dados exclusivamente da tabela 'fichas'.
- * Não usar Google Sheets, 'leads' ou outras fontes.
+ * ⚠️ FONTE ÚNICA: Tabela 'leads' do Supabase
+ * Este módulo busca dados exclusivamente da tabela 'leads'.
+ * A tabela 'fichas' foi deprecated.
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -19,14 +19,14 @@ export interface FichasDataResult {
 }
 
 /**
- * Load fichas data from Supabase table 'fichas'
- * Returns array of fichas with lat/lng coordinates
+ * Load leads data from Supabase table 'leads'
+ * Returns array of leads with lat/lng coordinates
  * 
- * @returns Promise with fichas data from 'fichas' table
+ * @returns Promise with leads data from 'leads' table
  */
 export async function loadFichasData(): Promise<FichasDataResult> {
   try {
-    console.log('📥 [Fichas Data] Loading fichas from Supabase...');
+    console.log('📥 [Leads Data] Loading leads from Supabase...');
     
     const { data: fichas, error } = await supabase
       .from('leads')
@@ -37,7 +37,7 @@ export async function loadFichasData(): Promise<FichasDataResult> {
     
     if (error) throw error;
     
-    console.log(`✅ [Fichas Data] Loaded ${fichas?.length || 0} fichas with coordinates`);
+    console.log(`✅ [Leads Data] Loaded ${fichas?.length || 0} leads with coordinates`);
     
     return {
       fichas: (fichas || []) as FichaDataPoint[],

@@ -31,6 +31,12 @@ Sistema de gestão e análise de desempenho para scouters com sincronização em
 - Row Level Security (RLS)
 - Database migrations
 
+### Sincronização
+- Sincronização bidirecional com TabuladorMax
+- Queue-based sync com retry exponencial
+- Logging detalhado e monitoramento
+- Prevenção de loops automática
+
 ## 🏗️ Arquitetura
 
 ### 📊 Fonte Única de Dados: Tabela 'leads'
@@ -46,17 +52,66 @@ Para informações completas sobre a arquitetura de dados, consulte:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  GESTÃO SCOUTER (ngestyxtopvfeyenyvgt)                      │
-│  - Aplicação principal                                       │
-│  - Dashboard, analytics, relatórios                          │
+│  - Aplicação principal                                      │
+│  - Dashboard, analytics, relatórios                         │
 │  - Tabela: leads (migrada de fichas) ← FONTE ÚNICA          │
 └─────────────────────────────────────────────────────────────┘
                           ↕ SYNC (5 min)
 ┌─────────────────────────────────────────────────────────────┐
 │  TABULADORMAX (gkvvtfqfggddzotxltxf)                        │
-│  - Fonte de dados original                                   │
-│  - Sistema legado/externo                                    │
-│  - Sincronização bidirecional                                │
+│  - Fonte de dados original                                  │
+│  - Sistema legado/externo                                   │
+│  - Sincronização bidirecional de leads                      │
 └─────────────────────────────────────────────────────────────┘
+```
+
+## 🔄 Sincronização com TabuladorMax
+
+Este projeto implementa sincronização bidirecional automática com TabuladorMax através de Edge Functions:
+
+### Funcionalidades
+
+- **Sincronização Full**: Importa todos os leads do TabuladorMax
+- **Sincronização Incremental**: 
+  - **Pull**: TabuladorMax → Gestão Scouter (a cada 5 min)
+  - **Push**: Gestão Scouter → TabuladorMax (a cada 5 min)
+- **Queue-based Sync**: Alterações automáticas enfileiradas e processadas
+- **Retry Logic**: Tentativas exponenciais em caso de falha
+- **Logging Detalhado**: Rastreamento completo de todas as operações
+
+### Edge Functions
+
+| Função | Descrição | Trigger |
+|--------|-----------|---------|
+| `test-tabulador-connection` | Testa credenciais e acesso | Manual |
+| `initial-sync-leads` | Sincronização completa (full) | Manual/Agendado |
+| `sync-tabulador?direction=pull` | Sincronização incremental (pull) | Cron (5 min) |
+| `sync-tabulador?direction=push` | Sincronização incremental (push) | Cron (5 min) |
+| `process-sync-queue` | Processa fila de alterações | Cron (1 min) |
+
+### Configuração
+
+Para configurar a sincronização, consulte a documentação completa:
+
+📖 **[Guia de Setup](./docs/SYNC_TabuladorMax_SETUP.md)** - Passo a passo completo  
+🏗️ **[Arquitetura](./docs/SYNC_TabuladorMax_ARCHITECTURE.md)** - Diagramas e detalhes técnicos
+
+**Quick Start:**
+```bash
+# 1. Executar migration
+# Dashboard → SQL Editor → 20251018_sync_leads_tabMax.sql
+
+# 2. Configurar secrets
+# Dashboard → Project Settings → Edge Functions → Secrets
+# Adicionar: TABULADOR_URL, TABULADOR_SERVICE_KEY, etc.
+
+# 3. Testar conexão
+curl -X POST https://your-project.supabase.co/functions/v1/test-tabulador-connection \
+  -H "Authorization: Bearer YOUR_ANON_KEY"
+
+# 4. Executar sync inicial
+curl -X POST https://your-project.supabase.co/functions/v1/initial-sync-leads \
+  -H "Authorization: Bearer YOUR_ANON_KEY"
 ```
 
 ### Estrutura do Projeto
@@ -66,19 +121,19 @@ gestao-scouter/
 ├── src/
 │   ├── components/         # Componentes React
 │   │   ├── dashboard/      # Dashboard e importação
-│   │   ├── map/           # Mapas interativos
-│   │   ├── charts/        # Gráficos
-│   │   └── ui/            # Componentes UI (shadcn)
-│   ├── hooks/             # Custom hooks
-│   ├── pages/             # Páginas principais
-│   ├── repositories/      # Data access layer
-│   ├── services/          # Serviços e utils
-│   └── types/             # TypeScript types
+│   │   ├── map/            # Mapas interativos
+│   │   ├── charts/         # Gráficos
+│   │   └── ui/             # Componentes UI (shadcn)
+│   ├── hooks/              # Custom hooks
+│   ├── pages/              # Páginas principais
+│   ├── repositories/       # Data access layer
+│   ├── services/           # Serviços e utils
+│   └── types/              # TypeScript types
 ├── supabase/
-│   ├── functions/         # Edge Functions
-│   │   └── sync-tabulador/  # Sincronização automática
-│   └── migrations/        # Database migrations
-└── public/                # Assets estáticos
+│   ├── functions/          # Edge Functions
+│   │   └── sync-tabulador/ # Sincronização automática
+│   └── migrations/         # Database migrations
+└── public/                 # Assets estáticos
 ```
 
 ### O que é o IQS?
@@ -209,6 +264,8 @@ ID,Nome,Projeto,Scouter,Data,Telefone,Email,Idade,Valor,LAT,LNG
 
 A sincronização entre a tabela `leads` (TabuladorMax) e a tabela `fichas` (Gestão Scouter) pode ser feita de duas formas:
 
+> Nota: desde 2024-10-18, `fichas` é legado. Utilize estas estratégias apenas para compatibilidade temporária ou migrações. A aplicação utiliza exclusivamente `leads` como fonte única.
+
 ### 📊 Diagnóstico e Monitoramento
 
 **NOVO**: Sistema completo de diagnóstico e monitoramento de sincronização!
@@ -235,9 +292,9 @@ O script de diagnóstico valida:
 - [Análise de Sincronização](./docs/ANALISE_SYNC_TABULADOR.md) - Arquitetura, troubleshooting e queries
 - [Guia de Diagnóstico](./docs/SYNC_DIAGNOSTICS.md) - Como usar o script de diagnóstico
 
-### 1. Sincronização Automática via Triggers (Recomendado)
+### 1. Sincronização Automática via Triggers (Recomendado para legado)
 
-Sincronização **em tempo real** usando triggers SQL no PostgreSQL. Qualquer alteração (INSERT, UPDATE, DELETE) na tabela `leads` é automaticamente propagada para a tabela `fichas`.
+Sincronização em tempo real usando triggers SQL no PostgreSQL. Qualquer alteração (INSERT, UPDATE, DELETE) na tabela `leads` é automaticamente propagada para a tabela `fichas` para compatibilidade com sistemas legados que ainda leem `fichas`.
 
 #### Configuração dos Triggers
 
@@ -295,7 +352,7 @@ Os logs de sincronização podem ser visualizados nos logs do PostgreSQL no Supa
 
 ### 2. Migração Inicial de Dados
 
-Para fazer a **primeira carga** de dados da tabela `leads` para a tabela `fichas`, use o script TypeScript:
+Para fazer a primeira carga de dados da tabela `leads` para a tabela `fichas`, use o script TypeScript:
 
 **Passo 1: Configurar variáveis de ambiente**
 
@@ -579,4 +636,3 @@ DROP VIEW IF EXISTS public.fichas_compat;
 - [CENTRALIZACAO_LEADS_SUMMARY.md](./CENTRALIZACAO_LEADS_SUMMARY.md) - Resumo técnico da migração
 - [LEADS_DATA_SOURCE.md](./LEADS_DATA_SOURCE.md) - Guia de desenvolvimento
 - `scripts/verify-leads-centralization.sh` - Script de verificação
-
