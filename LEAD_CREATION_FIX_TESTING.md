@@ -11,14 +11,16 @@ Previously, creating a new lead would fail with a constraint violation error bec
 
 ## Solution Implemented
 1. **Database Migration**: Created `20251018_fix_fichas_id_auto_generation.sql` which:
-   - Changes the `id` field from `text` to `uuid`
-   - Adds `DEFAULT gen_random_uuid()` for automatic ID generation
-   - Preserves existing data by converting valid UUIDs or generating new ones
+   - Keeps the `id` column as TEXT (compatible with numeric IDs from TabuladorMax)
+   - Adds `DEFAULT gen_random_uuid()::text` for automatic UUID string generation
+   - Preserves existing data (no data migration needed)
 
-2. **Code Changes**:
-   - Updated `leadsRepo.ts` to properly handle UUID IDs
-   - Added required `criado` and `raw` fields to inserts
-   - Updated type definitions to support both string (UUID) and number (legacy) IDs
+2. **Code Changes**: (Minimal - already compatible)
+   - `leadsRepo.ts`: Added `criado` and `raw` fields to inserts
+   - Type definitions: Already support `string | number` for IDs
+   - Normalization: Already handles both string and number IDs
+
+**Key Advantage**: TEXT type accepts both UUID strings (for local creation) and numeric strings (from TabuladorMax sync like "558906").
 
 ## How to Test
 
@@ -76,9 +78,24 @@ WHERE table_schema = 'public'
   AND column_name = 'id';
 
 -- Expected output:
--- column_name | data_type | column_default        | is_nullable
--- id          | uuid      | gen_random_uuid()     | NO
+-- column_name | data_type | column_default              | is_nullable
+-- id          | text      | (gen_random_uuid())::text   | NO
 ```
+
+### Test 4: Verify TabuladorMax Sync Compatibility
+1. Manually insert a record with numeric ID to simulate TabuladorMax sync:
+   ```sql
+   -- Test inserting with numeric string ID (like TabuladorMax)
+   INSERT INTO public.fichas (id, nome, scouter, projeto, raw, deleted)
+   VALUES ('558906', 'Test Sync', 'Sistema', 'TabuladorMax', '{}'::jsonb, false);
+   ```
+2. Verify the insert succeeds without errors
+3. Query to confirm both ID formats coexist:
+   ```sql
+   SELECT id, nome, scouter FROM public.fichas 
+   ORDER BY created_at DESC LIMIT 10;
+   -- Should see both UUID strings and numeric string IDs
+   ```
 
 ### Test 4: Legacy Data Compatibility
 1. If you have existing leads in the database, verify they still work:

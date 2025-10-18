@@ -30,11 +30,15 @@ The `createLead` function in `src/repositories/leadsRepo.ts` correctly didn't se
 Created `supabase/migrations/20251018_fix_fichas_id_auto_generation.sql` which:
 
 - **Enables UUID extension**: `CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`
-- **Creates temporary column**: `id_new UUID DEFAULT gen_random_uuid()`
-- **Migrates existing data**: Converts text IDs to UUIDs when possible, or generates new UUIDs
-- **Replaces old column**: Drops old `id`, renames `id_new` to `id`
-- **Restores constraints**: Re-creates primary key and NOT NULL constraints
-- **Verifies success**: Includes verification checks to confirm the migration
+- **Adds DEFAULT to existing TEXT column**: `ALTER COLUMN id SET DEFAULT gen_random_uuid()::text`
+- **Keeps TEXT data type**: Maintains compatibility with numeric IDs from TabuladorMax (e.g., "558906")
+- **Auto-generates UUID strings**: For new local records (e.g., "550e8400-e29b-41d4-a716-446655440000")
+- **Includes verification checks**: Confirms successful migration
+
+**Key Design Decision**: Uses TEXT with UUID-as-string default instead of native UUID type to support:
+- **Local creation**: Auto-generates UUID strings (e.g., "550e8400-...")
+- **TabuladorMax sync**: Accepts numeric IDs as strings (e.g., "558906")
+- **Import operations**: Accepts any text format ID
 
 ### 2. Application Code Updates
 
@@ -196,8 +200,8 @@ END $$;
 
 ### Prerequisites
 1. Backup the `fichas` table before running migration
-2. Schedule downtime or maintenance window (recommended)
-3. Test migration on staging environment first
+2. No downtime required - migration is non-destructive
+3. Works with existing data (preserves all IDs)
 
 ### Steps
 1. **Apply Migration**
@@ -222,7 +226,7 @@ END $$;
      AND table_name = 'fichas'
      AND column_name = 'id';
    
-   -- Expected: uuid | gen_random_uuid() | NO
+   -- Expected: text | (gen_random_uuid())::text | NO
    ```
 
 3. **Deploy Code Changes**
@@ -237,27 +241,23 @@ END $$;
    - Fill required fields
    - Submit form
    - Verify success message
-   - Check database for new UUID
+   - Check database - new lead should have UUID string ID
+
+5. **Test Sync Operation**
+   - Trigger sync from TabuladorMax
+   - Verify numeric IDs (e.g., "558906") are accepted
+   - Check that upsert operations work correctly
 
 ### Rollback Plan
 
-If issues occur:
+If issues occur (unlikely since this is additive):
 
-1. **Database Rollback**
-   ```sql
-   -- WARNING: This loses UUID IDs
-   ALTER TABLE public.fichas DROP CONSTRAINT IF EXISTS fichas_pkey;
-   ALTER TABLE public.fichas ALTER COLUMN id DROP DEFAULT;
-   ALTER TABLE public.fichas ALTER COLUMN id TYPE text USING id::text;
-   ALTER TABLE public.fichas ADD PRIMARY KEY (id);
-   ```
+```sql
+-- Remove the DEFAULT (reverts to original state)
+ALTER TABLE public.fichas ALTER COLUMN id DROP DEFAULT;
+```
 
-2. **Code Rollback**
-   ```bash
-   git revert <commit-hash>
-   npm run build
-   # Redeploy
-   ```
+No code rollback needed - the application code is already compatible.
 
 ## Monitoring
 
@@ -282,15 +282,20 @@ After deployment, monitor:
 
 ## Important Consideration for Sync/Import
 
-⚠️ **TabuladorMax ID Format**: This solution assumes TabuladorMax uses UUID format for `leads.id`. 
+✅ **TabuladorMax ID Format Confirmed**: TabuladorMax uses numeric IDs (e.g., "558906").
 
-**Two scenarios:**
-1. **New fichas created locally**: Auto-generate UUID via `DEFAULT gen_random_uuid()` ✅
-2. **Fichas from sync/import**: Must provide UUID-format ID explicitly ⚠️
+**Solution Implemented**: TEXT column with UUID string default
+1. **New fichas created locally**: Auto-generate UUID string via `DEFAULT gen_random_uuid()::text` ✅
+2. **Fichas from sync/import**: Accept numeric IDs as strings (e.g., "558906") ✅
 
-**If TabuladorMax uses non-UUID IDs** (numeric, text, etc.), the upsert operations will fail. In this case, see `ALTERNATIVE_ID_SOLUTIONS.md` for alternative approaches that maintain compatibility with both UUID and non-UUID ID formats.
+**How it works:**
+- The `id` column remains TEXT type (not UUID type)
+- Default value generates UUID as string: `gen_random_uuid()::text`
+- When TabuladorMax syncs numeric ID "558906", it's stored as the text "558906"
+- When creating locally without ID, generates UUID string like "550e8400-e29b-41d4-a716-446655440000"
+- Both formats coexist peacefully in the same TEXT column
 
-**Action Required**: Verify TabuladorMax `leads.id` column type before deploying to production.
+**No breaking changes**: The sync functions already convert IDs to strings (`id: String(lead.id)`), so numeric IDs work perfectly.
 
 ## References
 
