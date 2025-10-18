@@ -280,6 +280,18 @@ After deployment, monitor:
 - UUID indexes may be slightly slower than numeric indexes
 - Some external systems may expect numeric IDs (handle in integration layer)
 
+## Important Consideration for Sync/Import
+
+⚠️ **TabuladorMax ID Format**: This solution assumes TabuladorMax uses UUID format for `leads.id`. 
+
+**Two scenarios:**
+1. **New fichas created locally**: Auto-generate UUID via `DEFAULT gen_random_uuid()` ✅
+2. **Fichas from sync/import**: Must provide UUID-format ID explicitly ⚠️
+
+**If TabuladorMax uses non-UUID IDs** (numeric, text, etc.), the upsert operations will fail. In this case, see `ALTERNATIVE_ID_SOLUTIONS.md` for alternative approaches that maintain compatibility with both UUID and non-UUID ID formats.
+
+**Action Required**: Verify TabuladorMax `leads.id` column type before deploying to production.
+
 ## References
 
 - Migration File: `supabase/migrations/20251018_fix_fichas_id_auto_generation.sql`
