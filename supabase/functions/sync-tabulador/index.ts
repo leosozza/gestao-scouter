@@ -33,7 +33,7 @@ function normalizeDate(dateValue: unknown): string | null {
  * Extrai data de atualização com fallback para outros campos
  */
 function getUpdatedAtDate(record: Record<string, unknown>): string {
-  const dateValue = record.updated_at || record.updated || record.modificado || record.criado;
+  const dateValue = (record as any).updated_at || (record as any).updated || (record as any).modificado || (record as any).criado;
   return normalizeDate(dateValue) || new Date().toISOString();
 }
 
@@ -42,24 +42,24 @@ function getUpdatedAtDate(record: Record<string, unknown>): string {
  */
 function mapLocalToTabulador(lead: Record<string, unknown>) {
   return {
-    id: lead.id,
-    nome: lead.nome,
-    telefone: lead.telefone,
-    email: lead.email,
-    idade: lead.idade,
-    projeto: lead.projeto,
-    scouter: lead.scouter,
-    supervisor: lead.supervisor,
-    localizacao: lead.localizacao,
-    latitude: lead.latitude,
-    longitude: lead.longitude,
-    local_da_abordagem: lead.local_da_abordagem,
-    criado: normalizeDate(lead.criado),
-    valor_ficha: lead.valor_ficha,
-    etapa: lead.etapa,
-    ficha_confirmada: lead.ficha_confirmada,
-    foto: lead.foto,
-    updated_at: getUpdatedAtDate(lead)
+    id: (lead as any).id,
+    nome: (lead as any).nome,
+    telefone: (lead as any).telefone,
+    email: (lead as any).email,
+    idade: (lead as any).idade,
+    projeto: (lead as any).projeto,
+    scouter: (lead as any).scouter,
+    supervisor: (lead as any).supervisor,
+    localizacao: (lead as any).localizacao,
+    latitude: (lead as any).latitude,
+    longitude: (lead as any).longitude,
+    local_da_abordagem: (lead as any).local_da_abordagem,
+    criado: normalizeDate((lead as any).criado),
+    valor_ficha: (lead as any).valor_ficha,
+    etapa: (lead as any).etapa,
+    ficha_confirmada: (lead as any).ficha_confirmada,
+    foto: (lead as any).foto,
+    updated_at: getUpdatedAtDate(lead),
   };
 }
 
@@ -68,28 +68,28 @@ function mapLocalToTabulador(lead: Record<string, unknown>) {
  */
 function mapTabuladorToLocal(lead: Record<string, unknown>) {
   return {
-    id: String(lead.id),
-    nome: lead.nome,
-    telefone: lead.telefone,
-    email: lead.email,
-    idade: lead.idade ? String(lead.idade) : null,
-    projeto: lead.projeto,
-    scouter: lead.scouter,
-    supervisor: lead.supervisor,
-    localizacao: lead.localizacao,
-    latitude: lead.latitude,
-    longitude: lead.longitude,
-    local_da_abordagem: lead.local_da_abordagem,
-    criado: normalizeDate(lead.criado),
-    valor_ficha: lead.valor_ficha,
-    etapa: lead.etapa,
-    ficha_confirmada: lead.ficha_confirmada,
-    foto: lead.foto,
+    id: String((lead as any).id),
+    nome: (lead as any).nome,
+    telefone: (lead as any).telefone,
+    email: (lead as any).email,
+    idade: (lead as any).idade ? String((lead as any).idade) : null,
+    projeto: (lead as any).projeto,
+    scouter: (lead as any).scouter,
+    supervisor: (lead as any).supervisor,
+    localizacao: (lead as any).localizacao,
+    latitude: (lead as any).latitude,
+    longitude: (lead as any).longitude,
+    local_da_abordagem: (lead as any).local_da_abordagem,
+    criado: normalizeDate((lead as any).criado),
+    valor_ficha: (lead as any).valor_ficha,
+    etapa: (lead as any).etapa,
+    ficha_confirmada: (lead as any).ficha_confirmada,
+    foto: (lead as any).foto,
     raw: lead,
     updated_at: getUpdatedAtDate(lead),
     deleted: false,
     sync_source: 'TabuladorMax',
-    last_synced_at: new Date().toISOString()
+    last_synced_at: new Date().toISOString(),
   };
 }
 
@@ -138,7 +138,7 @@ serve(async (req) => {
       Deno.env.get('TABULADOR_SERVICE_KEY') ?? '',
       {
         auth: { persistSession: false, autoRefreshToken: false },
-        global: { headers: { 'Prefer': 'return=representation', 'Content-Type': 'application/json' } },
+        global: { headers: { Prefer: 'return=representation', 'Content-Type': 'application/json' } },
       }
     );
 
@@ -211,7 +211,7 @@ serve(async (req) => {
       } else {
         // Filtrar registros que vieram do TabuladorMax recentemente (evitar loop)
         const now = Date.now();
-        const gestaoUpdates = (gestaoUpdatesRaw || []).filter(l => {
+        const gestaoUpdates = (gestaoUpdatesRaw || []).filter((l: any) => {
           if (l.sync_source === ignoreSource && l.last_synced_at) {
             const diff = now - new Date(l.last_synced_at).getTime();
             if (diff < loopWindowMs) return false;
@@ -233,7 +233,7 @@ serve(async (req) => {
             console.log(`✅ [Sync] ${recordsSynced} registros sincronizados (push)`);
             
             // Atualizar sync_source e last_synced_at nos registros locais
-            const idsToUpdate = gestaoUpdates.map(l => l.id);
+            const idsToUpdate = gestaoUpdates.map((l: any) => l.id);
             await gestao
               .from('leads')
               .update({ 

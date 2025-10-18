@@ -16,13 +16,13 @@ export function useFichas(params: UseFichasParams = {}) {
     queryKey: ['leads', params],
     queryFn: async (): Promise<FichaDataPoint[]> => {
       // ⚠️ IMPORTANTE: Sempre usar a tabela 'leads' como fonte única de verdade
-      // A tabela 'fichas' foi deprecated - todas as leads são centralizadas em 'leads'
+      // A tabela 'fichas' foi migrada para 'leads' (LEGADO/DEPRECATED)
       let query = supabase
         .from('leads')
         .select('*')
         .or('deleted.is.false,deleted.is.null');
 
-      // Apply date filters usando apenas 'criado' (coluna que existe)
+      // Apply date filters usando 'criado' (date field)
       if (params.startDate) {
         query = query.gte('criado', params.startDate);
       }
@@ -36,16 +36,18 @@ export function useFichas(params: UseFichasParams = {}) {
         query = query.ilike('scouter', `%${params.scouter}%`);
       }
       if (params.withGeo) {
-        query = query.not('latitude', 'is', null)
-                     .not('longitude', 'is', null);
+        query = query.not('latitude', 'is', null).not('longitude', 'is', null);
       }
 
-      // Execute query - ordenar apenas por 'criado'
+      // Execute query - ordenar por 'criado'
       const { data, error } = await query.order('criado', { ascending: false });
 
-      if (error) throw error;
-      
-      return (data || []).map(row => fichaMapper.normalizeFichaGeo(row));
+      if (error) {
+        console.error('[useFichas] Erro ao buscar leads:', error);
+        throw error;
+      }
+
+      return (data || []).map((row) => fichaMapper.normalizeFichaGeo(row));
     },
     staleTime: 30000,
   });

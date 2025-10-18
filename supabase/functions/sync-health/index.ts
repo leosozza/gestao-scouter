@@ -126,7 +126,7 @@ serve(async (req: Request) => {
       const gestaoClient = createClient(gestaoUrl, gestaoKey);
       
       const { data, error, count } = await gestaoClient
-        .from('fichas')
+        .from('leads')
         .select('id', { count: 'exact' })
         .or('deleted.is.false,deleted.is.null')
         .limit(1);

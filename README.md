@@ -39,26 +39,29 @@ Sistema de gestão e análise de desempenho para scouters com sincronização em
 
 ## 🏗️ Arquitetura
 
-### 📊 Fonte Única de Dados: Tabela 'fichas'
+### 📊 Fonte Única de Dados: Tabela 'leads'
 
-**⚠️ IMPORTANTE**: Esta aplicação utiliza **EXCLUSIVAMENTE** a tabela `fichas` do Supabase como fonte de dados para leads/fichas. 
+**⚠️ IMPORTANTE**: Esta aplicação utiliza **EXCLUSIVAMENTE** a tabela `leads` do Supabase como fonte de dados para leads/fichas. 
 
-Para informações completas sobre a arquitetura de dados, consulte: [LEADS_DATA_SOURCE.md](./LEADS_DATA_SOURCE.md)
+**Migração Concluída**: A tabela 'fichas' foi migrada para 'leads' em 2024-10-18.
+
+Para informações completas sobre a arquitetura de dados, consulte: 
+- [LEADS_DATA_SOURCE.md](./LEADS_DATA_SOURCE.md) - Guia completo
+- [CENTRALIZACAO_LEADS_SUMMARY.md](./CENTRALIZACAO_LEADS_SUMMARY.md) - Resumo da migração
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  GESTÃO SCOUTER (ngestyxtopvfeyenyvgt)                      │
-│  - Aplicação principal                                       │
-│  - Dashboard, analytics, relatórios                          │
-│  - Tabela: fichas (207k+ registros) ← FONTE ÚNICA           │
-│  - Tabela: leads (sincronizada com TabuladorMax)            │
+│  - Aplicação principal                                      │
+│  - Dashboard, analytics, relatórios                         │
+│  - Tabela: leads (migrada de fichas) ← FONTE ÚNICA          │
 └─────────────────────────────────────────────────────────────┘
                           ↕ SYNC (5 min)
 ┌─────────────────────────────────────────────────────────────┐
 │  TABULADORMAX (gkvvtfqfggddzotxltxf)                        │
-│  - Fonte de dados original                                   │
-│  - Sistema legado/externo                                    │
-│  - Sincronização bidirecional de leads                       │
+│  - Fonte de dados original                                  │
+│  - Sistema legado/externo                                   │
+│  - Sincronização bidirecional de leads                      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -118,19 +121,19 @@ gestao-scouter/
 ├── src/
 │   ├── components/         # Componentes React
 │   │   ├── dashboard/      # Dashboard e importação
-│   │   ├── map/           # Mapas interativos
-│   │   ├── charts/        # Gráficos
-│   │   └── ui/            # Componentes UI (shadcn)
-│   ├── hooks/             # Custom hooks
-│   ├── pages/             # Páginas principais
-│   ├── repositories/      # Data access layer
-│   ├── services/          # Serviços e utils
-│   └── types/             # TypeScript types
+│   │   ├── map/            # Mapas interativos
+│   │   ├── charts/         # Gráficos
+│   │   └── ui/             # Componentes UI (shadcn)
+│   ├── hooks/              # Custom hooks
+│   ├── pages/              # Páginas principais
+│   ├── repositories/       # Data access layer
+│   ├── services/           # Serviços e utils
+│   └── types/              # TypeScript types
 ├── supabase/
-│   ├── functions/         # Edge Functions
-│   │   └── sync-tabulador/  # Sincronização automática
-│   └── migrations/        # Database migrations
-└── public/                # Assets estáticos
+│   ├── functions/          # Edge Functions
+│   │   └── sync-tabulador/ # Sincronização automática
+│   └── migrations/         # Database migrations
+└── public/                 # Assets estáticos
 ```
 
 ### O que é o IQS?
@@ -261,6 +264,8 @@ ID,Nome,Projeto,Scouter,Data,Telefone,Email,Idade,Valor,LAT,LNG
 
 A sincronização entre a tabela `leads` (TabuladorMax) e a tabela `fichas` (Gestão Scouter) pode ser feita de duas formas:
 
+> Nota: desde 2024-10-18, `fichas` é legado. Utilize estas estratégias apenas para compatibilidade temporária ou migrações. A aplicação utiliza exclusivamente `leads` como fonte única.
+
 ### 📊 Diagnóstico e Monitoramento
 
 **NOVO**: Sistema completo de diagnóstico e monitoramento de sincronização!
@@ -287,9 +292,9 @@ O script de diagnóstico valida:
 - [Análise de Sincronização](./docs/ANALISE_SYNC_TABULADOR.md) - Arquitetura, troubleshooting e queries
 - [Guia de Diagnóstico](./docs/SYNC_DIAGNOSTICS.md) - Como usar o script de diagnóstico
 
-### 1. Sincronização Automática via Triggers (Recomendado)
+### 1. Sincronização Automática via Triggers (Recomendado para legado)
 
-Sincronização **em tempo real** usando triggers SQL no PostgreSQL. Qualquer alteração (INSERT, UPDATE, DELETE) na tabela `leads` é automaticamente propagada para a tabela `fichas`.
+Sincronização em tempo real usando triggers SQL no PostgreSQL. Qualquer alteração (INSERT, UPDATE, DELETE) na tabela `leads` é automaticamente propagada para a tabela `fichas` para compatibilidade com sistemas legados que ainda leem `fichas`.
 
 #### Configuração dos Triggers
 
@@ -347,7 +352,7 @@ Os logs de sincronização podem ser visualizados nos logs do PostgreSQL no Supa
 
 ### 2. Migração Inicial de Dados
 
-Para fazer a **primeira carga** de dados da tabela `leads` para a tabela `fichas`, use o script TypeScript:
+Para fazer a primeira carga de dados da tabela `leads` para a tabela `fichas`, use o script TypeScript:
 
 **Passo 1: Configurar variáveis de ambiente**
 
@@ -569,3 +574,65 @@ Este projeto está sob licença MIT. Veja o arquivo [LICENSE](LICENSE) para deta
 ---
 
 **Desenvolvido com ❤️ para otimização de processos de scouting**
+
+## 📦 Migração Fichas → Leads (2024-10-18)
+
+### 🎯 Resumo da Migração
+
+Em 2024-10-18, a aplicação migrou de usar a tabela `fichas` para a tabela `leads` como fonte única de verdade. Esta migração:
+
+- ✅ Criou nova tabela `leads` com schema completo (70+ colunas)
+- ✅ Migrou todos os dados de `fichas` para `leads`
+- ✅ Atualizou 25+ arquivos TypeScript
+- ✅ Atualizou todas as Edge Functions
+- ✅ Manteve compatibilidade com APIs existentes
+- ✅ Criou view `fichas_compat` para rollback
+
+### 📋 Como Aplicar a Migração
+
+**1. Execute a migration SQL no Supabase:**
+
+```bash
+# No Supabase SQL Editor, execute:
+supabase/migrations/20251018_migrate_fichas_to_leads.sql
+```
+
+**2. Verifique a migração:**
+
+```bash
+# Execute o script de verificação
+npm run verify:leads
+```
+
+**3. Monitore os logs:**
+
+Após deploy, verifique:
+- Queries funcionando corretamente
+- Dados migrados com integridade
+- Sincronização operacional
+
+### ⚠️ Rollback (Se Necessário)
+
+Se precisar reverter temporariamente:
+
+1. A view `fichas_compat` mapeia `leads` → `fichas`
+2. A tabela `fichas` ainda existe (não foi dropada)
+3. Reverta o código para commit anterior
+
+### 🧹 Cleanup (Após 2 Semanas)
+
+Após validação completa:
+
+```sql
+-- Dropar tabela antiga
+DROP TABLE IF EXISTS public.fichas CASCADE;
+
+-- Dropar view de compatibilidade
+DROP VIEW IF EXISTS public.fichas_compat;
+```
+
+### 📚 Documentação Completa
+
+- [CENTRALIZACAO_LEADS_SUMMARY.md](./CENTRALIZACAO_LEADS_SUMMARY.md) - Resumo técnico da migração
+- [LEADS_DATA_SOURCE.md](./LEADS_DATA_SOURCE.md) - Guia de desenvolvimento
+- `scripts/verify-leads-centralization.sh` - Script de verificação

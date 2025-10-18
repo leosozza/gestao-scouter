@@ -13,7 +13,8 @@
     "verify:fichas": "bash scripts/verify-fichas-centralization.sh",
     "diagnostics:sync": "tsx scripts/syncDiagnostics.ts --dry-run",
     "diagnostics:sync:write": "tsx scripts/syncDiagnostics.ts --write-check",
-    "deploy:sync": "bash scripts/deploy-sync-functions.sh"
+    "deploy:sync": "bash scripts/deploy-sync-functions.sh",
+    "verify:leads": "bash scripts/verify-leads-centralization.sh"
   },
   "dependencies": {
     "@geoman-io/leaflet-geoman-free": "^2.18.3",

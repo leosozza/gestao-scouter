@@ -19,7 +19,7 @@ interface QueueItem {
   row_id?: string;
   ficha_id?: number;
   operation: string;
-  payload: Record<string, unknown>;
+  payload: Record<string, any>;
   retry_count: number;
   status: string;
 }
@@ -118,22 +118,23 @@ serve(async (req) => {
     // Processar cada item
     for (const item of queueItems as QueueItem[]) {
       try {
-        const tableName = item.table_name || 'fichas';
+        // Default agora é 'leads' (fonte única). Mantém compatibilidade com 'fichas'
+        const tableName = item.table_name || 'leads';
         const recordId = item.row_id || item.ficha_id || item.payload?.id;
         
         console.log(`🔄 Processando item ${item.id} - tabela: ${tableName}, id: ${recordId}`);
 
-        // Marcar como processando
+        // Marcar como processando (best-effort)
         await gestao
           .from('sync_queue')
           .update({ status: 'processing' })
           .eq('id', item.id);
 
-        // Preparar dados para sincronizar baseado na tabela
+        // Preparar dados para sincronizar baseado na tabela (inclui campos extras quando presentes)
         let dataToSync: Record<string, unknown>;
         
         if (tableName === 'leads') {
-          // Mapear lead
+          // Mapear lead (fonte única)
           dataToSync = {
             id: item.payload.id,
             nome: item.payload.nome,
@@ -152,10 +153,15 @@ serve(async (req) => {
             etapa: item.payload.etapa,
             ficha_confirmada: item.payload.ficha_confirmada,
             foto: item.payload.foto,
+            modelo: item.payload.modelo,
+            tabulacao: item.payload.tabulacao,
+            agendado: item.payload.agendado,
+            compareceu: item.payload.compareceu,
+            confirmado: item.payload.confirmado,
             updated_at: getUpdatedAtDate(item.payload)
           };
         } else {
-          // Mapear ficha (compatibilidade com código existente)
+          // Mapear ficha (compat)
           dataToSync = {
             id: item.payload.id,
             nome: item.payload.nome,
@@ -184,7 +190,7 @@ serve(async (req) => {
         }
 
         // Executar operação no TabuladorMax
-        let syncError;
+        let syncError: any;
         
         if (item.operation === 'delete' || item.operation === 'DELETE') {
           // DELETE operation
@@ -241,8 +247,8 @@ serve(async (req) => {
         console.error(`❌ Erro ao processar item ${item.id}:`, errorMessage);
         errorDetails.push(`Item ${item.id}: ${errorMessage}`);
 
-        // Calcular backoff exponencial para retry
-        const retryCount = item.retry_count + 1;
+        // Calcular backoff exponencial (opcional: se a tabela tiver next_attempt_at)
+        const retryCount = (item.retry_count ?? 0) + 1;
         const shouldRetry = retryCount < maxRetries;
 
         // Marcar como falho ou pendente para retry

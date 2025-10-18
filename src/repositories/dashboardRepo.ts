@@ -27,7 +27,7 @@ export async function getDashboardData(filters: {
     .from('leads')
     .select('*');
 
-  // Aplicar filtros usando apenas 'criado' (coluna que existe)
+  // Aplicar filtros usando 'criado' (coluna de data)
   if (filters.start) {
     query = query.gte('criado', filters.start);
   }
@@ -41,7 +41,7 @@ export async function getDashboardData(filters: {
     query = query.eq('projeto', filters.projeto);
   }
 
-  // Ordenar apenas por 'criado' (coluna que existe)
+  // Ordenar por 'criado' (coluna de data)
   const { data, error } = await query.order('criado', { ascending: false });
 
   if (error) {

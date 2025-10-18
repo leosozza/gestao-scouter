@@ -155,7 +155,7 @@ serve(async (req) => {
 
     // Construir query com filtros
     let query = gestao
-      .from('fichas')
+      .from('leads')
       .select('*')
       .or('deleted.is.false,deleted.is.null');
 

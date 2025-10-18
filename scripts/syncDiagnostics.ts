@@ -278,7 +278,7 @@ async function testReadDestination(client: SupabaseClient): Promise<DiagnosticRe
   
   try {
     const { data, error, count } = await client
-      .from('fichas')
+      .from('leads')
       .select('id, nome, telefone, email, projeto, scouter, created_at, deleted', { count: 'exact' })
       .eq('deleted', false)
       .order('created_at', { ascending: false })
@@ -326,7 +326,7 @@ async function testWriteDestination(client: SupabaseClient): Promise<DiagnosticR
   try {
     // 1. Upsert registro sintético
     const { error: upsertError } = await client
-      .from('fichas')
+      .from('leads')
       .upsert({
         id: testId,
         nome: 'Test Sync Diagnostic',
@@ -347,7 +347,7 @@ async function testWriteDestination(client: SupabaseClient): Promise<DiagnosticR
 
     // 2. Verificar se foi criado
     const { data: verifyData, error: verifyError } = await client
-      .from('fichas')
+      .from('leads')
       .select('id, nome, sync_source')
       .eq('id', testId)
       .single();
@@ -364,7 +364,7 @@ async function testWriteDestination(client: SupabaseClient): Promise<DiagnosticR
 
     // 3. Remover (cleanup)
     const { error: deleteError } = await client
-      .from('fichas')
+      .from('leads')
       .delete()
       .eq('id', testId);
 
