@@ -18,7 +18,7 @@ export interface LeadsFilters {
 }
 
 export interface Ficha {
-  id?: number;
+  id?: string | number; // UUID string (new) or number (legacy compatibility)
   ID?: string | number | boolean | Date;
   projetos?: string;
   Projetos?: string;
