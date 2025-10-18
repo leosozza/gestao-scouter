@@ -1,6 +1,11 @@
 /**
- * Edge Function: Sincronização bidirecional entre Gestão Scouter e TabuladorMax
- * Executa a cada 5 minutos via cron job
+ * Edge Function: Sincronização incremental entre Gestão Scouter e TabuladorMax
+ * 
+ * Suporta sincronização incremental pull (TabuladorMax -> Gestão) ou 
+ * push (Gestão -> TabuladorMax) baseada em updated_at desde o último checkpoint.
+ * 
+ * Query params:
+ * - direction: 'pull' ou 'push' (padrão: 'pull')
  */
 import { serve } from "https://deno.land/std@0.193.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -33,35 +38,35 @@ function getUpdatedAtDate(record: any): string {
 }
 
 /**
- * Mapeia uma ficha (Gestão Scouter) para um lead (TabuladorMax)
+ * Mapeia um lead (Gestão Scouter) para lead (TabuladorMax)
  */
-function mapFichaToLead(ficha: any) {
+function mapLocalToTabulador(lead: any) {
   return {
-    id: ficha.id,
-    nome: ficha.nome,
-    telefone: ficha.telefone,
-    email: ficha.email,
-    idade: ficha.idade,
-    projeto: ficha.projeto,
-    scouter: ficha.scouter,
-    supervisor: ficha.supervisor,
-    localizacao: ficha.localizacao,
-    latitude: ficha.latitude,
-    longitude: ficha.longitude,
-    local_da_abordagem: ficha.local_da_abordagem,
-    criado: normalizeDate(ficha.criado),
-    valor_ficha: ficha.valor_ficha,
-    etapa: ficha.etapa,
-    ficha_confirmada: ficha.ficha_confirmada,
-    foto: ficha.foto,
-    updated_at: getUpdatedAtDate(ficha)
+    id: lead.id,
+    nome: lead.nome,
+    telefone: lead.telefone,
+    email: lead.email,
+    idade: lead.idade,
+    projeto: lead.projeto,
+    scouter: lead.scouter,
+    supervisor: lead.supervisor,
+    localizacao: lead.localizacao,
+    latitude: lead.latitude,
+    longitude: lead.longitude,
+    local_da_abordagem: lead.local_da_abordagem,
+    criado: normalizeDate(lead.criado),
+    valor_ficha: lead.valor_ficha,
+    etapa: lead.etapa,
+    ficha_confirmada: lead.ficha_confirmada,
+    foto: lead.foto,
+    updated_at: getUpdatedAtDate(lead)
   };
 }
 
 /**
- * Mapeia um lead (TabuladorMax) para uma ficha (Gestão Scouter)
+ * Mapeia um lead (TabuladorMax) para lead (Gestão Scouter)
  */
-function mapLeadToFicha(lead: any) {
+function mapTabuladorToLocal(lead: any) {
   return {
     id: String(lead.id),
     nome: lead.nome,
@@ -83,15 +88,15 @@ function mapLeadToFicha(lead: any) {
     raw: lead,
     updated_at: getUpdatedAtDate(lead),
     deleted: false,
-    sync_source: lead.sync_source || 'TabuladorMax',
+    sync_source: 'TabuladorMax',
     last_synced_at: new Date().toISOString()
   };
 }
 
 interface SyncResult {
   success: boolean;
-  gestao_to_tabulador: number;
-  tabulador_to_gestao: number;
+  direction: string;
+  records_synced: number;
   conflicts_resolved: number;
   errors: string[];
   processing_time_ms: number;
@@ -106,7 +111,18 @@ serve(async (req) => {
   const errors: string[] = [];
 
   try {
-    console.log('🔄 [Sync] Iniciando sincronização bidirecional...');
+    // Parse query params
+    const url = new URL(req.url);
+    const direction = url.searchParams.get('direction') || 'pull';
+    
+    if (!['pull', 'push'].includes(direction)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid direction. Use "pull" or "push"' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`🔄 [Sync] Iniciando sincronização incremental (${direction})...`);
     console.log('📡 [Sync] Gestão Scouter URL:', Deno.env.get('SUPABASE_URL'));
     console.log('📡 [Sync] TabuladorMax URL:', Deno.env.get('TABULADOR_URL'));
 
@@ -130,7 +146,7 @@ serve(async (req) => {
     const { data: lastSync } = await gestao
       .from('sync_status')
       .select('last_sync_at')
-      .eq('project_name', 'tabulador_max')
+      .eq('id', 'tabulador_max_leads')
       .single();
 
     const lastSyncDate = lastSync?.last_sync_at
@@ -138,125 +154,143 @@ serve(async (req) => {
       : new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
     console.log(`📅 [Sync] Última sincronização: ${lastSyncDate}`);
+    console.log(`📅 [Sync] Direção: ${direction}`);
 
-    // 2. Buscar registros modificados em Gestão Scouter
-    console.log('📥 [Sync] Buscando atualizações de Gestão Scouter...');
-    const loopWindowMs = Number(Deno.env.get('SYNC_LOOP_WINDOW_MS') || '60000');
-    const ignoreSource = Deno.env.get('SYNC_IGNORE_SOURCE') || 'TabuladorMax';
-
-    const { data: gestaoUpdatesRaw, error: gestaoError } = await gestao
-      .from('fichas')
-      .select('*')
-      .gte('updated_at', lastSyncDate)
-      .or('deleted.is.false,deleted.is.null')
-      .order('updated_at', { ascending: true });
-
-    if (gestaoError) {
-      console.error('❌ [Sync] Erro ao buscar de Gestão Scouter:', gestaoError);
-      errors.push(`Erro ao buscar de Gestão Scouter: ${gestaoError.message}`);
-    }
-
-    const now = Date.now();
-    const gestaoUpdates = (gestaoUpdatesRaw || []).filter(f => {
-      if (f.sync_source === ignoreSource && f.last_synced_at) {
-        const diff = now - new Date(f.last_synced_at).getTime();
-        if (diff < loopWindowMs) return false;
-      }
-      return true;
-    });
-
-    // 3. Buscar registros modificados em TabuladorMax
-    console.log('📥 [Sync] Buscando atualizações de TabuladorMax...');
-    const { data: tabuladorUpdates, error: tabuladorError } = await tabulador
-      .from('leads')
-      .select('*')
-      .gte('updated_at', lastSyncDate)
-      .order('updated_at', { ascending: true });
-
-    if (tabuladorError) {
-      console.error('❌ [Sync] Erro ao buscar de TabuladorMax:', tabuladorError);
-      errors.push(`Erro ao buscar de TabuladorMax: ${tabuladorError.message}`);
-    }
-
-    let gestaoToTabuladorCount = 0;
-    let tabuladorToGestaoCount = 0;
+    let recordsSynced = 0;
     let conflictsResolved = 0;
 
-    // 4. Detectar conflitos
-    const gestaoIds = new Set((gestaoUpdates || []).map(f => f.id));
-    const tabuladorIds = new Set((tabuladorUpdates || []).map(f => f.id));
-    const conflictIds = [...gestaoIds].filter(id => tabuladorIds.has(id));
-
-    // 5. Gestão → TabuladorMax
-    const toSyncGestao = (gestaoUpdates || []).filter(f => !conflictIds.includes(f.id));
-    if (toSyncGestao.length > 0) {
-      const leadsToSync = toSyncGestao.map(mapFichaToLead);
-      const { data, error } = await tabulador
+    if (direction === 'pull') {
+      // PULL: TabuladorMax -> Gestão Scouter
+      console.log('📥 [Sync] Buscando atualizações de TabuladorMax...');
+      
+      const { data: tabuladorUpdates, error: tabuladorError } = await tabulador
         .from('leads')
-        .upsert(leadsToSync, { onConflict: 'id' })
-        .select('id');
-      if (!error) gestaoToTabuladorCount = data?.length || 0;
-      else errors.push(`Erro ao sincronizar Gestão → TabuladorMax: ${error.message}`);
-    }
+        .select('*')
+        .gte('updated_at', lastSyncDate)
+        .order('updated_at', { ascending: true });
 
-    // 6. TabuladorMax → Gestão
-    const toSyncTabulador = (tabuladorUpdates || []).filter(f => !conflictIds.includes(f.id));
-    if (toSyncTabulador.length > 0) {
-      const fichasToSync = toSyncTabulador.map(mapLeadToFicha);
-      const { data, error } = await gestao
-        .from('fichas')
-        .upsert(fichasToSync, { onConflict: 'id' })
-        .select('id');
-      if (!error) tabuladorToGestaoCount = data?.length || 0;
-      else errors.push(`Erro ao sincronizar TabuladorMax → Gestão: ${error.message}`);
-    }
-
-    // 7. Resolver conflitos
-    for (const conflictId of conflictIds) {
-      const gestaoRecord = gestaoUpdates?.find(f => f.id === conflictId);
-      const tabuladorRecord = tabuladorUpdates?.find(f => f.id === conflictId);
-      if (!gestaoRecord || !tabuladorRecord) continue;
-
-      const gestaoTime = new Date(gestaoRecord.updated_at).getTime();
-      const tabuladorTime = new Date(tabuladorRecord.updated_at).getTime();
-
-      if (gestaoTime > tabuladorTime) {
-        const leadToSync = mapFichaToLead(gestaoRecord);
-        await tabulador.from('leads').upsert([leadToSync], { onConflict: 'id' });
-        conflictsResolved++;
+      if (tabuladorError) {
+        console.error('❌ [Sync] Erro ao buscar de TabuladorMax:', tabuladorError);
+        errors.push(`Erro ao buscar de TabuladorMax: ${tabuladorError.message}`);
+      } else if (tabuladorUpdates && tabuladorUpdates.length > 0) {
+        console.log(`📦 [Sync] ${tabuladorUpdates.length} registros para sincronizar`);
+        
+        const leadsToSync = tabuladorUpdates.map(mapTabuladorToLocal);
+        const { data, error } = await gestao
+          .from('leads')
+          .upsert(leadsToSync, { onConflict: 'id' })
+          .select('id');
+        
+        if (!error) {
+          recordsSynced = data?.length || 0;
+          console.log(`✅ [Sync] ${recordsSynced} registros sincronizados (pull)`);
+        } else {
+          console.error('❌ [Sync] Erro ao sincronizar:', error);
+          errors.push(`Erro ao sincronizar TabuladorMax → Gestão: ${error.message}`);
+        }
       } else {
-        const fichaToSync = mapLeadToFicha(tabuladorRecord);
-        await gestao.from('fichas').upsert([fichaToSync], { onConflict: 'id' });
-        conflictsResolved++;
+        console.log('ℹ️ [Sync] Nenhum registro novo para sincronizar');
+      }
+    } else {
+      // PUSH: Gestão Scouter -> TabuladorMax
+      console.log('📤 [Sync] Buscando atualizações de Gestão Scouter...');
+      
+      const loopWindowMs = Number(Deno.env.get('SYNC_LOOP_WINDOW_MS') || '60000');
+      const ignoreSource = Deno.env.get('SYNC_IGNORE_SOURCE') || 'TabuladorMax';
+      
+      const { data: gestaoUpdatesRaw, error: gestaoError } = await gestao
+        .from('leads')
+        .select('*')
+        .gte('updated_at', lastSyncDate)
+        .or('deleted.is.false,deleted.is.null')
+        .order('updated_at', { ascending: true });
+
+      if (gestaoError) {
+        console.error('❌ [Sync] Erro ao buscar de Gestão Scouter:', gestaoError);
+        errors.push(`Erro ao buscar de Gestão Scouter: ${gestaoError.message}`);
+      } else {
+        // Filtrar registros que vieram do TabuladorMax recentemente (evitar loop)
+        const now = Date.now();
+        const gestaoUpdates = (gestaoUpdatesRaw || []).filter(l => {
+          if (l.sync_source === ignoreSource && l.last_synced_at) {
+            const diff = now - new Date(l.last_synced_at).getTime();
+            if (diff < loopWindowMs) return false;
+          }
+          return true;
+        });
+
+        if (gestaoUpdates.length > 0) {
+          console.log(`📦 [Sync] ${gestaoUpdates.length} registros para sincronizar`);
+          
+          const leadsToSync = gestaoUpdates.map(mapLocalToTabulador);
+          const { data, error } = await tabulador
+            .from('leads')
+            .upsert(leadsToSync, { onConflict: 'id' })
+            .select('id');
+          
+          if (!error) {
+            recordsSynced = data?.length || 0;
+            console.log(`✅ [Sync] ${recordsSynced} registros sincronizados (push)`);
+            
+            // Atualizar sync_source e last_synced_at nos registros locais
+            const idsToUpdate = gestaoUpdates.map(l => l.id);
+            await gestao
+              .from('leads')
+              .update({ 
+                sync_source: 'Gestao',
+                last_synced_at: new Date().toISOString()
+              })
+              .in('id', idsToUpdate);
+          } else {
+            console.error('❌ [Sync] Erro ao sincronizar:', error);
+            errors.push(`Erro ao sincronizar Gestão → TabuladorMax: ${error.message}`);
+          }
+        } else {
+          console.log('ℹ️ [Sync] Nenhum registro novo para sincronizar');
+        }
       }
     }
 
-    // 8. Atualizar status e logs
+    // Atualizar status e logs
     const timestamp = new Date().toISOString();
     await gestao.from('sync_status').upsert({
-      id: 'tabulador_max',
-      project_name: 'tabulador_max',
+      id: 'tabulador_max_leads',
+      project_name: 'TabuladorMax',
       last_sync_at: timestamp,
       last_sync_success: errors.length === 0,
-      total_records: gestaoToTabuladorCount + tabuladorToGestaoCount,
+      total_records: recordsSynced,
       last_error: errors.length ? errors.join('; ') : null,
       updated_at: timestamp
+    }, { onConflict: 'id' });
+
+    // Log detalhado
+    await gestao.from('sync_logs_detailed').insert({
+      endpoint: 'sync-tabulador',
+      table_name: 'leads',
+      status: errors.length === 0 ? 'success' : 'error',
+      records_count: recordsSynced,
+      execution_time_ms: Date.now() - startTime,
+      response_data: { direction, records_synced: recordsSynced },
+      error_message: errors.length > 0 ? errors.join('; ') : null,
+      metadata: { direction }
     });
 
+    // Log geral
     await gestao.from('sync_logs').insert({
-      sync_direction: 'bidirectional',
-      records_synced: gestaoToTabuladorCount + tabuladorToGestaoCount,
+      sync_direction: direction === 'pull' ? 'tabulador_to_gestao' : 'gestao_to_tabulador',
+      records_synced: recordsSynced,
       records_failed: errors.length,
       errors: errors.length ? { errors } : null,
       started_at: new Date(startTime).toISOString(),
       completed_at: timestamp,
-      processing_time_ms: Date.now() - startTime
+      processing_time_ms: Date.now() - startTime,
+      metadata: { direction }
     });
 
     const result: SyncResult = {
       success: errors.length === 0,
-      gestao_to_tabulador: gestaoToTabuladorCount,
-      tabulador_to_gestao: tabuladorToGestaoCount,
+      direction,
+      records_synced: recordsSynced,
       conflicts_resolved: conflictsResolved,
       errors,
       processing_time_ms: Date.now() - startTime
@@ -273,8 +307,8 @@ serve(async (req) => {
     console.error('Erro na sincronização:', message);
     const result: SyncResult = {
       success: false,
-      gestao_to_tabulador: 0,
-      tabulador_to_gestao: 0,
+      direction: 'unknown',
+      records_synced: 0,
       conflicts_resolved: 0,
       errors: [message],
       processing_time_ms: Date.now() - startTime
