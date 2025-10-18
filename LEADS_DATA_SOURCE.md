@@ -1,23 +1,23 @@
-# Fonte Única de Verdade: Tabela 'fichas'
+# Fonte Única de Verdade: Tabela 'leads'
 
 ## ⚠️ ATENÇÃO DESENVOLVEDORES
 
-Esta aplicação utiliza **EXCLUSIVAMENTE** a tabela `fichas` do Supabase como fonte de dados para leads/fichas.
+Esta aplicação utiliza **EXCLUSIVAMENTE** a tabela `leads` do Supabase como fonte de dados para leads/fichas.
 
 ## 🎯 Fonte Centralizada
 
 ### ✅ USE SEMPRE
 
 **Tabela no Supabase:**
-- `fichas` - Fonte única e centralizada de todos os leads
+- `leads` - Fonte única e centralizada de todos os leads
 
 **Repositories (camada de acesso a dados):**
 - `src/repositories/leadsRepo.ts` - Função `getLeads()`
 - `src/repositories/dashboardRepo.ts` - Função `getDashboardData()`
-- `src/repositories/fichasRepo.ts` - Função `fetchFichasFromDB()`
+- `src/repositories/fichasRepo.ts` - Função `fetchFichasFromDB()` (migrado para usar 'leads')
 
 **Hooks React:**
-- `src/hooks/useFichas.ts` - Hook principal para buscar fichas
+- `src/hooks/useFichas.ts` - Hook principal para buscar fichas (migrado para usar 'leads')
 - `src/hooks/useLeadsFilters.ts` - Filtros de leads
 
 **Services:**
@@ -26,7 +26,7 @@ Esta aplicação utiliza **EXCLUSIVAMENTE** a tabela `fichas` do Supabase como f
 ### ❌ NÃO USE
 
 **Tabelas legadas/descontinuadas:**
-- ~~`leads`~~ - Tabela legacy, não usar
+- ~~`fichas`~~ - Tabela migrada para 'leads'
 - ~~`bitrix_leads`~~ - Apenas para referência histórica, não usar como fonte
 
 **Serviços descontinuados:**
@@ -36,12 +36,12 @@ Esta aplicação utiliza **EXCLUSIVAMENTE** a tabela `fichas` do Supabase como f
 ## 📋 Fluxo de Dados
 
 ```
-Google Sheets → Edge Function → Tabela 'fichas' → Repository → Hook → Componente
+Google Sheets → Edge Function → Tabela 'leads' → Repository → Hook → Componente
 ```
 
-1. **Origem**: Google Sheets (planilha de controle)
-2. **Sincronização**: Edge Functions do Supabase (sync-fichas)
-3. **Armazenamento**: Tabela `fichas` no Supabase
+1. **Origem**: Google Sheets (planilha de controle) ou TabuladorMax
+2. **Sincronização**: Edge Functions do Supabase (sync functions)
+3. **Armazenamento**: Tabela `leads` no Supabase
 4. **Acesso**: Repositories centralizados
 5. **Consumo**: Hooks e componentes React
 
@@ -90,19 +90,52 @@ const { data, missingFields } = await getDashboardData({
 });
 ```
 
-## 📊 Estrutura da Tabela 'fichas'
+## 📊 Estrutura da Tabela 'leads'
 
 ```sql
-CREATE TABLE public.fichas (
-  id text PRIMARY KEY,              -- ID único da ficha
-  raw jsonb NOT NULL,               -- Dados brutos (backup)
-  scouter text,                     -- Nome do scouter
-  projeto text,                     -- Nome do projeto
-  criado date,                      -- Data de criação
-  valor_ficha numeric(12,2),        -- Valor da ficha
-  deleted boolean DEFAULT false,    -- Soft delete
-  updated_at timestamptz,           -- Última atualização
-  created_at timestamptz            -- Data de inserção
+CREATE TABLE public.leads (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  raw JSONB NOT NULL DEFAULT '{}'::jsonb,
+  
+  -- Core fields
+  scouter TEXT,
+  projeto TEXT,
+  criado DATE,
+  valor_ficha NUMERIC(12,2),
+  deleted BOOLEAN DEFAULT false,
+  
+  -- Contact information
+  nome TEXT,
+  telefone TEXT,
+  email TEXT,
+  celular TEXT,
+  
+  -- Geolocation
+  latitude NUMERIC(10,8),
+  longitude NUMERIC(11,8),
+  localizacao TEXT,
+  
+  -- Lead details
+  modelo TEXT,
+  etapa TEXT,
+  idade INTEGER,
+  foto TEXT,
+  
+  -- Confirmation and validation
+  ficha_confirmada BOOLEAN DEFAULT false,
+  cadastro_existe_foto BOOLEAN DEFAULT false,
+  presenca_confirmada BOOLEAN DEFAULT false,
+  compareceu BOOLEAN DEFAULT false,
+  aprovado BOOLEAN,
+  
+  -- Scheduling
+  data_agendamento DATE,
+  
+  -- Timestamps
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+  
+  -- ... and 40+ more fields for complete lead management
 );
 ```
 
@@ -115,9 +148,9 @@ CREATE TABLE public.fichas (
 npm run migrate:leads
 ```
 
-**Ou insira diretamente na tabela 'fichas':**
+**Ou insira diretamente na tabela 'leads':**
 ```sql
-INSERT INTO public.fichas (id, raw, scouter, projeto, criado, valor_ficha)
+INSERT INTO public.leads (id, raw, scouter, projeto, criado, valor_ficha)
 VALUES (
   'TEST-001',
   '{"nome": "João Silva", "telefone": "11999999999"}'::jsonb,
@@ -150,42 +183,46 @@ Ao criar novas features ou popular dados de teste:
 
 Ao trabalhar com dados de leads/fichas:
 
-- [ ] Estou usando a tabela `fichas`?
+- [ ] Estou usando a tabela `leads`?
 - [ ] Estou usando o repository correto (`leadsRepo.ts`)?
-- [ ] Estou evitando tabelas legadas (`leads`, `bitrix_leads`)?
+- [ ] Estou evitando tabelas legadas (`fichas` migrada, `bitrix_leads`)?
 - [ ] Não estou usando `MockDataService` em código de produção?
-- [ ] Minhas queries incluem `.eq('deleted', false)`?
+- [ ] Minhas queries incluem `.eq('deleted', false)` ou `.or('deleted.is.false,deleted.is.null')`?
 - [ ] Estou tratando erros adequadamente?
 
 ## 🐛 Solução de Problemas
 
 ### Problema: "Não encontro dados de leads"
-**Solução:** Certifique-se de usar `getLeads()` de `leadsRepo.ts`
+**Solução:** Certifique-se de usar `getLeads()` de `leadsRepo.ts` que consulta a tabela 'leads'
 
 ### Problema: "Dados desatualizados"
-**Solução:** Verifique se a sincronização com Google Sheets está ativa
+**Solução:** Verifique se a sincronização com TabuladorMax/Google Sheets está ativa
 
 ### Problema: "Erro de CORS ao buscar dados"
-**Solução:** Não tente buscar direto do Google Sheets, use a tabela `fichas`
+**Solução:** Não tente buscar direto do Google Sheets, use a tabela `leads`
 
 ### Problema: "MockDataService em produção"
 **Solução:** Remova imports do MockDataService do código de produção
+
+### Problema: "Referências à tabela fichas"
+**Solução:** A tabela `fichas` foi migrada para `leads`. Atualize todas as referências.
 
 ## 📚 Referências
 
 - **Documentação Principal**: README.md
 - **Copilot Instructions**: .github/copilot-instructions.md
-- **Migration Script**: scripts/syncLeadsToFichas.ts
-- **Schema SQL**: supabase/migrations/20250929_create_fichas.sql
+- **Migration Script**: supabase/migrations/20251018_migrate_fichas_to_leads.sql
+- **Schema SQL**: supabase/migrations/20251018_migrate_fichas_to_leads.sql
 
 ## 🔄 Histórico de Mudanças
 
-- **2024-10-16**: Centralização completa na tabela 'fichas'
-- **2024-09-29**: Criação da tabela 'fichas' como fonte única
+- **2024-10-18**: Migração completa de 'fichas' para 'leads' como fonte única
+- **2024-10-16**: Centralização completa na tabela 'fichas' (agora migrada)
+- **2024-09-29**: Criação da tabela 'fichas' como fonte única (agora obsoleta)
 - **2024-09-16**: Migrations iniciais do Supabase
 - **2024-08-18**: Tabelas legadas (bitrix_leads)
 
 ---
 
-**Última atualização:** 2024-10-16  
+**Última atualização:** 2024-10-18  
 **Mantido por:** Equipe Gestão Scouter
