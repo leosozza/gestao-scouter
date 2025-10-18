@@ -13,12 +13,12 @@ interface UseFichasParams {
 
 export function useFichas(params: UseFichasParams = {}) {
   return useQuery({
-    queryKey: ['fichas', params],
+    queryKey: ['leads', params],
     queryFn: async (): Promise<FichaDataPoint[]> => {
-      // ⚠️ IMPORTANTE: Sempre usar a tabela 'fichas' como fonte única de verdade
-      // Nunca use 'leads' ou 'bitrix_leads' - todas as fichas são centralizadas em 'fichas'
+      // ⚠️ IMPORTANTE: Sempre usar a tabela 'leads' como fonte única de verdade
+      // A tabela 'fichas' foi deprecated - todas as leads são centralizadas em 'leads'
       let query = supabase
-        .from('fichas')
+        .from('leads')
         .select('*')
         .or('deleted.is.false,deleted.is.null');
 

@@ -98,8 +98,8 @@ export async function fetchLinearProjection(p: ProjecaoFiltro): Promise<LinearPr
   const toISO = (d: Date) => toISODate(d)
   const dtTo = toISO(To)
 
-  // Buscar fichas do Supabase
-  let query = supabase.from('fichas').select('*').or('deleted.is.false,deleted.is.null');
+  // Buscar leads do Supabase
+  let query = supabase.from('leads').select('*').or('deleted.is.false,deleted.is.null');
   
   if (p.scouter) query = query.ilike('scouter', `%${p.scouter}%`);
   if (p.projeto) query = query.ilike('projeto', `%${p.projeto}%`);
@@ -213,8 +213,8 @@ export async function fetchProjectionAdvanced(p: ProjecaoFiltroAdvanced): Promis
   const projInicio = new Date(p.dataInicioProj)
   const projFim = new Date(p.dataFimProj)
   
-  // Buscar fichas do Supabase
-  let query = supabase.from('fichas').select('*').or('deleted.is.false,deleted.is.null');
+  // Buscar leads do Supabase
+  let query = supabase.from('leads').select('*').or('deleted.is.false,deleted.is.null');
   
   if (p.scouter) query = query.ilike('scouter', `%${p.scouter}%`);
   if (p.projeto) query = query.ilike('projeto', `%${p.projeto}%`);
@@ -391,8 +391,8 @@ export async function fetchProjectionAdvanced(p: ProjecaoFiltroAdvanced): Promis
 
 export async function getAvailableFilters(): Promise<{ scouters: string[], projetos: string[] }> {
   try {
-    const { data: fichas, error } = await supabase
-      .from('fichas')
+    const { data: leads, error } = await supabase
+      .from('leads')
       .select('scouter, projeto')
       .or('deleted.is.false,deleted.is.null');
     
@@ -401,7 +401,7 @@ export async function getAvailableFilters(): Promise<{ scouters: string[], proje
     const sc = new Set<string>();
     const pr = new Set<string>();
     
-    for (const r of (fichas || [])) {
+    for (const r of (leads || [])) {
       if (r.scouter) sc.add(r.scouter.trim());
       if (r.projeto) pr.add(r.projeto.trim());
     }
@@ -418,12 +418,12 @@ export async function getAvailableFilters(): Promise<{ scouters: string[], proje
 
 async function fetchProjectionsFromSupabase(type: ProjectionType, selectedFilter?: string): Promise<ProjectionData[]> {
   try {
-    // Buscar fichas dos últimos 30 dias para análise histórica
+    // Buscar leads dos últimos 30 dias para análise histórica
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
     let query = supabase
-      .from('fichas')
+      .from('leads')
       .select('*')
       .or(`criado.gte.${thirtyDaysAgo.toISOString().split('T')[0]},created_at.gte.${thirtyDaysAgo.toISOString().split('T')[0]}`);
 

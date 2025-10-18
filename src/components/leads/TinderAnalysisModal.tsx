@@ -55,7 +55,7 @@ export function TinderAnalysisModal({ open, onClose, leads, onComplete }: Tinder
     // Update database
     try {
       const { error } = await supabase
-        .from('fichas')
+        .from('leads')
         .update({ aprovado: isApproved })
         .eq('id', leadToUpdate.id);
 

@@ -24,16 +24,16 @@ export const supabase = createClient<Database>(
 
 // 🔍 Log e smoke test
 console.log('[Supabase] URL atual:', SUPABASE_URL)
-console.log('[Supabase] Client pronto. Testando leitura de "fichas"...')
+console.log('[Supabase] Client pronto. Testando leitura de "leads"...')
 
 async function testarConexaoSupabase() {
   try {
     const { error, count } = await supabase
-      .from('fichas')
+      .from('leads')
       .select('id', { count: 'exact', head: true })
 
     if (error) console.error('[Supabase] Erro de leitura inicial:', error)
-    else console.log(`[Supabase] fichas (count) = ${count}`)
+    else console.log(`[Supabase] leads (count) = ${count}`)
   } catch (err) {
     console.error('[Supabase] Erro inesperado ao testar conexão:', err)
   }
