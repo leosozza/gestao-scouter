@@ -36,22 +36,30 @@ export async function getLeads(params: LeadsFilters = {}): Promise<Lead[]> {
  * @returns Lead criado
  */
 export async function createLead(lead: Partial<Lead>): Promise<Lead> {
+  // Preparar dados para inserção
+  const insertData = {
+    projeto: lead.projetos,
+    scouter: lead.scouter,
+    nome: lead.nome,
+    valor_ficha: lead.valor_ficha,
+    etapa: lead.etapa,
+    modelo: lead.modelo,
+    localizacao: lead.localizacao,
+    telefone: lead.telefone,
+    email: lead.email,
+    idade: lead.idade,
+    supervisor: lead.supervisor_do_scouter,
+    deleted: false,
+    criado: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
+    raw: {}, // Campo raw obrigatório (será preenchido com os dados completos após inserção)
+  };
+
+  // Preencher o campo raw com os dados fornecidos
+  insertData.raw = { ...lead };
+
   const { data, error } = await supabase
     .from('fichas')
-    .insert([{
-      projeto: lead.projetos,
-      scouter: lead.scouter,
-      nome: lead.nome,
-      valor_ficha: lead.valor_ficha,
-      etapa: lead.etapa,
-      modelo: lead.modelo,
-      localizacao: lead.localizacao,
-      telefone: lead.telefone,
-      email: lead.email,
-      idade: lead.idade,
-      supervisor: lead.supervisor_do_scouter,
-      deleted: false,
-    }])
+    .insert([insertData])
     .select()
     .single();
 
@@ -65,9 +73,9 @@ export async function createLead(lead: Partial<Lead>): Promise<Lead> {
 
 /**
  * Deleta leads (soft delete) marcando como deleted = true
- * @param leadIds - IDs dos leads a serem deletados
+ * @param leadIds - IDs dos leads a serem deletados (UUID strings or numbers)
  */
-export async function deleteLeads(leadIds: number[]): Promise<void> {
+export async function deleteLeads(leadIds: (string | number)[]): Promise<void> {
   const { error } = await supabase
     .from('fichas')
     .update({ deleted: true })
@@ -232,8 +240,16 @@ function normalizeBooleanIndicator(value: any): string {
  * Normaliza ficha do Supabase para formato Lead
  */
 function normalizeFichaFromSupabase(r: any): Lead {
+  // Handle both UUID (string) and legacy number IDs
+  let normalizedId: string | number;
+  if (typeof r.id === 'string') {
+    normalizedId = r.id; // UUID string
+  } else {
+    normalizedId = Number(r.id) || 0; // Legacy number ID
+  }
+
   return {
-    id: Number(r.id) || 0,
+    id: normalizedId,
     projetos: String(r.projeto || 'Sem Projeto'),
     scouter: String(r.scouter || 'Desconhecido'),
     criado: r.criado,
