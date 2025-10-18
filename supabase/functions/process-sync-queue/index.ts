@@ -2,7 +2,8 @@
  * Edge Function: Processar fila de sincronização
  * Executa periodicamente (ex: a cada 1 minuto) via cron job
  * 
- * Processa fichas na fila e exporta para TabuladorMax
+ * Processa registros na fila (fichas ou leads) e exporta para TabuladorMax
+ * com retry exponencial e logging detalhado.
  */
 import { serve } from "https://deno.land/std@0.193.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -14,19 +15,22 @@ const corsHeaders = {
 
 interface QueueItem {
   id: string;
-  ficha_id: number;
+  table_name?: string;
+  row_id?: string;
+  ficha_id?: number;
   operation: string;
-  payload: any;
+  payload: Record<string, unknown>;
   retry_count: number;
+  status: string;
 }
 
 /**
  * Normaliza data para formato ISO string
  */
-function normalizeDate(dateValue: any): string | null {
+function normalizeDate(dateValue: unknown): string | null {
   if (!dateValue) return null;
   try {
-    const date = new Date(dateValue);
+    const date = new Date(dateValue as string | number);
     if (isNaN(date.getTime())) return null;
     return date.toISOString();
   } catch {
@@ -37,7 +41,7 @@ function normalizeDate(dateValue: any): string | null {
 /**
  * Extrai data de atualização com fallback para outros campos
  */
-function getUpdatedAtDate(record: any): string {
+function getUpdatedAtDate(record: Record<string, unknown>): string {
   // Prioridade: updated_at -> updated -> modificado -> criado -> now
   const dateValue = record.updated_at || record.updated || record.modificado || record.criado;
   return normalizeDate(dateValue) || new Date().toISOString();
@@ -77,11 +81,12 @@ serve(async (req) => {
     const tabulador = createClient(tabuladorUrl, tabuladorKey);
 
     // Buscar itens pendentes da fila (até 100 por vez)
+    const maxRetries = Number(Deno.env.get('SYNC_MAX_RETRIES') || '5');
     const { data: queueItems, error: queueError } = await gestao
       .from('sync_queue')
       .select('*')
       .eq('status', 'pending')
-      .lt('retry_count', 3)
+      .lt('retry_count', maxRetries)
       .order('created_at', { ascending: true })
       .limit(100);
 
@@ -108,60 +113,116 @@ serve(async (req) => {
 
     let succeeded = 0;
     let failed = 0;
+    const errorDetails: string[] = [];
 
     // Processar cada item
     for (const item of queueItems as QueueItem[]) {
       try {
+        const tableName = item.table_name || 'fichas';
+        const recordId = item.row_id || item.ficha_id || item.payload?.id;
+        
+        console.log(`🔄 Processando item ${item.id} - tabela: ${tableName}, id: ${recordId}`);
+
         // Marcar como processando
         await gestao
           .from('sync_queue')
           .update({ status: 'processing' })
           .eq('id', item.id);
 
-        // Mapear ficha para lead
-        const lead = {
-          id: item.payload.id,
-          nome: item.payload.nome,
-          telefone: item.payload.telefone,
-          email: item.payload.email,
-          idade: item.payload.idade,
-          projeto: item.payload.projeto,
-          scouter: item.payload.scouter,
-          supervisor: item.payload.supervisor,
-          localizacao: item.payload.localizacao,
-          latitude: item.payload.latitude,
-          longitude: item.payload.longitude,
-          local_da_abordagem: item.payload.local_da_abordagem,
-          criado: normalizeDate(item.payload.criado),
-          valor_ficha: item.payload.valor_ficha,
-          etapa: item.payload.etapa,
-          ficha_confirmada: item.payload.ficha_confirmada,
-          foto: item.payload.foto,
-          modelo: item.payload.modelo,
-          tabulacao: item.payload.tabulacao,
-          agendado: item.payload.agendado,
-          compareceu: item.payload.compareceu,
-          confirmado: item.payload.confirmado,
-          updated_at: getUpdatedAtDate(item.payload)
-        };
+        // Preparar dados para sincronizar baseado na tabela
+        let dataToSync: Record<string, unknown>;
+        
+        if (tableName === 'leads') {
+          // Mapear lead
+          dataToSync = {
+            id: item.payload.id,
+            nome: item.payload.nome,
+            telefone: item.payload.telefone,
+            email: item.payload.email,
+            idade: item.payload.idade,
+            projeto: item.payload.projeto,
+            scouter: item.payload.scouter,
+            supervisor: item.payload.supervisor,
+            localizacao: item.payload.localizacao,
+            latitude: item.payload.latitude,
+            longitude: item.payload.longitude,
+            local_da_abordagem: item.payload.local_da_abordagem,
+            criado: normalizeDate(item.payload.criado),
+            valor_ficha: item.payload.valor_ficha,
+            etapa: item.payload.etapa,
+            ficha_confirmada: item.payload.ficha_confirmada,
+            foto: item.payload.foto,
+            updated_at: getUpdatedAtDate(item.payload)
+          };
+        } else {
+          // Mapear ficha (compatibilidade com código existente)
+          dataToSync = {
+            id: item.payload.id,
+            nome: item.payload.nome,
+            telefone: item.payload.telefone,
+            email: item.payload.email,
+            idade: item.payload.idade,
+            projeto: item.payload.projeto,
+            scouter: item.payload.scouter,
+            supervisor: item.payload.supervisor,
+            localizacao: item.payload.localizacao,
+            latitude: item.payload.latitude,
+            longitude: item.payload.longitude,
+            local_da_abordagem: item.payload.local_da_abordagem,
+            criado: normalizeDate(item.payload.criado),
+            valor_ficha: item.payload.valor_ficha,
+            etapa: item.payload.etapa,
+            ficha_confirmada: item.payload.ficha_confirmada,
+            foto: item.payload.foto,
+            modelo: item.payload.modelo,
+            tabulacao: item.payload.tabulacao,
+            agendado: item.payload.agendado,
+            compareceu: item.payload.compareceu,
+            confirmado: item.payload.confirmado,
+            updated_at: getUpdatedAtDate(item.payload)
+          };
+        }
 
-        // Fazer upsert no TabuladorMax
-        const { error: syncError } = await tabulador
-          .from('leads')
-          .upsert([lead], { onConflict: 'id' });
+        // Executar operação no TabuladorMax
+        let syncError;
+        
+        if (item.operation === 'delete' || item.operation === 'DELETE') {
+          // DELETE operation
+          const { error } = await tabulador
+            .from('leads')
+            .delete()
+            .eq('id', recordId);
+          syncError = error;
+        } else {
+          // INSERT/UPDATE operation (upsert)
+          const { error } = await tabulador
+            .from('leads')
+            .upsert([dataToSync], { onConflict: 'id' });
+          syncError = error;
+        }
 
         if (syncError) {
           throw syncError;
         }
 
-        // Atualizar ficha com informação de sincronização
-        await gestao
-          .from('fichas')
-          .update({ 
-            last_synced_at: new Date().toISOString(),
-            sync_source: 'Gestao'
-          })
-          .eq('id', item.ficha_id);
+        // Atualizar registro local com informação de sincronização
+        if (tableName === 'leads') {
+          await gestao
+            .from('leads')
+            .update({ 
+              last_synced_at: new Date().toISOString(),
+              sync_source: 'Gestao'
+            })
+            .eq('id', recordId);
+        } else {
+          await gestao
+            .from('fichas')
+            .update({ 
+              last_synced_at: new Date().toISOString(),
+              sync_source: 'Gestao'
+            })
+            .eq('id', recordId);
+        }
 
         // Marcar como completo
         await gestao
@@ -173,17 +234,23 @@ serve(async (req) => {
           .eq('id', item.id);
 
         succeeded++;
+        console.log(`✅ Item ${item.id} processado com sucesso`);
 
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error(`❌ Erro ao processar item ${item.id}:`, errorMessage);
+        errorDetails.push(`Item ${item.id}: ${errorMessage}`);
 
-        // Marcar como falho e incrementar retry
+        // Calcular backoff exponencial para retry
+        const retryCount = item.retry_count + 1;
+        const shouldRetry = retryCount < maxRetries;
+
+        // Marcar como falho ou pendente para retry
         await gestao
           .from('sync_queue')
           .update({ 
-            status: item.retry_count >= 2 ? 'failed' : 'pending',
-            retry_count: item.retry_count + 1,
+            status: shouldRetry ? 'pending' : 'failed',
+            retry_count: retryCount,
             last_error: errorMessage,
             processed_at: new Date().toISOString()
           })
@@ -193,15 +260,36 @@ serve(async (req) => {
       }
     }
 
-    // Registrar log
+    // Registrar logs
     try {
+      // Log detalhado
+      await gestao
+        .from('sync_logs_detailed')
+        .insert({
+          endpoint: 'process-sync-queue',
+          table_name: 'mixed', // pode conter fichas e leads
+          status: failed === 0 ? 'success' : (succeeded > 0 ? 'warning' : 'error'),
+          records_count: succeeded,
+          execution_time_ms: Date.now() - startTime,
+          response_data: { total_items: queueItems.length, succeeded, failed },
+          error_message: errorDetails.length > 0 ? errorDetails.join('; ') : null,
+          metadata: {
+            source: 'sync_queue',
+            total_items: queueItems.length,
+            succeeded,
+            failed,
+            max_retries: maxRetries
+          }
+        });
+
+      // Log geral
       const { error: logError } = await gestao
         .from('sync_logs')
         .insert({
           sync_direction: 'gestao_to_tabulador',
           records_synced: succeeded,
           records_failed: failed,
-          errors: failed > 0 ? { message: `${failed} itens falharam` } : null,
+          errors: failed > 0 ? { message: `${failed} itens falharam`, details: errorDetails } : null,
           started_at: new Date(startTime).toISOString(),
           completed_at: new Date().toISOString(),
           processing_time_ms: Date.now() - startTime,
@@ -217,7 +305,7 @@ serve(async (req) => {
         console.error('Erro ao registrar log de sincronização:', logError);
       }
     } catch (error) {
-      console.error('Erro ao inserir sync_logs:', error);
+      console.error('Erro ao inserir logs:', error);
     }
 
     const result = {

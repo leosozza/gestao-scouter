@@ -1,8 +1,8 @@
 /**
  * Edge Function: Migração Inicial de Leads do TabuladorMax para Gestão Scouter
  * 
- * Busca TODOS os leads do TabuladorMax e faz upsert em lotes na tabela fichas
- * do projeto Gestão Scouter.
+ * Busca TODOS os leads do TabuladorMax e faz upsert em lotes na tabela leads
+ * do projeto Gestão Scouter. Esta é a sincronização FULL (pull).
  */
 import { serve } from "https://deno.land/std@0.193.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -43,8 +43,8 @@ interface Lead {
   [key: string]: unknown;
 }
 
-// Normaliza um lead para o formato de ficha
-function mapLeadToFicha(lead: Lead) {
+// Normaliza um lead do TabuladorMax para o formato local
+function mapLeadToLocal(lead: Lead) {
   let criadoNormalized: string | undefined;
   if (lead.criado) {
     try {
@@ -78,6 +78,8 @@ function mapLeadToFicha(lead: Lead) {
     raw: lead,
     updated_at: lead.updated_at || new Date().toISOString(),
     deleted: false,
+    sync_source: 'TabuladorMax',
+    last_synced_at: new Date().toISOString()
   };
 }
 
@@ -90,10 +92,10 @@ serve(async (req) => {
   const errors: string[] = [];
 
   try {
-    console.log('🚀 Iniciando migração inicial de leads...');
+    console.log('🚀 Iniciando sincronização FULL de leads...');
     console.log('📡 Endpoint:', `${Deno.env.get('TABULADOR_URL')}/rest/v1/leads`);
     console.log('🎯 Tabela origem: leads (TabuladorMax)');
-    console.log('🎯 Tabela destino: fichas (Gestão Scouter)');
+    console.log('🎯 Tabela destino: leads (Gestão Scouter)');
 
     // Cliente Gestão Scouter
     const gestaoUrl = Deno.env.get('SUPABASE_URL') ?? '';
@@ -123,7 +125,7 @@ serve(async (req) => {
 
     // Buscar TODOS os leads do TabuladorMax
     console.log('📥 Buscando todos os leads do TabuladorMax...');
-    let allLeads: Lead[] = [];
+    const allLeads: Lead[] = [];
     let page = 0;
     const pageSize = 1000;
     let hasMore = true;
@@ -180,24 +182,24 @@ serve(async (req) => {
       );
     }
 
-    // Normalizar leads para fichas
+    // Normalizar leads
     console.log('🔄 Normalizando dados...');
-    const fichas = allLeads.map(mapLeadToFicha);
+    const leadsToSync = allLeads.map(mapLeadToLocal);
 
-    // Processar em lotes de 1000
-    const BATCH_SIZE = 1000;
+    // Processar em lotes (usar variável de ambiente ou padrão)
+    const BATCH_SIZE = Number(Deno.env.get('SYNC_BATCH_SIZE') || '500');
     let totalMigrated = 0;
     let totalFailed = 0;
 
-    console.log(`🔄 Processando ${fichas.length} fichas em lotes de ${BATCH_SIZE}...`);
+    console.log(`🔄 Processando ${leadsToSync.length} leads em lotes de ${BATCH_SIZE}...`);
 
-    for (let i = 0; i < fichas.length; i += BATCH_SIZE) {
-      const batch = fichas.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < leadsToSync.length; i += BATCH_SIZE) {
+      const batch = leadsToSync.slice(i, i + BATCH_SIZE);
       const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
       
       try {
         const { data, error } = await gestao
-          .from('fichas')
+          .from('leads')
           .upsert(batch, { 
             onConflict: 'id',
             ignoreDuplicates: false 
@@ -210,7 +212,7 @@ serve(async (req) => {
           totalFailed += batch.length;
         } else {
           totalMigrated += data?.length || 0;
-          console.log(`✅ Lote ${batchNumber}: ${data?.length || 0} registros migrados`);
+          console.log(`✅ Lote ${batchNumber}: ${data?.length || 0} registros sincronizados`);
         }
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Erro desconhecido';
@@ -225,15 +227,30 @@ serve(async (req) => {
     await gestao
       .from('sync_status')
       .upsert({
+        id: 'tabulador_max_leads',
         project_name: 'TabuladorMax',
         last_sync_at: now,
+        last_full_sync_at: now,
         last_sync_success: errors.length === 0,
         total_records: totalMigrated,
         last_error: errors.length > 0 ? errors.join('; ') : null,
         updated_at: now
-      }, { onConflict: 'project_name' });
+      }, { onConflict: 'id' });
 
-    // Registrar log
+    // Registrar log detalhado
+    await gestao
+      .from('sync_logs_detailed')
+      .insert({
+        endpoint: 'initial-sync-leads',
+        table_name: 'leads',
+        status: errors.length === 0 ? 'success' : 'error',
+        records_count: totalMigrated,
+        execution_time_ms: Date.now() - startTime,
+        response_data: { total_leads: allLeads.length, migrated: totalMigrated, failed: totalFailed },
+        error_message: errors.length > 0 ? errors.join('; ') : null
+      });
+
+    // Registrar log geral
     await gestao
       .from('sync_logs')
       .insert({
