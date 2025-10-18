@@ -140,6 +140,16 @@ function WidgetContent({ config, data }: WidgetContentProps) {
   const valueKeys = config.metrics;
   const firstMetric = config.metrics[0];
 
+  // Helper function to transform data for charts
+  const getCategories = () => data.map(d => String(d[dimensionKey] || 'N/A'));
+  
+  const getSeries = (metrics: string[]) => {
+    return metrics.map(metric => ({
+      name: METRIC_LABELS[metric] || metric,
+      data: data.map(d => Number(d[metric]) || 0)
+    }));
+  };
+
   switch (config.chartType) {
     case 'table':
       return <TableView config={config} data={data} />;
@@ -147,60 +157,50 @@ function WidgetContent({ config, data }: WidgetContentProps) {
     case 'bar':
       return (
         <ApexBarChart
-          data={data}
-          categoryKey={dimensionKey}
-          valueKeys={valueKeys}
-          colors={config.theme?.colorScheme}
+          title={config.title}
+          categories={getCategories()}
+          series={getSeries(valueKeys)}
           height={350}
-          showLegend={config.theme?.showLegend}
         />
       );
     
     case 'line':
       return (
         <ApexLineChart
-          data={data}
-          categoryKey={dimensionKey}
-          valueKeys={valueKeys}
-          colors={config.theme?.colorScheme}
+          title={config.title}
+          categories={getCategories()}
+          series={getSeries(valueKeys)}
           height={350}
-          showLegend={config.theme?.showLegend}
         />
       );
     
     case 'area':
       return (
         <ApexAreaChart
-          data={data}
-          categoryKey={dimensionKey}
-          valueKeys={valueKeys}
-          colors={config.theme?.colorScheme}
+          title={config.title}
+          categories={getCategories()}
+          series={getSeries(valueKeys)}
           height={350}
-          showLegend={config.theme?.showLegend}
         />
       );
     
     case 'pie':
       return (
         <ApexPieChart
-          data={data}
-          categoryKey={dimensionKey}
-          valueKey={firstMetric}
-          colors={config.theme?.colorScheme}
+          title={config.title}
+          labels={getCategories()}
+          series={data.map(d => Number(d[firstMetric]) || 0)}
           height={350}
-          showLegend={config.theme?.showLegend}
         />
       );
     
     case 'donut':
       return (
         <ApexDonutChart
-          data={data}
-          categoryKey={dimensionKey}
-          valueKey={firstMetric}
-          colors={config.theme?.colorScheme}
+          title={config.title}
+          labels={getCategories()}
+          series={data.map(d => Number(d[firstMetric]) || 0)}
           height={350}
-          showLegend={config.theme?.showLegend}
         />
       );
     
