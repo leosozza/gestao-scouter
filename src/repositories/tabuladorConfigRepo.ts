@@ -38,7 +38,7 @@ export async function getTabuladorConfig(): Promise<TabuladorMaxConfig | null> {
       // Store in localStorage for quick access
       localStorage.setItem('tabuladormax_config', JSON.stringify(data));
       console.log('✅ [TabuladorConfigRepo] Configuração carregada do Supabase');
-      return data;
+      return data as TabuladorMaxConfig;
     }
 
     return getDefaultConfig();
@@ -55,7 +55,7 @@ export async function saveTabuladorConfig(config: Omit<TabuladorMaxConfig, 'id' 
   try {
     console.log('💾 [TabuladorConfigRepo] Salvando configuração do TabuladorMax...');
     
-    const configWithTimestamp: TabuladorMaxConfig = {
+    const configWithTimestamp: Partial<TabuladorMaxConfig> = {
       ...config,
       updated_at: new Date().toISOString(),
     };
@@ -79,7 +79,7 @@ export async function saveTabuladorConfig(config: Omit<TabuladorMaxConfig, 'id' 
 
         if (error) throw error;
         console.log('✅ [TabuladorConfigRepo] Configuração atualizada no Supabase');
-        return data;
+        return data as TabuladorMaxConfig;
       } else {
         // Insert new
         const { data, error } = await supabase
@@ -90,12 +90,12 @@ export async function saveTabuladorConfig(config: Omit<TabuladorMaxConfig, 'id' 
 
         if (error) throw error;
         console.log('✅ [TabuladorConfigRepo] Configuração criada no Supabase');
-        return data;
+        return data as TabuladorMaxConfig;
       }
     } catch (dbError) {
       // If Supabase save fails, that's OK - we have localStorage
       console.log('ℹ️ [TabuladorConfigRepo] Não foi possível salvar no Supabase, usando apenas localStorage');
-      return configWithTimestamp;
+      return configWithTimestamp as TabuladorMaxConfig;
     }
   } catch (error) {
     console.error('❌ [TabuladorConfigRepo] Exceção ao salvar configuração:', error);
