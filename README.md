@@ -393,6 +393,35 @@ ORDER BY updated_at DESC;
 
 📖 **Documentação completa**: [SYNC_ARCHITECTURE.md](./SYNC_ARCHITECTURE.md)
 
+### 4. Deployment de Sincronização Bidirecional
+
+Para configurar a sincronização bidirecional completa em produção, siga o guia detalhado:
+
+📚 **[DEPLOYMENT_SYNC_BIDIRECTIONAL.md](./DEPLOYMENT_SYNC_BIDIRECTIONAL.md)** - Guia Completo de Deployment
+
+**Deploy Automatizado:**
+```bash
+# Deploy de todas as Edge Functions de sincronização
+npm run deploy:sync
+```
+
+**Verificação do Setup:**
+```bash
+# No Gestão Scouter - Execute no SQL Editor
+# scripts/verify-sync-setup.sql
+
+# No TabuladorMax - Execute no SQL Editor
+# scripts/verify-tabulador-triggers.sql
+```
+
+**Checklist de Deployment:**
+- [ ] Migrations aplicadas no Gestão Scouter
+- [ ] Secrets configurados nas Edge Functions
+- [ ] Edge Functions deployed
+- [ ] Triggers instalados no TabuladorMax
+- [ ] Cron jobs configurados
+- [ ] Testes de sincronização executados
+
 ## 🗺️ Sistema de Mapas
 
 A aplicação usa uma **solução 100% gratuita** e confiável para visualização geográfica:
