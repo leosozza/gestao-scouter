@@ -1,4 +1,20 @@
-# Implementação de Sincronização Automática Leads → Fichas
+# ⚠️ DEPRECATED - Implementação de Sincronização Automática Leads → Fichas (LEGACY)
+
+> **⚠️ ESTE DOCUMENTO ESTÁ DEPRECATED**  
+> **Data de Depreciação:** 2025-10-18  
+> **Arquitetura Antiga:** leads (TabuladorMax) → fichas (Gestão Scouter)  
+> **Arquitetura Atual:** leads (TabuladorMax) ↔ leads (Gestão Scouter)  
+> **Substituído por:** Sincronização bidirecional leads ↔ leads via Edge Functions  
+> **Mantido apenas para referência histórica.**
+
+Para informações atualizadas:
+- **CENTRALIZACAO_LEADS_SUMMARY.md** - Sincronização atual
+- **LEGACY_DOCS_NOTICE.md** - Aviso sobre documentos legados
+- **supabase/migrations/20251018_migrate_fichas_to_leads.sql** - Migração
+
+---
+
+# Implementação de Sincronização Automática Leads → Fichas (HISTORICAL)
 
 ## 📋 Resumo da Implementação
 

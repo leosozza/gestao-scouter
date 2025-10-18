@@ -118,8 +118,8 @@ serve(async (req) => {
     // Processar cada item
     for (const item of queueItems as QueueItem[]) {
       try {
-        // Default agora é 'leads' (fonte única). Mantém compatibilidade com 'fichas'
-        const tableName = item.table_name || 'leads';
+        // Default agora é 'leads' (fonte única). 
+        const tableName = 'leads';
         const recordId = item.row_id || item.ficha_id || item.payload?.id;
         
         console.log(`🔄 Processando item ${item.id} - tabela: ${tableName}, id: ${recordId}`);
@@ -130,64 +130,32 @@ serve(async (req) => {
           .update({ status: 'processing' })
           .eq('id', item.id);
 
-        // Preparar dados para sincronizar baseado na tabela (inclui campos extras quando presentes)
-        let dataToSync: Record<string, unknown>;
-        
-        if (tableName === 'leads') {
-          // Mapear lead (fonte única)
-          dataToSync = {
-            id: item.payload.id,
-            nome: item.payload.nome,
-            telefone: item.payload.telefone,
-            email: item.payload.email,
-            idade: item.payload.idade,
-            projeto: item.payload.projeto,
-            scouter: item.payload.scouter,
-            supervisor: item.payload.supervisor,
-            localizacao: item.payload.localizacao,
-            latitude: item.payload.latitude,
-            longitude: item.payload.longitude,
-            local_da_abordagem: item.payload.local_da_abordagem,
-            criado: normalizeDate(item.payload.criado),
-            valor_ficha: item.payload.valor_ficha,
-            etapa: item.payload.etapa,
-            ficha_confirmada: item.payload.ficha_confirmada,
-            foto: item.payload.foto,
-            modelo: item.payload.modelo,
-            tabulacao: item.payload.tabulacao,
-            agendado: item.payload.agendado,
-            compareceu: item.payload.compareceu,
-            confirmado: item.payload.confirmado,
-            updated_at: getUpdatedAtDate(item.payload)
-          };
-        } else {
-          // Mapear ficha (compat)
-          dataToSync = {
-            id: item.payload.id,
-            nome: item.payload.nome,
-            telefone: item.payload.telefone,
-            email: item.payload.email,
-            idade: item.payload.idade,
-            projeto: item.payload.projeto,
-            scouter: item.payload.scouter,
-            supervisor: item.payload.supervisor,
-            localizacao: item.payload.localizacao,
-            latitude: item.payload.latitude,
-            longitude: item.payload.longitude,
-            local_da_abordagem: item.payload.local_da_abordagem,
-            criado: normalizeDate(item.payload.criado),
-            valor_ficha: item.payload.valor_ficha,
-            etapa: item.payload.etapa,
-            ficha_confirmada: item.payload.ficha_confirmada,
-            foto: item.payload.foto,
-            modelo: item.payload.modelo,
-            tabulacao: item.payload.tabulacao,
-            agendado: item.payload.agendado,
-            compareceu: item.payload.compareceu,
-            confirmado: item.payload.confirmado,
-            updated_at: getUpdatedAtDate(item.payload)
-          };
-        }
+        // Preparar dados para sincronizar (mapear campos do payload)
+        const dataToSync: Record<string, unknown> = {
+          id: item.payload.id,
+          nome: item.payload.nome,
+          telefone: item.payload.telefone,
+          email: item.payload.email,
+          idade: item.payload.idade,
+          projeto: item.payload.projeto,
+          scouter: item.payload.scouter,
+          supervisor: item.payload.supervisor,
+          localizacao: item.payload.localizacao,
+          latitude: item.payload.latitude,
+          longitude: item.payload.longitude,
+          local_da_abordagem: item.payload.local_da_abordagem,
+          criado: normalizeDate(item.payload.criado),
+          valor_ficha: item.payload.valor_ficha,
+          etapa: item.payload.etapa,
+          ficha_confirmada: item.payload.ficha_confirmada,
+          foto: item.payload.foto,
+          modelo: item.payload.modelo,
+          tabulacao: item.payload.tabulacao,
+          agendado: item.payload.agendado,
+          compareceu: item.payload.compareceu,
+          confirmado: item.payload.confirmado,
+          updated_at: getUpdatedAtDate(item.payload)
+        };
 
         // Executar operação no TabuladorMax
         let syncError: any;
@@ -211,24 +179,14 @@ serve(async (req) => {
           throw syncError;
         }
 
-        // Atualizar registro local com informação de sincronização
-        if (tableName === 'leads') {
-          await gestao
-            .from('leads')
-            .update({ 
-              last_synced_at: new Date().toISOString(),
-              sync_source: 'Gestao'
-            })
-            .eq('id', recordId);
-        } else {
-          await gestao
-            .from('fichas')
-            .update({ 
-              last_synced_at: new Date().toISOString(),
-              sync_source: 'Gestao'
-            })
-            .eq('id', recordId);
-        }
+        // Atualizar registro local com informação de sincronização (sempre na tabela leads)
+        await gestao
+          .from('leads')
+          .update({ 
+            last_synced_at: new Date().toISOString(),
+            sync_source: 'Gestao'
+          })
+          .eq('id', recordId);
 
         // Marcar como completo
         await gestao
@@ -273,7 +231,7 @@ serve(async (req) => {
         .from('sync_logs_detailed')
         .insert({
           endpoint: 'process-sync-queue',
-          table_name: 'mixed', // pode conter fichas e leads
+          table_name: 'leads',
           status: failed === 0 ? 'success' : (succeeded > 0 ? 'warning' : 'error'),
           records_count: succeeded,
           execution_time_ms: Date.now() - startTime,

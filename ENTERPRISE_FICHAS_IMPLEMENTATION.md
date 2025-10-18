@@ -1,16 +1,21 @@
-## ⚠️ NOTA: Este documento está obsoleto ou parcialmente obsoleto
+## ⚠️ DEPRECATED - Este documento está obsoleto
 
-**Status**: ⚠️ Este documento contém referências a implementações antigas que dependiam de Google Sheets.
+**Status**: ⚠️ **DEPRECATED** - Este documento contém referências a implementações antigas que dependiam de Google Sheets e da tabela `fichas`.
 
-**Arquitetura Atual**: TabuladorMax → Supabase (tabela 'leads') → Repository → Hook → Componente
+**Data de Depreciação:** 2025-10-18  
+**Substituído por:** Arquitetura atual usando tabela `leads` exclusivamente
+
+**Arquitetura Atual**: TabuladorMax (leads) ↔ Supabase (leads) → Repository → Hook → Componente
 
 Para informações atualizadas, consulte:
-- [LEADS_DATA_SOURCE.md](./LEADS_DATA_SOURCE.md) ou [../LEADS_DATA_SOURCE.md](../LEADS_DATA_SOURCE.md)
-- [README.md](./README.md) ou [../README.md](../README.md)
+- [CENTRALIZACAO_LEADS_SUMMARY.md](./CENTRALIZACAO_LEADS_SUMMARY.md)
+- [LEADS_DATA_SOURCE.md](./LEADS_DATA_SOURCE.md)
+- [LEGACY_DOCS_NOTICE.md](./LEGACY_DOCS_NOTICE.md)
+- [README.md](./README.md)
 
 ---
 
-# Enterprise Fichas Module - Implementation Documentation
+# Enterprise Fichas Module - Implementation Documentation (LEGACY)
 
 ## Overview
 

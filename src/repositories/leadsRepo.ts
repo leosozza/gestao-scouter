@@ -97,7 +97,8 @@ export interface LeadsSummary {
 export async function getLeadsSummary(params: LeadsFilters = {}): Promise<LeadsSummary> {
   const leads = await getLeads(params);
   const totalLeads = leads.length;
-  const convertedLeads = leads.filter(l => l.etapa === 'Convertido' || l.ficha_confirmada === 'Confirmada').length;
+  // ficha_confirmada is normalized to 'Sim' by normalizeBooleanIndicator
+  const convertedLeads = leads.filter(l => l.etapa === 'Convertido' || l.ficha_confirmada === 'Sim').length;
   const totalValue = leads.reduce((s, l) => s + parseFloat(String(l.valor_ficha || '0').replace(',', '.')), 0);
   return {
     totalLeads,
@@ -118,7 +119,8 @@ export async function getLeadsByScouter(params: LeadsFilters = {}): Promise<
     const s = map.get(key)!;
     s.leads++;
     s.value += parseFloat(String(l.valor_ficha || '0').replace(',', '.'));
-    if (l.etapa === 'Convertido' || l.ficha_confirmada === 'Confirmada') s.converted++;
+    // ficha_confirmada is normalized to 'Sim' by normalizeBooleanIndicator
+    if (l.etapa === 'Convertido' || l.ficha_confirmada === 'Sim') s.converted++;
   }
   return [...map].map(([scouter, s]) => ({
     scouter,
@@ -140,7 +142,8 @@ export async function getLeadsByProject(params: LeadsFilters = {}): Promise<
     const s = map.get(key)!;
     s.leads++;
     s.value += parseFloat(String(l.valor_ficha || '0').replace(',', '.'));
-    if (l.etapa === 'Convertido' || l.ficha_confirmada === 'Confirmada') s.converted++;
+    // ficha_confirmada is normalized to 'Sim' by normalizeBooleanIndicator
+    if (l.etapa === 'Convertido' || l.ficha_confirmada === 'Sim') s.converted++;
   }
   return [...map].map(([project, s]) => ({
     project,

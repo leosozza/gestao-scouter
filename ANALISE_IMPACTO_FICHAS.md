@@ -1,4 +1,13 @@
-# Análise de Impacto das Alterações - Fichas em Leads e Dashboard
+# ⚠️ DEPRECATED - Análise de Impacto das Alterações - Fichas em Leads e Dashboard (LEGACY)
+
+> **⚠️ ESTE DOCUMENTO ESTÁ DEPRECATED**  
+> **Data de Depreciação:** 2025-10-18  
+> **Motivo:** A tabela `fichas` foi substituída pela tabela `leads`. Este documento descreve problemas e soluções relacionados à arquitetura antiga.  
+> **Para arquitetura atual:** Veja CENTRALIZACAO_LEADS_SUMMARY.md e LEADS_DATA_SOURCE.md
+
+---
+
+# Análise de Impacto das Alterações - Fichas em Leads e Dashboard (HISTORICAL)
 
 ## 📊 Resumo Executivo
 

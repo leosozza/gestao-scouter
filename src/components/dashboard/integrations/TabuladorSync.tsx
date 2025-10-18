@@ -96,7 +96,7 @@ export function TabuladorSync() {
 
       const endpoint = `${supabase.supabaseUrl}/functions/v1/sync-tabulador`;
       console.log('📡 [TabuladorSync] Endpoint:', endpoint);
-      console.log('🎯 [TabuladorSync] Tabela: leads (TabuladorMax) ↔️ fichas (Gestão)');
+      console.log('🎯 [TabuladorSync] Tabela: leads (TabuladorMax) ↔ leads (Gestão Scouter)');
       
       const { data, error } = await supabase.functions.invoke('sync-tabulador', {
         body: { manual: true }
@@ -110,7 +110,7 @@ export function TabuladorSync() {
         // Log error
         await createSyncLog({
           endpoint,
-          table_name: 'leads ↔️ fichas',
+          table_name: 'leads <-> leads',
           status: 'error',
           error_message: error.message,
           execution_time_ms: executionTime,
@@ -127,7 +127,7 @@ export function TabuladorSync() {
       // Log success
       await createSyncLog({
         endpoint,
-        table_name: 'leads ↔️ fichas',
+        table_name: 'leads <-> leads',
         status: 'success',
         records_count: (data?.gestao_to_tabulador || 0) + (data?.tabulador_to_gestao || 0),
         execution_time_ms: executionTime,
@@ -269,7 +269,7 @@ export function TabuladorSync() {
       const endpoint = `${supabase.supabaseUrl}/functions/v1/initial-sync-leads`;
       console.log('📡 [TabuladorSync] Endpoint:', endpoint);
       console.log('🎯 [TabuladorSync] Tabela origem: leads (TabuladorMax)');
-      console.log('🎯 [TabuladorSync] Tabela destino: fichas (Gestão)');
+      console.log('🎯 [TabuladorSync] Tabela destino: leads (Gestão Scouter)');
       console.log('📥 [TabuladorSync] Buscando TODOS os leads do TabuladorMax...');
       
       const { data, error } = await supabase.functions.invoke('initial-sync-leads', {
@@ -284,7 +284,7 @@ export function TabuladorSync() {
         // Log error
         await createSyncLog({
           endpoint,
-          table_name: 'leads → fichas (migração)',
+          table_name: 'leads → leads (migração)',
           status: 'error',
           error_message: error.message,
           execution_time_ms: executionTime,
@@ -303,7 +303,7 @@ export function TabuladorSync() {
         // Log success
         await createSyncLog({
           endpoint,
-          table_name: 'leads → fichas (migração)',
+          table_name: 'leads → leads (migração)',
           status: 'success',
           records_count: data.migrated,
           execution_time_ms: executionTime,
@@ -318,7 +318,7 @@ export function TabuladorSync() {
         // Log partial success
         await createSyncLog({
           endpoint,
-          table_name: 'leads → fichas (migração)',
+          table_name: 'leads → leads (migração)',
           status: data.failed > 0 ? 'error' : 'success',
           records_count: data.migrated,
           error_message: data.errors?.join('; '),

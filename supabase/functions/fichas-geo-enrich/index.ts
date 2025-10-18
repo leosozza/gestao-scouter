@@ -1,24 +1,26 @@
 /**
- * Edge Function: fichas-geo-enrich
- * Enriquece fichas com geolocalização a partir da coluna "Localização"
+ * Edge Function: leads-geo-enrich (formerly fichas-geo-enrich)
+ * Enriquece leads com geolocalização a partir da coluna "Localização"
  * Auth: header 'X-Secret: SHEETS_SYNC_SHARED_SECRET'
+ * 
+ * ⚠️ ATENÇÃO: Usa EXCLUSIVAMENTE a tabela 'leads' (fonte única de verdade)
  */
 import { serve } from "https://deno.land/std@0.193.0/http/server.ts";
 
 const RE_COORDS = /(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/;
 
-function parseFichaLocalizacaoToLatLng(localizacao?: string | null): { lat: number; lng: number } | null {
+function parseLeadLocalizacaoToLatLng(localizacao?: string | null): { latitude: number; longitude: number } | null {
   if (!localizacao) return null;
   const m = localizacao.match(RE_COORDS);
   if (m) {
-    const lat = parseFloat(m[1]);
-    const lng = parseFloat(m[2]);
-    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+    const latitude = parseFloat(m[1]);
+    const longitude = parseFloat(m[2]);
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) return { latitude, longitude };
   }
   return null;
 }
 
-async function checkGeocache(query: string, supabaseUrl: string, serviceKey: string): Promise<{ lat: number; lng: number } | null> {
+async function checkGeocache(query: string, supabaseUrl: string, serviceKey: string): Promise<{ latitude: number; longitude: number } | null> {
   const res = await fetch(`${supabaseUrl}/rest/v1/geocache?query=eq.${encodeURIComponent(query)}`, {
     headers: {
       "apikey": serviceKey,
@@ -29,12 +31,12 @@ async function checkGeocache(query: string, supabaseUrl: string, serviceKey: str
   if (!res.ok) return null;
   const data = await res.json();
   if (Array.isArray(data) && data.length > 0) {
-    return { lat: data[0].lat, lng: data[0].lng };
+    return { latitude: data[0].lat, longitude: data[0].lng };
   }
   return null;
 }
 
-async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+async function geocodeAddress(address: string): Promise<{ latitude: number; longitude: number } | null> {
   // Usando Nominatim (OpenStreetMap)
   const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
   
@@ -49,10 +51,10 @@ async function geocodeAddress(address: string): Promise<{ lat: number; lng: numb
     const data = await res.json();
     
     if (Array.isArray(data) && data.length > 0) {
-      const lat = parseFloat(data[0].lat);
-      const lng = parseFloat(data[0].lon);
-      if (Number.isFinite(lat) && Number.isFinite(lng)) {
-        return { lat, lng };
+      const latitude = parseFloat(data[0].lat);
+      const longitude = parseFloat(data[0].lon);
+      if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+        return { latitude, longitude };
       }
     }
   } catch (error) {
@@ -62,7 +64,7 @@ async function geocodeAddress(address: string): Promise<{ lat: number; lng: numb
   return null;
 }
 
-async function saveToGeocache(query: string, lat: number, lng: number, supabaseUrl: string, serviceKey: string) {
+async function saveToGeocache(query: string, latitude: number, longitude: number, supabaseUrl: string, serviceKey: string) {
   await fetch(`${supabaseUrl}/rest/v1/geocache`, {
     method: "POST",
     headers: {
@@ -71,31 +73,31 @@ async function saveToGeocache(query: string, lat: number, lng: number, supabaseU
       "apikey": serviceKey,
       "Authorization": `Bearer ${serviceKey}`,
     },
-    body: JSON.stringify({ query, lat, lng }),
+    body: JSON.stringify({ query, lat: latitude, lng: longitude }),
   });
 }
 
-async function updateFichaLocation(id: number, lat: number, lng: number, supabaseUrl: string, serviceKey: string) {
-  const res = await fetch(`${supabaseUrl}/rest/v1/fichas?id=eq.${id}`, {
+async function updateLeadLocation(id: string, latitude: number, longitude: number, supabaseUrl: string, serviceKey: string) {
+  const res = await fetch(`${supabaseUrl}/rest/v1/leads?id=eq.${encodeURIComponent(id)}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
       "apikey": serviceKey,
       "Authorization": `Bearer ${serviceKey}`,
     },
-    body: JSON.stringify({ lat, lng }),
+    body: JSON.stringify({ latitude, longitude }),
   });
 
   return res.ok;
 }
 
-async function enrichFichas(limit: number = 50) {
+async function enrichLeads(limit: number = 50) {
   const SUPABASE_URL = Deno.env.get("NEXT_PUBLIC_SUPABASE_URL")!;
   const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-  // Buscar fichas sem lat/lng mas com localização
+  // Buscar leads sem latitude/longitude mas com localização
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/fichas?lat=is.null&localizacao=not.is.null&limit=${limit}`,
+    `${SUPABASE_URL}/rest/v1/leads?latitude=is.null&localizacao=not.is.null&or=(deleted.is.false,deleted.is.null)&limit=${limit}`,
     {
       headers: {
         "apikey": SERVICE_KEY,
@@ -105,24 +107,24 @@ async function enrichFichas(limit: number = 50) {
   );
 
   if (!res.ok) {
-    throw new Error("Failed to fetch fichas");
+    throw new Error("Failed to fetch leads");
   }
 
-  const fichas = await res.json();
+  const leads = await res.json();
   let processed = 0;
   let geocoded = 0;
   let fromCache = 0;
 
-  for (const ficha of fichas) {
-    const localizacao = ficha.localizacao;
+  for (const lead of leads) {
+    const localizacao = lead.localizacao;
     if (!localizacao) continue;
 
     // Tentar parse direto de coordenadas
-    const coords = parseFichaLocalizacaoToLatLng(localizacao);
+    const coords = parseLeadLocalizacaoToLatLng(localizacao);
     
     if (coords) {
       // É coordenada direta
-      const success = await updateFichaLocation(ficha.id, coords.lat, coords.lng, SUPABASE_URL, SERVICE_KEY);
+      const success = await updateLeadLocation(lead.id, coords.latitude, coords.longitude, SUPABASE_URL, SERVICE_KEY);
       if (success) {
         processed++;
         geocoded++;
@@ -140,7 +142,7 @@ async function enrichFichas(limit: number = 50) {
         
         if (geoCoords) {
           // Salvar no cache
-          await saveToGeocache(localizacao, geoCoords.lat, geoCoords.lng, SUPABASE_URL, SERVICE_KEY);
+          await saveToGeocache(localizacao, geoCoords.latitude, geoCoords.longitude, SUPABASE_URL, SERVICE_KEY);
           geocoded++;
         }
         
@@ -149,13 +151,13 @@ async function enrichFichas(limit: number = 50) {
       }
 
       if (geoCoords) {
-        const success = await updateFichaLocation(ficha.id, geoCoords.lat, geoCoords.lng, SUPABASE_URL, SERVICE_KEY);
+        const success = await updateLeadLocation(lead.id, geoCoords.latitude, geoCoords.longitude, SUPABASE_URL, SERVICE_KEY);
         if (success) processed++;
       }
     }
   }
 
-  return { processed, geocoded, fromCache, total: fichas.length };
+  return { processed, geocoded, fromCache, total: leads.length };
 }
 
 serve(async (req) => {
@@ -168,7 +170,7 @@ serve(async (req) => {
     const url = new URL(req.url);
     const limit = parseInt(url.searchParams.get("limit") || "50");
 
-    const result = await enrichFichas(limit);
+    const result = await enrichLeads(limit);
 
     return new Response(
       JSON.stringify({
@@ -181,7 +183,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Error in fichas-geo-enrich:", error);
+    console.error("Error in leads-geo-enrich:", error);
     return new Response(
       JSON.stringify({
         success: false,

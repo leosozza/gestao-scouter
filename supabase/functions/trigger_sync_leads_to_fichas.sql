@@ -1,14 +1,26 @@
 -- ============================================================================
--- Trigger Function: Sincronização Automática de Leads → Fichas (OPCIONAL)
+-- DEPRECATED: Trigger Function (Legacy)
+-- ============================================================================
+-- ⚠️ ATENÇÃO: Este arquivo está DEPRECATED!
+-- ⚠️ A tabela 'fichas' foi substituída pela tabela 'leads'
+-- ⚠️ A sincronização agora é leads ↔ leads (não leads → fichas)
+-- ⚠️ Não instalar este trigger - mantido apenas para referência histórica
+-- 
+-- ============================================================================
+-- Trigger Function: Sincronização Automática de Leads → Fichas (LEGACY/DEPRECATED)
 -- ============================================================================
 -- ⚠️ ATENÇÃO: Este arquivo deve ser executado MANUALMENTE no projeto TabuladorMax
 -- ⚠️ Não pode ser executado via Lovable pois é um projeto externo
+-- ⚠️ **DEPRECATED**: A sincronização agora é leads ↔ leads, não leads → fichas
 -- 
 -- Este trigger sincroniza em TEMPO REAL a tabela `leads` (TabuladorMax) com
 -- a tabela `fichas` (Gestão Scouter). É OPCIONAL, pois a sincronização
 -- bidirecional automática a cada 5 minutos já está configurada via Edge Function.
 --
--- PASSOS PARA INSTALAÇÃO MANUAL:
+-- **STATUS**: DEPRECATED - Não usar em produção
+-- **SUBSTITUÍDO POR**: Sincronização bidirecional leads ↔ leads via Edge Functions
+--
+-- PASSOS PARA INSTALAÇÃO MANUAL (NÃO RECOMENDADO):
 -- 1. Acessar: https://supabase.com/dashboard/project/gkvvtfqfggddzotxltxf/sql
 -- 2. Copiar e colar TODO este arquivo SQL
 -- 3. Executar

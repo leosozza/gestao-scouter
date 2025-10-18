@@ -1,41 +1,39 @@
-# Checklist de Validação - Centralização da Tabela 'fichas'
+# Checklist de Validação - Centralização da Tabela 'leads'
 
 ## 🎯 Objetivo
 
-Validar que toda a aplicação Gestão Scouter usa exclusivamente a tabela `fichas` do Supabase como fonte de dados, sem dependências de fontes alternativas.
+Validar que toda a aplicação Gestão Scouter usa exclusivamente a tabela `leads` do Supabase como fonte de dados, sem dependências de fontes alternativas.
 
 ## ✅ Checklist de Verificação
 
 ### 1. Verificação de Código
 
 #### Queries e Repositories
-- [ ] `src/hooks/useFichas.ts` usa `.from('fichas')`
-- [ ] `src/repositories/leadsRepo.ts` usa `.from('fichas')`
-- [ ] `src/repositories/dashboardRepo.ts` usa `.from('fichas')`
-- [ ] `src/repositories/fichasRepo.ts` usa `.from('fichas')`
-- [ ] `src/map/fichas/data.ts` usa `.from('fichas')`
-- [ ] Nenhum arquivo de produção usa `.from('leads')`
+- [ ] `src/hooks/useFichasGeo.ts` usa `.from('leads')`
+- [ ] `src/repositories/leadsRepo.ts` usa `.from('leads')`
+- [ ] `src/repositories/dashboardRepo.ts` usa `.from('leads')`
+- [ ] `src/repositories/fichasRepo.ts` usa `.from('leads')` (ou foi removido)
+- [ ] Nenhum arquivo de produção usa `.from('fichas')`
 - [ ] Nenhum arquivo de produção usa `.from('bitrix_leads')`
 
 #### Imports e Dependências
 - [ ] Nenhum import de `MockDataService` em código de produção
 - [ ] Páginas principais (Leads, Dashboard) importam de repositories corretos
-- [ ] Hooks personalizados usam tabela `fichas`
+- [ ] Hooks personalizados usam tabela `leads`
 
 #### Comentários e Alertas
-- [ ] `useFichas.ts` contém alerta sobre fonte única
+- [ ] `useFichasGeo.ts` contém alerta sobre fonte única (leads)
 - [ ] `leadsRepo.ts` contém header com avisos importantes
 - [ ] `mockDataService.ts` marcado como dev-only
-- [ ] `fichasRepo.ts` documentado corretamente
-- [ ] `types.ts` explica relação Lead = Ficha
+- [ ] `types.ts` explica relação Lead
 
 ### 2. Verificação de Documentação
 
 #### Documentos Principais
 - [ ] `LEADS_DATA_SOURCE.md` existe e está completo
-- [ ] `CENTRALIZACAO_FICHAS_SUMMARY.md` existe
-- [ ] `README.md` referencia a fonte única
-- [ ] `src/map/fichas/README.md` atualizado
+- [ ] `CENTRALIZACAO_LEADS_SUMMARY.md` existe
+- [ ] `README.md` referencia a fonte única (leads)
+- [ ] Documentos legados sobre fichas movidos para legacy/ ou atualizados
 
 #### Conteúdo da Documentação
 - [ ] Fluxo de dados explicado claramente
@@ -48,15 +46,14 @@ Validar que toda a aplicação Gestão Scouter usa exclusivamente a tabela `fich
 ### 3. Verificação de Scripts
 
 #### Scripts de Migração
-- [ ] `scripts/syncLeadsToFichas.ts` documentado
-- [ ] `scripts/testMigration.ts` atualizado
-- [ ] `scripts/verify-fichas-centralization.sh` funcional
-- [ ] Script de verificação adicionado ao `package.json`
+- [ ] `scripts/syncLeadsToFichas.ts` deprecated ou removido
+- [ ] `scripts/verify-leads-centralization.sh` funcional
+- [ ] Script de verificação adicionado ao `package.json` como `verify:leads`
 
 #### Migrations SQL
-- [ ] `20250929_create_fichas.sql` com comentários detalhados
-- [ ] Índices criados corretamente
-- [ ] RLS policies configuradas
+- [ ] `20251018_migrate_fichas_to_leads.sql` com comentários detalhados
+- [ ] Índices criados corretamente na tabela leads
+- [ ] RLS policies configuradas para leads
 - [ ] Trigger de updated_at funcionando
 
 ### 4. Verificação de Build
@@ -76,16 +73,17 @@ Validar que toda a aplicação Gestão Scouter usa exclusivamente a tabela `fich
 ### 5. Verificação de Interfaces
 
 #### Páginas Principais
-- [ ] `/leads` - Lista de leads carregando da tabela `fichas`
-- [ ] `/dashboard` - Dashboard usando dados de `fichas`
-- [ ] `/area-de-abordagem` - Mapas usando dados de `fichas`
-- [ ] `/pagamentos` - Pagamentos referenciando `fichas`
+- [ ] `/leads` - Lista de leads carregando da tabela `leads`
+- [ ] `/dashboard` - Dashboard usando dados de `leads`
+- [ ] `/area-de-abordagem` - Mapas usando dados de `leads`
+- [ ] `/pagamentos` - Pagamentos referenciando `leads`
 
 #### Componentes Críticos
-- [ ] `PerformanceDashboard` busca de `fichas`
-- [ ] `LeadsTable` exibe dados de `fichas`
-- [ ] `UnifiedMap` usa dados geográficos de `fichas`
-- [ ] Filtros aplicam queries em `fichas`
+- [ ] `PerformanceDashboard` busca de `leads`
+- [ ] `LeadsTable` exibe dados de `leads`
+- [ ] `UnifiedMap` usa dados geográficos de `leads`
+- [ ] Filtros aplicam queries em `leads`
+- [ ] `useFichasGeo` hook consulta `leads` com latitude/longitude
 
 ### 6. Verificação de Dados
 
@@ -97,15 +95,18 @@ Validar que toda a aplicação Gestão Scouter usa exclusivamente a tabela `fich
 - [ ] Campo `criado` (date, indexed)
 - [ ] Campo `valor_ficha` (numeric)
 - [ ] Campo `deleted` (boolean, default false)
+- [ ] Campo `latitude` (numeric) - para geolocalização
+- [ ] Campo `longitude` (numeric) - para geolocalização
 - [ ] Campo `updated_at` (timestamptz)
 - [ ] Campo `created_at` (timestamptz)
 
 #### Queries Comuns
-- [ ] Busca básica: `SELECT * FROM fichas WHERE deleted = false`
+- [ ] Busca básica: `SELECT * FROM leads WHERE deleted = false`
 - [ ] Filtro por data: `.gte('criado', startDate).lte('criado', endDate)`
 - [ ] Filtro por scouter: `.ilike('scouter', '%nome%')`
 - [ ] Filtro por projeto: `.eq('projeto', 'nome_projeto')`
 - [ ] Ordenação: `.order('criado', { ascending: false })`
+- [ ] Geolocalização: `.not('latitude', 'is', null).not('longitude', 'is', null)`
 
 ### 7. Verificação de Compatibilidade
 
@@ -126,7 +127,7 @@ Validar que toda a aplicação Gestão Scouter usa exclusivamente a tabela `fich
 #### Scripts de Verificação
 ```bash
 # Executar verificação completa
-npm run verify:fichas
+npm run verify:leads
 
 # Build de produção
 npm run build
@@ -136,10 +137,11 @@ npm run build
 ```
 
 #### Resultados Esperados
-- [ ] Script de verificação passa (10/10 checks)
+- [ ] Script de verificação passa (todos os checks)
 - [ ] Build completa em < 30s
 - [ ] Sem erros no console
-- [ ] Todas as queries usando `fichas`
+- [ ] Todas as queries usando `leads`
+- [ ] Nenhuma query usando `fichas` em código de produção
 
 ### 9. Testes Manuais
 
@@ -162,14 +164,16 @@ npm run build
 #### Antes do Deploy
 - [ ] Todas as verificações acima passaram
 - [ ] Documentação revisada e aprovada
-- [ ] Scripts de migração testados
+- [ ] Migração de fichas para leads concluída
 - [ ] Build de produção validada
+- [ ] Edge functions atualizadas para usar leads
 
 #### Pós-Deploy
 - [ ] Aplicação funcionando normalmente
-- [ ] Dados carregando de `fichas`
+- [ ] Dados carregando de `leads`
 - [ ] Performance mantida
 - [ ] Sem erros nos logs
+- [ ] Sincronização TabuladorMax operando corretamente (leads ↔ leads)
 
 ## 🔍 Como Executar a Verificação
 
@@ -182,7 +186,7 @@ git pull origin main
 npm install
 
 # 3. Executar verificação
-npm run verify:fichas
+npm run verify:leads
 
 # 4. Executar build
 npm run build
@@ -200,30 +204,33 @@ npm run dev
 ## 📊 Critérios de Aceitação
 
 ### Mínimo Necessário
-- ✅ 100% das queries de produção usando `fichas`
-- ✅ 0 queries para tabelas legadas (`leads`, `bitrix_leads`)
+- ✅ 100% das queries de produção usando `leads`
+- ✅ 0 queries para tabela `fichas` em código de produção
+- ✅ 0 queries para tabelas legadas (`bitrix_leads`)
 - ✅ 0 imports de `MockDataService` em produção
 - ✅ Build sem erros
-- ✅ Documentação completa
+- ✅ Documentação completa e atualizada
 
 ### Desejável
-- ✅ Script de verificação passando (10/10)
+- ✅ Script de verificação passando (todos os checks)
 - ✅ Todos os comentários de alerta presentes
 - ✅ Todas as páginas testadas manualmente
 - ✅ Performance mantida ou melhorada
+- ✅ Edge functions atualizadas para leads
+- ✅ Sincronização bidirecional TabuladorMax funcionando
 
 ## 🐛 Resolução de Problemas
 
 ### Se a verificação falhar:
 
-#### Query para tabela legada encontrada
+#### Query para tabela 'fichas' encontrada em produção
 ```bash
 # Encontrar e corrigir
-grep -r "\.from('leads')" src --include="*.ts" --include="*.tsx"
-# Substituir por .from('fichas')
+grep -r "\.from('fichas')" src --include="*.ts" --include="*.tsx"
+# Substituir por .from('leads')
 ```
 
-#### Import de MockDataService em produção
+#### Query legada ainda presente
 ```bash
 # Encontrar imports
 grep -r "import.*MockDataService" src --include="*.ts" --include="*.tsx"
@@ -241,8 +248,15 @@ npm run build 2>&1 | tee build.log
 ```bash
 # Verificar existência
 ls -la LEADS_DATA_SOURCE.md
-ls -la CENTRALIZACAO_FICHAS_SUMMARY.md
+ls -la CENTRALIZACAO_LEADS_SUMMARY.md
 # Criar se necessário usando os templates
+```
+
+#### Edge Functions ainda usando fichas
+```bash
+# Verificar edge functions
+grep -r "fichas" supabase/functions --include="*.ts"
+# Atualizar para usar 'leads'
 ```
 
 ## 📝 Registro de Validação
@@ -264,5 +278,5 @@ _________________________________________________________________
 
 ---
 
-**Última atualização**: 2024-10-16  
-**Versão**: 1.0.0
+**Última atualização**: 2025-10-18  
+**Versão**: 2.0.0 (migrado de fichas para leads)
