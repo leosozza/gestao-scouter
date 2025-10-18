@@ -56,8 +56,7 @@ export async function saveTabuladorConfig(config: Omit<TabuladorMaxConfig, 'id' 
   try {
     console.log('💾 [TabuladorConfigRepo] Salvando configuração do TabuladorMax...');
     
-    const configWithTimestamp: TabuladorMaxConfig = {
-      id: undefined, // Will be set by database
+    const configWithTimestamp: Partial<TabuladorMaxConfig> = {
       ...config,
       updated_at: new Date().toISOString(),
     };
@@ -97,7 +96,7 @@ export async function saveTabuladorConfig(config: Omit<TabuladorMaxConfig, 'id' 
     } catch (dbError) {
       // If Supabase save fails, that's OK - we have localStorage
       console.log('ℹ️ [TabuladorConfigRepo] Não foi possível salvar no Supabase, usando apenas localStorage');
-      return configWithTimestamp;
+      return configWithTimestamp as TabuladorMaxConfig;
     }
   } catch (error) {
     console.error('❌ [TabuladorConfigRepo] Exceção ao salvar configuração:', error);

@@ -127,6 +127,37 @@ interface WidgetContentProps {
   data: any[];
 }
 
+/**
+ * Transform dashboard data to format expected by Apex chart components
+ */
+function transformDataForApexCharts(
+  data: any[],
+  categoryKey: string,
+  valueKeys: string[]
+): { categories: string[]; series: { name: string; data: number[] }[] } {
+  const categories = data.map(item => String(item[categoryKey] || 'N/A'));
+  const series = valueKeys.map(key => ({
+    name: METRIC_LABELS[key as keyof typeof METRIC_LABELS] || key,
+    data: data.map(item => Number(item[key]) || 0)
+  }));
+  
+  return { categories, series };
+}
+
+/**
+ * Transform dashboard data for pie/donut charts
+ */
+function transformDataForPieCharts(
+  data: any[],
+  categoryKey: string,
+  valueKey: string
+): { labels: string[]; series: number[] } {
+  const labels = data.map(item => String(item[categoryKey] || 'N/A'));
+  const series = data.map(item => Number(item[valueKey]) || 0);
+  
+  return { labels, series };
+}
+
 function WidgetContent({ config, data }: WidgetContentProps) {
   if (data.length === 0) {
     return (
@@ -154,7 +185,7 @@ function WidgetContent({ config, data }: WidgetContentProps) {
     case 'table':
       return <TableView config={config} data={data} />;
     
-    case 'bar':
+    case 'bar': {
       return (
         <ApexBarChart
           title={config.title}
@@ -163,8 +194,9 @@ function WidgetContent({ config, data }: WidgetContentProps) {
           height={350}
         />
       );
+    }
     
-    case 'line':
+    case 'line': {
       return (
         <ApexLineChart
           title={config.title}
@@ -173,8 +205,9 @@ function WidgetContent({ config, data }: WidgetContentProps) {
           height={350}
         />
       );
+    }
     
-    case 'area':
+    case 'area': {
       return (
         <ApexAreaChart
           title={config.title}
@@ -183,8 +216,9 @@ function WidgetContent({ config, data }: WidgetContentProps) {
           height={350}
         />
       );
+    }
     
-    case 'pie':
+    case 'pie': {
       return (
         <ApexPieChart
           title={config.title}
@@ -193,8 +227,9 @@ function WidgetContent({ config, data }: WidgetContentProps) {
           height={350}
         />
       );
+    }
     
-    case 'donut':
+    case 'donut': {
       return (
         <ApexDonutChart
           title={config.title}
@@ -203,6 +238,7 @@ function WidgetContent({ config, data }: WidgetContentProps) {
           height={350}
         />
       );
+    }
     
     case 'radar':
       return (
@@ -229,7 +265,7 @@ function WidgetContent({ config, data }: WidgetContentProps) {
         />
       );
     
-    case 'gauge':
+    case 'gauge': {
       const gaugeValue = data[0] ? Number(data[0][firstMetric]) || 0 : 0;
       return (
         <GaugeChart
@@ -238,6 +274,7 @@ function WidgetContent({ config, data }: WidgetContentProps) {
           height={350}
         />
       );
+    }
     
     case 'heatmap':
       if (config.metrics.length < 1) {
@@ -281,7 +318,7 @@ function WidgetContent({ config, data }: WidgetContentProps) {
         />
       );
     
-    case 'scatter':
+    case 'scatter': {
       if (config.metrics.length < 2) {
         return <div className="text-center py-8 text-muted-foreground">Gráfico de dispersão requer pelo menos 2 métricas</div>;
       }
@@ -301,6 +338,7 @@ function WidgetContent({ config, data }: WidgetContentProps) {
           showLegend={config.theme?.showLegend}
         />
       );
+    }
     
     case 'kpi_card':
       return <KPIView config={config} data={data} />;

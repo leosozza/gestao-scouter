@@ -1,6 +1,9 @@
 // Temporary wrapper to bypass TypeScript errors until migrations are run
 import { supabase as baseSupabase } from '@/integrations/supabase/client';
 
+// Get Supabase URL from environment variable directly since supabaseUrl is protected
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+
 // Log Supabase connection initialization
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 console.log('🔌 [Supabase] Inicializando cliente Supabase');
