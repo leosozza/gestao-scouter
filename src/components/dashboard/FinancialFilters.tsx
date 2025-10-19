@@ -9,7 +9,7 @@ import { DateRange } from "react-day-picker";
 import type { Ficha, Project } from "@/repositories/types";
 
 interface FinancialFiltersProps {
-  fichas: Lead[];
+  leads: Lead[];
   projetos: Project[];
   onFiltersChange: (filters: FinancialFilterState) => void;
 }
@@ -20,22 +20,22 @@ export interface FinancialFilterState {
   projeto: string;
 }
 
-export const FinancialFilters = ({ fichas, projetos, onFiltersChange }: FinancialFiltersProps) => {
+export const FinancialFilters = ({ leads, projetos, onFiltersChange }: FinancialFiltersProps) => {
   const [filters, setFilters] = useState<FinancialFilterState>({
     scouter: '',
     projeto: ''
   });
 
-  // Extrair scouters únicos das fichas
+  // Extrair scouters únicos das leads
   const scouters = Array.from(new Set(
-    fichas
+    leads
       .map(f => f['Gestão de Scouter'])
       .filter(Boolean)
   )).sort();
 
-  // Extrair projetos únicos das fichas
+  // Extrair projetos únicos das leads
   const projetosUnicos = Array.from(new Set(
-    fichas
+    leads
       .map(f => f['Projetos Cormeciais'])
       .filter(Boolean)
   )).sort();

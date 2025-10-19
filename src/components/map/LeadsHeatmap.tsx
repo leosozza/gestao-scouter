@@ -1,6 +1,6 @@
 /**
- * Mapa de calor (heatmap) das fichas por período
- * Mostra densidade de fichas geradas por localização
+ * Mapa de calor (heatmap) das leads por período
+ * Mostra densidade de leads geradas por localização
  */
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
@@ -34,7 +34,7 @@ export function LeadsHeatmap({
   const defaultEndDate = format(new Date(), 'yyyy-MM-dd');
   const defaultStartDate = format(subDays(new Date(), 30), 'yyyy-MM-dd');
 
-  const { fichasGeo, isLoading, error } = useLeadsGeo({
+  const { leadsGeo, isLoading, error } = useLeadsGeo({
     startDate: startDate || defaultStartDate,
     endDate: endDate || defaultEndDate,
     project,
@@ -81,7 +81,7 @@ export function LeadsHeatmap({
     }
 
     // Create heat layer points
-    const points = fichasGeo.map(ficha => [ficha.lat, ficha.lng, 1]); // [lat, lng, intensity]
+    const points = leadsGeo.map(ficha => [ficha.lat, ficha.lng, 1]); // [lat, lng, intensity]
 
     // @ts-expect-error - leaflet.heat typing issue
     const heatLayer = L.heatLayer(points, {
@@ -109,9 +109,9 @@ export function LeadsHeatmap({
 
   // Center map on heatmap
   const handleCenterMap = () => {
-    if (!mapRef.current || !fichasGeo || fichasGeo.length === 0) return;
+    if (!mapRef.current || !fichasGeo || leadsGeo.length === 0) return;
 
-    const points = fichasGeo.map(ficha => [ficha.lat, ficha.lng] as [number, number]);
+    const points = leadsGeo.map(ficha => [ficha.lat, ficha.lng] as [number, number]);
     const bounds = L.latLngBounds(points);
     mapRef.current.fitBounds(bounds, { padding: [50, 50] });
   };
@@ -122,7 +122,7 @@ export function LeadsHeatmap({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Flame className="h-5 w-5" />
-            <CardTitle>Mapa de Calor - Fichas</CardTitle>
+            <CardTitle>Mapa de Calor - Leads</CardTitle>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">

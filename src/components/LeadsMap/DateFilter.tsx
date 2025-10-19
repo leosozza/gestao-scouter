@@ -1,6 +1,6 @@
 /**
  * Date Filter Component
- * Allows filtering fichas by date range without auto-filtering
+ * Allows filtering leads by date range without auto-filtering
  */
 import React, { useState } from 'react';
 import { Calendar } from 'lucide-react';

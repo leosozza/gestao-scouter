@@ -14,10 +14,10 @@ import { FinancialFilterState } from "./FinancialFilters";
 import type { Ficha, Project } from "@/repositories/types";
 
 interface FinancialControlPanelProps {
-  fichasFiltradas?: Lead[];
-  fichas?: Lead[]; // Add this to support the prop from Dashboard
+  leadsFiltradas?: Lead[];
+  leads?: Lead[]; // Add this to support the prop from Dashboard
   projetos: Project[];
-  selectedFichas: Set<string>;
+  selectedLeads: Set<string>;
   onSelectionChange: (ids: Set<string>) => void;
   filterType: string;
   filterValue: string;
@@ -27,10 +27,10 @@ interface FinancialControlPanelProps {
 }
 
 export const FinancialControlPanel = ({
-  fichasFiltradas,
-  fichas, // Accept both props
+  leadsFiltradas,
+  leads, // Accept both props
   projetos = [],
-  selectedFichas,
+  selectedLeads,
   onSelectionChange,
   filterType,
   filterValue,
@@ -40,51 +40,51 @@ export const FinancialControlPanel = ({
 }: FinancialControlPanelProps) => {
   const [activeTab, setActiveTab] = useState("fichas");
 
-  // Use fichasFiltradas if available, otherwise use fichas, otherwise empty array
-  const fichasData = fichasFiltradas || fichas || [];
+  // Use leadsFiltradas if available, otherwise use leads, otherwise empty array
+  const leadsData = leadsFiltradas || leads || [];
 
-  // Safely filter fichas with null checks
-  const fichasPagas = fichasData?.filter(f => f && f['Ficha paga'] === 'Sim') || [];
-  const fichasAPagar = fichasData?.filter(f => f && f['Ficha paga'] !== 'Sim') || [];
+  // Safely filter leads with null checks
+  const leadsPagas = leadsData?.filter(f => f && f['Ficha paga'] === 'Sim') || [];
+  const leadsAPagar = leadsData?.filter(f => f && f['Ficha paga'] !== 'Sim') || [];
   
-  const valorTotalFichasPagas = fichasPagas.reduce((total, ficha) => {
+  const valorTotalFichasPagas = leadsPagas.reduce((total, ficha) => {
     const valor = getValorFichaFromRow(ficha);
     return total + valor;
   }, 0);
 
-  const valorTotalFichasAPagar = fichasAPagar.reduce((total, ficha) => {
+  const valorTotalFichasAPagar = leadsAPagar.reduce((total, ficha) => {
     const valor = getValorFichaFromRow(ficha);
     return total + valor;
   }, 0);
 
   const valorTotalSelecionadas = useMemo(() => {
-    if (!fichasData || !selectedFichas) return 0;
+    if (!fichasData || !selectedLeads) return 0;
     
-    return fichasData
-      .filter(f => f && selectedFichas.has(f.ID?.toString()))
+    return leadsData
+      .filter(f => f && selectedLeads.has(f.ID?.toString()))
       .reduce((total, ficha) => {
         const valor = getValorFichaFromRow(ficha);
         return total + valor;
       }, 0);
-  }, [fichasData, selectedFichas]);
+  }, [fichasData, selectedLeads]);
 
   // Convert Set to Array for PaymentBatchActions
-  const selectedFichasArray = Array.from(selectedFichas || []);
+  const selectedFichasArray = Array.from(selectedLeads || []);
 
   const handleClearSelection = () => {
     onSelectionChange(new Set<string>());
   };
 
   console.log("=== DEBUG FINANCIAL CONTROL PANEL ===");
-  console.log("Total fichas recebidas:", fichasData?.length || 0);
-  console.log("Fichas pagas:", fichasPagas.length);
-  console.log("Fichas a pagar:", fichasAPagar.length);
+  console.log("Total leads recebidas:", leadsData?.length || 0);
+  console.log("Fichas pagas:", leadsPagas.length);
+  console.log("Fichas a pagar:", leadsAPagar.length);
 
   return (
     <div className="space-y-6">
       {/* Payment Summary - Always visible */}
       <PaymentSummary 
-        fichasFiltradas={fichasData}
+        leadsFiltradas={fichasData}
         filterType={filterType}
         filterValue={filterValue}
         projetos={projetos}
@@ -96,13 +96,13 @@ export const FinancialControlPanel = ({
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Fichas</CardTitle>
+            <CardTitle className="text-sm font-medium">Total de Leads</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{fichasData?.length || 0}</div>
             <p className="text-xs text-muted-foreground">
-              fichas no período
+              leads no período
             </p>
           </CardContent>
         </Card>
@@ -126,7 +126,7 @@ export const FinancialControlPanel = ({
             <DollarSign className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{fichasAPagar.length}</div>
+            <div className="text-2xl font-bold text-orange-600">{leadsAPagar.length}</div>
             <p className="text-xs text-muted-foreground">
               {formatBRL(valorTotalFichasAPagar)}
             </p>
@@ -139,7 +139,7 @@ export const FinancialControlPanel = ({
             <Users className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{selectedFichas?.size || 0}</div>
+            <div className="text-2xl font-bold text-blue-600">{selectedLeads?.size || 0}</div>
             <p className="text-xs text-muted-foreground">
               {formatBRL(valorTotalSelecionadas)}
             </p>
@@ -150,14 +150,14 @@ export const FinancialControlPanel = ({
       {/* Tabs for different controls */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="fichas">Controle de Fichas</TabsTrigger>
+          <TabsTrigger value="fichas">Controle de Leads</TabsTrigger>
           <TabsTrigger value="ajuda-custo">Ajuda de Custo</TabsTrigger>
         </TabsList>
 
         <TabsContent value="fichas" className="space-y-4">
           <PaymentBatchActions
-            fichasFiltradas={fichasData}
-            selectedFichas={selectedFichasArray}
+            leadsFiltradas={fichasData}
+            selectedLeads={selectedFichasArray}
             isUpdating={false}
             onUpdateFichaPaga={onUpdateFichaPaga}
             onClearSelection={handleClearSelection}
@@ -172,7 +172,7 @@ export const FinancialControlPanel = ({
         <TabsContent value="ajuda-custo" className="space-y-4">
           <CostAllowanceManager
             projetos={projetos}
-            fichas={fichasData}
+            leads={fichasData}
             selectedPeriod={selectedPeriod}
             filters={filters}
           />

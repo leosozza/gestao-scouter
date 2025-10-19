@@ -113,7 +113,7 @@ export default function Pagamentos() {
         if (!scouterStats.has(lead.scouter)) {
           scouterStats.set(lead.scouter, {
             scouter: lead.scouter,
-            fichas: 0,
+            leads: 0,
             convertidos: 0,
             somaValorFichas: 0
           })
@@ -130,12 +130,12 @@ export default function Pagamentos() {
       
       // Converter para dados de pagamento
       const pagamentosData = Array.from(scouterStats.values()).map((stats, index) => {
-        const valorMedioFicha = stats.fichas > 0 ? stats.somaValorFichas / stats.fichas : 0
+        const valorMedioFicha = stats.leads > 0 ? stats.somaValorFichas / stats.leads : 0
         return {
           id: index + 1,
           scouter: stats.scouter,
           periodo: '2024-01-01 - 2024-01-07',
-          fichas: stats.fichas,
+          leads: stats.fichas,
           valorFicha: valorMedioFicha,
           ajudaCusto: getAjudaCustoPorTier(stats.fichas),
           bonusQuality: stats.convertidos * 5, // R$ 5 por conversão
@@ -147,7 +147,7 @@ export default function Pagamentos() {
       
       // Calcular valor total
       pagamentosData.forEach(p => {
-        p.valorTotal = (p.fichas * p.valorFicha) + p.ajudaCusto + p.bonusQuality
+        p.valorTotal = (p.leads * p.valorFicha) + p.ajudaCusto + p.bonusQuality
       })
       
       setPagamentos(pagamentosData)

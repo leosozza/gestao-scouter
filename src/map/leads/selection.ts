@@ -19,7 +19,7 @@ export interface SelectionResult {
 
 export class LeadsSelection {
   private map: L.Map;
-  private allFichas: LeadDataPoint[];
+  private allLeads: LeadDataPoint[];
   private drawLayer: L.LayerGroup;
   private currentShape: L.Rectangle | L.Polygon | null = null;
   private onSelectionComplete?: (result: SelectionResult) => void;
@@ -30,7 +30,7 @@ export class LeadsSelection {
     onSelectionComplete?: (result: SelectionResult) => void
   ) {
     this.map = map;
-    this.allFichas = fichas;
+    this.allLeads = fichas;
     this.drawLayer = L.layerGroup().addTo(map);
     this.onSelectionComplete = onSelectionComplete;
   }
@@ -73,7 +73,7 @@ export class LeadsSelection {
         this.currentShape = rectangle;
         
         // Filter fichas within bounds
-        const selectedFichas = this.filterByRectangle(bounds);
+        const selectedLeads = this.filterByRectangle(bounds);
         
         // Cleanup event listeners
         this.map.off('mousedown', onMouseDown);
@@ -81,13 +81,13 @@ export class LeadsSelection {
         this.map.off('mouseup', onMouseUp);
         this.map.getContainer().style.cursor = '';
         
-        console.log(`✅ [Fichas Selection] Rectangle selection complete: ${selectedFichas.length} fichas`);
+        console.log(`✅ [Fichas Selection] Rectangle selection complete: ${selectedLeads.length} fichas`);
         
         // Notify completion
         if (this.onSelectionComplete) {
           this.onSelectionComplete({
             shape: 'rectangle',
-            fichas: selectedFichas,
+            fichas: selectedLeads,
             bounds,
             polygon: null
           });
@@ -146,20 +146,20 @@ export class LeadsSelection {
       this.currentShape = polygon;
       
       // Filter fichas within polygon
-      const selectedFichas = this.filterByPolygon(vertices);
+      const selectedLeads = this.filterByPolygon(vertices);
       
       // Cleanup event listeners
       this.map.off('click', onClick);
       this.map.off('dblclick', onDblClick);
       this.map.getContainer().style.cursor = '';
       
-      console.log(`✅ [Fichas Selection] Polygon selection complete: ${selectedFichas.length} fichas`);
+      console.log(`✅ [Fichas Selection] Polygon selection complete: ${selectedLeads.length} fichas`);
       
       // Notify completion
       if (this.onSelectionComplete) {
         this.onSelectionComplete({
           shape: 'polygon',
-          fichas: selectedFichas,
+          fichas: selectedLeads,
           bounds: polygon ? polygon.getBounds() : null,
           polygon: vertices
         });
@@ -175,7 +175,7 @@ export class LeadsSelection {
    * Filter fichas within rectangle bounds
    */
   private filterByRectangle(bounds: L.LatLngBounds): LeadDataPoint[] {
-    return this.allFichas.filter(ficha => {
+    return this.allLeads.filter(ficha => {
       return bounds.contains([ficha.lat, ficha.lng]);
     });
   }
@@ -191,7 +191,7 @@ export class LeadsSelection {
     
     const polygon = turf.polygon([coordinates]);
     
-    return this.allFichas.filter(ficha => {
+    return this.allLeads.filter(ficha => {
       const point = turf.point([ficha.lng, ficha.lat]);
       return turf.booleanPointInPolygon(point, polygon);
     });
@@ -226,7 +226,7 @@ export class LeadsSelection {
    * Update fichas data
    */
   updateFichas(fichas: LeadDataPoint[]): void {
-    this.allFichas = fichas;
+    this.allLeads = fichas;
   }
 
   /**

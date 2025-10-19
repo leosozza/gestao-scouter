@@ -13,15 +13,15 @@ import { getValorFichaFromRow } from "@/utils/values";
 import type { Ficha } from "@/repositories/types";
 
 interface DailyLeadsFilterProps {
-  fichas: Lead[];
+  leads: Lead[];
   selectedPeriod: { start: string; end: string } | null;
 }
 
-export const DailyLeadsFilter = ({ fichas, selectedPeriod }: DailyLeadsFilterProps) => {
+export const DailyLeadsFilter = ({ leads, selectedPeriod }: DailyLeadsFilterProps) => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  // Agrupar fichas por data
-  const fichasPorDia = fichas.reduce((acc, ficha) => {
+  // Agrupar leads por data
+  const leadsPorDia = leads.reduce((acc, ficha) => {
     const dataCriado = ficha.Criado;
     if (!dataCriado) return acc;
 
@@ -44,46 +44,46 @@ export const DailyLeadsFilter = ({ fichas, selectedPeriod }: DailyLeadsFilterPro
   // Ordenar datas
   const datasOrdenadas = Object.keys(fichasPorDia).sort().reverse();
 
-  // Fichas do dia selecionado
-  const fichasDoDay = selectedDate ? fichasPorDia[selectedDate] || [] : [];
+  // Leads do dia selecionado
+  const leadsDoDay = selectedDate ? leadsPorDia[selectedDate] || [] : [];
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Calendar className="h-5 w-5" />
-          Fichas por Dia
+          Leads por Dia
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-60 overflow-y-auto">
           {datasOrdenadas.map((data) => {
-            const fichasDoDia = fichasPorDia[data];
+            const leadsDoDia = leadsPorDia[data];
             
             console.log(`=== DEBUG DIA ${data} ===`);
-            console.log(`Total fichas do dia: ${fichasDoDia.length}`);
+            console.log(`Total leads do dia: ${fichasDoDia.length}`);
             
-            // Separar fichas pagas e a pagar
-            const fichasPagas = fichasDoDia.filter(f => f['Ficha paga'] === 'Sim');
-            const fichasAPagar = fichasDoDia.filter(f => f['Ficha paga'] !== 'Sim');
+            // Separar leads pagas e a pagar
+            const leadsPagas = leadsDoDia.filter(f => f['Ficha paga'] === 'Sim');
+            const leadsAPagar = leadsDoDia.filter(f => f['Ficha paga'] !== 'Sim');
             
             console.log(`Fichas pagas: ${fichasPagas.length}`);
-            console.log(`Fichas a pagar: ${fichasAPagar.length}`);
+            console.log(`Fichas a pagar: ${leadsAPagar.length}`);
             
             // ANÁLISE DETALHADA DOS VALORES
             console.log('=== ANÁLISE DE VALORES ===');
             
-            const valorPago = fichasPagas.reduce((total, ficha, index) => {
+            const valorPago = leadsPagas.reduce((total, ficha, index) => {
               const valor = getValorFichaFromRow(ficha);
-              if (index < 3) { // Log das primeiras 3 fichas pagas
+              if (index < 3) { // Log das primeiras 3 leads pagas
                 console.log(`Paga ${index + 1}: ID ${ficha.ID}, Valor: ${valor}`);
               }
               return total + valor;
             }, 0);
             
-            const valorAPagar = fichasAPagar.reduce((total, ficha, index) => {
+            const valorAPagar = leadsAPagar.reduce((total, ficha, index) => {
               const valor = getValorFichaFromRow(ficha);
-              if (index < 3) { // Log das primeiras 3 fichas a pagar
+              if (index < 3) { // Log das primeiras 3 leads a pagar
                 console.log(`A pagar ${index + 1}: ID ${ficha.ID}, Valor: ${valor}`);
               }
               return total + valor;
@@ -97,7 +97,7 @@ export const DailyLeadsFilter = ({ fichas, selectedPeriod }: DailyLeadsFilterPro
             console.log(`  Valor total: R$ ${valorTotal}`);
             
             // VERIFICAÇÃO DE CONSISTÊNCIA
-            const expectedTotal = fichasDoDia.length * 6;
+            const expectedTotal = leadsDoDia.length * 6;
             if (Math.abs(valorTotal - expectedTotal) > 0.01) {
               console.warn(`⚠️ INCONSISTÊNCIA NO DIA ${data}:`);
               console.warn(`  Esperado: R$ ${expectedTotal} (${fichasDoDia.length} x R$ 6,00)`);
@@ -116,7 +116,7 @@ export const DailyLeadsFilter = ({ fichas, selectedPeriod }: DailyLeadsFilterPro
                       {format(new Date(data), 'dd/MM')}
                     </div>
                     <Badge variant="secondary" className="text-xs">
-                      {fichasDoDia.length} fichas
+                      {fichasDoDia.length} leads
                     </Badge>
                     <div className="text-xs text-muted-foreground">
                       {formatBRL(valorTotal)}
@@ -140,7 +140,7 @@ export const DailyLeadsFilter = ({ fichas, selectedPeriod }: DailyLeadsFilterPro
                           {fichasPagas.length} pagas ({formatBRL(valorPago)})
                         </span>
                         <span className="text-orange-600">
-                          {fichasAPagar.length} a pagar ({formatBRL(valorAPagar)})
+                          {leadsAPagar.length} a pagar ({formatBRL(valorAPagar)})
                         </span>
                       </div>
                     </DialogTitle>

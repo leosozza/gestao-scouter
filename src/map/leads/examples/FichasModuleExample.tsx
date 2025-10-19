@@ -1,5 +1,5 @@
 /**
- * Exemplo Completo de Integração do Módulo Fichas
+ * Exemplo Completo de Integração do Módulo Leads
  * Demonstra uso de todas as funcionalidades:
  * - Heatmap persistente
  * - Seleção espacial (retângulo/polígono)
@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Flame, Square, Pencil, X, Navigation, Loader2, RefreshCw } from 'lucide-react';
 import { getTileServerConfig, DEFAULT_TILE_SERVER } from '@/config/tileServers';
 
-export function FichasModuleExample() {
+export function LeadsModuleExample() {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const heatmapRef = useRef<LeadsHeatmap | null>(null);
@@ -34,8 +34,8 @@ export function FichasModuleExample() {
   
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [allFichas, setAllFichas] = useState<LeadDataPoint[]>([]);
-  const [displayedFichas, setDisplayedFichas] = useState<LeadDataPoint[]>([]);
+  const [allLeads, setAllFichas] = useState<LeadDataPoint[]>([]);
+  const [displayedLeads, setDisplayedFichas] = useState<LeadDataPoint[]>([]);
   const [summary, setSummary] = useState<LeadsSummaryData | null>(null);
   const [selectionMode, setSelectionMode] = useState<'none' | 'rectangle' | 'polygon'>('none');
 
@@ -64,7 +64,7 @@ export function FichasModuleExample() {
     };
   }, []);
 
-  // Load fichas data
+  // Load leads data
   useEffect(() => {
     if (!mapRef.current) return;
 
@@ -73,10 +73,10 @@ export function FichasModuleExample() {
         setIsLoading(true);
         setError(null);
         
-        console.log('📥 [Example] Loading fichas data...');
-        const { fichas } = await loadLeadsData();
+        console.log('📥 [Example] Loading leads data...');
+        const { leads } = await loadLeadsData();
         
-        console.log(`✅ [Example] Loaded ${fichas.length} fichas`);
+        console.log(`✅ [Example] Loaded ${fichas.length} leads`);
         setAllFichas(fichas);
         setDisplayedFichas(fichas);
         
@@ -97,7 +97,7 @@ export function FichasModuleExample() {
         setIsLoading(false);
       } catch (err) {
         console.error('❌ [Example] Error loading data:', err);
-        setError('Erro ao carregar dados das fichas');
+        setError('Erro ao carregar dados das leads');
         setIsLoading(false);
       }
     };
@@ -107,9 +107,9 @@ export function FichasModuleExample() {
 
   // Handle selection complete
   const handleSelectionComplete = (result: SelectionResult) => {
-    console.log(`✅ [Example] Selection complete: ${result.fichas.length} fichas selected`);
+    console.log(`✅ [Example] Selection complete: ${result.fichas.length} leads selected`);
     
-    // Update displayed fichas
+    // Update displayed leads
     setDisplayedFichas(result.fichas);
     
     // Update heatmap
@@ -128,7 +128,7 @@ export function FichasModuleExample() {
 
   // Start rectangle selection
   const startRectangleSelection = () => {
-    if (!mapRef.current || allFichas.length === 0) return;
+    if (!mapRef.current || allLeads.length === 0) return;
     
     console.log('📐 [Example] Starting rectangle selection...');
     
@@ -139,7 +139,7 @@ export function FichasModuleExample() {
     
     const selection = createLeadsSelection(
       mapRef.current,
-      allFichas,
+      allLeads,
       handleSelectionComplete
     );
     selectionRef.current = selection;
@@ -150,7 +150,7 @@ export function FichasModuleExample() {
 
   // Start polygon selection
   const startPolygonSelection = () => {
-    if (!mapRef.current || allFichas.length === 0) return;
+    if (!mapRef.current || allLeads.length === 0) return;
     
     console.log('📐 [Example] Starting polygon selection...');
     
@@ -161,7 +161,7 @@ export function FichasModuleExample() {
     
     const selection = createLeadsSelection(
       mapRef.current,
-      allFichas,
+      allLeads,
       handleSelectionComplete
     );
     selectionRef.current = selection;
@@ -183,7 +183,7 @@ export function FichasModuleExample() {
     setSelectionMode('none');
   };
 
-  // Clear selection and show all fichas
+  // Clear selection and show all leads
   const clearSelection = () => {
     console.log('🧹 [Example] Clearing selection...');
     
@@ -191,17 +191,17 @@ export function FichasModuleExample() {
       selectionRef.current.clearSelection();
     }
     
-    // Reset to show all fichas
-    setDisplayedFichas(allFichas);
+    // Reset to show all leads
+    setDisplayedFichas(allLeads);
     
     // Update heatmap
     if (heatmapRef.current) {
-      heatmapRef.current.updateData(allFichas);
+      heatmapRef.current.updateData(allLeads);
       heatmapRef.current.fitBounds();
     }
     
     // Update summary
-    const fullSummary = generateSummary(allFichas);
+    const fullSummary = generateSummary(allLeads);
     setSummary(fullSummary);
     
     setSelectionMode('none');
@@ -209,7 +209,7 @@ export function FichasModuleExample() {
 
   // Center map on data
   const centerMap = () => {
-    if (heatmapRef.current && displayedFichas.length > 0) {
+    if (heatmapRef.current && displayedLeads.length > 0) {
       heatmapRef.current.fitBounds();
     }
   };
@@ -220,7 +220,7 @@ export function FichasModuleExample() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Flame className="h-5 w-5 text-orange-500" />
-            <CardTitle>Módulo Fichas - Exemplo Completo</CardTitle>
+            <CardTitle>Módulo Leads - Exemplo Completo</CardTitle>
           </div>
           <div className="flex items-center gap-2">
             {selectionMode !== 'none' && (
@@ -240,7 +240,7 @@ export function FichasModuleExample() {
             <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
               <div className="flex flex-col items-center gap-2">
                 <Loader2 className="h-8 w-8 animate-spin" />
-                <span className="text-sm text-muted-foreground">Carregando fichas...</span>
+                <span className="text-sm text-muted-foreground">Carregando leads...</span>
               </div>
             </div>
           )}
@@ -309,7 +309,7 @@ export function FichasModuleExample() {
                   variant="outline"
                   size="sm"
                   onClick={clearSelection}
-                  disabled={isLoading || displayedFichas.length === allFichas.length}
+                  disabled={isLoading || displayedLeads.length === allLeads.length}
                   className="w-full"
                 >
                   <RefreshCw className="h-4 w-4 mr-1" />
@@ -319,7 +319,7 @@ export function FichasModuleExample() {
                   variant="outline"
                   size="sm"
                   onClick={centerMap}
-                  disabled={isLoading || displayedFichas.length === 0}
+                  disabled={isLoading || displayedLeads.length === 0}
                   className="w-full"
                 >
                   <Navigation className="h-4 w-4 mr-1" />
@@ -333,14 +333,14 @@ export function FichasModuleExample() {
           <Card className="flex-1">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">
-                Resumo {displayedFichas.length !== allFichas.length && '(Selecionadas)'}
+                Resumo {displayedLeads.length !== allLeads.length && '(Selecionadas)'}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {summary ? (
                 <div className="space-y-4">
                   <div className="text-lg font-semibold">
-                    📊 Total: {summary.total} fichas
+                    📊 Total: {summary.total} leads
                   </div>
                   
                   {summary.byProjeto.length > 0 && (

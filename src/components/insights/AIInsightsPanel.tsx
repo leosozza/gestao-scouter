@@ -168,7 +168,7 @@ export default function AIInsightsPanel({ startDate, endDate, rows, projectName 
     // Build narrative with all KPIs including photo and confirmation rates
     const narrativeParts = [
       `📅 Período ${period}${projectName ? ` | Projeto: ${projectName}` : ""}`,
-      `📊 Total de fichas: ${kpis.total} | Média/dia: ${kpis.avgPerDay.toFixed(1)}`,
+      `📊 Total de leads: ${kpis.total} | Média/dia: ${kpis.avgPerDay.toFixed(1)}`,
       `📈 Dia pico: ${bestTxt} | Dia fraco: ${worstTxt} | Tendência: ${trendTxt}`,
       `✅ Confirmadas: ${kpis.confirmados} (${p(kpis.confirmRate)}) | 📷 Com foto: ${kpis.comFoto} (${p(kpis.fotoRate)})`,
       typeof kpis.valorTotal === "number" && kpis.valorTotal > 0 ? `💰 Valor total estimado: ${brl(kpis.valorTotal)}` : "",
@@ -177,7 +177,7 @@ export default function AIInsightsPanel({ startDate, endDate, rows, projectName 
     // Add time-based metrics
     if (kpis.timeMetrics.avgIntervalMinutes > 0) {
       narrativeParts.push(
-        `⏱️ Intervalo médio entre fichas: ${kpis.timeMetrics.avgIntervalMinutes} minutos`
+        `⏱️ Intervalo médio entre leads: ${kpis.timeMetrics.avgIntervalMinutes} minutos`
       );
     }
 
@@ -189,7 +189,7 @@ export default function AIInsightsPanel({ startDate, endDate, rows, projectName 
 
     if (kpis.timeMetrics.fichasPerHour > 0) {
       narrativeParts.push(
-        `📊 Produtividade: ${kpis.timeMetrics.fichasPerHour.toFixed(1)} fichas/hora`
+        `📊 Produtividade: ${kpis.timeMetrics.fichasPerHour.toFixed(1)} leads/hora`
       );
     }
 
@@ -318,14 +318,14 @@ interface KPIData {
     workStartTime: string | null;
     workEndTime: string | null;
     totalWorkHours: number;
-    fichasPerHour: number;
+    leadsPerHour: number;
   };
   dailyTimeMetrics: {
     date: string;
     startTime: string;
     endTime: string;
     workHours: number;
-    fichasCount: number;
+    leadsCount: number;
     avgIntervalMinutes: number;
   }[];
 }
@@ -341,17 +341,17 @@ function buildPrompt(narrative: string, kpis: KPIData): string {
 
   // Add suggestions based on confirmation rate
   if (kpis.confirmRate < 0.7) {
-    suggestions.push("• Melhorar qualificação das fichas para aumentar taxa de confirmados");
+    suggestions.push("• Melhorar qualificação das leads para aumentar taxa de confirmados");
   }
 
   // Add suggestions based on photo rate
   if (kpis.fotoRate < 0.8) {
-    suggestions.push("• Reforçar importância do envio de fotos nas fichas");
+    suggestions.push("• Reforçar importância do envio de fotos nas leads");
   }
 
   // Add time-based suggestions
   if (kpis.timeMetrics.avgIntervalMinutes > 30) {
-    suggestions.push("• Reduzir intervalo entre fichas para aumentar produtividade");
+    suggestions.push("• Reduzir intervalo entre leads para aumentar produtividade");
   }
 
   if (kpis.timeMetrics.totalWorkHours < 4) {

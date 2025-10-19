@@ -84,11 +84,11 @@ export function calculateWorkingHours(fichas: Lead[]): {
   let dayCount = 0;
 
   Object.values(grouped).forEach(scouterDays => {
-    Object.values(scouterDays).forEach(dayFichas => {
-      if (dayFichas.length === 0) return;
+    Object.values(scouterDays).forEach(dayLeads => {
+      if (dayLeads.length === 0) return;
 
       // Ordenar fichas por data/hora
-      const sortedFichas = dayFichas
+      const sortedFichas = dayLeads
         .map(ficha => ({ ficha, dateTime: getFichaDateTime(ficha) }))
         .filter(item => item.dateTime !== null)
         .sort((a, b) => a.dateTime!.getTime() - b.dateTime!.getTime());
@@ -130,14 +130,14 @@ export function calculateAverageTimeBetweenFichas(fichas: Lead[]): {
   let intervalCount = 0;
 
   Object.values(grouped).forEach(scouterDays => {
-    Object.values(scouterDays).forEach(dayFichas => {
-      if (dayFichas.length < 2) {
+    Object.values(scouterDays).forEach(dayLeads => {
+      if (dayLeads.length < 2) {
         // Não há intervalos se houver menos de 2 fichas
         return;
       }
 
       // Ordenar fichas por data/hora
-      const sortedFichas = dayFichas
+      const sortedFichas = dayLeads
         .map(ficha => ({ ficha, dateTime: getFichaDateTime(ficha) }))
         .filter(item => item.dateTime !== null)
         .sort((a, b) => a.dateTime!.getTime() - b.dateTime!.getTime());

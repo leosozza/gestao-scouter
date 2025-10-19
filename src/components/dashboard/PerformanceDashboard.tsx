@@ -51,7 +51,7 @@ import { calculateIndicatorValue } from '@/utils/indicatorCalculations';
 import type { IndicatorConfig } from '@/types/indicator';
 
 interface PerformanceMetrics {
-  totalFichas: number;
+  totalLeads: number;
   comFoto: number;
   confirmadas: number;
   conseguiuContato: number;
@@ -79,7 +79,7 @@ export function PerformanceDashboard() {
   const [editingIndicator, setEditingIndicator] = useState<IndicatorConfig | null>(null);
   const [isCreatingIndicator, setIsCreatingIndicator] = useState(false);
   const [metrics, setMetrics] = useState<PerformanceMetrics>({
-    totalFichas: 0,
+    totalLeads: 0,
     comFoto: 0,
     confirmadas: 0,
     conseguiuContato: 0,
@@ -209,7 +209,7 @@ export function PerformanceDashboard() {
     const timeBetweenFichasData = calculateAverageTimeBetweenFichas(data);
 
     setMetrics({
-      totalFichas: total,
+      totalLeads: total,
       comFoto,
       confirmadas,
       conseguiuContato,
@@ -299,7 +299,7 @@ export function PerformanceDashboard() {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">{metrics.totalFichas.toLocaleString('pt-BR')} fichas encontradas</span>
+            <span className="text-sm font-medium">{metrics.totalLeads.toLocaleString('pt-BR')} leads encontradas</span>
             <span className="text-sm text-muted-foreground">IQS Médio: {metrics.iqsMedio}</span>
           </div>
         </div>
@@ -399,7 +399,7 @@ export function PerformanceDashboard() {
                 Tabela: leads
               </span>
               <Badge variant="outline" className="text-xs">
-                {metrics.totalFichas.toLocaleString('pt-BR')} registros
+                {metrics.totalLeads.toLocaleString('pt-BR')} registros
               </Badge>
             </div>
             <div className="flex gap-2">
@@ -473,7 +473,7 @@ export function PerformanceDashboard() {
         {/* Gráfico de Barras por Dia */}
         <div className="rounded-lg border bg-card p-4">
           <div className="mb-2 text-sm font-medium">
-            Fichas por dia ({new Date(dataInicio).toLocaleDateString('pt-BR')} – {new Date(dataFim).toLocaleDateString('pt-BR')})
+            Leads por dia ({new Date(dataInicio).toLocaleDateString('pt-BR')} – {new Date(dataFim).toLocaleDateString('pt-BR')})
           </div>
           <LeadsPorDiaChart
             startDate={new Date(dataInicio)}
@@ -495,8 +495,8 @@ export function PerformanceDashboard() {
       {/* Performance Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          title="Total de Fichas"
-          value={metrics.totalFichas}
+          title="Total de Leads"
+          value={metrics.totalLeads}
           icon={BarChart3}
           iconColor="text-blue-600"
           bgColor="bg-blue-100"
@@ -505,7 +505,7 @@ export function PerformanceDashboard() {
         <MetricCard
           title="% com Foto"
           value={metrics.comFoto}
-          percentage={getPercentage(metrics.comFoto, metrics.totalFichas)}
+          percentage={getPercentage(metrics.comFoto, metrics.totalLeads)}
           icon={Camera}
           iconColor="text-blue-600"
           bgColor="bg-blue-100"
@@ -514,7 +514,7 @@ export function PerformanceDashboard() {
         <MetricCard
           title="% Confirmadas"
           value={metrics.confirmadas}
-          percentage={getPercentage(metrics.confirmadas, metrics.totalFichas)}
+          percentage={getPercentage(metrics.confirmadas, metrics.totalLeads)}
           icon={CheckCircle2}
           iconColor="text-green-600"
           bgColor="bg-green-100"
@@ -523,7 +523,7 @@ export function PerformanceDashboard() {
         <MetricCard
           title="% Conseguiu Contato"
           value={metrics.conseguiuContato}
-          percentage={getPercentage(metrics.conseguiuContato, metrics.totalFichas)}
+          percentage={getPercentage(metrics.conseguiuContato, metrics.totalLeads)}
           icon={Phone}
           iconColor="text-orange-600"
           bgColor="bg-orange-100"
@@ -532,7 +532,7 @@ export function PerformanceDashboard() {
         <MetricCard
           title="% Agendadas"
           value={metrics.agendadas}
-          percentage={getPercentage(metrics.agendadas, metrics.totalFichas)}
+          percentage={getPercentage(metrics.agendadas, metrics.totalLeads)}
           icon={Calendar}
           iconColor="text-purple-600"
           bgColor="bg-purple-100"
@@ -541,7 +541,7 @@ export function PerformanceDashboard() {
         <MetricCard
           title="% Compareceu"
           value={metrics.compareceu}
-          percentage={getPercentage(metrics.compareceu, metrics.totalFichas)}
+          percentage={getPercentage(metrics.compareceu, metrics.totalLeads)}
           icon={UserCheck}
           iconColor="text-green-600"
           bgColor="bg-green-100"
@@ -550,7 +550,7 @@ export function PerformanceDashboard() {
         <MetricCard
           title="% Interesse"
           value={metrics.interesse}
-          percentage={getPercentage(metrics.interesse, metrics.totalFichas)}
+          percentage={getPercentage(metrics.interesse, metrics.totalLeads)}
           icon={TrendingUp}
           iconColor="text-pink-600"
           bgColor="bg-pink-100"
@@ -559,7 +559,7 @@ export function PerformanceDashboard() {
         <MetricCard
           title="% Concluído Positivo"
           value={metrics.concluiuPositivo}
-          percentage={getPercentage(metrics.concluiuPositivo, metrics.totalFichas)}
+          percentage={getPercentage(metrics.concluiuPositivo, metrics.totalLeads)}
           icon={CheckCircle2}
           iconColor="text-green-600"
           bgColor="bg-green-100"
@@ -568,7 +568,7 @@ export function PerformanceDashboard() {
         <MetricCard
           title="% Concluído Negativo"
           value={metrics.concluiuNegativo}
-          percentage={getPercentage(metrics.concluiuNegativo, metrics.totalFichas)}
+          percentage={getPercentage(metrics.concluiuNegativo, metrics.totalLeads)}
           icon={XCircle}
           iconColor="text-red-600"
           bgColor="bg-red-100"
@@ -577,7 +577,7 @@ export function PerformanceDashboard() {
         <MetricCard
           title="% Sem Interesse Definitivo"
           value={metrics.semInteresseDefinitivo}
-          percentage={getPercentage(metrics.semInteresseDefinitivo, metrics.totalFichas)}
+          percentage={getPercentage(metrics.semInteresseDefinitivo, metrics.totalLeads)}
           icon={XCircle}
           iconColor="text-red-600"
           bgColor="bg-red-100"
@@ -586,7 +586,7 @@ export function PerformanceDashboard() {
         <MetricCard
           title="% Sem Contato"
           value={metrics.semContato}
-          percentage={getPercentage(metrics.semContato, metrics.totalFichas)}
+          percentage={getPercentage(metrics.semContato, metrics.totalLeads)}
           icon={Phone}
           iconColor="text-gray-600"
           bgColor="bg-gray-100"
@@ -595,7 +595,7 @@ export function PerformanceDashboard() {
         <MetricCard
           title="% Sem Interesse Momento"
           value={metrics.semInteresseMomento}
-          percentage={getPercentage(metrics.semInteresseMomento, metrics.totalFichas)}
+          percentage={getPercentage(metrics.semInteresseMomento, metrics.totalLeads)}
           icon={Clock}
           iconColor="text-yellow-600"
           bgColor="bg-yellow-100"
@@ -610,7 +610,7 @@ export function PerformanceDashboard() {
         />
 
         <MetricCard
-          title="Tempo Médio Entre Fichas"
+          title="Tempo Médio Entre Leads"
           value={formatMinutesToReadable(metrics.tempoMedioEntreFichas)}
           icon={Clock}
           iconColor="text-teal-600"
@@ -659,14 +659,14 @@ export function PerformanceDashboard() {
               <Alert className="border-yellow-200 bg-yellow-50">
                 <AlertTriangle className="h-4 w-4 text-yellow-600" />
                 <AlertDescription>
-                  Baixo índice de fichas com foto ({getPercentage(metrics.comFoto, metrics.totalFichas)}%)
+                  Baixo índice de leads com foto ({getPercentage(metrics.comFoto, metrics.totalLeads)}%)
                 </AlertDescription>
               </Alert>
               
               <Alert className="border-yellow-200 bg-yellow-50">
                 <AlertTriangle className="h-4 w-4 text-yellow-600" />
                 <AlertDescription>
-                  Baixo índice de confirmação WhatsApp ({getPercentage(metrics.confirmadas, metrics.totalFichas)}%)
+                  Baixo índice de confirmação WhatsApp ({getPercentage(metrics.confirmadas, metrics.totalLeads)}%)
                 </AlertDescription>
               </Alert>
             </div>

@@ -190,9 +190,9 @@ export function calculateDailyTimeMetrics(fichas: Lead[]): DailyTimeMetrics[] {
   // Calculate metrics for each day
   const dailyMetrics: DailyTimeMetrics[] = [];
 
-  for (const [date, dayFichas] of fichasByDate.entries()) {
+  for (const [date, dayLeads] of fichasByDate.entries()) {
     // Parse all times for this day
-    const times = dayFichas
+    const times = dayLeads
       .map(ficha => parseTime(ficha.hora_criacao_ficha))
       .filter((time): time is Date => time !== null)
       .sort((a, b) => a.getTime() - b.getTime());
@@ -225,7 +225,7 @@ export function calculateDailyTimeMetrics(fichas: Lead[]): DailyTimeMetrics[] {
       startTime,
       endTime,
       workHours: Number(workHours.toFixed(2)),
-      fichasCount: dayFichas.length,
+      fichasCount: dayLeads.length,
       avgIntervalMinutes: Math.round(avgIntervalMinutes),
     });
   }

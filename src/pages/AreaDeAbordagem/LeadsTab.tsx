@@ -1,5 +1,5 @@
 /**
- * FichasTab Component - Enterprise Edition
+ * LeadsTab Component - Enterprise Edition
  * Advanced spatial analysis with PDF/CSV reports, realtime heat, and performance optimization
  * Features: Realtime heat during drawing, map locking, fullscreen, date filtering, AI analysis
  */
@@ -91,9 +91,9 @@ export function LeadsTab() {
   const heatSelectedRef = useRef<L.HeatLayer | null>(null); // Realtime selection heat
 
   const [isDrawing, setIsDrawing] = useState(false);
-  const [allFichas, setAllFichas] = useState<LeadDataPoint[]>([]);
+  const [allLeads, setAllFichas] = useState<LeadDataPoint[]>([]);
   const [filteredFichas, setFilteredFichas] = useState<LeadDataPoint[]>([]); // After date filter
-  const [displayedFichas, setDisplayedFichas] = useState<LeadDataPoint[]>([]);
+  const [displayedLeads, setDisplayedFichas] = useState<LeadDataPoint[]>([]);
   const [summary, setSummary] = useState<AnalysisSummary | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -107,7 +107,7 @@ export function LeadsTab() {
   const [hasDateFilter, setHasDateFilter] = useState(false);
 
   // Fetch data from Supabase
-  const { data: fichas, isLoading, error, refetch } = useLeads({ withGeo: true });
+  const { data: leads, isLoading, error, refetch } = useLeads({ withGeo: true });
 
   // Initialize map
   useEffect(() => {
@@ -142,9 +142,9 @@ export function LeadsTab() {
     }
   }, [isDrawing]);
 
-  // Update fichas data
+  // Update leads data
   useEffect(() => {
-    if (!fichas || fichas.length === 0) {
+    if (!fichas || leads.length === 0) {
       setAllFichas([]);
       setFilteredFichas([]);
       setDisplayedFichas([]);
@@ -152,7 +152,7 @@ export function LeadsTab() {
     }
 
     // Convert to LeadDataPoint - now using real data from Supabase
-    const enrichedFichas: LeadDataPoint[] = fichas.map((f, index) => ({
+    const enrichedFichas: LeadDataPoint[] = leads.map((f, index) => ({
       ...f,
       id: `ficha-${index}`,
       projeto: f.projeto || 'Sem Projeto',
@@ -183,7 +183,7 @@ export function LeadsTab() {
       return;
     }
 
-    console.log(`[Fichas] Updating base heat layer with ${filteredFichas.length} fichas`);
+    console.log(`[Fichas] Updating base heat layer with ${filteredFichas.length} leads`);
 
     // Clear existing base heat
     if (heatLayerRef.current) {
@@ -213,7 +213,7 @@ export function LeadsTab() {
 
   // Update clusters when data changes
   useEffect(() => {
-    if (!mapRef.current || displayedFichas.length === 0) {
+    if (!mapRef.current || displayedLeads.length === 0) {
       // Clear clusters if no data
       if (clusterGroupRef.current) {
         mapRef.current?.removeLayer(clusterGroupRef.current);
@@ -222,7 +222,7 @@ export function LeadsTab() {
       return;
     }
 
-    console.log(`[Fichas] Rendering ${displayedFichas.length} fichas with clustering`);
+    console.log(`[Fichas] Rendering ${displayedLeads.length} leads with clustering`);
 
     // Clear existing clusters
     if (clusterGroupRef.current) {
@@ -265,7 +265,7 @@ export function LeadsTab() {
     });
 
     // Add markers
-    displayedFichas.forEach((ficha) => {
+    displayedLeads.forEach((ficha) => {
       const marker = L.circleMarker([ficha.lat, ficha.lng], {
         radius: 6,
         fillColor: '#FF6B35',
@@ -290,12 +290,12 @@ export function LeadsTab() {
     mapRef.current.addLayer(clusterGroup);
     clusterGroupRef.current = clusterGroup;
 
-    // Fit bounds only if showing all fichas (not a selection)
-    if (displayedFichas.length === filteredFichas.length && displayedFichas.length > 0) {
-      const bounds = L.latLngBounds(displayedFichas.map(f => [f.lat, f.lng]));
+    // Fit bounds only if showing all leads (not a selection)
+    if (displayedLeads.length === filteredFichas.length && displayedLeads.length > 0) {
+      const bounds = L.latLngBounds(displayedLeads.map(f => [f.lat, f.lng]));
       mapRef.current.fitBounds(bounds, { padding: [50, 50] });
     }
-  }, [displayedFichas, filteredFichas]);
+  }, [displayedLeads, filteredFichas]);
 
   // Geoman event listeners for polygon creation WITH REALTIME HEAT
   useEffect(() => {
@@ -339,7 +339,7 @@ export function LeadsTab() {
 
       // Get bounds for bbox pre-filtering
       const bounds = shape.getBounds();
-      // Filter to only fichas with valid coordinates
+      // Filter to only leads with valid coordinates
       const validFichas = filteredFichas.filter(f => f.lat !== undefined && f.lng !== undefined) as Array<LeadDataPoint & { lat: number; lng: number }>;
       const candidates = bboxFilter(validFichas, bounds);
 
@@ -355,7 +355,7 @@ export function LeadsTab() {
       }
 
       const selected = pointsInPolygon(candidates, polygon);
-      console.log(`[Fichas] Realtime heat: ${selected.length} fichas in partial polygon`);
+      console.log(`[Fichas] Realtime heat: ${selected.length} leads in partial polygon`);
 
       // Update realtime heat layer
       const heatPoints = selected.map(f => [f.lat, f.lng, 1] as [number, number, number]);
@@ -380,15 +380,15 @@ export function LeadsTab() {
 
       // Get bounds for pre-filtering
       const bounds = e.layer.getBounds();
-      // Filter to only fichas with valid coordinates
+      // Filter to only leads with valid coordinates
       const validFichas = filteredFichas.filter(f => f.lat !== undefined && f.lng !== undefined) as Array<LeadDataPoint & { lat: number; lng: number }>;
       const candidates = bboxFilter(validFichas, bounds);
 
-      // Filter fichas inside polygon using Turf.js
+      // Filter leads inside polygon using Turf.js
       const polygon = turf.polygon([coords]);
       const selected = pointsInPolygon(candidates, polygon);
 
-      console.log(`✅ [Fichas] Polygon created: ${selected.length} fichas selected`);
+      console.log(`✅ [Fichas] Polygon created: ${selected.length} leads selected`);
 
       // Store selection data (but don't auto-open panel)
       setDisplayedFichas(selected);
@@ -450,7 +450,7 @@ export function LeadsTab() {
     let countIdades = 0;
     let somaValores = 0;
 
-    fichas.forEach((ficha) => {
+    leads.forEach((ficha) => {
       const projeto = ficha.projeto || 'Sem Projeto';
       const scouter = ficha.scouter || 'Não Identificado';
 
@@ -523,7 +523,7 @@ export function LeadsTab() {
     byProjeto.sort((a, b) => b.total - a.total);
 
     return {
-      total: fichas.length,
+      total: leads.length,
       byProjeto,
       byEtapa: etapaMap.size > 0 ? etapaMap : undefined,
       byConfirmado: confirmadoMap.size > 0 ? confirmadoMap : undefined,
@@ -596,8 +596,8 @@ export function LeadsTab() {
 
   // Center map
   const handleCenterMap = () => {
-    if (!mapRef.current || displayedFichas.length === 0) return;
-    const bounds = L.latLngBounds(displayedFichas.map(f => [f.lat, f.lng]));
+    if (!mapRef.current || displayedLeads.length === 0) return;
+    const bounds = L.latLngBounds(displayedLeads.map(f => [f.lat, f.lng]));
     mapRef.current.fitBounds(bounds, { padding: [50, 50] });
   };
 
@@ -633,7 +633,7 @@ export function LeadsTab() {
       return null;
     };
 
-    const filtered = allFichas.filter(f => {
+    const filtered = allLeads.filter(f => {
       if (!f.data) return false;
       
       const fichaDate = parseBrazilianDate(f.data);
@@ -645,7 +645,7 @@ export function LeadsTab() {
       return fichaDate >= startDate && fichaDate <= endDate;
     });
 
-    console.log(`[Fichas] Date filter applied: ${filtered.length} of ${allFichas.length} fichas`);
+    console.log(`[Fichas] Date filter applied: ${filtered.length} of ${allLeads.length} leads`);
     setFilteredFichas(filtered);
     setDisplayedFichas(filtered);
     setSummary(generateAnalysis(filtered));
@@ -655,9 +655,9 @@ export function LeadsTab() {
   const handleClearDateFilter = () => {
     setDateStart('');
     setDateEnd('');
-    setFilteredFichas(allFichas);
-    setDisplayedFichas(allFichas);
-    setSummary(generateAnalysis(allFichas));
+    setFilteredFichas(allLeads);
+    setDisplayedFichas(allLeads);
+    setSummary(generateAnalysis(allLeads));
     setHasDateFilter(false);
     console.log('[Fichas] Date filter cleared');
   };
@@ -766,9 +766,9 @@ export function LeadsTab() {
           
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm text-muted-foreground">
-              {displayedFichas.length === filteredFichas.length 
-                ? `${formatK(displayedFichas.length)} fichas${hasDateFilter ? ' (filtradas)' : ' total'}`
-                : `${formatK(displayedFichas.length)} de ${formatK(filteredFichas.length)} selecionadas`
+              {displayedLeads.length === filteredFichas.length 
+                ? `${formatK(displayedLeads.length)} leads${hasDateFilter ? ' (filtradas)' : ' total'}`
+                : `${formatK(displayedLeads.length)} de ${formatK(filteredFichas.length)} selecionadas`
               }
             </span>
 
@@ -789,7 +789,7 @@ export function LeadsTab() {
               variant="outline"
               size="default"
               onClick={handleClearSelection}
-              disabled={displayedFichas.length === filteredFichas.length}
+              disabled={displayedLeads.length === filteredFichas.length}
               className="min-w-[44px] min-h-[44px] touch-manipulation"
               title="Limpar seleção"
             >
@@ -801,7 +801,7 @@ export function LeadsTab() {
               variant="outline"
               size="default"
               onClick={handleCenterMap}
-              disabled={displayedFichas.length === 0}
+              disabled={displayedLeads.length === 0}
               className="min-w-[44px] min-h-[44px] touch-manipulation"
               title="Centralizar mapa"
             >
@@ -833,7 +833,7 @@ export function LeadsTab() {
         {/* Error state */}
         {error && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
-            <p className="text-sm text-destructive">Erro ao carregar fichas</p>
+            <p className="text-sm text-destructive">Erro ao carregar leads</p>
           </div>
         )}
 
@@ -854,10 +854,10 @@ export function LeadsTab() {
           {/* AI Analysis Floating - novo componente */}
           <AIAnalysisFloating
             data={{
-              totalFichas: displayedFichas.length,
-              fichasComFoto: displayedFichas.filter(f => f.foto_1 !== undefined).length,
-              projetos: Array.from(new Set(displayedFichas.map(f => f.projeto))),
-              scouters: Array.from(new Set(displayedFichas.map(f => f.scouter)))
+              totalLeads: displayedLeads.length,
+              leadsComFoto: displayedLeads.filter(f => f.foto_1 !== undefined).length,
+              projetos: Array.from(new Set(displayedLeads.map(f => f.projeto))),
+              scouters: Array.from(new Set(displayedLeads.map(f => f.scouter)))
             }}
           />
           

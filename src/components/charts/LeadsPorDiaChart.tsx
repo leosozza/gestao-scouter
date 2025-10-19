@@ -48,7 +48,7 @@ export function LeadsPorDiaChart({ startDate, endDate, rows, height = 280 }: Pro
       return {
         date: format(day, "dd/MM", { locale: ptBR }),
         fullDate: isoDate,
-        fichas: countByDate.get(isoDate) ?? 0
+        leads: countByDate.get(isoDate) ?? 0
       };
     });
   }, [startDate, endDate, rows]);

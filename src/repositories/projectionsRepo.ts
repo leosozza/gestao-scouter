@@ -55,7 +55,7 @@ export interface AdvancedProjectionData {
     inicio: string;
     fim: string;
     dias: number;
-    totalFichas: number;
+    totalLeads: number;
     mediaDiaria: number;
   };
   periodoProjecao: {
@@ -234,7 +234,7 @@ export async function fetchProjectionAdvanced(p: ProjecaoFiltroAdvanced): Promis
         inicio: p.dataInicioAnalise,
         fim: p.dataFimAnalise,
         dias: 0,
-        totalFichas: 0,
+        totalLeads: 0,
         mediaDiaria: 0
       },
       periodoProjecao: {
@@ -360,7 +360,7 @@ export async function fetchProjectionAdvanced(p: ProjecaoFiltroAdvanced): Promis
       inicio: p.dataInicioAnalise,
       fim: p.dataFimAnalise,
       dias: diasAnalise,
-      totalFichas: totalFichasAnalise,
+      totalLeads: totalFichasAnalise,
       mediaDiaria: +mediaDiaria.toFixed(2)
     },
     periodoProjecao: {
@@ -472,11 +472,11 @@ async function fetchProjectionsFromSupabase(type: ProjectionType, selectedFilter
 
     // Calcular projeções para cada item (scouter ou projeto)
     return Array.from(groupedData.entries()).map(([name, data]: any[]) => {
-      const totalFichas = data.fichas.length;
+      const totalLeads = data.fichas.length;
       
       // Calcular taxa de confirmação (normalizando valores)
       const confirmedFichas = data.fichas.filter((f: any) => isAffirmative(f.confirmado)).length;
-      const conversionRate = totalFichas > 0 ? (confirmedFichas / totalFichas) : 0;
+      const conversionRate = totalLeads > 0 ? (confirmedFichas / totalLeads) : 0;
       
       // Calcular média semanal
       const weeklyTotals = Array.from(data.weeklyData.values()).map((week: any[]) => week.length);
@@ -509,7 +509,7 @@ async function fetchProjectionsFromSupabase(type: ProjectionType, selectedFilter
         projecao_conservadora: Math.round(baseProjection * 0.75),
         projecao_provavel: Math.round(baseProjection),
         projecao_agressiva: Math.round(baseProjection * 1.3),
-        projecao_historica: totalFichas,
+        projecao_historica: totalLeads,
         conversion_rate: Math.round(conversionRate * 100),
         avg_weekly_fichas: Math.round(avgWeeklyFichas)
       } as ProjectionData;
@@ -617,9 +617,9 @@ function generateDailySeries(
   
   while (current <= endDate) {
     const dateKey = current.toISOString().slice(0, 10);
-    const dayFichas = fichasByDate[dateKey] || 0;
-    acumulado += dayFichas;
-    series.push({ dia: dateKey, fichas: dayFichas, acumulado });
+    const dayLeads = fichasByDate[dateKey] || 0;
+    acumulado += dayLeads;
+    series.push({ dia: dateKey, fichas: dayLeads, acumulado });
     current.setDate(current.getDate() + 1);
   }
   
@@ -639,9 +639,9 @@ function generateProjectionSeries(
   let acumulado = serieReal.length > 0 ? serieReal[serieReal.length - 1].acumulado : 0;
   while (current <= endDate) {
     const dateKey = current.toISOString().slice(0, 10);
-    const dayFichas = Math.round(mediaDiaria);
-    acumulado += dayFichas;
-    series.push({ dia: dateKey, fichas: dayFichas, acumulado });
+    const dayLeads = Math.round(mediaDiaria);
+    acumulado += dayLeads;
+    series.push({ dia: dateKey, fichas: dayLeads, acumulado });
     current.setDate(current.getDate() + 1);
   }
   return series;

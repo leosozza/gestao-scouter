@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface PaymentBatchActionsProps {
-  fichasFiltradas: Lead[];
-  selectedFichas: string[];
+  leadsFiltradas: Lead[];
+  selectedLeads: string[];
   isUpdating: boolean;
   onUpdateFichaPaga?: (fichaIds: string[], status: 'Sim' | 'Não') => Promise<void>;
   onClearSelection: () => void;
@@ -33,8 +33,8 @@ interface PaymentBatchActionsProps {
 }
 
 export const PaymentBatchActions = ({
-  fichasFiltradas,
-  selectedFichas,
+  leadsFiltradas,
+  selectedLeads,
   isUpdating,
   onUpdateFichaPaga,
   onClearSelection,
@@ -46,15 +46,15 @@ export const PaymentBatchActions = ({
 }: PaymentBatchActionsProps) => {
   const { toast } = useToast();
 
-  const fichasAPagar = fichasFiltradas.filter(f => f['Ficha paga'] !== 'Sim');
-  const fichasSelecionadas = fichasFiltradas.filter(f => selectedFichas.includes(f.ID?.toString()));
+  const leadsAPagar = leadsFiltradas.filter(f => f['Ficha paga'] !== 'Sim');
+  const leadsSelecionadas = leadsFiltradas.filter(f => selectedLeads.includes(f.ID?.toString()));
   
-  const valorTotalSelecionadas = fichasSelecionadas.reduce((total, ficha) => {
+  const valorTotalSelecionadas = leadsSelecionadas.reduce((total, ficha) => {
     const valor = getValorFichaFromRow(ficha);
     return total + valor;
   }, 0);
 
-  const valorTotalAPagar = fichasAPagar.reduce((total, ficha) => {
+  const valorTotalAPagar = leadsAPagar.reduce((total, ficha) => {
     const valor = getValorFichaFromRow(ficha);
     return total + valor;
   }, 0);
@@ -64,10 +64,10 @@ export const PaymentBatchActions = ({
     if (!selectedPeriod || !filters?.scouter) return 0;
 
     // Buscar projeto do scouter para obter valores de ajuda de custo
-    const fichasDoScouter = fichasFiltradas.filter(f => f['Gestão de Scouter'] === filters.scouter);
+    const leadsDoScouter = leadsFiltradas.filter(f => f['Gestão de Scouter'] === filters.scouter);
     if (fichasDoScouter.length === 0) return 0;
 
-    const projetoScouter = fichasDoScouter[0]['Projetos Cormeciais'];
+    const projetoScouter = leadsDoScouter[0]['Projetos Cormeciais'];
     const projeto = projetos?.find(p => p.nome === projetoScouter);
     
     if (!projeto) return 0;
@@ -84,7 +84,7 @@ export const PaymentBatchActions = ({
     const endDate = new Date(selectedPeriod.end);
     const diasTrabalhados = new Set();
     
-    fichasDoScouter.forEach(ficha => {
+    leadsDoScouter.forEach(ficha => {
       const dataCriado = ficha.Criado;
       if (dataCriado && typeof dataCriado === 'string' && dataCriado.includes('/')) {
         const [day, month, year] = dataCriado.split('/');
@@ -107,10 +107,10 @@ export const PaymentBatchActions = ({
   const valorTotalCompleto = valorTotalAPagar + valorAjudaCusto;
 
   const handlePagarTodasDoFiltro = async () => {
-    if (fichasAPagar.length === 0) {
+    if (leadsAPagar.length === 0) {
       toast({
         title: "Nenhuma ficha para pagar",
-        description: "Todas as fichas já estão pagas",
+        description: "Todas as leads já estão pagas",
         variant: "destructive"
       });
       return;
@@ -126,12 +126,12 @@ export const PaymentBatchActions = ({
     }
 
     try {
-      const idsAPagar = fichasAPagar.map(f => f.ID?.toString()).filter(Boolean);
+      const idsAPagar = leadsAPagar.map(f => f.ID?.toString()).filter(Boolean);
       await onUpdateFichaPaga(idsAPagar, 'Sim');
       
       toast({
         title: "Pagamentos processados",
-        description: `${idsAPagar.length} fichas marcadas como pagas ${filterType ? `para ${filterType}: ${filterValue}` : ''}`
+        description: `${idsAPagar.length} leads marcadas como pagas ${filterType ? `para ${filterType}: ${filterValue}` : ''}`
       });
     } catch (error) {
       console.error('Erro ao processar pagamentos:', error);
@@ -144,10 +144,10 @@ export const PaymentBatchActions = ({
   };
 
   const handlePagarSelecionadas = async () => {
-    if (selectedFichas.length === 0) {
+    if (selectedLeads.length === 0) {
       toast({
         title: "Nenhuma ficha selecionada",
-        description: "Selecione as fichas que deseja pagar",
+        description: "Selecione as leads que deseja pagar",
         variant: "destructive"
       });
       return;
@@ -163,15 +163,15 @@ export const PaymentBatchActions = ({
     }
 
     try {
-      await onUpdateFichaPaga(selectedFichas, 'Sim');
+      await onUpdateFichaPaga(selectedLeads, 'Sim');
       onClearSelection();
       
       toast({
         title: "Fichas pagas",
-        description: `${selectedFichas.length} fichas marcadas como pagas`
+        description: `${selectedLeads.length} leads marcadas como pagas`
       });
     } catch (error) {
-      console.error('Erro ao pagar fichas:', error);
+      console.error('Erro ao pagar leads:', error);
       toast({
         title: "Erro no pagamento",
         description: "Não foi possível processar o pagamento",
@@ -190,9 +190,9 @@ export const PaymentBatchActions = ({
 
   const handlePagarTudo = async () => {
     try {
-      // Pagar fichas
-      if (fichasAPagar.length > 0 && onUpdateFichaPaga) {
-        const idsAPagar = fichasAPagar.map(f => f.ID?.toString()).filter(Boolean);
+      // Pagar leads
+      if (leadsAPagar.length > 0 && onUpdateFichaPaga) {
+        const idsAPagar = leadsAPagar.map(f => f.ID?.toString()).filter(Boolean);
         await onUpdateFichaPaga(idsAPagar, 'Sim');
       }
       
@@ -225,23 +225,23 @@ export const PaymentBatchActions = ({
         <div className="space-y-4">
           {/* Botões de ação de pagamento */}
           <div className="flex flex-wrap gap-3">
-            {/* Pagar fichas selecionadas */}
+            {/* Pagar leads selecionadas */}
             <Button
               onClick={handlePagarSelecionadas}
-              disabled={selectedFichas.length === 0 || isUpdating}
+              disabled={selectedLeads.length === 0 || isUpdating}
               className="flex items-center gap-2"
             >
               <FileCheck className="h-4 w-4" />
-              Pagar Fichas Selecionadas ({selectedFichas.length})
-              {selectedFichas.length > 0 && (
+              Pagar Leads Selecionadas ({selectedLeads.length})
+              {selectedLeads.length > 0 && (
                 <span className="ml-1 text-xs">
                   {formatBRL(valorTotalSelecionadas)}
                 </span>
               )}
             </Button>
 
-            {/* Pagar todas as fichas do filtro */}
-            {fichasAPagar.length > 0 && (
+            {/* Pagar todas as leads do filtro */}
+            {leadsAPagar.length > 0 && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
@@ -250,7 +250,7 @@ export const PaymentBatchActions = ({
                     className="flex items-center gap-2"
                   >
                     <DollarSign className="h-4 w-4" />
-                    Pagar Todas as Fichas ({fichasAPagar.length})
+                    Pagar Todas as Leads ({leadsAPagar.length})
                     <span className="ml-1 text-xs">
                       {formatBRL(valorTotalAPagar)}
                     </span>
@@ -260,10 +260,10 @@ export const PaymentBatchActions = ({
                   <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2">
                       <AlertTriangle className="h-5 w-5 text-orange-500" />
-                      Confirmar Pagamento de Fichas
+                      Confirmar Pagamento de Leads
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      Você está prestes a marcar como pagas <strong>{fichasAPagar.length} fichas</strong> 
+                      Você está prestes a marcar como pagas <strong>{leadsAPagar.length} leads</strong> 
                       {filterType && (
                         <span> do {filterType.toLowerCase()} <strong>"{filterValue}"</strong></span>
                       )}
@@ -301,7 +301,7 @@ export const PaymentBatchActions = ({
             )}
 
             {/* Pagar Tudo (Fichas + Ajuda de Custo) - Only show if we have filters and scouter */}
-            {filters?.scouter && selectedPeriod && valorAjudaCusto > 0 && fichasAPagar.length > 0 && (
+            {filters?.scouter && selectedPeriod && valorAjudaCusto > 0 && leadsAPagar.length > 0 && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
@@ -324,7 +324,7 @@ export const PaymentBatchActions = ({
                     <AlertDialogDescription>
                       Você está prestes a pagar:
                       <br /><br />
-                      <strong>Fichas:</strong> {fichasAPagar.length} fichas = {formatBRL(valorTotalAPagar)}
+                      <strong>Fichas:</strong> {leadsAPagar.length} leads = {formatBRL(valorTotalAPagar)}
                       <br />
                       <strong>Ajuda de Custo:</strong> {formatBRL(valorAjudaCusto)}
                       <br />
@@ -349,7 +349,7 @@ export const PaymentBatchActions = ({
             <Button
               variant="ghost"
               onClick={onClearSelection}
-              disabled={selectedFichas.length === 0}
+              disabled={selectedLeads.length === 0}
               className="flex items-center gap-2"
             >
               <FileX className="h-4 w-4" />

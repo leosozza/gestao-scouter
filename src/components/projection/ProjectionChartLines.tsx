@@ -5,8 +5,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface LinearProjectionData {
-  serie_real: Array<{ dia: string; fichas: number; acumulado: number }>;
-  serie_proj: Array<{ dia: string; fichas: number; acumulado: number }>;
+  serie_real: Array<{ dia: string; leads: number; acumulado: number }>;
+  serie_proj: Array<{ dia: string; leads: number; acumulado: number }>;
 }
 
 interface ProjectionChartLinesProps {
@@ -40,7 +40,7 @@ export function ProjectionChartLines({ data }: ProjectionChartLinesProps) {
       <Card className="rounded-2xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            Evolução Linear das Fichas
+            Evolução Linear das Leads
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             Linha contínua: realizado | Linha tracejada: projetado
@@ -101,7 +101,7 @@ export function ProjectionChartLines({ data }: ProjectionChartLinesProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {fmtNumber.format(totalReal)} fichas
+              {fmtNumber.format(totalReal)} leads
             </div>
             <p className="text-xs text-muted-foreground">Até hoje</p>
           </CardContent>
@@ -113,7 +113,7 @@ export function ProjectionChartLines({ data }: ProjectionChartLinesProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {fmtNumber.format(totalProj)} fichas
+              {fmtNumber.format(totalProj)} leads
             </div>
             <p className="text-xs text-muted-foreground">Até o final do período</p>
           </CardContent>

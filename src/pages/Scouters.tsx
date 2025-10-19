@@ -20,7 +20,7 @@ export default function Scouters() {
   const [summary, setSummary] = useState({
     totalScouters: 0,
     activeScouters: 0,
-    totalFichas: 0,
+    totalLeads: 0,
     averageConversion: 0
   })
 
@@ -223,7 +223,7 @@ export default function Scouters() {
               <Target className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{summary.totalFichas}</div>
+              <div className="text-2xl font-bold">{summary.totalLeads}</div>
               <p className="text-xs text-muted-foreground">Total da equipe</p>
             </CardContent>
           </Card>
@@ -257,15 +257,15 @@ export default function Scouters() {
             lat: 0,
             lon: 0,
             scouterName: scouter.scouter_name,
-            fichas: scouter.total_fichas,
+            leads: scouter.total_fichas,
             conversao: scouter.conversion_rate
           }))}
           fichaData={[
-            { lat: 0, lon: 0, fichas: 45, conversao: 85, endereco: 'Centro - SP' },
-            { lat: 0, lon: 0, fichas: 38, conversao: 72, endereco: 'Zona Sul - SP' },
-            { lat: 0, lon: 0, fichas: 52, conversao: 68, endereco: 'Zona Oeste - SP' },
-            { lat: 0, lon: 0, fichas: 29, conversao: 55, endereco: 'Zona Leste - SP' },
-            { lat: 0, lon: 0, fichas: 41, conversao: 78, endereco: 'Zona Norte - SP' },
+            { lat: 0, lon: 0, leads: 45, conversao: 85, endereco: 'Centro - SP' },
+            { lat: 0, lon: 0, leads: 38, conversao: 72, endereco: 'Zona Sul - SP' },
+            { lat: 0, lon: 0, leads: 52, conversao: 68, endereco: 'Zona Oeste - SP' },
+            { lat: 0, lon: 0, leads: 29, conversao: 55, endereco: 'Zona Leste - SP' },
+            { lat: 0, lon: 0, leads: 41, conversao: 78, endereco: 'Zona Norte - SP' },
           ]}
           isLoading={loading}
         />

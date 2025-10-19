@@ -13,15 +13,15 @@ interface LinearProjectionData {
     dias_totais: number;
   };
   realizado: {
-    fichas: number;
+    leads: number;
     valor: number;
   };
   projetado_restante: {
-    fichas: number;
+    leads: number;
     valor: number;
   };
   total_projetado: {
-    fichas: number;
+    leads: number;
     valor: number;
   };
   media_diaria: number;

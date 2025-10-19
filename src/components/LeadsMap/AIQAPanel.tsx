@@ -17,7 +17,7 @@ export interface QAMessage {
 
 interface AIQAPanelProps {
   selectionHash: string;
-  totalFichas: number;
+  totalLeads: number;
   topProjetos: string[];
   topScouters: string[];
   densidade: string;
@@ -26,7 +26,7 @@ interface AIQAPanelProps {
 
 export function AIQAPanel({
   selectionHash,
-  totalFichas,
+  totalLeads,
   topProjetos,
   topScouters,
   densidade,
@@ -53,7 +53,7 @@ export function AIQAPanel({
 
   // Generate automatic overview on mount or selection change
   useEffect(() => {
-    if (!hasGeneratedInitialSummary.current && totalFichas > 0) {
+    if (!hasGeneratedInitialSummary.current && totalLeads > 0) {
       hasGeneratedInitialSummary.current = true;
       
       // Automatically ask for overview
@@ -79,7 +79,7 @@ export function AIQAPanel({
       
       autoGenerateSummary();
     }
-  }, [totalFichas, onAskQuestion]);
+  }, [totalLeads, onAskQuestion]);
 
   // Clear history when selection changes
   useEffect(() => {
@@ -180,7 +180,7 @@ export function AIQAPanel({
         <>
           {/* Context summary */}
           <div className="text-xs text-muted-foreground mb-3 p-2 bg-muted/50 rounded">
-            <div><strong>Contexto:</strong> {totalFichas} fichas | {densidade}</div>
+            <div><strong>Contexto:</strong> {totalLeads} leads | {densidade}</div>
             <div className="text-[10px] opacity-70 mt-1">Hash: {selectionHash.substring(0, 8)}</div>
           </div>
 
@@ -229,7 +229,7 @@ export function AIQAPanel({
             <Textarea
               value={currentQuestion}
               onChange={(e) => setCurrentQuestion(e.target.value)}
-              placeholder="Ex: Qual a densidade de fichas nessa área?"
+              placeholder="Ex: Qual a densidade de leads nessa área?"
               className="min-h-[60px] resize-none text-sm"
               disabled={isLoading}
               onKeyDown={(e) => {
@@ -260,7 +260,7 @@ export function AIQAPanel({
                 variant="outline"
                 size="sm"
                 className="text-xs h-7"
-                onClick={() => setCurrentQuestion('Qual a densidade de fichas nessa área?')}
+                onClick={() => setCurrentQuestion('Qual a densidade de leads nessa área?')}
               >
                 Densidade
               </Button>

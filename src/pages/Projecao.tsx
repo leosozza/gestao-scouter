@@ -195,7 +195,7 @@ export default function ProjecaoPage() {
                   <Target className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-blue-600">{fmtNumber.format(projectionData.periodoAnalise.totalFichas)}</div>
+                  <div className="text-3xl font-bold text-blue-600">{fmtNumber.format(projectionData.periodoAnalise.totalLeads)}</div>
                   <p className="text-xs text-muted-foreground">
                     {projectionData.periodoAnalise.dias} dias ({new Date(projectionData.periodoAnalise.inicio).toLocaleDateString('pt-BR')} - {new Date(projectionData.periodoAnalise.fim).toLocaleDateString('pt-BR')})
                   </p>
@@ -245,7 +245,7 @@ export default function ProjecaoPage() {
                   <CardTitle className="text-sm font-medium">Média Diária (Análise)</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{projectionData.periodoAnalise.mediaDiaria.toFixed(1)} fichas/dia</div>
+                  <div className="text-2xl font-bold">{projectionData.periodoAnalise.mediaDiaria.toFixed(1)} leads/dia</div>
                   <p className="text-xs text-muted-foreground">Base para projeção</p>
                 </CardContent>
               </Card>
@@ -256,9 +256,9 @@ export default function ProjecaoPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {granularidade === 'semanal' && `${(projectionData.periodoAnalise.mediaDiaria * 7).toFixed(1)} fichas/semana`}
-                    {granularidade === 'mensal' && `${(projectionData.periodoAnalise.mediaDiaria * 30).toFixed(1)} fichas/mês`}
-                    {granularidade === 'diaria' && `${projectionData.periodoAnalise.mediaDiaria.toFixed(1)} fichas/dia`}
+                    {granularidade === 'semanal' && `${(projectionData.periodoAnalise.mediaDiaria * 7).toFixed(1)} leads/semana`}
+                    {granularidade === 'mensal' && `${(projectionData.periodoAnalise.mediaDiaria * 30).toFixed(1)} leads/mês`}
+                    {granularidade === 'diaria' && `${projectionData.periodoAnalise.mediaDiaria.toFixed(1)} leads/dia`}
                   </div>
                   <p className="text-xs text-muted-foreground">Granularidade: {granularidade}</p>
                 </CardContent>
@@ -278,7 +278,7 @@ export default function ProjecaoPage() {
             {/* Chart */}
             <Card className="rounded-2xl">
               <CardHeader>
-                <CardTitle>Projeção - Fichas Acumuladas</CardTitle>
+                <CardTitle>Projeção - Leads Acumuladas</CardTitle>
                 <p className="text-sm text-muted-foreground">
                   Linha contínua: período de análise | Linha tracejada: projeção futura
                 </p>
@@ -332,20 +332,20 @@ export default function ProjecaoPage() {
               <CardContent className="text-sm text-muted-foreground space-y-2">
                 <p>
                   <strong>Período de Análise:</strong> {new Date(projectionData.periodoAnalise.inicio).toLocaleDateString('pt-BR')} a {new Date(projectionData.periodoAnalise.fim).toLocaleDateString('pt-BR')} 
-                  ({projectionData.periodoAnalise.dias} dias, {projectionData.periodoAnalise.totalFichas} fichas)
+                  ({projectionData.periodoAnalise.dias} dias, {projectionData.periodoAnalise.totalLeads} leads)
                 </p>
                 <p>
                   <strong>Período de Projeção:</strong> {new Date(projectionData.periodoProjecao.inicio).toLocaleDateString('pt-BR')} a {new Date(projectionData.periodoProjecao.fim).toLocaleDateString('pt-BR')} 
                   ({projectionData.periodoProjecao.dias} dias, {projectionData.periodoProjecao.unidades} {granularidadeLabel[granularidade]}s)
                 </p>
                 <p>
-                  <strong>Lógica de Cálculo:</strong> A projeção utiliza a média diária de fichas do período de análise ({projectionData.periodoAnalise.mediaDiaria.toFixed(1)} fichas/dia) 
+                  <strong>Lógica de Cálculo:</strong> A projeção utiliza a média diária de leads do período de análise ({projectionData.periodoAnalise.mediaDiaria.toFixed(1)} leads/dia) 
                   multiplicada pelos {projectionData.periodoProjecao.dias} dias do período de projeção.
                 </p>
                 <p>
                   <strong>Granularidade:</strong> {granularidade.charAt(0).toUpperCase() + granularidade.slice(1)} 
-                  {granularidade === 'semanal' && ` (média de ${(projectionData.periodoAnalise.mediaDiaria * 7).toFixed(1)} fichas por semana)`}
-                  {granularidade === 'mensal' && ` (média de ${(projectionData.periodoAnalise.mediaDiaria * 30).toFixed(1)} fichas por mês)`}
+                  {granularidade === 'semanal' && ` (média de ${(projectionData.periodoAnalise.mediaDiaria * 7).toFixed(1)} leads por semana)`}
+                  {granularidade === 'mensal' && ` (média de ${(projectionData.periodoAnalise.mediaDiaria * 30).toFixed(1)} leads por mês)`}
                 </p>
                 <p>
                   <strong>Filtro Aplicado:</strong> {selectedFilter

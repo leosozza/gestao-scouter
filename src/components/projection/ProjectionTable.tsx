@@ -19,15 +19,15 @@ interface LinearProjectionData {
     dias_totais: number;
   };
   realizado: {
-    fichas: number;
+    leads: number;
     valor: number;
   };
   projetado_restante: {
-    fichas: number;
+    leads: number;
     valor: number;
   };
   total_projetado: {
-    fichas: number;
+    leads: number;
     valor: number;
   };
   media_diaria: number;
@@ -132,7 +132,7 @@ export function ProjectionTable({ data, projectionType, selectedFilter }: Projec
           <div className="space-y-2">
             <h4 className="font-semibold">Métricas Calculadas:</h4>
             <ul className="space-y-1 text-muted-foreground">
-              <li>• Média diária: <strong>{data.media_diaria.toFixed(1)} fichas/dia</strong></li>
+              <li>• Média diária: <strong>{data.media_diaria.toFixed(1)} leads/dia</strong></li>
               <li>• Valor médio por ficha: <strong>{fmtBRL.format(data.valor_medio_por_ficha)}</strong></li>
               <li>• Taxa diária estimada: <strong>{((data.media_diaria / data.periodo.dias_passados) * 100).toFixed(1)}%</strong></li>
             </ul>

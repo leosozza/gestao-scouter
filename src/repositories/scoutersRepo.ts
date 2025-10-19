@@ -22,7 +22,7 @@ export interface ScouterData {
 export interface ScouterSummary {
   totalScouters: number;
   activeScouters: number;
-  totalFichas: number;
+  totalLeads: number;
   averageConversion: number;
 }
 
@@ -41,7 +41,7 @@ export async function getScoutersSummary(): Promise<ScouterSummary> {
 
   const totalScouters = scoutersData.length;
   const activeScouters = scoutersData.filter((s) => s.active).length;
-  const totalFichas = scoutersData.reduce((sum, s) => sum + s.total_fichas, 0);
+  const totalLeads = scoutersData.reduce((sum, s) => sum + s.total_fichas, 0);
   const averageConversion =
     scoutersData.length > 0
       ? scoutersData.reduce((sum, s) => sum + s.conversion_rate, 0) / scoutersData.length
@@ -50,7 +50,7 @@ export async function getScoutersSummary(): Promise<ScouterSummary> {
   return {
     totalScouters,
     activeScouters,
-    totalFichas,
+    totalLeads,
     averageConversion,
   };
 }
@@ -94,16 +94,16 @@ async function fetchScoutersFromSupabase(): Promise<ScouterDataResult> {
     const scoutersData: ScouterData[] = [];
     for (const profile of profiles || []) {
       const scouterLeads = leadsByScouter.get(String(profile.nome)) || [];
-      const totalFichas = scouterLeads.length;
+      const totalLeads = scouterLeads.length;
 
       const convertedFichas = scouterLeads.filter(
         (f) => isAffirmative(f.confirmado) || isAffirmative(f.compareceu)
       ).length;
 
-      const conversionRate = totalFichas > 0 ? (convertedFichas / totalFichas) * 100 : 0;
+      const conversionRate = totalLeads > 0 ? (convertedFichas / totalLeads) * 100 : 0;
 
       // Tier e meta semanal
-      const tierName = getTierFromFichas(totalFichas);
+      const tierName = getTierFromFichas(totalLeads);
       const weeklyGoal = getWeeklyGoalFromTier(tierName);
 
       scoutersData.push({
@@ -111,8 +111,8 @@ async function fetchScoutersFromSupabase(): Promise<ScouterDataResult> {
         scouter_name: String(profile.nome),
         tier_name: tierName,
         weekly_goal: weeklyGoal,
-        fichas_value: totalFichas, // pode ser substituído por valor somado, se necessário
-        total_fichas: totalFichas,
+        fichas_value: totalLeads, // pode ser substituído por valor somado, se necessário
+        total_fichas: totalLeads,
         converted_fichas: convertedFichas,
         conversion_rate: conversionRate,
         taxaConversao: conversionRate,
@@ -139,10 +139,10 @@ async function fetchScoutersFromSupabase(): Promise<ScouterDataResult> {
   }
 }
 
-function getTierFromFichas(totalFichas: number): string {
-  if (totalFichas >= 80) return 'Scouter Coach Bronze';
-  if (totalFichas >= 60) return 'Scouter Premium';
-  if (totalFichas >= 40) return 'Scouter Pleno';
+function getTierFromFichas(totalLeads: number): string {
+  if (totalLeads >= 80) return 'Scouter Coach Bronze';
+  if (totalLeads >= 60) return 'Scouter Premium';
+  if (totalLeads >= 40) return 'Scouter Pleno';
   return 'Scouter Iniciante';
 }
 

@@ -1,6 +1,6 @@
 /**
  * Página de Área de Abordagem
- * Mostra mapa único com toggle: Scouters (clustering) ou Fichas (heatmap + desenho)
+ * Mostra mapa único com toggle: Scouters (clustering) ou Leads (heatmap + desenho)
  * Dados lidos diretamente do Supabase
  */
 import { useState, useEffect } from 'react';
@@ -30,18 +30,18 @@ export default function AreaDeAbordagem() {
 
   // Fetch data from Supabase
   const { data: scouters, refetch: refetchScouters } = useScouters();
-  const { data: fichas, refetch: refetchFichas } = useLeads({ withGeo: true });
+  const { data: leads, refetch: refetchFichas } = useLeads({ withGeo: true });
 
   // Stats
   const totalScouters = scouters?.length || 0;
-  const totalFichas = fichas?.length || 0;
+  const totalLeads = leads?.length || 0;
 
   const handleEnrichGeo = async () => {
     setIsEnriching(true);
     
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fichas-geo-enrich?limit=50`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/leads-geo-enrich?limit=50`,
         {
           method: 'POST',
           headers: {
@@ -58,7 +58,7 @@ export default function AreaDeAbordagem() {
       
       toast({
         title: 'Geolocalização Atualizada',
-        description: `${result.processed} fichas processadas, ${result.geocoded} geocodificadas`,
+        description: `${result.processed} leads processadas, ${result.geocoded} geocodificadas`,
       });
       
       // Refresh data after enrichment
@@ -83,7 +83,7 @@ export default function AreaDeAbordagem() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Área de Abordagem</h1>
             <p className="text-muted-foreground mt-1">
-              Visualize e analise scouters e fichas com clustering e desenho de área
+              Visualize e analise scouters e leads com clustering e desenho de área
             </p>
           </div>
           <Button 
@@ -116,12 +116,12 @@ export default function AreaDeAbordagem() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Total Fichas
+                Total Leads
               </CardTitle>
               <Flame className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalFichas}</div>
+              <div className="text-2xl font-bold">{totalLeads}</div>
               <p className="text-xs text-muted-foreground">
                 Com localização mapeada
               </p>
@@ -138,7 +138,7 @@ export default function AreaDeAbordagem() {
             </TabsTrigger>
             <TabsTrigger value="fichas" className="flex items-center gap-2">
               <Flame className="h-4 w-4" />
-              Análise de Fichas
+              Análise de Leads
             </TabsTrigger>
           </TabsList>
           
@@ -166,10 +166,10 @@ export default function AreaDeAbordagem() {
           <CardContent className="text-sm text-muted-foreground space-y-2">
             <p>
               <strong>Modo Unificado:</strong> Toggle entre Scouters (clustering com círculos amarelos) 
-              e Fichas (heatmap colorido). Zoom in/out para ajustar visualização.
+              e Leads (heatmap colorido). Zoom in/out para ajustar visualização.
             </p>
             <p>
-              <strong>Análise de Fichas:</strong> Modo avançado com desenho de polígono. 
+              <strong>Análise de Leads:</strong> Modo avançado com desenho de polígono. 
               Clique em "Desenhar" → desenhe área no mapa (duplo clique para finalizar) → 
               receba análise detalhada por Projeto e Scouter.
             </p>

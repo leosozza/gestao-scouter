@@ -7,10 +7,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { DashboardFilters } from "./FilterPanel";
 
 interface DashboardData {
-  totalFichas: number;
-  fichasComFoto: number;
-  fichasConfirmadas: number;
-  fichasComContato: number;
+  totalLeads: number;
+  leadsComFoto: number;
+  leadsConfirmadas: number;
+  leadsComContato: number;
   iqsMedio: number;
 }
 
@@ -51,7 +51,7 @@ export const AnalysisPanel = ({ filters, data }: AnalysisPanelProps) => {
   const generateScouterAnalysis = (scouter: string, data: DashboardData): string => {
     const performances = {
       "Carlos Antônio": {
-        fichas: 180,
+        leads: 180,
         mediaDia: 15.0,
         diasTrabalhados: 12,
         ajudaCusto: 360,
@@ -60,7 +60,7 @@ export const AnalysisPanel = ({ filters, data }: AnalysisPanelProps) => {
         contribuicao: 42.5
       },
       "Rafaela": {
-        fichas: 120,
+        leads: 120,
         mediaDia: 10.0,
         diasTrabalhados: 12,
         ajudaCusto: 360,
@@ -75,21 +75,21 @@ export const AnalysisPanel = ({ filters, data }: AnalysisPanelProps) => {
     return `📊 **Análise de Performance - ${scouter}**
 
 **Produtividade Geral:**
-• Total de fichas: ${perf.fichas.toLocaleString('pt-BR')} no período
-• Média diária: ${perf.mediaDia} fichas/dia
-• Dias trabalhados: ${perf.diasTrabalhados} dias (>20 fichas/dia)
-• Contribuição no projeto: ${perf.contribuicao}% das fichas totais
+• Total de leads: ${perf.fichas.toLocaleString('pt-BR')} no período
+• Média diária: ${perf.mediaDia} leads/dia
+• Dias trabalhados: ${perf.diasTrabalhados} dias (>20 leads/dia)
+• Contribuição no projeto: ${perf.contribuicao}% das leads totais
 
 **Remuneração:**
 • Ajuda de custo: R$ ${perf.ajudaCusto.toLocaleString('pt-BR')}
-• Pagamento por fichas: R$ ${perf.pagamentoFichas.toLocaleString('pt-BR')}
+• Pagamento por leads: R$ ${perf.pagamentoFichas.toLocaleString('pt-BR')}
 • **Total a receber: R$ ${perf.totalReceber.toLocaleString('pt-BR')}**
 
 **Recomendações:**
 ${perf.mediaDia >= 15 
   ? "✅ Performance excelente! Manter ritmo atual e considerar aumentar meta individual."
   : perf.mediaDia >= 10
-  ? "⚠️ Performance na média. Revisar estratégias de captação para alcançar 15+ fichas/dia."
+  ? "⚠️ Performance na média. Revisar estratégias de captação para alcançar 15+ leads/dia."
   : "🔴 Performance abaixo do esperado. Necessário treinamento e acompanhamento próximo."
 }
 
@@ -103,7 +103,7 @@ ${perf.mediaDia >= 15
     const projectData = {
       "SELETIVA SANTO ANDRÉ-ABC": {
         meta: 2500,
-        fichasAtuais: 275,
+        leadsAtuais: 275,
         percentMeta: 11.0,
         esperadoHoje: 387,
         delta: -112,
@@ -113,7 +113,7 @@ ${perf.mediaDia >= 15
       },
       "SELETIVA SÃO CARLOS": {
         meta: 3000,
-        fichasAtuais: 230,
+        leadsAtuais: 230,
         percentMeta: 7.7,
         esperadoHoje: 600,
         delta: -370,
@@ -128,13 +128,13 @@ ${perf.mediaDia >= 15
     return `🎯 **Análise de Projeto - ${project}**
 
 **Status da Meta:**
-• Meta total: ${proj.meta.toLocaleString('pt-BR')} fichas
-• Fichas captadas: ${proj.fichasAtuais.toLocaleString('pt-BR')} (${proj.percentMeta}% da meta)
+• Meta total: ${proj.meta.toLocaleString('pt-BR')} leads
+• Leads captadas: ${proj.fichasAtuais.toLocaleString('pt-BR')} (${proj.percentMeta}% da meta)
 • Esperado até hoje: ${proj.esperadoHoje.toLocaleString('pt-BR')}
-• Delta: ${proj.delta} fichas (${proj.status === "atraso" ? "🔴 Atraso" : "🔴 Atraso Crítico"})
+• Delta: ${proj.delta} leads (${proj.status === "atraso" ? "🔴 Atraso" : "🔴 Atraso Crítico"})
 
 **Projeção e Riscos:**
-• Ritmo necessário: **${proj.ritmoNecessario} fichas/dia** para atingir meta no prazo
+• Ritmo necessário: **${proj.ritmoNecessario} leads/dia** para atingir meta no prazo
 • Status atual: ${proj.status === "atraso-critico" ? "RISCO ALTO de não atingir meta" : "Recuperação possível com esforço concentrado"}
 
 **Top Performers:**
@@ -147,7 +147,7 @@ ${proj.topScouters.map(s => `• ${s}`).join('\n')}
 4. **Monitoramento diário**: Acompanhar progresso a cada 24h
 
 **Cenário What-If:**
-• Com +10% no ritmo atual: ${Math.round(proj.meta * 0.85).toLocaleString('pt-BR')} fichas (85% da meta)
+• Com +10% no ritmo atual: ${Math.round(proj.meta * 0.85).toLocaleString('pt-BR')} leads (85% da meta)
 • Necessário: Acelerar captação em 40% para recuperar atraso`;
   };
 
@@ -156,16 +156,16 @@ ${proj.topScouters.map(s => `• ${s}`).join('\n')}
 
 **Performance da Equipe:**
 • Total de scouters ativos: 5
-• Total de fichas no período: 585
-• Média geral: 12.3 fichas/dia por scouter
+• Total de leads no período: 585
+• Média geral: 12.3 leads/dia por scouter
 • Projetos em andamento: 3
 
 **Ranking de Performance:**
-1. Carlos Antônio - 180 fichas (alta performance) ⭐
-2. Rafaela - 120 fichas (performance estável)
-3. Maria Santos - 110 fichas (performance estável) 
-4. João Silva - 95 fichas (performance variável)
-5. Ana Paula - 80 fichas (requer atenção) ⚠️
+1. Carlos Antônio - 180 leads (alta performance) ⭐
+2. Rafaela - 120 leads (performance estável)
+3. Maria Santos - 110 leads (performance estável) 
+4. João Silva - 95 leads (performance variável)
+5. Ana Paula - 80 leads (requer atenção) ⚠️
 
 **Status dos Projetos:**
 • SELETIVA SANTO ANDRÉ-ABC: 11% da meta (atraso moderado)
