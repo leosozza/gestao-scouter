@@ -26,17 +26,18 @@ export interface LeadDataPoint {
   
   // Status e etapas
   etapa?: string;
-  ficha_confirmada?: string;
-  confirmado?: string;
-  compareceu?: string;
+  ficha_confirmada?: string | boolean;
+  confirmado?: string | boolean;
+  compareceu?: string | boolean;
   agendado?: string;
   tabulacao?: string;
   resultado_ligacao?: string;
   
+  // Campos adicionais de cadastro
+  cadastro_existe_foto?: string | boolean;
   // Fotos
   foto?: string;
   foto_1?: string;
-  cadastro_existe_foto?: string;
   
   // Localização e supervisão
   supervisor?: string;

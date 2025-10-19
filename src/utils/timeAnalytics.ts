@@ -17,7 +17,8 @@ interface TimeMetrics {
   workStartTime: string | null;
   workEndTime: string | null;
   totalWorkHours: number;
-  fichasPerHour: number;
+  leadsPerHour: number;
+  fichasPerHour: number; // alias para compatibilidade
 }
 
 interface DailyTimeMetrics {
@@ -25,7 +26,8 @@ interface DailyTimeMetrics {
   startTime: string;
   endTime: string;
   workHours: number;
-  fichasCount: number;
+  leadsCount: number;
+  fichasCount: number; // alias para compatibilidade
   avgIntervalMinutes: number;
 }
 
@@ -96,6 +98,7 @@ export function calculateTimeMetrics(fichas: Lead[]): TimeMetrics {
     workStartTime: null,
     workEndTime: null,
     totalWorkHours: 0,
+    leadsPerHour: 0,
     fichasPerHour: 0,
   };
 
@@ -158,12 +161,14 @@ export function calculateTimeMetrics(fichas: Lead[]): TimeMetrics {
   }
 
   const fichasPerHour = totalWorkHours > 0 ? fichas.length / totalWorkHours : 0;
+  const leadsPerHour = fichasPerHour; // mesmo valor
 
   return {
     avgIntervalMinutes: Math.round(avgIntervalMinutes),
     workStartTime,
     workEndTime,
     totalWorkHours: Number(totalWorkHours.toFixed(2)),
+    leadsPerHour: Number(leadsPerHour.toFixed(2)),
     fichasPerHour: Number(fichasPerHour.toFixed(2)),
   };
 }
@@ -225,7 +230,8 @@ export function calculateDailyTimeMetrics(fichas: Lead[]): DailyTimeMetrics[] {
       startTime,
       endTime,
       workHours: Number(workHours.toFixed(2)),
-      fichasCount: dayLeads.length,
+      leadsCount: dayLeads.length,
+      fichasCount: dayLeads.length, // alias para compatibilidade
       avgIntervalMinutes: Math.round(avgIntervalMinutes),
     });
   }

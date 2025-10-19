@@ -262,7 +262,7 @@ export function UnifiedMap({
       return;
     }
 
-    if (!fichas || leads.length === 0) {
+    if (!leads || leads.length === 0) {
       console.log('[Heatmap] No leads to render', { leadsLength: leads?.length });
       setTotalFichas(0);
       // Clear existing heatmap layer if present
@@ -273,7 +273,7 @@ export function UnifiedMap({
       return;
     }
 
-    console.log(`[Heatmap] Rendering ${fichas.length} leads`);
+    console.log(`[Heatmap] Rendering ${leads.length} leads`);
 
     // Clear existing heatmap layer
     if (heatLayerRef.current) {
@@ -302,7 +302,7 @@ export function UnifiedMap({
       }).addTo(mapRef.current);
 
       heatLayerRef.current = heatLayer;
-      setTotalFichas(fichas.length);
+      setTotalFichas(leads.length);
       console.log('[Heatmap] Layer added successfully', { count: leads.length });
 
       // Fit bounds to show all points
@@ -314,7 +314,7 @@ export function UnifiedMap({
     } catch (error) {
       console.error('[Heatmap] Error adding heatmap to map:', error);
     }
-  }, [fichas, viewMode]);
+  }, [leads, viewMode]);
 
   // Center map on current view
   const handleCenterMap = () => {
@@ -324,7 +324,7 @@ export function UnifiedMap({
       const bounds = L.latLngBounds(scouters.map(s => [s.lat, s.lng] as [number, number]));
       mapRef.current.fitBounds(bounds, { padding: [50, 50] });
     } else if (viewMode === 'fichas' && leads && leads.length > 0) {
-      const points = leads.map(ficha => [ficha.lat, ficha.lng] as [number, number]);
+      const points = leads.map(lead => [lead.lat, lead.lng] as [number, number]);
       const bounds = L.latLngBounds(points);
       mapRef.current.fitBounds(bounds, { padding: [50, 50] });
     }
@@ -336,7 +336,7 @@ export function UnifiedMap({
     try {
       const result = await refetchFichas();
       const leadsData = result.data || [];
-      console.log(`✅ Reloaded leads: ${fichasData.length}`);
+      console.log(`✅ Reloaded leads: ${leadsData.length}`);
     } catch (error) {
       console.error('❌ Failed to reload leads', error);
       console.warn('Failed to reload leads data');

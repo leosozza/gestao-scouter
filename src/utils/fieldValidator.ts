@@ -3,9 +3,9 @@ import type { LeadDataPoint } from '@/types/lead';
 
 // Campos obrigatórios por tabela
 const REQUIRED_FIELDS = {
-  fichas: ['scouter', 'projeto', 'criado', 'valor_ficha', 'nome'],
+  leads: ['scouter', 'projeto', 'criado', 'valor_ficha', 'nome'],
   scouter_profiles: ['nome', 'telefone', 'ativo'],
-  fichas_geo: ['latitude', 'longitude', 'lat', 'lng']
+  leads_geo: ['latitude', 'longitude', 'lat', 'lng']
 } as const;
 
 // Aliases comuns para campos

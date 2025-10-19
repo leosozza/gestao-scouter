@@ -144,14 +144,14 @@ export function LeadsTab() {
 
   // Update leads data
   useEffect(() => {
-    if (!fichas || leads.length === 0) {
+    if (!leads || leads.length === 0) {
       setAllFichas([]);
       setFilteredFichas([]);
       setDisplayedFichas([]);
       return;
     }
 
-    // Convert to LeadDataPoint - now using real data from Supabase
+    // Convert to LeadDataPoint
     const enrichedFichas: LeadDataPoint[] = leads.map((f, index) => ({
       ...f,
       id: `ficha-${index}`,
@@ -166,7 +166,7 @@ export function LeadsTab() {
     setFilteredFichas(enrichedFichas);
     setDisplayedFichas(enrichedFichas);
     setSummary(generateAnalysis(enrichedFichas));
-  }, [fichas]);
+  }, [leads]);
 
   // Update heat layers when filtered data changes
   useEffect(() => {

@@ -33,14 +33,17 @@ export interface LinearProjectionData {
   };
   realizado: {
     leads: number;
+    fichas: number; // alias para compatibilidade
     valor: number;
   };
   projetado_restante: {
     leads: number;
+    fichas: number; // alias para compatibilidade
     valor: number;
   };
   total_projetado: {
     leads: number;
+    fichas: number; // alias para compatibilidade
     valor: number;
   };
   serie_real: Array<{ dia: string; leads: number; acumulado: number }>;
@@ -430,7 +433,7 @@ async function fetchProjectionsFromSupabase(type: ProjectionType, selectedFilter
       if (type === 'scouter') {
         query = query.eq('scouter', selectedFilter);
       } else {
-        query = query.eq('projeto', selectedFilter); // coluna no DB é 'projeto'
+        query = query.eq('commercial_project_id', selectedFilter);
       }
     }
 

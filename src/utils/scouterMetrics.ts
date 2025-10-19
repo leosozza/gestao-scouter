@@ -1,57 +1,44 @@
 import { format, parse, differenceInMinutes, differenceInHours } from 'date-fns';
-import type { Ficha } from '@/repositories/types';
+import type { Lead } from '@/repositories/types';
 
 /**
- * Extrai a data e hora de uma ficha, priorizando hora_criacao_ficha + criado,
+ * Extrai a data e hora de um lead, priorizando hora_criacao_ficha + criado,
  * e usando datahoracel como fallback
  */
-function getFichaDateTime(ficha: Lead): Date | null {
+function getLeadDateTime(lead: Lead): Date | null {
   try {
-    // Prioridade 1: hora_criacao_ficha + criado
-    if (ficha.hora_criacao_ficha && ficha.criado) {
-      // criado está em formato dd/MM/yyyy
-      // hora_criacao_ficha está em formato HH:mm
-      const dateTimeParts = `${ficha.criado} ${ficha.hora_criacao_ficha}`;
-      const parsedDate = parse(dateTimeParts, 'dd/MM/yyyy HH:mm', new Date());
-      if (!isNaN(parsedDate.getTime())) {
-        return parsedDate;
+    // Prioridade 1: criado como timestamp
+    if (lead.criado) {
+      const date = new Date(lead.criado);
+      if (!isNaN(date.getTime())) {
+        return date;
       }
     }
 
-    // Fallback: datahoracel
-    if (ficha.datahoracel) {
-      // datahoracel está em formato dd/MM/yyyy HH:mm
-      const parsedDate = parse(ficha.datahoracel, 'dd/MM/yyyy HH:mm', new Date());
-      if (!isNaN(parsedDate.getTime())) {
-        return parsedDate;
-      }
-    }
-
-    // Fallback adicional: tentar acessar campo direto (pode vir de diferentes fontes)
-    const dataHoraField = ficha['Data de criação da Ficha'] || ficha['data_criacao_ficha'];
-    if (dataHoraField && typeof dataHoraField === 'string') {
-      const parsedDate = parse(dataHoraField, 'dd/MM/yyyy HH:mm', new Date());
-      if (!isNaN(parsedDate.getTime())) {
-        return parsedDate;
+    // Fallback: data_criacao_ficha
+    if (lead.data_criacao_ficha) {
+      const date = new Date(lead.data_criacao_ficha);
+      if (!isNaN(date.getTime())) {
+        return date;
       }
     }
 
     return null;
   } catch (error) {
-    console.error('Erro ao extrair data/hora da ficha:', error);
+    console.error('Erro ao extrair data/hora do lead:', error);
     return null;
   }
 }
 
 /**
- * Agrupa fichas por scouter e data
+ * Agrupa leads por scouter e data
  */
-function groupFichasByScouterAndDate(fichas: Lead[]): Record<string, Record<string, Lead[]>> {
+function groupLeadsByScouterAndDate(leads: Lead[]): Record<string, Record<string, Lead[]>> {
   const grouped: Record<string, Record<string, Lead[]>> = {};
 
-  fichas.forEach(ficha => {
-    const scouter = ficha.scouter || 'Sem Scouter';
-    const dateTime = getFichaDateTime(ficha);
+  leads.forEach(lead => {
+    const scouter = lead.scouter || 'Sem Scouter';
+    const dateTime = getLeadDateTime(lead);
     
     if (!dateTime) return;
 
@@ -64,7 +51,7 @@ function groupFichasByScouterAndDate(fichas: Lead[]): Record<string, Record<stri
       grouped[scouter][dateKey] = [];
     }
 
-    grouped[scouter][dateKey].push(ficha);
+    grouped[scouter][dateKey].push(lead);
   });
 
   return grouped;
@@ -72,14 +59,13 @@ function groupFichasByScouterAndDate(fichas: Lead[]): Record<string, Record<stri
 
 /**
  * Calcula as horas trabalhadas por dia por scouter
- * (diferença entre primeira e última ficha do dia)
  */
-export function calculateWorkingHours(fichas: Lead[]): {
+export function calculateWorkingHours(leads: Lead[]): {
   totalHours: number;
   averageHoursPerDay: number;
   dayCount: number;
 } {
-  const grouped = groupFichasByScouterAndDate(fichas);
+  const grouped = groupLeadsByScouterAndDate(leads);
   let totalHours = 0;
   let dayCount = 0;
 
@@ -87,24 +73,20 @@ export function calculateWorkingHours(fichas: Lead[]): {
     Object.values(scouterDays).forEach(dayLeads => {
       if (dayLeads.length === 0) return;
 
-      // Ordenar fichas por data/hora
-      const sortedFichas = dayLeads
-        .map(ficha => ({ ficha, dateTime: getFichaDateTime(ficha) }))
+      const sortedLeads = dayLeads
+        .map(lead => ({ lead, dateTime: getLeadDateTime(lead) }))
         .filter(item => item.dateTime !== null)
         .sort((a, b) => a.dateTime!.getTime() - b.dateTime!.getTime());
 
-      if (sortedFichas.length === 0) return;
-
-      // Se houver apenas uma ficha, considerar 0 horas trabalhadas para esse dia
-      if (sortedFichas.length === 1) {
+      if (sortedLeads.length === 0) return;
+      if (sortedLeads.length === 1) {
         dayCount++;
         return;
       }
 
-      // Calcular diferença entre primeira e última ficha
-      const firstFicha = sortedFichas[0].dateTime!;
-      const lastFicha = sortedFichas[sortedFichas.length - 1].dateTime!;
-      const hoursWorked = differenceInHours(lastFicha, firstFicha, { roundingMethod: 'round' });
+      const firstLead = sortedLeads[0].dateTime!;
+      const lastLead = sortedLeads[sortedLeads.length - 1].dateTime!;
+      const hoursWorked = differenceInHours(lastLead, firstLead, { roundingMethod: 'round' });
 
       totalHours += hoursWorked;
       dayCount++;
@@ -119,36 +101,31 @@ export function calculateWorkingHours(fichas: Lead[]): {
 }
 
 /**
- * Calcula o tempo médio entre fichas por dia por scouter
+ * Calcula o tempo médio entre leads
  */
-export function calculateAverageTimeBetweenFichas(fichas: Lead[]): {
+export function calculateAverageTimeBetweenLeads(leads: Lead[]): {
   averageMinutes: number;
   totalIntervals: number;
 } {
-  const grouped = groupFichasByScouterAndDate(fichas);
+  const grouped = groupLeadsByScouterAndDate(leads);
   let totalMinutes = 0;
   let intervalCount = 0;
 
   Object.values(grouped).forEach(scouterDays => {
     Object.values(scouterDays).forEach(dayLeads => {
-      if (dayLeads.length < 2) {
-        // Não há intervalos se houver menos de 2 fichas
-        return;
-      }
+      if (dayLeads.length < 2) return;
 
-      // Ordenar fichas por data/hora
-      const sortedFichas = dayLeads
-        .map(ficha => ({ ficha, dateTime: getFichaDateTime(ficha) }))
+      const sortedLeads = dayLeads
+        .map(lead => ({ lead, dateTime: getLeadDateTime(lead) }))
         .filter(item => item.dateTime !== null)
         .sort((a, b) => a.dateTime!.getTime() - b.dateTime!.getTime());
 
-      if (sortedFichas.length < 2) return;
+      if (sortedLeads.length < 2) return;
 
-      // Calcular intervalos entre fichas consecutivas
-      for (let i = 1; i < sortedFichas.length; i++) {
-        const prevFicha = sortedFichas[i - 1].dateTime!;
-        const currentFicha = sortedFichas[i].dateTime!;
-        const minutesBetween = differenceInMinutes(currentFicha, prevFicha);
+      for (let i = 1; i < sortedLeads.length; i++) {
+        const prevLead = sortedLeads[i - 1].dateTime!;
+        const currentLead = sortedLeads[i].dateTime!;
+        const minutesBetween = differenceInMinutes(currentLead, prevLead);
 
         totalMinutes += minutesBetween;
         intervalCount++;
@@ -163,7 +140,7 @@ export function calculateAverageTimeBetweenFichas(fichas: Lead[]): {
 }
 
 /**
- * Formata minutos em formato legível (ex: "45 min" ou "2h 30min")
+ * Formata minutos em formato legível
  */
 export function formatMinutesToReadable(minutes: number): string {
   if (minutes === 0) return '0 min';
@@ -181,7 +158,7 @@ export function formatMinutesToReadable(minutes: number): string {
 }
 
 /**
- * Formata horas em formato legível (ex: "8h" ou "8.5h")
+ * Formata horas em formato legível
  */
 export function formatHoursToReadable(hours: number): string {
   if (hours === 0) return '0h';

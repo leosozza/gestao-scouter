@@ -338,3 +338,20 @@ export async function getUniqueScouters(): Promise<string[]> {
   const scouters = [...new Set(data?.map(d => d.scouter).filter(Boolean))];
   return scouters as string[];
 }
+
+/**
+ * Deleta leads (soft delete)
+ * @param ids - Array de IDs dos leads a deletar
+ */
+export async function deleteLeads(ids: (string | number)[]): Promise<void> {
+  const { error } = await supabase
+    .from('leads')
+    .update({ deleted: true })
+    .in('id', ids);
+
+  if (error) {
+    console.error('❌ [LeadsRepo] Erro ao deletar leads:', error);
+    throw error;
+  }
+}
+

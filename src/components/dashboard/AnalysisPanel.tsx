@@ -75,7 +75,7 @@ export const AnalysisPanel = ({ filters, data }: AnalysisPanelProps) => {
     return `📊 **Análise de Performance - ${scouter}**
 
 **Produtividade Geral:**
-• Total de leads: ${perf.fichas.toLocaleString('pt-BR')} no período
+• Total de leads: ${perf.leads.toLocaleString('pt-BR')} no período
 • Média diária: ${perf.mediaDia} leads/dia
 • Dias trabalhados: ${perf.diasTrabalhados} dias (>20 leads/dia)
 • Contribuição no projeto: ${perf.contribuicao}% das leads totais
@@ -129,7 +129,7 @@ ${perf.mediaDia >= 15
 
 **Status da Meta:**
 • Meta total: ${proj.meta.toLocaleString('pt-BR')} leads
-• Leads captadas: ${proj.fichasAtuais.toLocaleString('pt-BR')} (${proj.percentMeta}% da meta)
+• Leads captadas: ${proj.leadsAtuais.toLocaleString('pt-BR')} (${proj.percentMeta}% da meta)
 • Esperado até hoje: ${proj.esperadoHoje.toLocaleString('pt-BR')}
 • Delta: ${proj.delta} leads (${proj.status === "atraso" ? "🔴 Atraso" : "🔴 Atraso Crítico"})
 

@@ -9,6 +9,7 @@ interface ScouterLocationData {
   lon: number;
   scouterName: string;
   leads: number;
+  fichas: number; // alias para compatibilidade
   conversao: number;
 }
 
@@ -16,6 +17,7 @@ interface FichaLocationData {
   lat: number;
   lon: number;
   leads: number;
+  fichas: number; // alias para compatibilidade
   conversao: number;
   endereco?: string;
 }

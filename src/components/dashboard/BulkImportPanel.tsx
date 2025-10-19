@@ -179,7 +179,7 @@ export const BulkImportPanel = ({ onComplete }: BulkImportPanelProps) => {
       }).filter(f => f.nome); // Apenas registros com nome
 
       // Dividir em batches de 2000
-      const chunks = chunkArray(fichas, 2000);
+      const chunks = chunkArray(leads, 2000);
       let totalInserted = 0;
       let totalFailed = 0;
       const errors: string[] = [];
