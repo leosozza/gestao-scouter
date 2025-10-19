@@ -5,10 +5,10 @@
 // Este repositório busca dados exclusivamente da tabela 'leads' do Supabase.
 // Todos os dashboards e visualizações devem usar esta fonte centralizada.
 import { supabase } from '@/lib/supabase-helper';
-import type { FichaDataPoint } from '@/types/ficha';
+import type { LeadDataPoint } from '@/types/lead';
 
 export interface DashboardDataResult {
-  data: FichaDataPoint[];
+  data: LeadDataPoint[];
   missingFields: string[];
 }
 
@@ -64,7 +64,7 @@ export async function getDashboardData(filters: {
   console.log(`✅ [dashboardRepo] ${data?.length || 0} registros retornados da tabela "leads"`);
 
   return {
-    data: (data || []) as FichaDataPoint[],
+    data: (data || []) as LeadDataPoint[],
     missingFields: []
   };
 }

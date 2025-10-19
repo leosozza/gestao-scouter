@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, MapPin, Pencil, RefreshCw, X, Navigation, Flame, Maximize2, Minimize2, Brain } from 'lucide-react';
 import { useFichas } from '@/hooks/useFichas';
 import { getTileServerConfig, DEFAULT_TILE_SERVER } from '@/config/tileServers';
-import type { FichaDataPoint } from '@/types/ficha';
+import type { LeadDataPoint } from '@/types/lead';
 import { DateFilter } from '@/components/FichasMap/DateFilter';
 import { AdvancedSummary } from '@/components/FichasMap/AdvancedSummary';
 import { AIAnalysisFloating } from '@/components/shared/AIAnalysisFloating';
@@ -91,9 +91,9 @@ export function FichasTab() {
   const heatSelectedRef = useRef<L.HeatLayer | null>(null); // Realtime selection heat
 
   const [isDrawing, setIsDrawing] = useState(false);
-  const [allFichas, setAllFichas] = useState<FichaDataPoint[]>([]);
-  const [filteredFichas, setFilteredFichas] = useState<FichaDataPoint[]>([]); // After date filter
-  const [displayedFichas, setDisplayedFichas] = useState<FichaDataPoint[]>([]);
+  const [allFichas, setAllFichas] = useState<LeadDataPoint[]>([]);
+  const [filteredFichas, setFilteredFichas] = useState<LeadDataPoint[]>([]); // After date filter
+  const [displayedFichas, setDisplayedFichas] = useState<LeadDataPoint[]>([]);
   const [summary, setSummary] = useState<AnalysisSummary | null>(null);
   const [showSummary, setShowSummary] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -151,8 +151,8 @@ export function FichasTab() {
       return;
     }
 
-    // Convert to FichaDataPoint - now using real data from Supabase
-    const enrichedFichas: FichaDataPoint[] = fichas.map((f, index) => ({
+    // Convert to LeadDataPoint - now using real data from Supabase
+    const enrichedFichas: LeadDataPoint[] = fichas.map((f, index) => ({
       ...f,
       id: `ficha-${index}`,
       projeto: f.projeto || 'Sem Projeto',
@@ -340,7 +340,7 @@ export function FichasTab() {
       // Get bounds for bbox pre-filtering
       const bounds = shape.getBounds();
       // Filter to only fichas with valid coordinates
-      const validFichas = filteredFichas.filter(f => f.lat !== undefined && f.lng !== undefined) as Array<FichaDataPoint & { lat: number; lng: number }>;
+      const validFichas = filteredFichas.filter(f => f.lat !== undefined && f.lng !== undefined) as Array<LeadDataPoint & { lat: number; lng: number }>;
       const candidates = bboxFilter(validFichas, bounds);
 
       // Create polygon for Turf filtering
@@ -381,7 +381,7 @@ export function FichasTab() {
       // Get bounds for pre-filtering
       const bounds = e.layer.getBounds();
       // Filter to only fichas with valid coordinates
-      const validFichas = filteredFichas.filter(f => f.lat !== undefined && f.lng !== undefined) as Array<FichaDataPoint & { lat: number; lng: number }>;
+      const validFichas = filteredFichas.filter(f => f.lat !== undefined && f.lng !== undefined) as Array<LeadDataPoint & { lat: number; lng: number }>;
       const candidates = bboxFilter(validFichas, bounds);
 
       // Filter fichas inside polygon using Turf.js
@@ -438,7 +438,7 @@ export function FichasTab() {
   }, [filteredFichas]);
 
   // Generate analysis summary
-  const generateAnalysis = (fichas: FichaDataPoint[]): AnalysisSummary => {
+  const generateAnalysis = (fichas: LeadDataPoint[]): AnalysisSummary => {
     const projetoMap = new Map<string, Map<string, number>>();
     const etapaMap = new Map<string, number>();
     const confirmadoMap = new Map<string, number>();

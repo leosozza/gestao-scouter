@@ -13,7 +13,7 @@ import {
   createFichasSelection,
   generateSummary,
   formatSummaryText,
-  type FichaDataPoint,
+  type LeadDataPoint,
   type FichasSummaryData,
   type SelectionResult,
   type FichasHeatmap,
@@ -65,9 +65,9 @@ export default function TestFichasPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [allFichas, setAllFichas] = useState<FichaDataPoint[]>([]);
-  const [filteredFichas, setFilteredFichas] = useState<FichaDataPoint[]>([]);
-  const [displayedFichas, setDisplayedFichas] = useState<FichaDataPoint[]>([]);
+  const [allFichas, setAllFichas] = useState<LeadDataPoint[]>([]);
+  const [filteredFichas, setFilteredFichas] = useState<LeadDataPoint[]>([]);
+  const [displayedFichas, setDisplayedFichas] = useState<LeadDataPoint[]>([]);
   const [summary, setSummary] = useState<FichasSummaryData | null>(null);
   const [showSummary, setShowSummary] = useState(false);
 

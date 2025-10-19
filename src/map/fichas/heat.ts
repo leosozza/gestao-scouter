@@ -6,7 +6,7 @@
 
 import L from 'leaflet';
 import 'leaflet.heat';
-import { FichaDataPoint } from './data';
+import { LeadDataPoint } from './data';
 
 export interface HeatmapOptions {
   radius?: number;
@@ -33,7 +33,7 @@ const DEFAULT_HEATMAP_OPTIONS: HeatmapOptions = {
 export class FichasHeatmap {
   private map: L.Map;
   private heatLayer: L.HeatLayer | null = null;
-  private currentData: FichaDataPoint[] = [];
+  private currentData: LeadDataPoint[] = [];
   private options: HeatmapOptions;
   private isHidden: boolean = false;
 
@@ -46,7 +46,7 @@ export class FichasHeatmap {
    * Update heatmap with new data
    * Uses setLatLngs to update existing layer or creates new one if needed
    */
-  updateData(fichas: FichaDataPoint[]): void {
+  updateData(fichas: LeadDataPoint[]): void {
     console.log(`🔥 [Fichas Heatmap] Updating heatmap with ${fichas.length} points`);
     
     this.currentData = fichas;

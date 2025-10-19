@@ -6,27 +6,27 @@
 
 import L from 'leaflet';
 import * as turf from '@turf/turf';
-import { FichaDataPoint } from './data';
+import { LeadDataPoint } from './data';
 
 export type SelectionShape = 'rectangle' | 'polygon';
 
 export interface SelectionResult {
   shape: SelectionShape;
-  fichas: FichaDataPoint[];
+  fichas: LeadDataPoint[];
   bounds: L.LatLngBounds | null;
   polygon: L.LatLng[] | null;
 }
 
 export class FichasSelection {
   private map: L.Map;
-  private allFichas: FichaDataPoint[];
+  private allFichas: LeadDataPoint[];
   private drawLayer: L.LayerGroup;
   private currentShape: L.Rectangle | L.Polygon | null = null;
   private onSelectionComplete?: (result: SelectionResult) => void;
 
   constructor(
     map: L.Map,
-    fichas: FichaDataPoint[],
+    fichas: LeadDataPoint[],
     onSelectionComplete?: (result: SelectionResult) => void
   ) {
     this.map = map;
@@ -174,7 +174,7 @@ export class FichasSelection {
   /**
    * Filter fichas within rectangle bounds
    */
-  private filterByRectangle(bounds: L.LatLngBounds): FichaDataPoint[] {
+  private filterByRectangle(bounds: L.LatLngBounds): LeadDataPoint[] {
     return this.allFichas.filter(ficha => {
       return bounds.contains([ficha.lat, ficha.lng]);
     });
@@ -183,7 +183,7 @@ export class FichasSelection {
   /**
    * Filter fichas within polygon using Turf.js
    */
-  private filterByPolygon(vertices: L.LatLng[]): FichaDataPoint[] {
+  private filterByPolygon(vertices: L.LatLng[]): LeadDataPoint[] {
     // Convert Leaflet polygon to GeoJSON polygon for Turf
     const coordinates = vertices.map(v => [v.lng, v.lat]);
     // Close the polygon by adding first point at the end
@@ -225,7 +225,7 @@ export class FichasSelection {
   /**
    * Update fichas data
    */
-  updateFichas(fichas: FichaDataPoint[]): void {
+  updateFichas(fichas: LeadDataPoint[]): void {
     this.allFichas = fichas;
   }
 
@@ -244,7 +244,7 @@ export class FichasSelection {
  */
 export function createFichasSelection(
   map: L.Map,
-  fichas: FichaDataPoint[],
+  fichas: LeadDataPoint[],
   onSelectionComplete?: (result: SelectionResult) => void
 ): FichasSelection {
   return new FichasSelection(map, fichas, onSelectionComplete);

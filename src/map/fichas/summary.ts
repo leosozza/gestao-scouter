@@ -3,7 +3,7 @@
  * Generates summary statistics by projeto and scouter
  */
 
-import { FichaDataPoint, groupByProjeto, groupByScouter } from './data';
+import { LeadDataPoint, groupByProjeto, groupByScouter } from './data';
 
 export interface ProjetoSummary {
   projeto: string;
@@ -28,7 +28,7 @@ export interface FichasSummaryData {
 /**
  * Generate complete summary statistics from fichas data
  */
-export function generateSummary(fichas: FichaDataPoint[]): FichasSummaryData {
+export function generateSummary(fichas: LeadDataPoint[]): FichasSummaryData {
   console.log(`📊 [Fichas Summary] Generating summary for ${fichas.length} fichas`);
   
   const total = fichas.length;

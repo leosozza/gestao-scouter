@@ -1,7 +1,7 @@
 // Repositório para Scouters - Dados do Supabase
 import { supabase } from '@/integrations/supabase/client';
 import { detectMissingFields } from '@/utils/fieldValidator';
-import type { FichaDataPoint } from '@/types/ficha';
+import type { LeadDataPoint } from '@/types/lead';
 
 export interface ScouterData {
   id: string;
@@ -81,12 +81,12 @@ async function fetchScoutersFromSupabase(): Promise<ScouterDataResult> {
     if (leadsError) throw leadsError;
 
     // Agrupar leads por scouter
-    const leadsByScouter = new Map<string, FichaDataPoint[]>();
+    const leadsByScouter = new Map<string, LeadDataPoint[]>();
     for (const lead of leads || []) {
       const scouterName = lead.scouter?.toString().trim();
       if (scouterName) {
         if (!leadsByScouter.has(scouterName)) leadsByScouter.set(scouterName, []);
-        leadsByScouter.get(scouterName)!.push(lead as FichaDataPoint);
+        leadsByScouter.get(scouterName)!.push(lead as LeadDataPoint);
       }
     }
 
@@ -160,7 +160,7 @@ function getPerformanceStatus(conversionRate: number): string {
   return 'baixo';
 }
 
-function calculateQualityScore(fichas: FichaDataPoint[]): number {
+function calculateQualityScore(fichas: LeadDataPoint[]): number {
   if (!fichas || fichas.length === 0) return 0;
 
   let score = 0;

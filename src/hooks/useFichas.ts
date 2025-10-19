@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase-helper';
 import { fichaMapper } from '@/services/fieldMappingService';
-import type { FichaDataPoint } from '@/types/ficha';
+import type { LeadDataPoint } from '@/types/lead';
 
 interface UseFichasParams {
   startDate?: string;
@@ -14,7 +14,7 @@ interface UseFichasParams {
 export function useFichas(params: UseFichasParams = {}) {
   return useQuery({
     queryKey: ['leads', params],
-    queryFn: async (): Promise<FichaDataPoint[]> => {
+    queryFn: async (): Promise<LeadDataPoint[]> => {
       // ⚠️ IMPORTANTE: Sempre usar a tabela 'leads' como fonte única de verdade
       // A tabela 'fichas' foi migrada para 'leads' (LEGADO/DEPRECATED)
       let query = supabase

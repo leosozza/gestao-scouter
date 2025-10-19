@@ -15,7 +15,7 @@ import {
   createFichasSelection,
   generateSummary,
   formatSummaryText,
-  type FichaDataPoint,
+  type LeadDataPoint,
   type FichasSummaryData,
   type SelectionResult,
   type FichasHeatmap,
@@ -34,8 +34,8 @@ export function FichasModuleExample() {
   
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [allFichas, setAllFichas] = useState<FichaDataPoint[]>([]);
-  const [displayedFichas, setDisplayedFichas] = useState<FichaDataPoint[]>([]);
+  const [allFichas, setAllFichas] = useState<LeadDataPoint[]>([]);
+  const [displayedFichas, setDisplayedFichas] = useState<LeadDataPoint[]>([]);
   const [summary, setSummary] = useState<FichasSummaryData | null>(null);
   const [selectionMode, setSelectionMode] = useState<'none' | 'rectangle' | 'polygon'>('none');
 
