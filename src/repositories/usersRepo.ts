@@ -13,7 +13,7 @@ export interface User {
   scouter_id?: number | null;
   supervisor_id?: string | null;
   role_name?: string; // Joined role name
-  roles?: { name: string }; // Embedded role object
+  role?: { name: string }; // Embedded role object (changed from roles to role)
 }
 
 export interface Role {
@@ -32,7 +32,7 @@ export async function getUsersWithRolesSafe(): Promise<User[]> {
   try {
     console.log('🔍 [UsersRepo] Buscando usuários com roles (método seguro)...');
 
-    // Attempt 1: Try explicit named embed
+    // Attempt 1: Try standard PostgREST join syntax
     try {
       const { data, error } = await supabase
         .from('users')
@@ -43,7 +43,7 @@ export async function getUsersWithRolesSafe(): Promise<User[]> {
           role_id,
           scouter_id,
           supervisor_id,
-          roles:roles!users_role_id_fkey(name)
+          role:roles(name)
         `)
         .order('name');
 
@@ -52,7 +52,7 @@ export async function getUsersWithRolesSafe(): Promise<User[]> {
         console.log('✅ [UsersRepo] Usuários carregados via embed (', data.length, ')');
         return data.map(u => ({
           ...u,
-          role_name: u.roles?.name || 'Sem Cargo',
+          role_name: u.role?.name || 'Sem Cargo',
         })) as User[];
       }
 
