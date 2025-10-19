@@ -37,9 +37,9 @@ export function InteractiveFilterPanel({ onFilterChange }: FilterPanelProps) {
     queryFn: async () => {
       const { data } = await supabase
         .from('leads')
-        .select('projeto')
+        .select('commercial_project_id')
         .or('deleted.is.false,deleted.is.null');
-      return [...new Set(data?.map(d => d.projeto).filter(Boolean))];
+      return [...new Set(data?.map(d => d.commercial_project_id).filter(Boolean))];
     }
   });
 

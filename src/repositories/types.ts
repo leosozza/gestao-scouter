@@ -18,20 +18,13 @@ export interface LeadsFilters {
 }
 
 export interface Lead {
-  id?: string | number; // UUID string (new) or number (legacy compatibility)
-  ID?: string | number | boolean | Date;
+  id?: string | number;
+  nome?: string;
   projetos?: string;
-  Projetos?: string;
   scouter?: string;
-  Scouter?: string;
-  criado?: string | boolean | Date;
-  Criado?: string | number | boolean | Date;
-  hora_criacao_ficha?: string;
+  criado?: string | Date;
   valor_ficha?: string | number;
   etapa?: string;
-  nome?: string;
-  gerenciamentofunil?: string;
-  etapafunil?: string;
   modelo?: string;
   localizacao?: string;
   ficha_confirmada?: string;
@@ -45,11 +38,6 @@ export interface Lead {
   compareceu?: string | number;
   confirmado?: string | number | boolean;
   tem_foto?: string | boolean;
-  datahoracel?: string;
-  funilfichas?: string;
-  tabulacao?: string;
-  agendado?: string;
-  qdoagendou?: string;
   telefone?: string;
   email?: string;
   latitude?: number;
@@ -58,13 +46,12 @@ export interface Lead {
   updated_at?: string;
   aprovado?: boolean | null;
   data_criacao_ficha?: string;
+  tabulacao?: string;
+  agendado?: string;
+  funilfichas?: string;
+  gerenciamentofunil?: string;
+  etapafunil?: string;
 }
-
-// Para compatibilidade com o código existente
-// ⚠️ IMPORTANTE: Lead e Ficha são o mesmo tipo
-// Ambos se referem aos dados da tabela 'fichas' do Supabase
-// Usamos Lead para manter compatibilidade com código legado
-export type Lead = Ficha;
 
 export interface AppSettings {
   id?: string;

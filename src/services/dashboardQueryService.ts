@@ -38,7 +38,7 @@ export async function executeDashboardQuery(widget: DashboardWidget) {
     query = query.in('scouter', filters.scouter);
   }
   if (filters?.projeto?.length) {
-    query = query.in('projeto', filters.projeto);
+    query = query.in('commercial_project_id', filters.projeto);
   }
   if (filters?.supervisor?.length) {
     query = query.in('supervisor', filters.supervisor);

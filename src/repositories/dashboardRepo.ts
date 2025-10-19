@@ -50,7 +50,7 @@ export async function getDashboardData(filters: {
   }
   if (filters.projeto) {
     console.log('📁 [dashboardRepo] Filtro projeto:', filters.projeto);
-    query = query.eq('projeto', filters.projeto);
+    query = query.eq('commercial_project_id', filters.projeto);
   }
 
   // Ordenar por 'criado' (coluna de data)

@@ -23,6 +23,41 @@ import { supabase } from '@/lib/supabase-helper';
 import type { Lead, LeadsFilters } from './types';
 import { toYMD } from '@/utils/dataHelpers';
 
+// Mapeia dados do banco (name, commercial_project_id) para o formato da aplicação (nome, projetos)
+function mapDatabaseToLead(row: any): Lead {
+  return {
+    id: row.id,
+    nome: row.name,
+    projetos: row.commercial_project_id,
+    scouter: row.scouter,
+    criado: row.criado,
+    valor_ficha: row.valor_ficha,
+    etapa: row.etapa,
+    modelo: row.nome_modelo,
+    localizacao: row.address,
+    ficha_confirmada: row.ficha_confirmada ? 'Sim' : 'Não',
+    idade: row.age?.toString(),
+    local_da_abordagem: row.local_abordagem,
+    cadastro_existe_foto: row.cadastro_existe_foto ? 'SIM' : 'NÃO',
+    presenca_confirmada: row.presenca_confirmada ? 'Sim' : 'Não',
+    supervisor_do_scouter: row.responsible,
+    foto: row.photo_url,
+    compareceu: row.compareceu ? 'Sim' : 'Não',
+    telefone: row.celular?.toString() || row.telefone_trabalho?.toString(),
+    email: row.raw?.email,
+    latitude: row.raw?.latitude,
+    longitude: row.raw?.longitude,
+    created_at: row.criado,
+    updated_at: row.updated_at,
+    data_criacao_ficha: row.data_criacao_ficha,
+    tabulacao: row.status_tabulacao,
+    agendado: row.data_agendamento,
+    funilfichas: row.funil_fichas,
+    gerenciamentofunil: row.gerenciamento_funil,
+    etapafunil: row.etapa_funil,
+  };
+}
+
 /**
  * Busca leads do Supabase com filtros
  * @returns Array de leads da tabela 'leads'
@@ -37,290 +72,269 @@ export async function getLeads(params: LeadsFilters = {}): Promise<Lead[]> {
  * @returns Lead criado
  */
 export async function createLead(lead: Partial<Lead>): Promise<Lead> {
-  // Preparar dados para inserção
+  // Preparar dados para inserção (converter para formato do banco)
   const insertData: any = {
-    projeto: lead.projetos,
+    commercial_project_id: lead.projetos,
     scouter: lead.scouter,
-    nome: lead.nome,
+    name: lead.nome,
     valor_ficha: lead.valor_ficha,
     etapa: lead.etapa,
-    modelo: lead.modelo,
-    localizacao: lead.localizacao,
-    telefone: lead.telefone,
-    email: lead.email,
-    idade: lead.idade,
-    supervisor: lead.supervisor_do_scouter,
-    deleted: false,
-    criado: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
-    raw: {}, // Campo raw obrigatório (será preenchido com os dados completos após inserção)
+    nome_modelo: lead.modelo,
+    address: lead.localizacao,
+    celular: lead.telefone ? parseInt(lead.telefone) : null,
+    raw: {
+      email: lead.email,
+      latitude: lead.latitude,
+      longitude: lead.longitude,
+    },
+    criado: lead.criado || new Date().toISOString(),
+    ficha_confirmada: lead.ficha_confirmada === 'Sim',
+    cadastro_existe_foto: lead.cadastro_existe_foto === 'SIM',
+    presenca_confirmada: lead.presenca_confirmada === 'Sim',
+    compareceu: lead.compareceu === 'Sim',
   };
-
-  // Preencher o campo raw com os dados fornecidos
-  insertData.raw = { ...lead };
 
   const { data, error } = await supabase
     .from('leads')
-    .insert([insertData])
+    .insert(insertData)
     .select()
     .single();
 
   if (error) {
-    console.error('Erro ao criar lead:', error);
-    throw new Error(`Erro ao criar lead: ${error.message}`);
-  }
-
-  return normalizeFichaFromSupabase(data);
-}
-
-/**
- * Deleta leads (soft delete) marcando como deleted = true
- * @param leadIds - IDs dos leads a serem deletados (UUID strings or numbers)
- */
-export async function deleteLeads(leadIds: (string | number)[]): Promise<void> {
-  const { error } = await supabase
-    .from('leads')
-    .update({ deleted: true })
-    .in('id', leadIds);
-
-  if (error) {
-    console.error('Erro ao deletar leads:', error);
-    throw new Error(`Erro ao deletar leads: ${error.message}`);
-  }
-}
-
-export interface LeadsSummary {
-  totalLeads: number;
-  convertedLeads: number;
-  conversionRate: number;
-  totalValue: number;
-}
-
-export async function getLeadsSummary(params: LeadsFilters = {}): Promise<LeadsSummary> {
-  const leads = await getLeads(params);
-  const totalLeads = leads.length;
-  // ficha_confirmada is normalized to 'Sim' by normalizeBooleanIndicator
-  const convertedLeads = leads.filter(l => l.etapa === 'Convertido' || l.ficha_confirmada === 'Sim').length;
-  const totalValue = leads.reduce((s, l) => s + parseFloat(String(l.valor_ficha || '0').replace(',', '.')), 0);
-  return {
-    totalLeads,
-    convertedLeads,
-    conversionRate: totalLeads ? (convertedLeads / totalLeads) * 100 : 0,
-    totalValue,
-  };
-}
-
-export async function getLeadsByScouter(params: LeadsFilters = {}): Promise<
-  { scouter: string; leads: number; converted: number; conversionRate: number; value: number }[]
-> {
-  const leads = await getLeads(params);
-  const map = new Map<string, { leads: number; converted: number; value: number }>();
-  for (const l of leads) {
-    const key = l.scouter || '—';
-    if (!map.has(key)) map.set(key, { leads: 0, converted: 0, value: 0 });
-    const s = map.get(key)!;
-    s.leads++;
-    s.value += parseFloat(String(l.valor_ficha || '0').replace(',', '.'));
-    // ficha_confirmada is normalized to 'Sim' by normalizeBooleanIndicator
-    if (l.etapa === 'Convertido' || l.ficha_confirmada === 'Sim') s.converted++;
-  }
-  return [...map].map(([scouter, s]) => ({
-    scouter,
-    leads: s.leads,
-    converted: s.converted,
-    conversionRate: s.leads ? (s.converted / s.leads) * 100 : 0,
-    value: s.value,
-  }));
-}
-
-export async function getLeadsByProject(params: LeadsFilters = {}): Promise<
-  { project: string; leads: number; converted: number; conversionRate: number; value: number }[]
-> {
-  const leads = await getLeads(params);
-  const map = new Map<string, { leads: number; converted: number; value: number }>();
-  for (const l of leads) {
-    const key = l.projetos || '—';
-    if (!map.has(key)) map.set(key, { leads: 0, converted: 0, value: 0 });
-    const s = map.get(key)!;
-    s.leads++;
-    s.value += parseFloat(String(l.valor_ficha || '0').replace(',', '.'));
-    // ficha_confirmada is normalized to 'Sim' by normalizeBooleanIndicator
-    if (l.etapa === 'Convertido' || l.ficha_confirmada === 'Sim') s.converted++;
-  }
-  return [...map].map(([project, s]) => ({
-    project,
-    leads: s.leads,
-    converted: s.converted,
-    conversionRate: s.leads ? (s.converted / s.leads) * 100 : 0,
-    value: s.value,
-  }));
-}
-
-/**
- * Busca leads do Supabase (fonte única)
- */
-async function fetchAllLeadsFromSupabase(params: LeadsFilters): Promise<Lead[]> {
-  try {
-    console.log('🔍 [LeadsRepo] Iniciando busca de leads com filtros:', params);
-    console.log('🗂️  [LeadsRepo] Tabela sendo consultada: "leads"');
-    
-    let q = supabase.from('leads').select('*', { count: 'exact' })
-      .or('deleted.is.false,deleted.is.null'); // ✅ Filtro para excluir registros deletados
-
-    // ✅ Usar 'criado' (DATE field) — normalizar para YYYY-MM-DD
-    if (params.dataInicio) {
-      const normalizedStart = toYMD(params.dataInicio);
-      if (normalizedStart) {
-        console.log('📅 [LeadsRepo] Aplicando filtro dataInicio:', normalizedStart);
-        q = q.gte('criado', normalizedStart);
-      }
-    }
-    if (params.dataFim) {
-      const normalizedEnd = toYMD(params.dataFim);
-      if (normalizedEnd) {
-        console.log('📅 [LeadsRepo] Aplicando filtro dataFim:', normalizedEnd);
-        q = q.lte('criado', normalizedEnd);
-      }
-    }
-
-    if (params.etapa) {
-      console.log('📊 [LeadsRepo] Aplicando filtro etapa:', params.etapa);
-      q = q.eq('etapa', params.etapa);
-    }
-    if (params.scouter) {
-      console.log('👤 [LeadsRepo] Aplicando filtro scouter:', params.scouter);
-      q = q.ilike('scouter', `%${params.scouter}%`);
-    }
-    if (params.projeto) {
-      console.log('📁 [LeadsRepo] Aplicando filtro projeto:', params.projeto);
-      q = q.ilike('projeto', `%${params.projeto}%`);
-    }
-
-    console.log('🚀 [LeadsRepo] Executando query no Supabase...');
-    
-    // Ordenar por 'criado' (coluna DATE que existe); fallback para 'created_at' se falhar
-    let result = await q.order('criado', { ascending: false });
-
-    // Se falhar ao ordenar por 'criado', tentar 'created_at' como fallback
-    if (result.error && result.error.message?.includes('criado')) {
-      console.warn('⚠️ [LeadsRepo] Falha ao ordenar por "criado", tentando "created_at"');
-      q = supabase.from('leads').select('*', { count: 'exact' })
-        .or('deleted.is.false,deleted.is.null');
-      
-      // Re-aplicar filtros
-      if (params.dataInicio) {
-        const normalizedStart = toYMD(params.dataInicio);
-        if (normalizedStart) q = q.gte('created_at', new Date(normalizedStart).toISOString());
-      }
-      if (params.dataFim) {
-        const normalizedEnd = toYMD(params.dataFim);
-        if (normalizedEnd) q = q.lte('created_at', new Date(normalizedEnd).toISOString());
-      }
-      if (params.etapa) q = q.eq('etapa', params.etapa);
-      if (params.scouter) q = q.ilike('scouter', `%${params.scouter}%`);
-      if (params.projeto) q = q.ilike('projeto', `%${params.projeto}%`);
-      
-      result = await q.order('created_at', { ascending: false });
-    }
-
-    const { data, error, count } = result;
-
-    if (error) {
-      console.error('❌ [LeadsRepo] Erro ao buscar leads do Supabase:', error);
-      throw new Error(`Erro ao buscar dados do Supabase: ${error.message}`);
-    }
-
-    console.log(`✅ [LeadsRepo] Query executada com sucesso!`);
-    console.log(`📊 [LeadsRepo] Total de registros na tabela "leads" (com filtros): ${count ?? 'N/A'}`);
-    console.log(`📦 [LeadsRepo] Registros retornados nesta query: ${data?.length || 0}`);
-
-    if (!data || data.length === 0) {
-      console.warn('⚠️ [LeadsRepo] Nenhum registro encontrado na tabela "leads"');
-      console.warn('💡 Verifique: se há dados, filtros ou RLS.');
-      return [];
-    }
-
-    const normalized = data.map(normalizeFichaFromSupabase);
-    const filtered = normalized.filter(l => applyClientSideFilters(l, params));
-
-    console.log(`📋 [LeadsRepo] Após normalização e filtros client-side: ${filtered.length} leads`);
-    return filtered;
-  } catch (error) {
-    console.error('❌ [LeadsRepo] Exceção durante busca de leads:', error);
+    console.error('❌ [LeadsRepo] Erro ao criar lead:', error);
     throw error;
   }
+
+  return mapDatabaseToLead(data);
 }
 
 /**
- * Normaliza valor booleano para string padronizada
- * Aceita: 'sim', 'Sim', 'SIM', 'true', '1', true, 1
- * Retorna: 'Sim' ou valor original se não for booleano
+ * Atualiza um lead existente
+ * @param id - ID do lead
+ * @param lead - Dados parciais a atualizar
+ * @returns Lead atualizado
  */
-function normalizeBooleanIndicator(value: any): string {
-  if (value === null || value === undefined) return '';
+export async function updateLead(id: string | number, lead: Partial<Lead>): Promise<Lead> {
+  const updateData: any = {};
   
-  const strValue = String(value).toLowerCase().trim();
+  if (lead.projetos) updateData.commercial_project_id = lead.projetos;
+  if (lead.scouter) updateData.scouter = lead.scouter;
+  if (lead.nome) updateData.name = lead.nome;
+  if (lead.valor_ficha !== undefined) updateData.valor_ficha = lead.valor_ficha;
+  if (lead.etapa) updateData.etapa = lead.etapa;
+  if (lead.modelo) updateData.nome_modelo = lead.modelo;
+  if (lead.localizacao) updateData.address = lead.localizacao;
+  if (lead.telefone) updateData.celular = parseInt(lead.telefone);
+  if (lead.ficha_confirmada) updateData.ficha_confirmada = lead.ficha_confirmada === 'Sim';
+  if (lead.cadastro_existe_foto) updateData.cadastro_existe_foto = lead.cadastro_existe_foto === 'SIM';
+  if (lead.presenca_confirmada) updateData.presenca_confirmada = lead.presenca_confirmada === 'Sim';
+  if (lead.compareceu) updateData.compareceu = lead.compareceu === 'Sim';
   
-  if (strValue === 'sim' || strValue === 'true' || strValue === '1') {
-    return 'Sim';
+  // Atualizar raw se necessário
+  if (lead.email || lead.latitude || lead.longitude) {
+    updateData.raw = {
+      ...(updateData.raw || {}),
+      ...(lead.email && { email: lead.email }),
+      ...(lead.latitude && { latitude: lead.latitude }),
+      ...(lead.longitude && { longitude: lead.longitude }),
+    };
   }
-  if (strValue === 'não' || strValue === 'nao' || strValue === 'false' || strValue === '0') {
-    return 'Não';
+
+  const { data, error } = await supabase
+    .from('leads')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('❌ [LeadsRepo] Erro ao atualizar lead:', error);
+    throw error;
   }
-  
-  return String(value);
+
+  return mapDatabaseToLead(data);
 }
 
 /**
- * Normaliza ficha do Supabase para formato Lead
+ * Busca um único lead por ID
+ * @param id - ID do lead
+ * @returns Lead encontrado ou null
  */
-function normalizeFichaFromSupabase(r: any): Lead {
-  // Handle both UUID (string) and legacy number IDs
-  let normalizedId: string | number;
-  if (typeof r.id === 'string') {
-    normalizedId = r.id; // UUID string
-  } else {
-    normalizedId = Number(r.id) || 0; // Legacy number ID
+export async function getLeadById(id: string | number): Promise<Lead | null> {
+  const { data, error } = await supabase
+    .from('leads')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    console.error('❌ [LeadsRepo] Erro ao buscar lead:', error);
+    return null;
   }
 
-  return {
-    id: normalizedId,
-    projetos: String(r.projeto || 'Sem Projeto'),
-    scouter: String(r.scouter || 'Desconhecido'),
-    criado: r.criado,
-    hora_criacao_ficha: r.hora_criacao_ficha,
-    valor_ficha: String(r.valor_ficha || '0'),
-    etapa: String(r.etapa || 'Sem Etapa'),
-    nome: String(r.nome || 'Sem nome'),
-    modelo: String(r.modelo || ''),
-    localizacao: r.localizacao,
-    ficha_confirmada: normalizeBooleanIndicator(r.ficha_confirmada),
-    idade: r.idade,
-    local_da_abordagem: r.local_da_abordagem,
-    cadastro_existe_foto: normalizeBooleanIndicator(r.cadastro_existe_foto),
-    presenca_confirmada: normalizeBooleanIndicator(r.presenca_confirmada),
-    supervisor_do_scouter: r.supervisor,
-    foto: r.foto,
-    compareceu: normalizeBooleanIndicator(r.compareceu),
-    confirmado: normalizeBooleanIndicator(r.confirmado),
-    tabulacao: r.tabulacao,
-    agendado: normalizeBooleanIndicator(r.agendado),
-    telefone: r.telefone,
-    email: r.email,
-    latitude: r.latitude,
-    longitude: r.longitude,
-    created_at: r.created_at,
-    updated_at: r.updated_at,
-    aprovado: r.aprovado !== undefined ? r.aprovado : null,
-    data_criacao_ficha: r.criado,
-  };
+  return data ? mapDatabaseToLead(data) : null;
 }
 
 /**
- * Filtros client-side
+ * Busca todos os leads com paginação e filtros
+ * @param filters - Filtros opcionais
+ * @param page - Página atual (iniciando em 0)
+ * @param pageSize - Tamanho da página
+ * @returns Array paginado de leads
  */
-function applyClientSideFilters(l: Lead, p: LeadsFilters): boolean {
-  if (p.scouter && !l.scouter?.toLowerCase().includes(p.scouter.toLowerCase())) return false;
-  if (p.projeto && !l.projetos?.toLowerCase().includes(p.projeto.toLowerCase())) return false;
-  if (p.etapa && l.etapa !== p.etapa) return false;
-  return true;
+export async function fetchPaginatedLeads(
+  filters: LeadsFilters = {},
+  page: number = 0,
+  pageSize: number = 50
+): Promise<Lead[]> {
+  console.log('🔍 [LeadsRepo] Iniciando busca paginada de leads');
+  console.log('🗂️  [LeadsRepo] Tabela sendo consultada: "leads"');
+  console.log('🗂️  [LeadsRepo] Filtros:', filters);
+  console.log('📄 [LeadsRepo] Paginação:', { page, pageSize });
+
+  let query = supabase
+    .from('leads')
+    .select('*', { count: 'exact' })
+    .or('deleted.is.false,deleted.is.null');
+
+  if (filters.dataInicio) {
+    console.log('📅 [LeadsRepo] Aplicando filtro dataInicio:', filters.dataInicio);
+    query = query.gte('criado', filters.dataInicio);
+  }
+
+  if (filters.dataFim) {
+    console.log('📅 [LeadsRepo] Aplicando filtro dataFim:', filters.dataFim);
+    query = query.lte('criado', filters.dataFim);
+  }
+
+  if (filters.scouter) {
+    console.log('👤 [LeadsRepo] Aplicando filtro scouter:', filters.scouter);
+    query = query.eq('scouter', filters.scouter);
+  }
+
+  if (filters.projeto) {
+    console.log('📁 [LeadsRepo] Aplicando filtro projeto:', filters.projeto);
+    query = query.eq('commercial_project_id', filters.projeto);
+  }
+
+  if (filters.etapa) {
+    console.log('📋 [LeadsRepo] Aplicando filtro etapa:', filters.etapa);
+    query = query.eq('etapa', filters.etapa);
+  }
+
+  query = query
+    .order('criado', { ascending: false })
+    .range(page * pageSize, (page + 1) * pageSize - 1);
+
+  console.log('🚀 [LeadsRepo] Executando query no Supabase...');
+  const { data, error, count } = await query;
+
+  if (error) {
+    console.error('❌ [LeadsRepo] Erro ao buscar leads:', error);
+    throw new Error(`Erro ao buscar dados do Supabase: ${error.message}`);
+  }
+
+  console.log('✅ [LeadsRepo] Query executada com sucesso!');
+  console.log(`📊 [LeadsRepo] Total de registros na tabela "leads" (com filtros): ${count}`);
+  console.log(`📦 [LeadsRepo] Registros retornados nesta query: ${data?.length || 0}`);
+
+  if (!data || data.length === 0) {
+    console.warn('⚠️ [LeadsRepo] Nenhum registro encontrado na tabela "leads"');
+    console.warn('💡 Verifique: se há dados, filtros ou RLS.');
+  }
+
+  return (data || []).map(mapDatabaseToLead);
+}
+
+/**
+ * Busca TODOS os leads sem paginação
+ * @param filters - Filtros opcionais
+ * @returns Array completo de leads
+ */
+export async function fetchAllLeadsFromSupabase(filters: LeadsFilters = {}): Promise<Lead[]> {
+  console.log('🔍 [LeadsRepo] Iniciando busca COMPLETA de leads');
+  console.log('🗂️  [LeadsRepo] Tabela sendo consultada: "leads"');
+  console.log('🗂️  [LeadsRepo] Filtros:', filters);
+
+  let query = supabase
+    .from('leads')
+    .select('*')
+    .or('deleted.is.false,deleted.is.null');
+
+  if (filters.dataInicio) {
+    const startDate = toYMD(filters.dataInicio);
+    console.log('📅 [LeadsRepo] Filtro dataInicio:', startDate);
+    query = query.gte('criado', startDate);
+  }
+
+  if (filters.dataFim) {
+    const endDate = toYMD(filters.dataFim);
+    console.log('📅 [LeadsRepo] Filtro dataFim:', endDate);
+    query = query.lte('criado', endDate);
+  }
+
+  if (filters.scouter) {
+    console.log('👤 [LeadsRepo] Filtro scouter:', filters.scouter);
+    query = query.eq('scouter', filters.scouter);
+  }
+
+  if (filters.projeto) {
+    console.log('📁 [LeadsRepo] Filtro projeto:', filters.projeto);
+    query = query.eq('commercial_project_id', filters.projeto);
+  }
+
+  if (filters.etapa) {
+    console.log('📋 [LeadsRepo] Filtro etapa:', filters.etapa);
+    query = query.eq('etapa', filters.etapa);
+  }
+
+  query = query.order('criado', { ascending: false });
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('❌ [LeadsRepo] Erro ao buscar leads:', error);
+    throw new Error(`Erro ao buscar dados do Supabase: ${error.message}`);
+  }
+
+  console.log(`📦 Total de ${data?.length || 0} registros retornados`);
+  return (data || []).map(mapDatabaseToLead);
+}
+
+/**
+ * Busca lista única de projetos
+ * @returns Array de nomes de projetos
+ */
+export async function getUniqueProjects(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('leads')
+    .select('commercial_project_id')
+    .or('deleted.is.false,deleted.is.null');
+
+  if (error) {
+    console.error('❌ [LeadsRepo] Erro ao buscar projetos:', error);
+    return [];
+  }
+
+  const projects = [...new Set(data?.map(d => d.commercial_project_id).filter(Boolean))];
+  return projects as string[];
+}
+
+/**
+ * Busca lista única de scouters
+ * @returns Array de nomes de scouters
+ */
+export async function getUniqueScouters(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('leads')
+    .select('scouter')
+    .or('deleted.is.false,deleted.is.null');
+
+  if (error) {
+    console.error('❌ [LeadsRepo] Erro ao buscar scouters:', error);
+    return [];
+  }
+
+  const scouters = [...new Set(data?.map(d => d.scouter).filter(Boolean))];
+  return scouters as string[];
 }

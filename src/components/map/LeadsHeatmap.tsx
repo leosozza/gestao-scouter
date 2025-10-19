@@ -67,7 +67,7 @@ export function LeadsHeatmap({
 
   // Update heatmap when data changes
   useEffect(() => {
-    if (!mapRef.current || !fichasGeo) return;
+    if (!mapRef.current || !leadsGeo) return;
 
     // Remove existing heat layer
     if (heatLayerRef.current) {
@@ -75,21 +75,20 @@ export function LeadsHeatmap({
       heatLayerRef.current = null;
     }
 
-    if (fichasGeo.length === 0) {
+    if (leadsGeo.length === 0) {
       setTotalPoints(0);
       return;
     }
 
     // Create heat layer points
-    const points = leadsGeo.map(ficha => [ficha.lat, ficha.lng, 1]); // [lat, lng, intensity]
+    const points = leadsGeo.map(lead => [lead.lat, lead.lng, 1]); // [lat, lng, intensity]
 
-    // @ts-expect-error - leaflet.heat typing issue
-    const heatLayer = L.heatLayer(points, {
+    const heatLayer = L.heatLayer(points as any, {
       radius: 25,
       blur: 15,
       maxZoom: 17,
       max: 1.0,
-      minOpacity: 0.25, // Ensures heatmap stays visible at all zoom levels
+      minOpacity: 0.25,
       gradient: {
         0.0: 'green',
         0.5: 'yellow',
@@ -98,20 +97,20 @@ export function LeadsHeatmap({
     }).addTo(mapRef.current);
 
     heatLayerRef.current = heatLayer;
-    setTotalPoints(fichasGeo.length);
+    setTotalPoints(leadsGeo.length);
 
     // Fit bounds to show all points
     if (points.length > 0) {
       const bounds = L.latLngBounds(points.map(p => [p[0], p[1]]));
       mapRef.current.fitBounds(bounds, { padding: [50, 50] });
     }
-  }, [fichasGeo]);
+  }, [leadsGeo]);
 
   // Center map on heatmap
   const handleCenterMap = () => {
-    if (!mapRef.current || !fichasGeo || leadsGeo.length === 0) return;
+    if (!mapRef.current || !leadsGeo || leadsGeo.length === 0) return;
 
-    const points = leadsGeo.map(ficha => [ficha.lat, ficha.lng] as [number, number]);
+    const points = leadsGeo.map(lead => [lead.lat, lead.lng] as [number, number]);
     const bounds = L.latLngBounds(points);
     mapRef.current.fitBounds(bounds, { padding: [50, 50] });
   };

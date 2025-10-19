@@ -47,7 +47,7 @@ export function useLeadsGeo(params: LeadsGeoParams) {
 
       // Apply optional filters
       if (project) {
-        query = query.eq('projeto', project);
+        query = query.eq('commercial_project_id', project);
       }
       if (scouter) {
         query = query.eq('scouter', scouter);
@@ -101,7 +101,8 @@ export function useLeadsGeo(params: LeadsGeoParams) {
   }, [refetch]);
 
   return {
-    fichasGeo: data || [],
+    leadsGeo: data || [],
+    fichasGeo: data || [], // alias para compatibilidade
     isLoading,
     error,
     refetch,
