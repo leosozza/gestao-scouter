@@ -12,12 +12,12 @@ import { formatBRL } from "@/utils/currency";
 import { getValorFichaFromRow } from "@/utils/values";
 import type { Ficha } from "@/repositories/types";
 
-interface DailyFichasFilterProps {
-  fichas: Ficha[];
+interface DailyLeadsFilterProps {
+  fichas: Lead[];
   selectedPeriod: { start: string; end: string } | null;
 }
 
-export const DailyFichasFilter = ({ fichas, selectedPeriod }: DailyFichasFilterProps) => {
+export const DailyLeadsFilter = ({ fichas, selectedPeriod }: DailyLeadsFilterProps) => {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   // Agrupar fichas por data
@@ -39,7 +39,7 @@ export const DailyFichasFilter = ({ fichas, selectedPeriod }: DailyFichasFilterP
     }
     acc[dateKey].push(ficha);
     return acc;
-  }, {} as Record<string, Ficha[]>);
+  }, {} as Record<string, Lead[]>);
 
   // Ordenar datas
   const datasOrdenadas = Object.keys(fichasPorDia).sort().reverse();

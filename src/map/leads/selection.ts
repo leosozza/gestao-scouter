@@ -17,7 +17,7 @@ export interface SelectionResult {
   polygon: L.LatLng[] | null;
 }
 
-export class FichasSelection {
+export class LeadsSelection {
   private map: L.Map;
   private allFichas: LeadDataPoint[];
   private drawLayer: L.LayerGroup;
@@ -242,10 +242,10 @@ export class FichasSelection {
 /**
  * Create a new selection instance
  */
-export function createFichasSelection(
+export function createLeadsSelection(
   map: L.Map,
   fichas: LeadDataPoint[],
   onSelectionComplete?: (result: SelectionResult) => void
-): FichasSelection {
-  return new FichasSelection(map, fichas, onSelectionComplete);
+): LeadsSelection {
+  return new LeadsSelection(map, fichas, onSelectionComplete);
 }

@@ -5,7 +5,7 @@
 
 import { parseISO, isValid, parse } from 'date-fns';
 
-interface Ficha {
+interface Lead {
   criado?: string;
   hora_criacao_ficha?: string;
   datahoracel?: string;
@@ -90,7 +90,7 @@ function getIntervalMinutes(time1: Date, time2: Date): number {
 /**
  * Calculate overall time metrics for a set of fichas
  */
-export function calculateTimeMetrics(fichas: Ficha[]): TimeMetrics {
+export function calculateTimeMetrics(fichas: Lead[]): TimeMetrics {
   const defaultMetrics: TimeMetrics = {
     avgIntervalMinutes: 0,
     workStartTime: null,
@@ -171,11 +171,11 @@ export function calculateTimeMetrics(fichas: Ficha[]): TimeMetrics {
 /**
  * Calculate daily time metrics (work hours per day)
  */
-export function calculateDailyTimeMetrics(fichas: Ficha[]): DailyTimeMetrics[] {
+export function calculateDailyTimeMetrics(fichas: Lead[]): DailyTimeMetrics[] {
   if (!fichas || fichas.length === 0) return [];
 
   // Group fichas by date
-  const fichasByDate = new Map<string, Ficha[]>();
+  const fichasByDate = new Map<string, Lead[]>();
   
   for (const ficha of fichas) {
     const date = parseDate(ficha.criado);

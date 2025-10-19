@@ -16,7 +16,7 @@ import { format, eachDayOfInterval, parseISO } from "date-fns";
 import type { Ficha, Project } from "@/repositories/types";
 
 interface CostAllowanceManagerProps {
-  fichas: Ficha[];
+  fichas: Lead[];
   projetos: Project[];
   selectedPeriod: { start: string; end: string } | null;
   filters: { scouter: string | null; projeto: string | null };
@@ -83,7 +83,7 @@ export const CostAllowanceManager = ({
     acc[scouter][dateKey].push(ficha);
     
     return acc;
-  }, {} as Record<string, Record<string, Ficha[]>>);
+  }, {} as Record<string, Record<string, Lead[]>>);
 
   // Obter scouters únicos considerando os filtros
   const scouters = Array.from(new Set(

@@ -15,7 +15,7 @@ export * from './selection';
 export * from './summary';
 
 // Re-export for convenience
-export { loadFichasData, type LeadDataPoint, type FichasDataResult } from './data';
-export { createFichasHeatmap, type HeatmapOptions, FichasHeatmap } from './heat';
-export { createFichasSelection, type SelectionResult, FichasSelection } from './selection';
-export { generateSummary, formatSummaryText, generateSummaryHTML, type FichasSummaryData } from './summary';
+export { loadLeadsData, type LeadDataPoint, type LeadsDataResult } from './data';
+export { createLeadsHeatmap, type HeatmapOptions, LeadsHeatmap } from './heat';
+export { createLeadsSelection, type SelectionResult, LeadsSelection } from './selection';
+export { generateSummary, formatSummaryText, generateSummaryHTML, type LeadsSummaryData } from './summary';

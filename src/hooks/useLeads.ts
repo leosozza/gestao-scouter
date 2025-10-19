@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase-helper';
 import { fichaMapper } from '@/services/fieldMappingService';
 import type { LeadDataPoint } from '@/types/lead';
 
-interface UseFichasParams {
+interface UseLeadsParams {
   startDate?: string;
   endDate?: string;
   projeto?: string;
@@ -11,7 +11,7 @@ interface UseFichasParams {
   withGeo?: boolean;
 }
 
-export function useFichas(params: UseFichasParams = {}) {
+export function useLeads(params: UseLeadsParams = {}) {
   return useQuery({
     queryKey: ['leads', params],
     queryFn: async (): Promise<LeadDataPoint[]> => {
@@ -43,7 +43,7 @@ export function useFichas(params: UseFichasParams = {}) {
       const { data, error } = await query.order('criado', { ascending: false });
 
       if (error) {
-        console.error('[useFichas] Erro ao buscar leads:', error);
+        console.error('[useLeads] Erro ao buscar leads:', error);
         throw error;
       }
 

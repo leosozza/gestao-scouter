@@ -17,7 +17,7 @@ type Props = {
   height?: number;
 };
 
-export default function FichasPorDiaChart({ startDate, endDate, rows, height = 280 }: Props) {
+export function LeadsPorDiaChart({ startDate, endDate, rows, height = 280 }: Props) {
   const chartData = useMemo(() => {
     // Criar mapa de contagem por data
     const countByDate = new Map<string, number>();

@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface PaymentBatchActionsProps {
-  fichasFiltradas: Ficha[];
+  fichasFiltradas: Lead[];
   selectedFichas: string[];
   isUpdating: boolean;
   onUpdateFichaPaga?: (fichaIds: string[], status: 'Sim' | 'Não') => Promise<void>;

@@ -20,7 +20,7 @@ import {
 import { PDFReportService } from "@/services/pdfReportService";
 
 interface PaymentSummaryProps {
-  fichasFiltradas: Ficha[];
+  fichasFiltradas: Lead[];
   filterType: string;
   filterValue: string;
   projetos: Project[];
@@ -94,7 +94,7 @@ export const PaymentSummary = ({
   const valorTotalCompleto = valorTotalFichasAPagar + valorAjudaCusto;
 
   // Função para calcular detalhes por scouter
-  const calcularDetalhesPorScouter = (fichas: Ficha[]) => {
+  const calcularDetalhesPorScouter = (fichas: Lead[]) => {
     const scouterData: Record<string, {
       nome: string;
       quantidadeFichas: number;

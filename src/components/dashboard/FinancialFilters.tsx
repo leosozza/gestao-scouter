@@ -9,7 +9,7 @@ import { DateRange } from "react-day-picker";
 import type { Ficha, Project } from "@/repositories/types";
 
 interface FinancialFiltersProps {
-  fichas: Ficha[];
+  fichas: Lead[];
   projetos: Project[];
   onFiltersChange: (filters: FinancialFilterState) => void;
 }

@@ -12,7 +12,7 @@ import type { LeadDataPoint as FichaDataPointBase } from '@/types/lead';
 
 export type LeadDataPoint = FichaDataPointBase;
 
-export interface FichasDataResult {
+export interface LeadsDataResult {
   fichas: LeadDataPoint[];
   total: number;
   loaded: Date;
@@ -24,7 +24,7 @@ export interface FichasDataResult {
  * 
  * @returns Promise with leads data from 'leads' table
  */
-export async function loadFichasData(): Promise<FichasDataResult> {
+export async function loadLeadsData(): Promise<LeadsDataResult> {
   try {
     console.log('📥 [Leads Data] Loading leads from Supabase...');
     
@@ -54,7 +54,7 @@ export async function loadFichasData(): Promise<FichasDataResult> {
  * Filter fichas by bounding box
  * Used internally by selection module
  */
-export function filterFichasByBounds(
+export function filterLeadsByBounds(
   fichas: LeadDataPoint[],
   bounds: { north: number; south: number; east: number; west: number }
 ): LeadDataPoint[] {

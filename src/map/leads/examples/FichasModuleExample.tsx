@@ -10,17 +10,17 @@ import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
-  loadFichasData,
-  createFichasHeatmap,
-  createFichasSelection,
+  loadLeadsData,
+  createLeadsHeatmap,
+  createLeadsSelection,
   generateSummary,
   formatSummaryText,
   type LeadDataPoint,
-  type FichasSummaryData,
+  type LeadsSummaryData,
   type SelectionResult,
-  type FichasHeatmap,
-  type FichasSelection,
-} from '@/map/fichas';
+  type LeadsHeatmap,
+  type LeadsSelection,
+} from '@/map/leads';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Flame, Square, Pencil, X, Navigation, Loader2, RefreshCw } from 'lucide-react';
@@ -29,14 +29,14 @@ import { getTileServerConfig, DEFAULT_TILE_SERVER } from '@/config/tileServers';
 export function FichasModuleExample() {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const heatmapRef = useRef<FichasHeatmap | null>(null);
-  const selectionRef = useRef<FichasSelection | null>(null);
+  const heatmapRef = useRef<LeadsHeatmap | null>(null);
+  const selectionRef = useRef<LeadsSelection | null>(null);
   
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [allFichas, setAllFichas] = useState<LeadDataPoint[]>([]);
   const [displayedFichas, setDisplayedFichas] = useState<LeadDataPoint[]>([]);
-  const [summary, setSummary] = useState<FichasSummaryData | null>(null);
+  const [summary, setSummary] = useState<LeadsSummaryData | null>(null);
   const [selectionMode, setSelectionMode] = useState<'none' | 'rectangle' | 'polygon'>('none');
 
   // Initialize map
@@ -74,7 +74,7 @@ export function FichasModuleExample() {
         setError(null);
         
         console.log('📥 [Example] Loading fichas data...');
-        const { fichas } = await loadFichasData();
+        const { fichas } = await loadLeadsData();
         
         console.log(`✅ [Example] Loaded ${fichas.length} fichas`);
         setAllFichas(fichas);
@@ -83,7 +83,7 @@ export function FichasModuleExample() {
         // Create heatmap
         if (mapRef.current) {
           console.log('🔥 [Example] Creating heatmap...');
-          const heatmap = createFichasHeatmap(mapRef.current);
+          const heatmap = createLeadsHeatmap(mapRef.current);
           heatmap.updateData(fichas);
           heatmap.fitBounds();
           heatmapRef.current = heatmap;
@@ -137,7 +137,7 @@ export function FichasModuleExample() {
       selectionRef.current.destroy();
     }
     
-    const selection = createFichasSelection(
+    const selection = createLeadsSelection(
       mapRef.current,
       allFichas,
       handleSelectionComplete
@@ -159,7 +159,7 @@ export function FichasModuleExample() {
       selectionRef.current.destroy();
     }
     
-    const selection = createFichasSelection(
+    const selection = createLeadsSelection(
       mapRef.current,
       allFichas,
       handleSelectionComplete

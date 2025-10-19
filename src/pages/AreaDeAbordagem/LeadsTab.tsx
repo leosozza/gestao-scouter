@@ -16,11 +16,11 @@ import * as turf from '@turf/turf';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, MapPin, Pencil, RefreshCw, X, Navigation, Flame, Maximize2, Minimize2, Brain } from 'lucide-react';
-import { useFichas } from '@/hooks/useFichas';
+import { useLeads } from '@/hooks/useLeads';
 import { getTileServerConfig, DEFAULT_TILE_SERVER } from '@/config/tileServers';
 import type { LeadDataPoint } from '@/types/lead';
-import { DateFilter } from '@/components/FichasMap/DateFilter';
-import { AdvancedSummary } from '@/components/FichasMap/AdvancedSummary';
+import { DateFilter } from '@/components/LeadsMap/DateFilter';
+import { AdvancedSummary } from '@/components/LeadsMap/AdvancedSummary';
 import { AIAnalysisFloating } from '@/components/shared/AIAnalysisFloating';
 import { lockMap, unlockMap, bboxFilter, pointsInPolygon } from '@/utils/map-helpers';
 import { buildAISummaryFromSelection, formatAIAnalysisHTML } from '@/utils/ai-analysis';
@@ -81,7 +81,7 @@ function formatK(n: number): string {
   return n.toString();
 }
 
-export function FichasTab() {
+export function LeadsTab() {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapWrapperRef = useRef<HTMLDivElement>(null); // For fullscreen
@@ -107,7 +107,7 @@ export function FichasTab() {
   const [hasDateFilter, setHasDateFilter] = useState(false);
 
   // Fetch data from Supabase
-  const { data: fichas, isLoading, error, refetch } = useFichas({ withGeo: true });
+  const { data: fichas, isLoading, error, refetch } = useLeads({ withGeo: true });
 
   // Initialize map
   useEffect(() => {

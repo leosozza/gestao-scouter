@@ -9,7 +9,7 @@
 // 
 // NÃO importe este serviço em código de produção. Use sempre:
 // - import { getLeads } from '@/repositories/leadsRepo'
-// - Hooks: useFichas, useLeadsFilters
+// - Hooks: useLeads, useLeadsFilters
 // - Repos: leadsRepo.ts, dashboardRepo.ts, fichasRepo.ts
 import type { Ficha, Project } from '@/repositories/types';
 
@@ -185,7 +185,7 @@ export class MockDataService {
     }
   ];
 
-  static async fetchFichas(): Promise<Ficha[]> {
+  static async fetchFichas(): Promise<Lead[]> {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 300));
     

@@ -5,7 +5,7 @@ import type { Ficha } from '@/repositories/types';
  * Extrai a data e hora de uma ficha, priorizando hora_criacao_ficha + criado,
  * e usando datahoracel como fallback
  */
-function getFichaDateTime(ficha: Ficha): Date | null {
+function getFichaDateTime(ficha: Lead): Date | null {
   try {
     // Prioridade 1: hora_criacao_ficha + criado
     if (ficha.hora_criacao_ficha && ficha.criado) {
@@ -46,8 +46,8 @@ function getFichaDateTime(ficha: Ficha): Date | null {
 /**
  * Agrupa fichas por scouter e data
  */
-function groupFichasByScouterAndDate(fichas: Ficha[]): Record<string, Record<string, Ficha[]>> {
-  const grouped: Record<string, Record<string, Ficha[]>> = {};
+function groupFichasByScouterAndDate(fichas: Lead[]): Record<string, Record<string, Lead[]>> {
+  const grouped: Record<string, Record<string, Lead[]>> = {};
 
   fichas.forEach(ficha => {
     const scouter = ficha.scouter || 'Sem Scouter';
@@ -74,7 +74,7 @@ function groupFichasByScouterAndDate(fichas: Ficha[]): Record<string, Record<str
  * Calcula as horas trabalhadas por dia por scouter
  * (diferença entre primeira e última ficha do dia)
  */
-export function calculateWorkingHours(fichas: Ficha[]): {
+export function calculateWorkingHours(fichas: Lead[]): {
   totalHours: number;
   averageHoursPerDay: number;
   dayCount: number;
@@ -121,7 +121,7 @@ export function calculateWorkingHours(fichas: Ficha[]): {
 /**
  * Calcula o tempo médio entre fichas por dia por scouter
  */
-export function calculateAverageTimeBetweenFichas(fichas: Ficha[]): {
+export function calculateAverageTimeBetweenFichas(fichas: Lead[]): {
   averageMinutes: number;
   totalIntervals: number;
 } {

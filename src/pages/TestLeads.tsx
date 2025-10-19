@@ -8,16 +8,16 @@ import "leaflet/dist/leaflet.css";
 import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
 import "@geoman-io/leaflet-geoman-free";
 import {
-  loadFichasData,
-  createFichasHeatmap,
-  createFichasSelection,
+  loadLeadsData,
+  createLeadsHeatmap,
+  createLeadsSelection,
   generateSummary,
   formatSummaryText,
   type LeadDataPoint,
-  type FichasSummaryData,
+  type LeadsSummaryData,
   type SelectionResult,
-  type FichasHeatmap,
-  type FichasSelection,
+  type LeadsHeatmap,
+  type LeadsSelection,
 } from "@/map/fichas";
 import { AppShell } from "@/layouts/AppShell";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -59,8 +59,8 @@ export default function TestFichasPage() {
 
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const heatmapRef = useRef<FichasHeatmap | null>(null);
-  const selectionRef = useRef<FichasSelection | null>(null);
+  const heatmapRef = useRef<LeadsHeatmap | null>(null);
+  const selectionRef = useRef<LeadsSelection | null>(null);
   const drawnLayerRef = useRef<L.Layer | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -68,7 +68,7 @@ export default function TestFichasPage() {
   const [allFichas, setAllFichas] = useState<LeadDataPoint[]>([]);
   const [filteredFichas, setFilteredFichas] = useState<LeadDataPoint[]>([]);
   const [displayedFichas, setDisplayedFichas] = useState<LeadDataPoint[]>([]);
-  const [summary, setSummary] = useState<FichasSummaryData | null>(null);
+  const [summary, setSummary] = useState<LeadsSummaryData | null>(null);
   const [showSummary, setShowSummary] = useState(false);
 
   // Controle de seleção
@@ -121,7 +121,7 @@ export default function TestFichasPage() {
     setIsLoading(true);
     setError(null);
 
-    loadFichasData()
+    loadLeadsData()
       .then(({ fichas }) => {
         if (canceled) return;
         setAllFichas(fichas);
@@ -136,7 +136,7 @@ export default function TestFichasPage() {
             heatmapRef.current.updateData(fichas);
             heatmapRef.current.fitBounds();
           } else {
-            heatmapRef.current = createFichasHeatmap(mapRef.current, {
+            heatmapRef.current = createLeadsHeatmap(mapRef.current, {
               radius: 14,
               blur: 22,
               max: 0.6,

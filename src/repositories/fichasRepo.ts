@@ -21,7 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
  * @param filters - Filtros de data, scouter e projeto
  * @returns Array de fichas não deletadas
  */
-export async function fetchFichasFromDB(filters?: { 
+export async function fetchLeadsFromDB(filters?: { 
   start?: string; 
   end?: string; 
   scouter?: string; 

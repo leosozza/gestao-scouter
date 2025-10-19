@@ -6,26 +6,26 @@ import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.heat';
-import { useFichasGeo } from '@/hooks/useFichasGeo';
+import { useLeadsGeo } from '@/hooks/useLeadsGeo';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Flame, Navigation, Loader2 } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { getTileServerConfig, DEFAULT_TILE_SERVER } from '@/config/tileServers';
 
-interface FichasHeatmapProps {
+interface LeadsHeatmapProps {
   startDate?: string;
   endDate?: string;
   project?: string | null;
   scouter?: string | null;
 }
 
-export function FichasHeatmap({ 
+export function LeadsHeatmap({ 
   startDate, 
   endDate, 
   project, 
   scouter 
-}: FichasHeatmapProps) {
+}: LeadsHeatmapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const heatLayerRef = useRef<L.HeatLayer | null>(null);
@@ -34,7 +34,7 @@ export function FichasHeatmap({
   const defaultEndDate = format(new Date(), 'yyyy-MM-dd');
   const defaultStartDate = format(subDays(new Date(), 30), 'yyyy-MM-dd');
 
-  const { fichasGeo, isLoading, error } = useFichasGeo({
+  const { fichasGeo, isLoading, error } = useLeadsGeo({
     startDate: startDate || defaultStartDate,
     endDate: endDate || defaultEndDate,
     project,

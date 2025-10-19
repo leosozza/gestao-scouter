@@ -17,7 +17,7 @@ export interface LeadsFilters {
   dataFim?: string;       // YYYY-MM-DD
 }
 
-export interface Ficha {
+export interface Lead {
   id?: string | number; // UUID string (new) or number (legacy compatibility)
   ID?: string | number | boolean | Date;
   projetos?: string;

@@ -11,7 +11,7 @@ import 'leaflet.markercluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { useScouters } from '@/hooks/useScouters';
-import { useFichas } from '@/hooks/useFichas';
+import { useLeads } from '@/hooks/useLeads';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -75,7 +75,7 @@ export function UnifiedMap({
 
   // Fetch data from Supabase
   const { data: scouters, isLoading: isLoadingScouters, error: errorScouters } = useScouters();
-  const { data: fichas, isLoading: isLoadingFichas, error: errorFichas, refetch: refetchFichas } = useFichas({ withGeo: true });
+  const { data: fichas, isLoading: isLoadingFichas, error: errorFichas, refetch: refetchFichas } = useLeads({ withGeo: true });
 
   const isLoading = isLoadingScouters || isLoadingFichas;
   const error = errorScouters || errorFichas;

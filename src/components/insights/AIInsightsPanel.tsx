@@ -10,7 +10,7 @@ import {
   formatMinutesToHours 
 } from "@/utils/timeAnalytics";
 
-type Ficha = {
+type Lead = {
   created_at?: string;
   data_criacao_ficha?: string;
   criado?: string;
@@ -28,7 +28,7 @@ type Ficha = {
 type Props = {
   startDate: Date;
   endDate: Date;
-  rows: Ficha[];
+  rows: Lead[];
   projectName?: string | null;
 };
 

@@ -12,12 +12,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UnifiedMap } from '@/components/map/UnifiedMap';
-import { FichasTab } from './AreaDeAbordagem/FichasTab';
+import { LeadsTab } from './AreaDeAbordagem/LeadsTab';
 import { MapPin, Flame, RefreshCw, Users, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format, subDays } from 'date-fns';
 import { useScouters } from '@/hooks/useScouters';
-import { useFichas } from '@/hooks/useFichas';
+import { useLeads } from '@/hooks/useLeads';
 import './AreaDeAbordagem/mobile.css';
 
 export default function AreaDeAbordagem() {
@@ -30,7 +30,7 @@ export default function AreaDeAbordagem() {
 
   // Fetch data from Supabase
   const { data: scouters, refetch: refetchScouters } = useScouters();
-  const { data: fichas, refetch: refetchFichas } = useFichas({ withGeo: true });
+  const { data: fichas, refetch: refetchFichas } = useLeads({ withGeo: true });
 
   // Stats
   const totalScouters = scouters?.length || 0;
@@ -153,7 +153,7 @@ export default function AreaDeAbordagem() {
           
           <TabsContent value="fichas" className="mt-4">
             <div className="h-[700px]">
-              <FichasTab />
+              <LeadsTab />
             </div>
           </TabsContent>
         </Tabs>

@@ -34,7 +34,7 @@ import { format, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { getLeads } from '@/repositories/leadsRepo';
 import type { Lead } from '@/repositories/types';
-import FichasPorDiaChart from '@/components/charts/FichasPorDiaChart';
+import { LeadsPorDiaChart } from '@/components/charts/LeadsPorDiaChart';
 import AIInsightsPanel from '@/components/insights/AIInsightsPanel';
 import { useAppSettings } from '@/hooks/useAppSettings';
 import { calculateAverageIQS, calculateTabulationMetrics } from '@/utils/iqsCalculation';
@@ -475,7 +475,7 @@ export function PerformanceDashboard() {
           <div className="mb-2 text-sm font-medium">
             Fichas por dia ({new Date(dataInicio).toLocaleDateString('pt-BR')} – {new Date(dataFim).toLocaleDateString('pt-BR')})
           </div>
-          <FichasPorDiaChart
+          <LeadsPorDiaChart
             startDate={new Date(dataInicio)}
             endDate={new Date(dataFim)}
             rows={leads}

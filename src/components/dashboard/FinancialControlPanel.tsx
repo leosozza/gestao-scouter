@@ -14,8 +14,8 @@ import { FinancialFilterState } from "./FinancialFilters";
 import type { Ficha, Project } from "@/repositories/types";
 
 interface FinancialControlPanelProps {
-  fichasFiltradas?: Ficha[];
-  fichas?: Ficha[]; // Add this to support the prop from Dashboard
+  fichasFiltradas?: Lead[];
+  fichas?: Lead[]; // Add this to support the prop from Dashboard
   projetos: Project[];
   selectedFichas: Set<string>;
   onSelectionChange: (ids: Set<string>) => void;

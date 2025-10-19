@@ -18,14 +18,14 @@ export interface FichaGeo {
   scouter: string | null;
 }
 
-interface FichasGeoParams {
+interface LeadsGeoParams {
   startDate: string;
   endDate: string;
   project?: string | null;
   scouter?: string | null;
 }
 
-export function useFichasGeo(params: FichasGeoParams) {
+export function useLeadsGeo(params: LeadsGeoParams) {
   const { startDate, endDate, project, scouter } = params;
 
   const { data, isLoading, error, refetch } = useQuery({
