@@ -40,7 +40,7 @@ import { useAppSettings } from '@/hooks/useAppSettings';
 import { calculateAverageIQS, calculateTabulationMetrics } from '@/utils/iqsCalculation';
 import { 
   calculateWorkingHours, 
-  calculateAverageTimeBetweenFichas,
+  calculateAverageTimeBetweenLeads,
   formatHoursToReadable,
   formatMinutesToReadable
 } from '@/utils/scouterMetrics';
@@ -206,7 +206,7 @@ export function PerformanceDashboard() {
 
     // Calcular métricas de tempo de trabalho
     const workingHoursData = calculateWorkingHours(data);
-    const timeBetweenFichasData = calculateAverageTimeBetweenFichas(data);
+    const timeBetweenFichasData = calculateAverageTimeBetweenLeads(data);
 
     setMetrics({
       totalLeads: total,
