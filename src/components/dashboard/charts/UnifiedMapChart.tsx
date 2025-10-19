@@ -8,14 +8,14 @@ interface ScouterLocationData {
   lat: number;
   lon: number;
   scouterName: string;
-  fichas: number;
+  leads: number;
   conversao: number;
 }
 
 interface FichaLocationData {
   lat: number;
   lon: number;
-  fichas: number;
+  leads: number;
   conversao: number;
   endereco?: string;
 }
@@ -86,9 +86,9 @@ export const UnifiedMapChart = ({
             Mapa de Localização
           </CardTitle>
           <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as MapViewMode)}>
-            <ToggleGroupItem value="fichas" aria-label="Visualizar fichas">
+            <ToggleGroupItem value="fichas" aria-label="Visualizar leads">
               <MapPin className="h-4 w-4 mr-2" />
-              Fichas
+              Leads
             </ToggleGroupItem>
             <ToggleGroupItem value="scouters" aria-label="Visualizar scouters">
               <Users className="h-4 w-4 mr-2" />
@@ -112,7 +112,7 @@ export const UnifiedMapChart = ({
                   height: getBubbleSize(location.fichas),
                   backgroundColor: getBubbleColor(location.conversao),
                 }}
-                title={`${location.endereco || 'Local'}: ${location.fichas} fichas, ${location.conversao.toFixed(1)}% conversão`}
+                title={`${location.endereco || 'Local'}: ${location.fichas} leads, ${location.conversao.toFixed(1)}% conversão`}
               />
             ))}
             
@@ -128,7 +128,7 @@ export const UnifiedMapChart = ({
                   backgroundColor: getScouterColor(index),
                   border: "2px solid white",
                 }}
-                title={`${location.scouterName}: ${location.fichas} fichas, ${location.conversao.toFixed(1)}% conversão`}
+                title={`${location.scouterName}: ${location.fichas} leads, ${location.conversao.toFixed(1)}% conversão`}
               />
             ))}
           </div>
@@ -137,7 +137,7 @@ export const UnifiedMapChart = ({
           <div className="absolute bottom-4 left-4 bg-background/90 p-3 rounded-lg border text-xs">
             {viewMode === "fichas" && (
               <div className="space-y-1">
-                <div className="font-semibold mb-2">Mapa de Calor - Fichas</div>
+                <div className="font-semibold mb-2">Mapa de Calor - Leads</div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-success"></div>
                   <span>Alta conversão (≥80%)</span>
@@ -160,7 +160,7 @@ export const UnifiedMapChart = ({
                   <span>Scouters ativos</span>
                 </div>
                 <div className="text-muted-foreground">
-                  Tamanho = nº de fichas
+                  Tamanho = nº de leads
                 </div>
               </div>
             )}
@@ -173,7 +173,7 @@ export const UnifiedMapChart = ({
             <div key={`ficha-list-${index}`} className="flex justify-between items-center text-sm">
               <span className="truncate">{location.endereco || `Local ${index + 1}`}</span>
               <div className="flex gap-4 text-muted-foreground">
-                <span>{location.fichas} fichas</span>
+                <span>{location.fichas} leads</span>
                 <span>{location.conversao.toFixed(1)}%</span>
               </div>
             </div>
@@ -188,7 +188,7 @@ export const UnifiedMapChart = ({
                 <span className="truncate font-medium">{location.scouterName}</span>
               </div>
               <div className="flex gap-4 text-muted-foreground">
-                <span>{location.fichas} fichas</span>
+                <span>{location.fichas} leads</span>
                 <span>{location.conversao.toFixed(1)}%</span>
               </div>
             </div>

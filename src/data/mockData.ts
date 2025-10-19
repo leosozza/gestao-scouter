@@ -1,5 +1,5 @@
 // Mock data baseado nos exemplos fornecidos
-export interface Ficha {
+export interface Lead {
   ID: number;
   Projetos_Comerciais: string;
   Gestao_de_Scouter: string;
@@ -26,7 +26,7 @@ export interface MetaScouter {
 }
 
 // Dados simulados realistas
-export const mockFichas: Ficha[] = [
+export const mockFichas: Lead[] = [
   // Carlos Antônio - SELETIVA SANTO ANDRÉ-ABC (alta performance)
   ...Array.from({ length: 180 }, (_, i) => ({
     ID: 465856 + i,

@@ -1,6 +1,6 @@
 /**
  * Unified Map Component
- * Single map with toggle between Scouter view (clusters) and Fichas heatmap view
+ * Single map with toggle between Scouter view (clusters) and Leads heatmap view
  * Reads data directly from Supabase
  */
 import React, { useEffect, useRef, useState } from 'react';
@@ -11,7 +11,7 @@ import 'leaflet.markercluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import { useScouters } from '@/hooks/useScouters';
-import { useFichas } from '@/hooks/useFichas';
+import { useLeads } from '@/hooks/useLeads';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -71,11 +71,11 @@ export function UnifiedMap({
   
   const [viewMode, setViewMode] = useState<MapViewMode>('scouters');
   const [totalScouters, setTotalScouters] = useState(0);
-  const [totalFichas, setTotalFichas] = useState(0);
+  const [totalLeads, setTotalFichas] = useState(0);
 
   // Fetch data from Supabase
   const { data: scouters, isLoading: isLoadingScouters, error: errorScouters } = useScouters();
-  const { data: fichas, isLoading: isLoadingFichas, error: errorFichas, refetch: refetchFichas } = useFichas({ withGeo: true });
+  const { data: leads, isLoading: isLoadingFichas, error: errorFichas, refetch: refetchFichas } = useLeads({ withGeo: true });
 
   const isLoading = isLoadingScouters || isLoadingFichas;
   const error = errorScouters || errorFichas;
@@ -136,7 +136,7 @@ export function UnifiedMap({
     if (viewMode !== 'scouters') {
       // Clear cluster layer when not in scouters mode
       if (clusterGroupRef.current) {
-        console.log('[Scouters] Clearing cluster layer (switched to fichas mode)');
+        console.log('[Scouters] Clearing cluster layer (switched to leads mode)');
         mapRef.current.removeLayer(clusterGroupRef.current);
         clusterGroupRef.current = null;
       }
@@ -243,8 +243,8 @@ export function UnifiedMap({
     console.log('🔥 [Heatmap] Effect triggered', {
       hasMap: !!mapRef.current,
       viewMode,
-      fichasCount: fichas?.length,
-      firstThree: fichas?.slice(0, 3).map(f => ({ lat: f.lat, lng: f.lng }))
+      leadsCount: leads?.length,
+      firstThree: leads?.slice(0, 3).map(f => ({ lat: f.lat, lng: f.lng }))
     });
     
     if (!mapRef.current) {
@@ -253,7 +253,7 @@ export function UnifiedMap({
     }
     
     if (viewMode !== 'fichas') {
-      // Clear heatmap layer when not in fichas mode
+      // Clear heatmap layer when not in leads mode
       if (heatLayerRef.current) {
         console.log('[Heatmap] Clearing heatmap layer (switched to scouters mode)');
         mapRef.current.removeLayer(heatLayerRef.current);
@@ -262,8 +262,8 @@ export function UnifiedMap({
       return;
     }
 
-    if (!fichas || fichas.length === 0) {
-      console.log('[Heatmap] No fichas to render', { fichasLength: fichas?.length });
+    if (!fichas || leads.length === 0) {
+      console.log('[Heatmap] No leads to render', { leadsLength: leads?.length });
       setTotalFichas(0);
       // Clear existing heatmap layer if present
       if (heatLayerRef.current) {
@@ -273,7 +273,7 @@ export function UnifiedMap({
       return;
     }
 
-    console.log(`[Heatmap] Rendering ${fichas.length} fichas`);
+    console.log(`[Heatmap] Rendering ${fichas.length} leads`);
 
     // Clear existing heatmap layer
     if (heatLayerRef.current) {
@@ -283,7 +283,7 @@ export function UnifiedMap({
     }
 
     // Create heat layer points
-    const points = fichas.map(ficha => [ficha.lat, ficha.lng, 1]); // [lat, lng, intensity]
+    const points = leads.map(ficha => [ficha.lat, ficha.lng, 1]); // [lat, lng, intensity]
 
     try {
       const heatLayer = (L as any).heatLayer(points, {
@@ -303,7 +303,7 @@ export function UnifiedMap({
 
       heatLayerRef.current = heatLayer;
       setTotalFichas(fichas.length);
-      console.log('[Heatmap] Layer added successfully', { count: fichas.length });
+      console.log('[Heatmap] Layer added successfully', { count: leads.length });
 
       // Fit bounds to show all points
       if (points.length > 0) {
@@ -323,23 +323,23 @@ export function UnifiedMap({
     if (viewMode === 'scouters' && scouters && scouters.length > 0) {
       const bounds = L.latLngBounds(scouters.map(s => [s.lat, s.lng] as [number, number]));
       mapRef.current.fitBounds(bounds, { padding: [50, 50] });
-    } else if (viewMode === 'fichas' && fichas && fichas.length > 0) {
-      const points = fichas.map(ficha => [ficha.lat, ficha.lng] as [number, number]);
+    } else if (viewMode === 'fichas' && leads && leads.length > 0) {
+      const points = leads.map(ficha => [ficha.lat, ficha.lng] as [number, number]);
       const bounds = L.latLngBounds(points);
       mapRef.current.fitBounds(bounds, { padding: [50, 50] });
     }
   };
 
-  // Reload fichas data from Supabase
+  // Reload leads data from Supabase
   const handleReloadFichas = async () => {
-    console.log('🔄 Reloading fichas...');
+    console.log('🔄 Reloading leads...');
     try {
       const result = await refetchFichas();
-      const fichasData = result.data || [];
-      console.log(`✅ Reloaded fichas: ${fichasData.length}`);
+      const leadsData = result.data || [];
+      console.log(`✅ Reloaded leads: ${fichasData.length}`);
     } catch (error) {
-      console.error('❌ Failed to reload fichas', error);
-      console.warn('Failed to reload fichas data');
+      console.error('❌ Failed to reload leads', error);
+      console.warn('Failed to reload leads data');
     }
   };
 
@@ -364,16 +364,16 @@ export function UnifiedMap({
                 <Users className="h-4 w-4" />
                 Scouters
               </ToggleGroupItem>
-              <ToggleGroupItem value="fichas" aria-label="Visualizar fichas" className="gap-2">
+              <ToggleGroupItem value="fichas" aria-label="Visualizar leads" className="gap-2">
                 <MapPin className="h-4 w-4" />
-                Fichas
+                Leads
               </ToggleGroupItem>
             </ToggleGroup>
 
             {/* Stats */}
             <span className="text-sm text-muted-foreground">
               {viewMode === 'scouters' && `${totalScouters} scouters`}
-              {viewMode === 'fichas' && `${totalFichas} pontos`}
+              {viewMode === 'fichas' && `${totalLeads} pontos`}
             </span>
 
             {/* Center Button */}
@@ -383,14 +383,14 @@ export function UnifiedMap({
               onClick={handleCenterMap}
               disabled={
                 (viewMode === 'scouters' && totalScouters === 0) ||
-                (viewMode === 'fichas' && totalFichas === 0)
+                (viewMode === 'fichas' && totalLeads === 0)
               }
             >
               <Navigation className="h-4 w-4 mr-1" />
               Centralizar
             </Button>
 
-            {/* Reload Fichas Button - Only visible in Fichas mode */}
+            {/* Reload Leads Button - Only visible in Leads mode */}
             {viewMode === 'fichas' && (
               <Button
                 variant="outline"
@@ -399,7 +399,7 @@ export function UnifiedMap({
                 disabled={isLoadingFichas}
               >
                 <RefreshCw className={`h-4 w-4 mr-1 ${isLoadingFichas ? 'animate-spin' : ''}`} />
-                Recarregar Fichas
+                Recarregar Leads
               </Button>
             )}
           </div>

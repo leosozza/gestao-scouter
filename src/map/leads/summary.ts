@@ -3,7 +3,7 @@
  * Generates summary statistics by projeto and scouter
  */
 
-import { FichaDataPoint, groupByProjeto, groupByScouter } from './data';
+import { LeadDataPoint, groupByProjeto, groupByScouter } from './data';
 
 export interface ProjetoSummary {
   projeto: string;
@@ -17,7 +17,7 @@ export interface ScouterSummary {
   percentage: number;
 }
 
-export interface FichasSummaryData {
+export interface LeadsSummaryData {
   total: number;
   byProjeto: ProjetoSummary[];
   byScouter: ScouterSummary[];
@@ -28,7 +28,7 @@ export interface FichasSummaryData {
 /**
  * Generate complete summary statistics from fichas data
  */
-export function generateSummary(fichas: FichaDataPoint[]): FichasSummaryData {
+export function generateSummary(fichas: LeadDataPoint[]): LeadsSummaryData {
   console.log(`📊 [Fichas Summary] Generating summary for ${fichas.length} fichas`);
   
   const total = fichas.length;
@@ -83,7 +83,7 @@ export function generateSummary(fichas: FichaDataPoint[]): FichasSummaryData {
 /**
  * Format summary data as readable text
  */
-export function formatSummaryText(summary: FichasSummaryData): string {
+export function formatSummaryText(summary: LeadsSummaryData): string {
   if (summary.total === 0) {
     return 'Nenhuma ficha selecionada';
   }
@@ -117,8 +117,8 @@ export function formatSummaryText(summary: FichasSummaryData): string {
  * Compare two summaries and return difference
  */
 export function compareSummaries(
-  before: FichasSummaryData,
-  after: FichasSummaryData
+  before: LeadsSummaryData,
+  after: LeadsSummaryData
 ): {
   totalDiff: number;
   projetosAdded: string[];
@@ -152,7 +152,7 @@ export function compareSummaries(
 /**
  * Generate HTML summary for display
  */
-export function generateSummaryHTML(summary: FichasSummaryData): string {
+export function generateSummaryHTML(summary: LeadsSummaryData): string {
   if (summary.total === 0) {
     return '<div class="text-muted-foreground">Nenhuma ficha selecionada</div>';
   }

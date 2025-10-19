@@ -15,7 +15,7 @@ export interface ProjectionData {
   projecao_agressiva: number;
   projecao_historica: number;
   conversion_rate: number;  
-  avg_weekly_fichas: number;
+  avg_weekly_leads: number;
 }
 
 export type ProjectionType = 'scouter' | 'projeto';
@@ -32,19 +32,19 @@ export interface LinearProjectionData {
     dias_totais: number;
   };
   realizado: {
-    fichas: number;
+    leads: number;
     valor: number;
   };
   projetado_restante: {
-    fichas: number;
+    leads: number;
     valor: number;
   };
   total_projetado: {
-    fichas: number;
+    leads: number;
     valor: number;
   };
-  serie_real: Array<{ dia: string; fichas: number; acumulado: number }>;
-  serie_proj: Array<{ dia: string; fichas: number; acumulado: number }>;
+  serie_real: Array<{ dia: string; leads: number; acumulado: number }>;
+  serie_proj: Array<{ dia: string; leads: number; acumulado: number }>;
   media_diaria: number;
   valor_medio_por_ficha: number;
 }
@@ -55,7 +55,7 @@ export interface AdvancedProjectionData {
     inicio: string;
     fim: string;
     dias: number;
-    totalFichas: number;
+    totalLeads: number;
     mediaDiaria: number;
   };
   periodoProjecao: {
@@ -66,17 +66,17 @@ export interface AdvancedProjectionData {
   };
   granularidade: Granularidade;
   realizado: {
-    fichas: number;
+    leads: number;
     valor: number;
   };
   projetado: {
-    fichas: number;
+    leads: number;
     valor: number;
   };
   fallbackUsado: boolean;
   valor_medio_por_ficha: number;
-  serie_analise: Array<{ dia: string; fichas: number; acumulado: number }>;
-  serie_projecao: Array<{ dia: string; fichas: number; acumulado: number }>;
+  serie_analise: Array<{ dia: string; leads: number; acumulado: number }>;
+  serie_projecao: Array<{ dia: string; leads: number; acumulado: number }>;
 }
 
 export async function getProjectionData(type: ProjectionType = 'scouter', selectedFilter?: string): Promise<ProjectionData[]> {
@@ -158,8 +158,8 @@ export async function fetchLinearProjection(p: ProjecaoFiltro): Promise<LinearPr
   const proj_restante_valor = +(proj_restante_qtde * valor_medio_por_ficha).toFixed(2);
 
   // séries para o gráfico
-  const serie_real: Array<{ dia: string; fichas: number; acumulado: number }> = [];
-  const serie_proj: Array<{ dia: string; fichas: number; acumulado: number }> = [];
+  const serie_real: Array<{ dia: string; leads: number; acumulado: number }> = [];
+  const serie_proj: Array<{ dia: string; leads: number; acumulado: number }> = [];
 
   // acumulado diário realizado
   const mapCount: Record<string, number> = {};
@@ -234,7 +234,7 @@ export async function fetchProjectionAdvanced(p: ProjecaoFiltroAdvanced): Promis
         inicio: p.dataInicioAnalise,
         fim: p.dataFimAnalise,
         dias: 0,
-        totalFichas: 0,
+        totalLeads: 0,
         mediaDiaria: 0
       },
       periodoProjecao: {
@@ -326,7 +326,7 @@ export async function fetchProjectionAdvanced(p: ProjecaoFiltroAdvanced): Promis
   const valorProjetado = +(fichasProjetadas * valor_medio_por_ficha).toFixed(2);
 
   // Construir série de análise (acumulado diário)
-  const serie_analise: Array<{ dia: string; fichas: number; acumulado: number }> = [];
+  const serie_analise: Array<{ dia: string; leads: number; acumulado: number }> = [];
   const mapCountAnalise: Record<string, number> = {};
   for (const r of fichasAnalise) {
     const d = (r as any).__iso as string;
@@ -343,7 +343,7 @@ export async function fetchProjectionAdvanced(p: ProjecaoFiltroAdvanced): Promis
   }
 
   // Construir série de projeção a partir do fim da análise
-  const serie_projecao: Array<{ dia: string; fichas: number; acumulado: number }> = [];
+  const serie_projecao: Array<{ dia: string; leads: number; acumulado: number }> = [];
   const inicioAcc = acc;
   let projAcc = inicioAcc;
   let cursor2 = new Date(projInicio);
@@ -360,7 +360,7 @@ export async function fetchProjectionAdvanced(p: ProjecaoFiltroAdvanced): Promis
       inicio: p.dataInicioAnalise,
       fim: p.dataFimAnalise,
       dias: diasAnalise,
-      totalFichas: totalFichasAnalise,
+      totalLeads: totalFichasAnalise,
       mediaDiaria: +mediaDiaria.toFixed(2)
     },
     periodoProjecao: {
@@ -472,11 +472,11 @@ async function fetchProjectionsFromSupabase(type: ProjectionType, selectedFilter
 
     // Calcular projeções para cada item (scouter ou projeto)
     return Array.from(groupedData.entries()).map(([name, data]: any[]) => {
-      const totalFichas = data.fichas.length;
+      const totalLeads = data.fichas.length;
       
       // Calcular taxa de confirmação (normalizando valores)
       const confirmedFichas = data.fichas.filter((f: any) => isAffirmative(f.confirmado)).length;
-      const conversionRate = totalFichas > 0 ? (confirmedFichas / totalFichas) : 0;
+      const conversionRate = totalLeads > 0 ? (confirmedFichas / totalLeads) : 0;
       
       // Calcular média semanal
       const weeklyTotals = Array.from(data.weeklyData.values()).map((week: any[]) => week.length);
@@ -509,7 +509,7 @@ async function fetchProjectionsFromSupabase(type: ProjectionType, selectedFilter
         projecao_conservadora: Math.round(baseProjection * 0.75),
         projecao_provavel: Math.round(baseProjection),
         projecao_agressiva: Math.round(baseProjection * 1.3),
-        projecao_historica: totalFichas,
+        projecao_historica: totalLeads,
         conversion_rate: Math.round(conversionRate * 100),
         avg_weekly_fichas: Math.round(avgWeeklyFichas)
       } as ProjectionData;
@@ -601,8 +601,8 @@ function generateDailySeries(
   endDate: Date, 
   fichas: any[], 
   type: 'real'
-): Array<{ dia: string; fichas: number; acumulado: number }> {
-  const series: Array<{ dia: string; fichas: number; acumulado: number }> = [];
+): Array<{ dia: string; leads: number; acumulado: number }> {
+  const series: Array<{ dia: string; leads: number; acumulado: number }> = [];
   const current = new Date(startDate);
   let acumulado = 0;
   
@@ -617,9 +617,9 @@ function generateDailySeries(
   
   while (current <= endDate) {
     const dateKey = current.toISOString().slice(0, 10);
-    const dayFichas = fichasByDate[dateKey] || 0;
-    acumulado += dayFichas;
-    series.push({ dia: dateKey, fichas: dayFichas, acumulado });
+    const dayLeads = fichasByDate[dateKey] || 0;
+    acumulado += dayLeads;
+    series.push({ dia: dateKey, fichas: dayLeads, acumulado });
     current.setDate(current.getDate() + 1);
   }
   
@@ -630,18 +630,18 @@ function generateProjectionSeries(
   startDate: Date,
   endDate: Date,
   mediaDiaria: number,
-  serieReal: Array<{ dia: string; fichas: number; acumulado: number }>
-): Array<{ dia: string; fichas: number; acumulado: number }> {
-  const series: Array<{ dia: string; fichas: number; acumulado: number }> = [];
+  serieReal: Array<{ dia: string; leads: number; acumulado: number }>
+): Array<{ dia: string; leads: number; acumulado: number }> {
+  const series: Array<{ dia: string; leads: number; acumulado: number }> = [];
   const current = new Date(startDate);
   current.setDate(current.getDate() + 1); // Start from next day
   
   let acumulado = serieReal.length > 0 ? serieReal[serieReal.length - 1].acumulado : 0;
   while (current <= endDate) {
     const dateKey = current.toISOString().slice(0, 10);
-    const dayFichas = Math.round(mediaDiaria);
-    acumulado += dayFichas;
-    series.push({ dia: dateKey, fichas: dayFichas, acumulado });
+    const dayLeads = Math.round(mediaDiaria);
+    acumulado += dayLeads;
+    series.push({ dia: dateKey, fichas: dayLeads, acumulado });
     current.setDate(current.getDate() + 1);
   }
   return series;

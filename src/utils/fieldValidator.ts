@@ -1,5 +1,5 @@
 // Sistema de validação e detecção de campos ausentes
-import type { FichaDataPoint } from '@/types/ficha';
+import type { LeadDataPoint } from '@/types/lead';
 
 // Campos obrigatórios por tabela
 const REQUIRED_FIELDS = {

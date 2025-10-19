@@ -6,7 +6,7 @@ import { Users } from "lucide-react";
 
 interface ScouterData {
   scouter: string;
-  fichas: number;
+  leads: number;
   mediaDia: number;
   diasPagos: number;
   ajudaCusto: number;
@@ -63,7 +63,7 @@ export const ScouterTable = ({ data, isLoading }: ScouterTableProps) => {
               <TableHead className="text-right">Média/Dia</TableHead>
               <TableHead className="text-right">Dias Pagos</TableHead>
               <TableHead className="text-right">Ajuda Custo</TableHead>
-              <TableHead className="text-right">Pag. Fichas</TableHead>
+              <TableHead className="text-right">Pag. Leads</TableHead>
               <TableHead className="text-right">Total</TableHead>
               <TableHead className="text-right">% Foto</TableHead>
               <TableHead className="text-right">% Confirm.</TableHead>
@@ -74,7 +74,7 @@ export const ScouterTable = ({ data, isLoading }: ScouterTableProps) => {
             {data.map((scouter) => (
               <TableRow key={scouter.scouter}>
                 <TableCell className="font-medium">{scouter.scouter}</TableCell>
-                <TableCell className="text-right">{scouter.fichas || 0}</TableCell>
+                <TableCell className="text-right">{scouter.leads || 0}</TableCell>
                 <TableCell className="text-right">{(scouter.mediaDia || 0).toFixed(1)}</TableCell>
                 <TableCell className="text-right">{scouter.diasPagos || 0}</TableCell>
                 <TableCell className="text-right">

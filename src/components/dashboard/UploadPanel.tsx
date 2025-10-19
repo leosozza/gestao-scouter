@@ -9,18 +9,18 @@ import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
 
 interface UploadPanelProps {
-  onDataLoad: (data: { fichas: any[], projetos: any[] }) => void;
+  onDataLoad: (data: { leads: any[], projetos: any[] }) => void;
   onSourceChange: (source: 'sheets' | 'upload' | 'custom-sheets') => void;
   currentSource: 'sheets' | 'upload' | 'custom-sheets';
 }
 
 export const UploadPanel = ({ onDataLoad, onSourceChange, currentSource }: UploadPanelProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<{ fichas?: File, projetos?: File }>({});
+  const [uploadedFiles, setUploadedFiles] = useState<{ leads?: File, projetos?: File }>({});
   const [customSheetUrl, setCustomSheetUrl] = useState('');
-  const [customGids, setCustomGids] = useState({ fichas: '452792639', projetos: '449483735' });
+  const [customGids, setCustomGids] = useState({ leads: '452792639', projetos: '449483735' });
   const { toast } = useToast();
-  const fichasInputRef = useRef<HTMLInputElement>(null);
+  const leadsInputRef = useRef<HTMLInputElement>(null);
   const projetosInputRef = useRef<HTMLInputElement>(null);
 
   const processExcelFile = (file: File): Promise<any[]> => {
@@ -96,12 +96,12 @@ export const UploadPanel = ({ onDataLoad, onSourceChange, currentSource }: Uploa
     
     toast({
       title: "Arquivo selecionado",
-      description: `${type === 'fichas' ? 'Planilha de Fichas' : 'Planilha de Projetos'}: ${file.name}`
+      description: `${type === 'fichas' ? 'Planilha de Leads' : 'Planilha de Projetos'}: ${file.name}`
     });
   };
 
   const processUploadedData = async () => {
-    if (!uploadedFiles.fichas && !uploadedFiles.projetos) {
+    if (!uploadedFiles.leads && !uploadedFiles.projetos) {
       toast({
         title: "Nenhum arquivo selecionado",
         description: "Selecione pelo menos um arquivo para processar",
@@ -113,20 +113,20 @@ export const UploadPanel = ({ onDataLoad, onSourceChange, currentSource }: Uploa
     setIsProcessing(true);
     
     try {
-      let fichasData: any[] = [];
+      let leadsData: any[] = [];
       let projetosData: any[] = [];
       
-      // Processar arquivo de fichas
+      // Processar arquivo de leads
       if (uploadedFiles.fichas) {
         const rawFichas = await processExcelFile(uploadedFiles.fichas);
-        fichasData = rawFichas.map(row => ({
+        leadsData = rawFichas.map(row => ({
           ID: parseInt(row.ID) || parseInt(row.id) || 0,
           Projetos_Comerciais: row['Projetos_Cormeciais'] || row['Projetos_Comerciais'] || row['Projetos Comerciais'] || '',
           Gestao_de_Scouter: row['Gestao_de_Scouter'] || row['Gestão de Scouter'] || row['Scouter'] || '',
           Criado: row.Criado || '',
           Data_de_Criacao_da_Ficha: row['Data_de_Criacao_da_Ficha'] || row['Data de Criação da Ficha'] || row['Data'] || '',
           MaxScouterApp_Verificacao: row['MaxScouterApp_Verificacao'] || '',
-          Valor_por_Fichas: row['Valor_por_Fichas'] || row['Valor por Fichas'] || 'R$ 0,00'
+          Valor_por_Fichas: row['Valor_por_Fichas'] || row['Valor por Leads'] || 'R$ 0,00'
         })).filter(row => row.ID > 0 && row.Gestao_de_Scouter);
       }
       
@@ -135,9 +135,9 @@ export const UploadPanel = ({ onDataLoad, onSourceChange, currentSource }: Uploa
         const rawProjetos = await processExcelFile(uploadedFiles.projetos);
         projetosData = rawProjetos.map(row => ({
           Agencia_e_Seletiva: row['Agencia_e_Seletiva'] || row['Agência e Seletiva'] || row['Projeto'] || '',
-          Meta_de_Fichas: parseInt(row['Meta_de_Fichas']) || parseInt(row['Meta de Fichas']) || parseInt(row['Meta']) || 0,
-          Inicio_Captacao_Fichas: row['Inicio_Captacao_Fichas'] || row['Início Captação Fichas'] || row['Início'] || '',
-          Termino_Captacao_Fichas: row['Termino_Captacao_Fichas'] || row['Término Captação Fichas'] || row['Término'] || ''
+          Meta_de_Fichas: parseInt(row['Meta_de_Fichas']) || parseInt(row['Meta de Leads']) || parseInt(row['Meta']) || 0,
+          Inicio_Captacao_Fichas: row['Inicio_Captacao_Fichas'] || row['Início Captação Leads'] || row['Início'] || '',
+          Termino_Captacao_Fichas: row['Termino_Captacao_Fichas'] || row['Término Captação Leads'] || row['Término'] || ''
         })).filter(row => row.Agencia_e_Seletiva && row.Meta_de_Fichas > 0);
       }
       
@@ -148,11 +148,11 @@ export const UploadPanel = ({ onDataLoad, onSourceChange, currentSource }: Uploa
       // Notificar sucesso
       toast({
         title: "Dados processados com sucesso",
-        description: `${fichasData.length} fichas e ${projetosData.length} projetos carregados`
+        description: `${fichasData.length} leads e ${projetosData.length} projetos carregados`
       });
       
       // Enviar dados para o dashboard
-      onDataLoad({ fichas: fichasData, projetos: projetosData });
+      onDataLoad({ leads: leadsData, projetos: projetosData });
       onSourceChange('upload');
       
     } catch (error) {
@@ -201,21 +201,21 @@ export const UploadPanel = ({ onDataLoad, onSourceChange, currentSource }: Uploa
         fetchCustomSheetData(spreadsheetId, customGids.projetos)
       ]);
 
-      const processedFichas = fichasData.map(row => ({
+      const processedFichas = leadsData.map(row => ({
         ID: parseInt(row.ID) || 0,
         Projetos_Comerciais: row['Projetos_Cormeciais'] || row['Projetos_Comerciais'] || row['Projetos Comerciais'] || '',
         Gestao_de_Scouter: row['Gestao_de_Scouter'] || row['Gestão de Scouter'] || '',
         Criado: row.Criado || '',
         Data_de_Criacao_da_Ficha: row['Data_de_Criacao_da_Ficha'] || row['Data de Criação da Ficha'] || '',
         MaxScouterApp_Verificacao: row['MaxScouterApp_Verificacao'] || '',
-        Valor_por_Fichas: row['Valor_por_Fichas'] || row['Valor por Fichas'] || 'R$ 0,00'
+        Valor_por_Fichas: row['Valor_por_Fichas'] || row['Valor por Leads'] || 'R$ 0,00'
       })).filter(row => row.ID > 0 && row.Gestao_de_Scouter);
 
       const processedProjetos = projetosData.map(row => ({
         Agencia_e_Seletiva: row['Agencia_e_Seletiva'] || row['agencia e seletiva'] || '',
-        Meta_de_Fichas: parseInt(row['Meta_de_Fichas']) || parseInt(row['meta de fichas']) || 0,
-        Inicio_Captacao_Fichas: row['Inicio_Captacao_Fichas'] || row['Inicio Captação fichas'] || '',
-        Termino_Captacao_Fichas: row['Termino_Captacao_Fichas'] || row['Termino Captação fichas'] || ''
+        Meta_de_Fichas: parseInt(row['Meta_de_Fichas']) || parseInt(row['meta de leads']) || 0,
+        Inicio_Captacao_Fichas: row['Inicio_Captacao_Fichas'] || row['Inicio Captação leads'] || '',
+        Termino_Captacao_Fichas: row['Termino_Captacao_Fichas'] || row['Termino Captação leads'] || ''
       })).filter(row => row.Agencia_e_Seletiva && row.Meta_de_Fichas > 0);
 
       if (processedFichas.length === 0 && processedProjetos.length === 0) {
@@ -224,10 +224,10 @@ export const UploadPanel = ({ onDataLoad, onSourceChange, currentSource }: Uploa
 
       toast({
         title: "Dados carregados com sucesso",
-        description: `${processedFichas.length} fichas e ${processedProjetos.length} projetos da planilha personalizada`
+        description: `${processedFichas.length} leads e ${processedProjetos.length} projetos da planilha personalizada`
       });
 
-      onDataLoad({ fichas: processedFichas, projetos: processedProjetos });
+      onDataLoad({ leads: processedFichas, projetos: processedProjetos });
       onSourceChange('custom-sheets');
 
     } catch (error) {
@@ -307,7 +307,7 @@ export const UploadPanel = ({ onDataLoad, onSourceChange, currentSource }: Uploa
 
   const clearFiles = () => {
     setUploadedFiles({});
-    if (fichasInputRef.current) fichasInputRef.current.value = '';
+    if (fichasInputRef.current) leadsInputRef.current.value = '';
     if (projetosInputRef.current) projetosInputRef.current.value = '';
     
     toast({
@@ -318,7 +318,7 @@ export const UploadPanel = ({ onDataLoad, onSourceChange, currentSource }: Uploa
 
   const clearCustomSheets = () => {
     setCustomSheetUrl('');
-    setCustomGids({ fichas: '452792639', projetos: '449483735' });
+    setCustomGids({ leads: '452792639', projetos: '449483735' });
     
     toast({
       title: "Link removido",
@@ -366,7 +366,7 @@ export const UploadPanel = ({ onDataLoad, onSourceChange, currentSource }: Uploa
           <TabsContent value="upload" className="space-y-4">
             <div className="grid gap-4">
               <div className="space-y-2">
-                <Label htmlFor="fichas-upload">Planilha de Fichas (.xlsx, .csv)</Label>
+                <Label htmlFor="fichas-upload">Planilha de Leads (.xlsx, .csv)</Label>
                 <Input
                   id="fichas-upload"
                   type="file"
@@ -374,7 +374,7 @@ export const UploadPanel = ({ onDataLoad, onSourceChange, currentSource }: Uploa
                   accept=".xlsx,.xls,.csv"
                   onChange={(e) => handleFileSelect('fichas', e.target.files?.[0] || null)}
                 />
-                {uploadedFiles.fichas && (
+                {uploadedFiles.leads && (
                   <p className="text-sm text-success">✓ {uploadedFiles.fichas.name}</p>
                 )}
               </div>
@@ -396,7 +396,7 @@ export const UploadPanel = ({ onDataLoad, onSourceChange, currentSource }: Uploa
               <div className="flex gap-2">
                 <Button 
                   onClick={processUploadedData}
-                  disabled={isProcessing || (!uploadedFiles.fichas && !uploadedFiles.projetos)}
+                  disabled={isProcessing || (!uploadedFiles.leads && !uploadedFiles.projetos)}
                   className="flex-1"
                 >
                   {isProcessing ? 'Processando...' : 'Carregar Dados'}
@@ -404,7 +404,7 @@ export const UploadPanel = ({ onDataLoad, onSourceChange, currentSource }: Uploa
                 <Button 
                   variant="outline" 
                   onClick={clearFiles}
-                  disabled={!uploadedFiles.fichas && !uploadedFiles.projetos}
+                  disabled={!uploadedFiles.leads && !uploadedFiles.projetos}
                 >
                   Limpar
                 </Button>
@@ -440,12 +440,12 @@ export const UploadPanel = ({ onDataLoad, onSourceChange, currentSource }: Uploa
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fichas-gid">GID da Aba Fichas</Label>
+                  <Label htmlFor="fichas-gid">GID da Aba Leads</Label>
                   <Input
                     id="fichas-gid"
                     placeholder="452792639"
                     value={customGids.fichas}
-                    onChange={(e) => setCustomGids(prev => ({ ...prev, fichas: e.target.value }))}
+                    onChange={(e) => setCustomGids(prev => ({ ...prev, leads: e.target.value }))}
                   />
                 </div>
                 

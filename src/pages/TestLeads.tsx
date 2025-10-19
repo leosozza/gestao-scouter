@@ -1,5 +1,5 @@
 /**
- * Test page for Fichas Module with ImovelWeb-style controls
+ * Test page for Leads Module with ImovelWeb-style controls
  * Accessible at /test-fichas
  */
 import React, { useEffect, useRef, useState } from "react";
@@ -8,16 +8,16 @@ import "leaflet/dist/leaflet.css";
 import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
 import "@geoman-io/leaflet-geoman-free";
 import {
-  loadFichasData,
-  createFichasHeatmap,
-  createFichasSelection,
+  loadLeadsData,
+  createLeadsHeatmap,
+  createLeadsSelection,
   generateSummary,
   formatSummaryText,
-  type FichaDataPoint,
-  type FichasSummaryData,
+  type LeadDataPoint,
+  type LeadsSummaryData,
   type SelectionResult,
-  type FichasHeatmap,
-  type FichasSelection,
+  type LeadsHeatmap,
+  type LeadsSelection,
 } from "@/map/fichas";
 import { AppShell } from "@/layouts/AppShell";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -59,16 +59,16 @@ export default function TestFichasPage() {
 
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const heatmapRef = useRef<FichasHeatmap | null>(null);
-  const selectionRef = useRef<FichasSelection | null>(null);
+  const heatmapRef = useRef<LeadsHeatmap | null>(null);
+  const selectionRef = useRef<LeadsSelection | null>(null);
   const drawnLayerRef = useRef<L.Layer | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [allFichas, setAllFichas] = useState<FichaDataPoint[]>([]);
-  const [filteredFichas, setFilteredFichas] = useState<FichaDataPoint[]>([]);
-  const [displayedFichas, setDisplayedFichas] = useState<FichaDataPoint[]>([]);
-  const [summary, setSummary] = useState<FichasSummaryData | null>(null);
+  const [allLeads, setAllFichas] = useState<LeadDataPoint[]>([]);
+  const [filteredFichas, setFilteredFichas] = useState<LeadDataPoint[]>([]);
+  const [displayedLeads, setDisplayedFichas] = useState<LeadDataPoint[]>([]);
+  const [summary, setSummary] = useState<LeadsSummaryData | null>(null);
   const [showSummary, setShowSummary] = useState(false);
 
   // Controle de seleção
@@ -121,11 +121,11 @@ export default function TestFichasPage() {
     setIsLoading(true);
     setError(null);
 
-    loadFichasData()
-      .then(({ fichas }) => {
+    loadLeadsData()
+      .then(({ leads }) => {
         if (canceled) return;
         setAllFichas(fichas);
-        // NO INITIAL DATE FILTER - show all fichas on first load
+        // NO INITIAL DATE FILTER - show all leads on first load
         // Date filter will only be applied when user changes the date range
         setFilteredFichas(fichas);
         setDisplayedFichas(fichas);
@@ -136,7 +136,7 @@ export default function TestFichasPage() {
             heatmapRef.current.updateData(fichas);
             heatmapRef.current.fitBounds();
           } else {
-            heatmapRef.current = createFichasHeatmap(mapRef.current, {
+            heatmapRef.current = createLeadsHeatmap(mapRef.current, {
               radius: 14,
               blur: 22,
               max: 0.6,
@@ -153,7 +153,7 @@ export default function TestFichasPage() {
           }
         }
       })
-      .catch((e) => setError("Erro ao carregar fichas: " + (e?.message || "")))
+      .catch((e) => setError("Erro ao carregar leads: " + (e?.message || "")))
       .finally(() => setIsLoading(false));
 
     return () => {
@@ -163,9 +163,9 @@ export default function TestFichasPage() {
 
   // Apply date filter when user changes the date range
   useEffect(() => {
-    if (allFichas.length === 0) return;
+    if (allLeads.length === 0) return;
     
-    const filtered = allFichas.filter((f) => {
+    const filtered = allLeads.filter((f) => {
       const dataVal = f.data || (f as any).Data || f["Data"];
       if (!dataVal) return false;
       const dt = new Date(dataVal);
@@ -182,14 +182,14 @@ export default function TestFichasPage() {
     if (heatmapRef.current && showHeatmap) {
       heatmapRef.current.updateData(filtered);
     }
-  }, [dateRange, allFichas, showHeatmap]);
+  }, [dateRange, allLeads, showHeatmap]);
 
   // Atualizar heatmap e contagem ao mover/zoom no mapa
   useEffect(() => {
     if (!mapRef.current) return;
     const onMove = () => {
       if (!heatmapRef.current) return;
-      // mostra só as fichas visíveis no mapa
+      // mostra só as leads visíveis no mapa
       const bounds = mapRef.current!.getBounds();
       const visible = filteredFichas.filter((f) =>
         bounds.contains([f.lat, f.lng])
@@ -231,12 +231,12 @@ export default function TestFichasPage() {
       const turf = await import('@turf/turf');
       const poly = turf.polygon([coords]);
 
-      const selecionados = displayedFichas.filter((ficha) => {
+      const selecionados = displayedLeads.filter((ficha) => {
         const point = turf.point([ficha.lng, ficha.lat]);
         return turf.booleanPointInPolygon(point, poly);
       });
 
-      console.log(`✅ [Geoman] Polygon created with ${selecionados.length} fichas selected`);
+      console.log(`✅ [Geoman] Polygon created with ${selecionados.length} leads selected`);
 
       setDisplayedFichas(selecionados);
       setSummary(generateSummary(selecionados));
@@ -249,7 +249,7 @@ export default function TestFichasPage() {
     return () => { 
       map.off('pm:create', onCreate); 
     };
-  }, [displayedFichas, showHeatmap]);
+  }, [displayedLeads, showHeatmap]);
 
   // Dynamic heatmap options by zoom level
   useEffect(() => {
@@ -396,7 +396,7 @@ export default function TestFichasPage() {
     overlay.style.borderRadius = "8px";
     overlay.style.boxShadow = "0px 2px 8px rgba(0,0,0,0.13)";
     overlay.style.width = "320px";
-    overlay.innerHTML = `<strong>Resumo das Fichas</strong><pre style="font-size:11px;white-space:pre-wrap">${summaryHTML}</pre>`;
+    overlay.innerHTML = `<strong>Resumo das Leads</strong><pre style="font-size:11px;white-space:pre-wrap">${summaryHTML}</pre>`;
     if (mapEl?.parentElement) {
       mapEl.parentElement.appendChild(overlay);
       html2pdf()
@@ -416,9 +416,9 @@ export default function TestFichasPage() {
         {/* Barra superior flutuante - Info e Modo */} 
         <div className="panel-flutuante absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center bg-white/95 rounded-lg shadow-lg px-4 py-2 gap-3 border"> 
           <span className="text-sm font-medium"> 
-            {displayedFichas.length === filteredFichas.length 
-              ? `${formatK(displayedFichas.length)} de ${formatK(filteredFichas.length)} fichas` 
-              : `${formatK(displayedFichas.length)} fichas selecionadas`} 
+            {displayedLeads.length === filteredFichas.length 
+              ? `${formatK(displayedLeads.length)} de ${formatK(filteredFichas.length)} leads` 
+              : `${formatK(displayedLeads.length)} leads selecionadas`} 
           </span> 
           <button 
             className="p-1.5 rounded hover:bg-gray-100" 
@@ -427,7 +427,7 @@ export default function TestFichasPage() {
           > 
             <Eye size={18} /> 
           </button> 
-          {/* Modo alternador (para demo: fichas/scouter) */} 
+          {/* Modo alternador (para demo: leads/scouter) */} 
           <select 
             className="ml-2 px-2 py-1 text-xs border rounded bg-white" 
             value={modo} 
@@ -456,7 +456,7 @@ export default function TestFichasPage() {
             <FileText size={20} /> 
           </button>
           
-          {/* Botão de controles de seleção (apenas no modo fichas) */}
+          {/* Botão de controles de seleção (apenas no modo leads) */}
           {modo === "fichas" && (
             <>
               <button 
@@ -491,7 +491,7 @@ export default function TestFichasPage() {
           )}
         </div>
 
-        {/* Painel flutuante de controles de seleção (apenas fichas, quando visível) */} 
+        {/* Painel flutuante de controles de seleção (apenas leads, quando visível) */} 
         {modo === "fichas" && controlsVisible && ( 
           <div className="panel-flutuante absolute bottom-8 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-3"> 
             <div className="bg-white/95 rounded-lg shadow-lg border p-4 flex flex-col gap-3">

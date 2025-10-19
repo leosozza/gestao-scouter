@@ -5,7 +5,7 @@
 
 import { parseISO, isValid, parse } from 'date-fns';
 
-interface Ficha {
+interface Lead {
   criado?: string;
   hora_criacao_ficha?: string;
   datahoracel?: string;
@@ -90,7 +90,7 @@ function getIntervalMinutes(time1: Date, time2: Date): number {
 /**
  * Calculate overall time metrics for a set of fichas
  */
-export function calculateTimeMetrics(fichas: Ficha[]): TimeMetrics {
+export function calculateTimeMetrics(fichas: Lead[]): TimeMetrics {
   const defaultMetrics: TimeMetrics = {
     avgIntervalMinutes: 0,
     workStartTime: null,
@@ -171,11 +171,11 @@ export function calculateTimeMetrics(fichas: Ficha[]): TimeMetrics {
 /**
  * Calculate daily time metrics (work hours per day)
  */
-export function calculateDailyTimeMetrics(fichas: Ficha[]): DailyTimeMetrics[] {
+export function calculateDailyTimeMetrics(fichas: Lead[]): DailyTimeMetrics[] {
   if (!fichas || fichas.length === 0) return [];
 
   // Group fichas by date
-  const fichasByDate = new Map<string, Ficha[]>();
+  const fichasByDate = new Map<string, Lead[]>();
   
   for (const ficha of fichas) {
     const date = parseDate(ficha.criado);
@@ -190,9 +190,9 @@ export function calculateDailyTimeMetrics(fichas: Ficha[]): DailyTimeMetrics[] {
   // Calculate metrics for each day
   const dailyMetrics: DailyTimeMetrics[] = [];
 
-  for (const [date, dayFichas] of fichasByDate.entries()) {
+  for (const [date, dayLeads] of fichasByDate.entries()) {
     // Parse all times for this day
-    const times = dayFichas
+    const times = dayLeads
       .map(ficha => parseTime(ficha.hora_criacao_ficha))
       .filter((time): time is Date => time !== null)
       .sort((a, b) => a.getTime() - b.getTime());
@@ -225,7 +225,7 @@ export function calculateDailyTimeMetrics(fichas: Ficha[]): DailyTimeMetrics[] {
       startTime,
       endTime,
       workHours: Number(workHours.toFixed(2)),
-      fichasCount: dayFichas.length,
+      fichasCount: dayLeads.length,
       avgIntervalMinutes: Math.round(avgIntervalMinutes),
     });
   }
@@ -274,8 +274,8 @@ export function getTimeInsights(metrics: TimeMetrics, dailyMetrics: DailyTimeMet
     }
   }
 
-  if (metrics.fichasPerHour > 0) {
-    insights.push(`📊 Produtividade: ${metrics.fichasPerHour.toFixed(1)} fichas/hora`);
+  if (metrics.leadsPerHour > 0) {
+    insights.push(`📊 Produtividade: ${metrics.leadsPerHour.toFixed(1)} fichas/hora`);
   }
 
   // Analyze daily consistency

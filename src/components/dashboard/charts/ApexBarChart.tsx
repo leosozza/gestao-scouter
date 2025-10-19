@@ -50,7 +50,7 @@ export function ApexBarChart({ title, categories, series, height = 350 }: ApexBa
     fill: { opacity: 1 },
     tooltip: {
       theme: 'light',
-      y: { formatter: (val) => `${val} fichas` }
+      y: { formatter: (val) => `${val} leads` }
     },
     colors: ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'],
     grid: {

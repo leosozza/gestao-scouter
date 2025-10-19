@@ -28,7 +28,7 @@ export function ApexPieChart({ title, labels, series, height = 350 }: ApexPieCha
     },
     tooltip: {
       theme: 'light',
-      y: { formatter: (val) => `${val} fichas` }
+      y: { formatter: (val) => `${val} leads` }
     }
   };
   

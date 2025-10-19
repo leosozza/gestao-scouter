@@ -124,7 +124,7 @@ export const BulkImportPanel = ({ onComplete }: BulkImportPanelProps) => {
       telefone: row.Telefone || row.telefone || '',
       email: row.Email || row.email || '',
       idade: row.Idade || row.idade || '',
-      valor_ficha: row['Valor_por_Fichas'] || row['Valor por Fichas'] || row['Valor por Ficha'] || row['R$/Ficha'] || row.Valor || row.valor_ficha || '',
+      valor_ficha: row['Valor_por_Fichas'] || row['Valor por Leads'] || row['Valor por Ficha'] || row['R$/Ficha'] || row.Valor || row.valor_ficha || '',
       latitude: row.LAT || row.lat || row.latitude || null,
       longitude: row.LNG || row.lng || row.longitude || null
     };
@@ -156,7 +156,7 @@ export const BulkImportPanel = ({ onComplete }: BulkImportPanelProps) => {
       });
 
       // Transformar dados
-      const fichas = rawData.map(row => {
+      const leads = rawData.map(row => {
         const mapped = mapFieldAliases(row);
         const createdDate = parseDate(mapped.criado);
         const valorNum = parseBRL(mapped.valor_ficha);

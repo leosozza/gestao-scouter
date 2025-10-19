@@ -8,12 +8,12 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import type { FichaDataPoint as FichaDataPointBase } from '@/types/ficha';
+import type { LeadDataPoint as FichaDataPointBase } from '@/types/lead';
 
-export type FichaDataPoint = FichaDataPointBase;
+export type LeadDataPoint = FichaDataPointBase;
 
-export interface FichasDataResult {
-  fichas: FichaDataPoint[];
+export interface LeadsDataResult {
+  fichas: LeadDataPoint[];
   total: number;
   loaded: Date;
 }
@@ -24,7 +24,7 @@ export interface FichasDataResult {
  * 
  * @returns Promise with leads data from 'leads' table
  */
-export async function loadFichasData(): Promise<FichasDataResult> {
+export async function loadLeadsData(): Promise<LeadsDataResult> {
   try {
     console.log('📥 [Leads Data] Loading leads from Supabase...');
     
@@ -40,7 +40,7 @@ export async function loadFichasData(): Promise<FichasDataResult> {
     console.log(`✅ [Leads Data] Loaded ${fichas?.length || 0} leads with coordinates`);
     
     return {
-      fichas: (fichas || []) as FichaDataPoint[],
+      fichas: (fichas || []) as LeadDataPoint[],
       total: fichas?.length || 0,
       loaded: new Date(),
     };
@@ -54,10 +54,10 @@ export async function loadFichasData(): Promise<FichasDataResult> {
  * Filter fichas by bounding box
  * Used internally by selection module
  */
-export function filterFichasByBounds(
-  fichas: FichaDataPoint[],
+export function filterLeadsByBounds(
+  fichas: LeadDataPoint[],
   bounds: { north: number; south: number; east: number; west: number }
-): FichaDataPoint[] {
+): LeadDataPoint[] {
   return fichas.filter(ficha => {
     const lat = ficha.lat || ficha.latitude;
     const lng = ficha.lng || ficha.longitude;
@@ -75,8 +75,8 @@ export function filterFichasByBounds(
 /**
  * Group fichas by projeto
  */
-export function groupByProjeto(fichas: FichaDataPoint[]): Map<string, FichaDataPoint[]> {
-  const groups = new Map<string, FichaDataPoint[]>();
+export function groupByProjeto(fichas: LeadDataPoint[]): Map<string, LeadDataPoint[]> {
+  const groups = new Map<string, LeadDataPoint[]>();
   
   fichas.forEach(ficha => {
     const projeto = ficha.projeto || 'Sem Projeto';
@@ -98,8 +98,8 @@ export function groupByProjeto(fichas: FichaDataPoint[]): Map<string, FichaDataP
 /**
  * Group fichas by scouter
  */
-export function groupByScouter(fichas: FichaDataPoint[]): Map<string, FichaDataPoint[]> {
-  const groups = new Map<string, FichaDataPoint[]>();
+export function groupByScouter(fichas: LeadDataPoint[]): Map<string, LeadDataPoint[]> {
+  const groups = new Map<string, LeadDataPoint[]>();
   
   fichas.forEach(ficha => {
     const scouter = ficha.scouter || 'Sem Scouter';

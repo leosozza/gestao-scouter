@@ -128,7 +128,7 @@ export function AdvancedSummary({
       {/* Total */}
       <div className="mb-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
         <div className="text-lg font-semibold text-orange-900">
-          Total: {summary.total} fichas
+          Total: {summary.total} leads
         </div>
       </div>
 
@@ -148,7 +148,7 @@ export function AdvancedSummary({
                     {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     <span className="font-medium">{proj.projeto}</span>
                   </div>
-                  <span className="text-sm text-muted-foreground">{proj.total} fichas</span>
+                  <span className="text-sm text-muted-foreground">{proj.total} leads</span>
                 </button>
                 
                 {isExpanded && (
@@ -175,7 +175,7 @@ export function AdvancedSummary({
       {aiAnalysis && (
         <AIQAPanel
           selectionHash={selectionHash}
-          totalFichas={summary.total}
+          totalLeads={summary.total}
           topProjetos={aiAnalysis.topProjetos}
           topScouters={aiAnalysis.topScouters}
           densidade={aiAnalysis.densidade}

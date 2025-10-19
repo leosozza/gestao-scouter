@@ -1,6 +1,6 @@
 // @ts-nocheck
 // Garantir consistência: usar getValorFichaFromRow(ficha) para cada item.
-// Remover qualquer parse antigo de "Valor por Fichas".
+// Remover qualquer parse antigo de "Valor por Leads".
 import { getValorFichaFromRow } from '@/utils/values';
 import { formatBRL } from '@/utils/currency';
 import { useState } from "react";
@@ -20,7 +20,7 @@ import {
 import { PDFReportService } from "@/services/pdfReportService";
 
 interface PaymentSummaryProps {
-  fichasFiltradas: Ficha[];
+  leadsFiltradas: Lead[];
   filterType: string;
   filterValue: string;
   projetos: Project[];
@@ -29,7 +29,7 @@ interface PaymentSummaryProps {
 }
 
 export const PaymentSummary = ({
-  fichasFiltradas = [],
+  leadsFiltradas = [],
   filterType,
   filterValue,
   projetos = [],
@@ -39,9 +39,9 @@ export const PaymentSummary = ({
   const { toast } = useToast();
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
-  const fichasAPagar = fichasFiltradas.filter(f => f && f['Ficha paga'] !== 'Sim');
+  const leadsAPagar = leadsFiltradas.filter(f => f && f['Ficha paga'] !== 'Sim');
   
-  const valorTotalFichasAPagar = fichasAPagar.reduce((total, ficha) => {
+  const valorTotalFichasAPagar = leadsAPagar.reduce((total, ficha) => {
     const valor = getValorFichaFromRow(ficha);
     return total + valor;
   }, 0);
@@ -51,10 +51,10 @@ export const PaymentSummary = ({
     if (!selectedPeriod || !filters?.scouter) return 0;
 
     // Buscar projeto do scouter para obter valores de ajuda de custo
-    const fichasDoScouter = fichasFiltradas.filter(f => f && f['Gestão de Scouter'] === filters.scouter);
+    const leadsDoScouter = leadsFiltradas.filter(f => f && f['Gestão de Scouter'] === filters.scouter);
     if (fichasDoScouter.length === 0) return 0;
 
-    const projetoScouter = fichasDoScouter[0]['Projetos Cormeciais'];
+    const projetoScouter = leadsDoScouter[0]['Projetos Cormeciais'];
     const projeto = projetos?.find(p => p && p.nome === projetoScouter);
     
     if (!projeto) return 0;
@@ -71,7 +71,7 @@ export const PaymentSummary = ({
     const endDate = new Date(selectedPeriod.end);
     const diasTrabalhados = new Set();
     
-    fichasDoScouter.forEach(ficha => {
+    leadsDoScouter.forEach(ficha => {
       const dataCriado = ficha.Criado;
       if (dataCriado && typeof dataCriado === 'string' && dataCriado.includes('/')) {
         const [day, month, year] = dataCriado.split('/');
@@ -94,7 +94,7 @@ export const PaymentSummary = ({
   const valorTotalCompleto = valorTotalFichasAPagar + valorAjudaCusto;
 
   // Função para calcular detalhes por scouter
-  const calcularDetalhesPorScouter = (fichas: Ficha[]) => {
+  const calcularDetalhesPorScouter = (fichas: Lead[]) => {
     const scouterData: Record<string, {
       nome: string;
       quantidadeFichas: number;
@@ -104,7 +104,7 @@ export const PaymentSummary = ({
       valorAjudaCusto: number;
     }> = {};
 
-    fichas.forEach(ficha => {
+    leads.forEach(ficha => {
       const scouter = ficha['Gestão de Scouter'] || 'Sem Scouter';
       if (!scouterData[scouter]) {
         scouterData[scouter] = {
@@ -132,7 +132,7 @@ export const PaymentSummary = ({
     // Calcular ajuda de custo por scouter
     if (selectedPeriod) {
       Object.keys(scouterData).forEach(scouterNome => {
-        const projetoScouter = fichas.find(f => f['Gestão de Scouter'] === scouterNome)?.['Projetos Cormeciais'];
+        const projetoScouter = leads.find(f => f['Gestão de Scouter'] === scouterNome)?.['Projetos Cormeciais'];
         const projeto = projetos?.find(p => p.nome === projetoScouter);
         
         if (projeto) {
@@ -166,7 +166,7 @@ export const PaymentSummary = ({
     setIsGeneratingReport(true);
     
     try {
-      const scouterDetails = calcularDetalhesPorScouter(fichasAPagar);
+      const scouterDetails = calcularDetalhesPorScouter(leadsAPagar);
       const valorTotalAjudaCusto = scouterDetails.reduce((total, s) => total + s.valorAjudaCusto, 0);
       
       const reportData = {
@@ -175,7 +175,7 @@ export const PaymentSummary = ({
         filtro: filterType ? `${filterType}: ${filterValue}` : 'Sem filtro',
         scouter: filters?.scouter || 'Todos',
         projeto: filters?.projeto || 'Todos',
-        fichas: fichasAPagar.map(ficha => ({
+        leads: leadsAPagar.map(ficha => ({
           id: ficha.ID,
           scouter: ficha['Gestão de Scouter'] || 'N/A',
           projeto: ficha['Projetos Cormeciais'] || 'N/A',
@@ -184,7 +184,7 @@ export const PaymentSummary = ({
         data: ficha.Criado || 'N/A'
         })),
         resumo: {
-          totalFichas: fichasAPagar.length,
+          totalLeads: leadsAPagar.length,
           valorFichas: valorTotalFichasAPagar,
           valorAjudaCusto: valorTotalAjudaCusto,
           valorTotal: valorTotalFichasAPagar + valorTotalAjudaCusto
@@ -239,17 +239,17 @@ export const PaymentSummary = ({
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
                 <div>
-                  <span className="text-muted-foreground">Total de fichas:</span>
+                  <span className="text-muted-foreground">Total de leads:</span>
                   <br />
-                  <span className="font-medium">{fichasFiltradas.length}</span>
+                  <span className="font-medium">{leadsFiltradas.length}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Fichas a pagar:</span>
                   <br />
-                  <span className="font-medium text-orange-600">{fichasAPagar.length}</span>
+                  <span className="font-medium text-orange-600">{leadsAPagar.length}</span>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Valor fichas a pagar:</span>
+                  <span className="text-muted-foreground">Valor leads a pagar:</span>
                   <br />
                   <span className="font-medium text-orange-600">{formatBRL(valorTotalFichasAPagar)}</span>
                 </div>
@@ -271,7 +271,7 @@ export const PaymentSummary = ({
                       <span className="font-medium text-blue-600">{formatBRL(valorAjudaCusto)}</span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Total fichas + ajuda:</span>
+                      <span className="text-muted-foreground">Total leads + ajuda:</span>
                       <br />
                       <span className="font-medium text-green-600">{formatBRL(valorTotalCompleto)}</span>
                     </div>
@@ -292,7 +292,7 @@ export const PaymentSummary = ({
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  disabled={fichasAPagar.length === 0 || isGeneratingReport}
+                  disabled={leadsAPagar.length === 0 || isGeneratingReport}
                   className="flex items-center gap-2"
                 >
                   <FileText className="h-4 w-4" />

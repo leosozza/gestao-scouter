@@ -1,5 +1,5 @@
-// Tipo unificado para fichas com suporte a coordenadas e aliases
-export interface FichaDataPoint {
+// Tipo unificado para leads com suporte a coordenadas e aliases
+export interface LeadDataPoint {
   id?: string | number;
   
   // Coordenadas (com aliases) - todos opcionais
