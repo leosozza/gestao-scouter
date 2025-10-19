@@ -18,14 +18,13 @@ interface ProcessedMetrics {
 /**
  * Executa query dinâmica baseada na configuração do widget
  */
-export async function executeDashboardQuery(widget: DashboardWidget) {
+export async function executeDashboardQuery(widget: DashboardWidget): Promise<any[]> {
   const { filters } = widget;
   
-  // Base query
-  let query = supabase
-    .from('leads')
-    .select('*')
-    .or('deleted.is.false,deleted.is.null');
+  // Build query with explicit any type to avoid deep type instantiation
+  let query: any = supabase.from('leads').select('*');
+  
+  query = query.or('deleted.is.false,deleted.is.null');
   
   // Aplicar filtros usando apenas 'criado' (coluna que existe)
   if (filters?.dataInicio) {

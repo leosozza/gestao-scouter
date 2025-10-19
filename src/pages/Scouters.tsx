@@ -258,14 +258,15 @@ export default function Scouters() {
             lon: 0,
             scouterName: scouter.scouter_name,
             leads: scouter.total_fichas,
+            fichas: scouter.total_fichas,
             conversao: scouter.conversion_rate
           }))}
           fichaData={[
-            { lat: 0, lon: 0, leads: 45, conversao: 85, endereco: 'Centro - SP' },
-            { lat: 0, lon: 0, leads: 38, conversao: 72, endereco: 'Zona Sul - SP' },
-            { lat: 0, lon: 0, leads: 52, conversao: 68, endereco: 'Zona Oeste - SP' },
-            { lat: 0, lon: 0, leads: 29, conversao: 55, endereco: 'Zona Leste - SP' },
-            { lat: 0, lon: 0, leads: 41, conversao: 78, endereco: 'Zona Norte - SP' },
+            { lat: 0, lon: 0, leads: 45, fichas: 45, conversao: 85, endereco: 'Centro - SP' },
+            { lat: 0, lon: 0, leads: 38, fichas: 38, conversao: 72, endereco: 'Zona Sul - SP' },
+            { lat: 0, lon: 0, leads: 52, fichas: 52, conversao: 68, endereco: 'Zona Oeste - SP' },
+            { lat: 0, lon: 0, leads: 29, fichas: 29, conversao: 55, endereco: 'Zona Leste - SP' },
+            { lat: 0, lon: 0, leads: 41, fichas: 41, conversao: 78, endereco: 'Zona Norte - SP' },
           ]}
           isLoading={loading}
         />

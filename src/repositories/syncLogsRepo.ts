@@ -6,8 +6,15 @@ import type { SyncLog } from './types';
  */
 export async function createSyncLog(log: Omit<SyncLog, 'id' | 'created_at'>): Promise<SyncLog | null> {
   try {
-    const logEntry: Partial<SyncLog> = {
-      ...log,
+    const logEntry = {
+      endpoint: log.endpoint || 'unknown',
+      table_name: log.table_name || 'unknown',
+      status: log.status || 'error',
+      records_count: log.records_count,
+      execution_time_ms: log.execution_time_ms,
+      error_message: log.error_message,
+      request_params: log.request_params as any,
+      response_data: log.response_data as any,
       created_at: new Date().toISOString(),
     };
 

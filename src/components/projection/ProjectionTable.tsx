@@ -73,7 +73,7 @@ export function ProjectionTable({ data, projectionType, selectedFilter }: Projec
                   <span className="text-xs text-muted-foreground">({data.periodo.dias_passados} dias)</span>
                 </TableCell>
                 <TableCell className="text-right font-semibold text-blue-600">
-                  {fmtNumber.format(data.realizado.fichas)}
+                  {fmtNumber.format(data.realizado.leads)}
                 </TableCell>
                 <TableCell className="text-right font-semibold text-blue-600">
                   {fmtBRL.format(data.realizado.valor)}
@@ -93,7 +93,7 @@ export function ProjectionTable({ data, projectionType, selectedFilter }: Projec
                   <span className="text-xs text-muted-foreground">({data.periodo.dias_restantes} dias)</span>
                 </TableCell>
                 <TableCell className="text-right font-semibold text-orange-600">
-                  {fmtNumber.format(data.projetado_restante.fichas)}
+                  {fmtNumber.format(data.projetado_restante.leads)}
                 </TableCell>
                 <TableCell className="text-right font-semibold text-orange-600">
                   {fmtBRL.format(data.projetado_restante.valor)}
@@ -113,7 +113,7 @@ export function ProjectionTable({ data, projectionType, selectedFilter }: Projec
                   <span className="text-xs text-muted-foreground">({data.periodo.dias_totais} dias)</span>
                 </TableCell>
                 <TableCell className="text-right font-bold text-lg text-green-600">
-                  {fmtNumber.format(data.total_projetado.fichas)}
+                  {fmtNumber.format(data.total_projetado.leads)}
                 </TableCell>
                 <TableCell className="text-right font-bold text-lg text-green-600">
                   {fmtBRL.format(data.total_projetado.valor)}

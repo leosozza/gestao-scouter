@@ -52,7 +52,7 @@ export function ProjectionCards({ data, projectionType, selectedFilter }: Projec
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Fichas</span>
             </div>
-            <span className="font-medium text-blue-600">{fmtNumber.format(data.realizado.fichas)}</span>
+            <span className="font-medium text-blue-600">{fmtNumber.format(data.realizado.leads)}</span>
           </div>
 
           <div className="flex items-center justify-between">
@@ -84,7 +84,7 @@ export function ProjectionCards({ data, projectionType, selectedFilter }: Projec
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Fichas</span>
             </div>
-            <span className="font-medium text-green-600">{fmtNumber.format(data.total_projetado.fichas)}</span>
+            <span className="font-medium text-green-600">{fmtNumber.format(data.total_projetado.leads)}</span>
           </div>
 
           <div className="flex items-center justify-between">

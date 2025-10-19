@@ -83,10 +83,18 @@ export async function saveTabuladorConfig(config: Omit<TabuladorMaxConfig, 'id' 
         console.log('✅ [TabuladorConfigRepo] Configuração atualizada no Supabase');
         return data as TabuladorMaxConfig;
       } else {
-        // Insert new
+        // Insert new - ensure required fields are present
+        const insertData = {
+          project_id: configWithTimestamp.project_id || 'default',
+          url: configWithTimestamp.url || '',
+          publishable_key: configWithTimestamp.publishable_key,
+          enabled: configWithTimestamp.enabled ?? false,
+          created_at: new Date().toISOString()
+        };
+        
         const { data, error } = await supabase
           .from('tabulador_config')
-          .insert([{ ...configWithTimestamp, created_at: new Date().toISOString() }])
+          .insert([insertData])
           .select()
           .single();
 
