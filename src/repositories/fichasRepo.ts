@@ -11,12 +11,7 @@
 // Nunca busque dados de (LEGACY/DEPRECATED):
 // - Tabela 'fichas' (migrada para 'leads')
 // - Tabela 'bitrix_leads' (apenas histórico)
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL!, 
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY!
-);
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Busca fichas da tabela 'leads' do Supabase com filtros opcionais
