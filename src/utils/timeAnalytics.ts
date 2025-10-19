@@ -274,8 +274,8 @@ export function getTimeInsights(metrics: TimeMetrics, dailyMetrics: DailyTimeMet
     }
   }
 
-  if (metrics.fichasPerHour > 0) {
-    insights.push(`📊 Produtividade: ${metrics.fichasPerHour.toFixed(1)} fichas/hora`);
+  if (metrics.leadsPerHour > 0) {
+    insights.push(`📊 Produtividade: ${metrics.leadsPerHour.toFixed(1)} fichas/hora`);
   }
 
   // Analyze daily consistency

@@ -15,7 +15,7 @@ export interface ProjectionData {
   projecao_agressiva: number;
   projecao_historica: number;
   conversion_rate: number;  
-  avg_weekly_fichas: number;
+  avg_weekly_leads: number;
 }
 
 export type ProjectionType = 'scouter' | 'projeto';
@@ -32,19 +32,19 @@ export interface LinearProjectionData {
     dias_totais: number;
   };
   realizado: {
-    fichas: number;
+    leads: number;
     valor: number;
   };
   projetado_restante: {
-    fichas: number;
+    leads: number;
     valor: number;
   };
   total_projetado: {
-    fichas: number;
+    leads: number;
     valor: number;
   };
-  serie_real: Array<{ dia: string; fichas: number; acumulado: number }>;
-  serie_proj: Array<{ dia: string; fichas: number; acumulado: number }>;
+  serie_real: Array<{ dia: string; leads: number; acumulado: number }>;
+  serie_proj: Array<{ dia: string; leads: number; acumulado: number }>;
   media_diaria: number;
   valor_medio_por_ficha: number;
 }
@@ -66,17 +66,17 @@ export interface AdvancedProjectionData {
   };
   granularidade: Granularidade;
   realizado: {
-    fichas: number;
+    leads: number;
     valor: number;
   };
   projetado: {
-    fichas: number;
+    leads: number;
     valor: number;
   };
   fallbackUsado: boolean;
   valor_medio_por_ficha: number;
-  serie_analise: Array<{ dia: string; fichas: number; acumulado: number }>;
-  serie_projecao: Array<{ dia: string; fichas: number; acumulado: number }>;
+  serie_analise: Array<{ dia: string; leads: number; acumulado: number }>;
+  serie_projecao: Array<{ dia: string; leads: number; acumulado: number }>;
 }
 
 export async function getProjectionData(type: ProjectionType = 'scouter', selectedFilter?: string): Promise<ProjectionData[]> {
@@ -158,8 +158,8 @@ export async function fetchLinearProjection(p: ProjecaoFiltro): Promise<LinearPr
   const proj_restante_valor = +(proj_restante_qtde * valor_medio_por_ficha).toFixed(2);
 
   // séries para o gráfico
-  const serie_real: Array<{ dia: string; fichas: number; acumulado: number }> = [];
-  const serie_proj: Array<{ dia: string; fichas: number; acumulado: number }> = [];
+  const serie_real: Array<{ dia: string; leads: number; acumulado: number }> = [];
+  const serie_proj: Array<{ dia: string; leads: number; acumulado: number }> = [];
 
   // acumulado diário realizado
   const mapCount: Record<string, number> = {};
@@ -326,7 +326,7 @@ export async function fetchProjectionAdvanced(p: ProjecaoFiltroAdvanced): Promis
   const valorProjetado = +(fichasProjetadas * valor_medio_por_ficha).toFixed(2);
 
   // Construir série de análise (acumulado diário)
-  const serie_analise: Array<{ dia: string; fichas: number; acumulado: number }> = [];
+  const serie_analise: Array<{ dia: string; leads: number; acumulado: number }> = [];
   const mapCountAnalise: Record<string, number> = {};
   for (const r of fichasAnalise) {
     const d = (r as any).__iso as string;
@@ -343,7 +343,7 @@ export async function fetchProjectionAdvanced(p: ProjecaoFiltroAdvanced): Promis
   }
 
   // Construir série de projeção a partir do fim da análise
-  const serie_projecao: Array<{ dia: string; fichas: number; acumulado: number }> = [];
+  const serie_projecao: Array<{ dia: string; leads: number; acumulado: number }> = [];
   const inicioAcc = acc;
   let projAcc = inicioAcc;
   let cursor2 = new Date(projInicio);
@@ -601,8 +601,8 @@ function generateDailySeries(
   endDate: Date, 
   fichas: any[], 
   type: 'real'
-): Array<{ dia: string; fichas: number; acumulado: number }> {
-  const series: Array<{ dia: string; fichas: number; acumulado: number }> = [];
+): Array<{ dia: string; leads: number; acumulado: number }> {
+  const series: Array<{ dia: string; leads: number; acumulado: number }> = [];
   const current = new Date(startDate);
   let acumulado = 0;
   
@@ -630,9 +630,9 @@ function generateProjectionSeries(
   startDate: Date,
   endDate: Date,
   mediaDiaria: number,
-  serieReal: Array<{ dia: string; fichas: number; acumulado: number }>
-): Array<{ dia: string; fichas: number; acumulado: number }> {
-  const series: Array<{ dia: string; fichas: number; acumulado: number }> = [];
+  serieReal: Array<{ dia: string; leads: number; acumulado: number }>
+): Array<{ dia: string; leads: number; acumulado: number }> {
+  const series: Array<{ dia: string; leads: number; acumulado: number }> = [];
   const current = new Date(startDate);
   current.setDate(current.getDate() + 1); // Start from next day
   
