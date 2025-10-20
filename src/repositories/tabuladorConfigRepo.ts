@@ -70,18 +70,16 @@ export async function saveTabuladorConfig(config: Omit<TabuladorMaxConfig, 'id' 
     try {
       const existing = await getTabuladorConfig();
       
-      if (existing && existing.id) {
+      if (existing && existing.project_id) {
         // Update existing
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('tabulador_config')
           .update(configWithTimestamp)
-          .eq('id', existing.id)
-          .select()
-          .single();
+          .eq('project_id', existing.project_id);
 
         if (error) throw error;
         console.log('✅ [TabuladorConfigRepo] Configuração atualizada no Supabase');
-        return data as TabuladorMaxConfig;
+        return { ...config, updated_at: configWithTimestamp.updated_at } as TabuladorMaxConfig;
       } else {
         // Insert new - ensure required fields are present
         const insertData = {

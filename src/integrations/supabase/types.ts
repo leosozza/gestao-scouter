@@ -14,16 +14,574 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      dashboard_configs: {
+        Row: {
+          config: Json
+          created_at: string | null
+          description: string | null
+          id: string
+          is_default: boolean | null
+          name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          config: Json
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      dashboard_indicator_configs: {
+        Row: {
+          config: Json
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          config: Json
+          created_at?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      leads: {
+        Row: {
+          age: number | null
+          analisado_em: string | null
+          analisado_por: string | null
+          aprovado: boolean | null
+          commercial_project_id: string | null
+          compareceu: boolean | null
+          criado: string | null
+          deleted: boolean | null
+          email: string | null
+          etapa: string | null
+          ficha_confirmada: string | null
+          foto: string | null
+          id: number
+          last_sync_at: string | null
+          latitude: number | null
+          local_abordagem: string | null
+          local_da_abordagem: string | null
+          localizacao: string | null
+          longitude: number | null
+          nome: string | null
+          presenca_confirmada: boolean | null
+          projeto: string | null
+          raw: Json | null
+          scouter: string | null
+          scouter_id: number | null
+          supervisor: string | null
+          sync_source: string | null
+          sync_status: string | null
+          telefone: string | null
+          updated_at: string | null
+          valor_ficha: number | null
+        }
+        Insert: {
+          age?: number | null
+          analisado_em?: string | null
+          analisado_por?: string | null
+          aprovado?: boolean | null
+          commercial_project_id?: string | null
+          compareceu?: boolean | null
+          criado?: string | null
+          deleted?: boolean | null
+          email?: string | null
+          etapa?: string | null
+          ficha_confirmada?: string | null
+          foto?: string | null
+          id?: number
+          last_sync_at?: string | null
+          latitude?: number | null
+          local_abordagem?: string | null
+          local_da_abordagem?: string | null
+          localizacao?: string | null
+          longitude?: number | null
+          nome?: string | null
+          presenca_confirmada?: boolean | null
+          projeto?: string | null
+          raw?: Json | null
+          scouter?: string | null
+          scouter_id?: number | null
+          supervisor?: string | null
+          sync_source?: string | null
+          sync_status?: string | null
+          telefone?: string | null
+          updated_at?: string | null
+          valor_ficha?: number | null
+        }
+        Update: {
+          age?: number | null
+          analisado_em?: string | null
+          analisado_por?: string | null
+          aprovado?: boolean | null
+          commercial_project_id?: string | null
+          compareceu?: boolean | null
+          criado?: string | null
+          deleted?: boolean | null
+          email?: string | null
+          etapa?: string | null
+          ficha_confirmada?: string | null
+          foto?: string | null
+          id?: number
+          last_sync_at?: string | null
+          latitude?: number | null
+          local_abordagem?: string | null
+          local_da_abordagem?: string | null
+          localizacao?: string | null
+          longitude?: number | null
+          nome?: string | null
+          presenca_confirmada?: boolean | null
+          projeto?: string | null
+          raw?: Json | null
+          scouter?: string | null
+          scouter_id?: number | null
+          supervisor?: string | null
+          sync_source?: string | null
+          sync_status?: string | null
+          telefone?: string | null
+          updated_at?: string | null
+          valor_ficha?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_scouter_id_fkey"
+            columns: ["scouter_id"]
+            isOneToOne: false
+            referencedRelation: "scouter_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      permissions: {
+        Row: {
+          action: string
+          allowed: boolean
+          id: number
+          module: string
+          role_id: number
+        }
+        Insert: {
+          action: string
+          allowed?: boolean
+          id?: number
+          module: string
+          role_id: number
+        }
+        Update: {
+          action?: string
+          allowed?: boolean
+          id?: number
+          module?: string
+          role_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roles: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: number
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          name?: string
+        }
+        Relationships: []
+      }
+      scouter_profiles: {
+        Row: {
+          ativo: boolean | null
+          created_at: string | null
+          id: number
+          name: string
+          nome: string | null
+          supervisor_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string | null
+          id?: number
+          name: string
+          nome?: string | null
+          supervisor_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string | null
+          id?: number
+          name?: string
+          nome?: string | null
+          supervisor_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scouter_profiles_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sync_logs: {
+        Row: {
+          created_at: string | null
+          endpoint: string | null
+          error_message: string | null
+          errors: Json | null
+          execution_time_ms: number | null
+          id: string
+          processing_time_ms: number | null
+          records_count: number | null
+          records_synced: number | null
+          request_params: Json | null
+          response_data: Json | null
+          started_at: string | null
+          status: string | null
+          sync_direction: string | null
+          table_name: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          endpoint?: string | null
+          error_message?: string | null
+          errors?: Json | null
+          execution_time_ms?: number | null
+          id?: string
+          processing_time_ms?: number | null
+          records_count?: number | null
+          records_synced?: number | null
+          request_params?: Json | null
+          response_data?: Json | null
+          started_at?: string | null
+          status?: string | null
+          sync_direction?: string | null
+          table_name?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          endpoint?: string | null
+          error_message?: string | null
+          errors?: Json | null
+          execution_time_ms?: number | null
+          id?: string
+          processing_time_ms?: number | null
+          records_count?: number | null
+          records_synced?: number | null
+          request_params?: Json | null
+          response_data?: Json | null
+          started_at?: string | null
+          status?: string | null
+          sync_direction?: string | null
+          table_name?: string | null
+        }
+        Relationships: []
+      }
+      sync_logs_detailed: {
+        Row: {
+          created_at: string | null
+          endpoint: string | null
+          error_message: string | null
+          errors: Json | null
+          execution_time_ms: number | null
+          id: string
+          processing_time_ms: number | null
+          records_count: number | null
+          records_synced: number | null
+          request_params: Json | null
+          response_data: Json | null
+          started_at: string | null
+          status: string | null
+          sync_direction: string | null
+          table_name: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          endpoint?: string | null
+          error_message?: string | null
+          errors?: Json | null
+          execution_time_ms?: number | null
+          id?: string
+          processing_time_ms?: number | null
+          records_count?: number | null
+          records_synced?: number | null
+          request_params?: Json | null
+          response_data?: Json | null
+          started_at?: string | null
+          status?: string | null
+          sync_direction?: string | null
+          table_name?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          endpoint?: string | null
+          error_message?: string | null
+          errors?: Json | null
+          execution_time_ms?: number | null
+          id?: string
+          processing_time_ms?: number | null
+          records_count?: number | null
+          records_synced?: number | null
+          request_params?: Json | null
+          response_data?: Json | null
+          started_at?: string | null
+          status?: string | null
+          sync_direction?: string | null
+          table_name?: string | null
+        }
+        Relationships: []
+      }
+      sync_status: {
+        Row: {
+          created_at: string | null
+          details: Json | null
+          id: string
+          last_run_at: string | null
+          project_name: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          last_run_at?: string | null
+          project_name: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          last_run_at?: string | null
+          project_name?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      tabulador_config: {
+        Row: {
+          created_at: string | null
+          enabled: boolean | null
+          project_id: string
+          publishable_key: string | null
+          updated_at: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          enabled?: boolean | null
+          project_id: string
+          publishable_key?: string | null
+          updated_at?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          enabled?: boolean | null
+          project_id?: string
+          publishable_key?: string | null
+          updated_at?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+          role_id: number
+          scouter_id: number | null
+          supervisor_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id: string
+          name: string
+          role_id: number
+          scouter_id?: number | null
+          supervisor_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+          role_id?: number
+          scouter_id?: number | null
+          supervisor_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "users_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: string
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      list_permissions: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          action: string
+          allowed: boolean
+          id: number
+          module: string
+          role: string
+          role_id: number
+        }[]
+      }
+      list_public_tables: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          table_name: string
+        }[]
+      }
+      list_users_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          role: string
+          role_id: number
+          scouter_id: number
+          supervisor_id: string
+        }[]
+      }
+      set_lead_analysis: {
+        Args: { p_aprovado: boolean; p_lead_id: number }
+        Returns: undefined
+      }
+      set_permission: {
+        Args: {
+          p_action: string
+          p_allowed: boolean
+          p_module: string
+          p_role_id: number
+        }
+        Returns: undefined
+      }
+      update_user_role: {
+        Args: {
+          p_role_id: number
+          p_scouter_id?: number
+          p_supervisor_id?: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "admin"
+        | "supervisor"
+        | "scouter"
+        | "gestor_telemarketing"
+        | "telemarketing"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +708,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "admin",
+        "supervisor",
+        "scouter",
+        "gestor_telemarketing",
+        "telemarketing",
+      ],
+    },
   },
 } as const
