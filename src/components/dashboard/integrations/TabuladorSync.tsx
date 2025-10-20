@@ -247,6 +247,81 @@ export function TabuladorSync() {
     }
   };
 
+  const runDiagnostic = async () => {
+    const startTime = Date.now();
+    
+    console.log('🔍 [TabuladorSync] Executando diagnóstico completo...');
+    
+    toast({
+      title: 'Diagnóstico Iniciado',
+      description: 'Executando verificações de configuração e conectividade...'
+    });
+
+    try {
+      const endpoint = `${supabase.supabaseUrl}/functions/v1/diagnose-tabulador-sync`;
+      console.log('📡 [TabuladorSync] Endpoint de diagnóstico:', endpoint);
+      
+      const { data, error } = await supabase.functions.invoke('diagnose-tabulador-sync');
+
+      const executionTime = Date.now() - startTime;
+      
+      if (error) {
+        console.error('❌ [TabuladorSync] Erro no diagnóstico:', error);
+        
+        await createSyncLog({
+          endpoint,
+          table_name: 'diagnostic',
+          status: 'error',
+          error_message: error.message,
+          execution_time_ms: executionTime,
+        });
+        
+        throw error;
+      }
+
+      console.log('📊 [TabuladorSync] Resultado do diagnóstico:', data);
+
+      // Log result
+      await createSyncLog({
+        endpoint,
+        table_name: 'diagnostic',
+        status: data.overall_status === 'ok' ? 'success' : 'error',
+        execution_time_ms: executionTime,
+        response_data: data,
+      });
+
+      // Show result
+      if (data.overall_status === 'ok') {
+        toast({
+          title: '✅ Diagnóstico Completo',
+          description: 'Todos os testes passaram! Sincronização deve funcionar corretamente.'
+        });
+      } else if (data.overall_status === 'warning') {
+        toast({
+          title: '⚠️ Diagnóstico com Avisos',
+          description: `${data.errors.length} aviso(s) encontrado(s). Verifique os logs para detalhes.`,
+          variant: 'default'
+        });
+      } else {
+        toast({
+          title: '❌ Problemas Detectados',
+          description: `${data.errors.length} erro(s) encontrado(s). ${data.recommendations[0] || 'Verifique os logs'}`,
+          variant: 'destructive'
+        });
+      }
+
+      console.log('📋 [TabuladorSync] Recomendações:', data.recommendations);
+      console.log('❌ [TabuladorSync] Erros:', data.errors);
+    } catch (error) {
+      console.error('❌ [TabuladorSync] Exceção no diagnóstico:', error);
+      toast({
+        title: 'Erro no diagnóstico',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive'
+      });
+    }
+  };
+
   const triggerInitialMigration = async () => {
     setIsMigrating(true);
     const startTime = Date.now();
@@ -390,6 +465,15 @@ export function TabuladorSync() {
               </div>
             </div>
             <div className="flex gap-2">
+              <Button 
+                onClick={runDiagnostic} 
+                disabled={isMigrating || isSyncing}
+                size="sm"
+                variant="outline"
+              >
+                <AlertCircle className="h-4 w-4 mr-2" />
+                Diagnóstico Completo
+              </Button>
               <Button 
                 onClick={testConnection} 
                 disabled={isMigrating || isSyncing}

@@ -123,19 +123,34 @@ serve(async (req) => {
     }
 
     console.log(`🔄 [Sync] Iniciando sincronização incremental (${direction})...`);
-    console.log('📡 [Sync] Gestão Scouter URL:', Deno.env.get('SUPABASE_URL'));
-    console.log('📡 [Sync] TabuladorMax URL:', Deno.env.get('TABULADOR_URL'));
+    
+    // Validate environment variables
+    const gestaoUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const gestaoKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const tabuladorUrl = Deno.env.get('TABULADOR_URL') ?? '';
+    const tabuladorKey = Deno.env.get('TABULADOR_SERVICE_KEY') ?? '';
+    
+    if (!gestaoUrl || !gestaoKey) {
+      throw new Error('Credenciais do Gestão Scouter não configuradas (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)');
+    }
+    
+    if (!tabuladorUrl || !tabuladorKey) {
+      throw new Error('Credenciais do TabuladorMax não configuradas (TABULADOR_URL, TABULADOR_SERVICE_KEY)');
+    }
+    
+    console.log('📡 [Sync] Gestão Scouter URL:', gestaoUrl);
+    console.log('📡 [Sync] TabuladorMax URL:', tabuladorUrl);
 
     // Inicialização dos clientes Supabase
     const gestao = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      gestaoUrl,
+      gestaoKey,
       { auth: { persistSession: false, autoRefreshToken: false } }
     );
 
     const tabulador = createClient(
-      Deno.env.get('TABULADOR_URL') ?? '',
-      Deno.env.get('TABULADOR_SERVICE_KEY') ?? '',
+      tabuladorUrl,
+      tabuladorKey,
       {
         auth: { persistSession: false, autoRefreshToken: false },
         global: { headers: { Prefer: 'return=representation', 'Content-Type': 'application/json' } },
