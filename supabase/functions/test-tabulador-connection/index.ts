@@ -28,21 +28,40 @@ serve(async (req) => {
   try {
     console.log('🔍 [Test] Iniciando diagnóstico de conexão...');
     
-    // 1. Verificar variáveis de ambiente
+    // 1. Verificar variáveis de ambiente com mais detalhes
+    const tabuladorUrl = Deno.env.get('TABULADOR_URL') ?? '';
+    const tabuladorKey = Deno.env.get('TABULADOR_SERVICE_KEY') ?? '';
+    
     diagnostics.environment = {
-      TABULADOR_URL: Deno.env.get('TABULADOR_URL') ? '✅ Configurado' : '❌ Não configurado',
-      TABULADOR_SERVICE_KEY: Deno.env.get('TABULADOR_SERVICE_KEY') ? '✅ Configurado' : '❌ Não configurado',
-      url_value: Deno.env.get('TABULADOR_URL') || 'VAZIO'
+      TABULADOR_URL: tabuladorUrl ? '✅ Configurado' : '❌ Não configurado',
+      TABULADOR_SERVICE_KEY: tabuladorKey ? '✅ Configurado' : '❌ Não configurado',
+      url_value: tabuladorUrl || 'VAZIO',
+      url_valid: false
     };
+
+    // Validate URL format
+    if (tabuladorUrl) {
+      try {
+        const urlObj = new URL(tabuladorUrl);
+        diagnostics.environment.url_valid = true;
+        diagnostics.environment.url_protocol = urlObj.protocol;
+        diagnostics.environment.url_hostname = urlObj.hostname;
+      } catch (urlError) {
+        diagnostics.environment.url_valid = false;
+        diagnostics.environment.url_error = 'URL inválida - deve ser formato: https://project.supabase.co';
+        (diagnostics.errors as string[]).push(`URL inválida: ${tabuladorUrl}`);
+      }
+    }
 
     console.log('📋 [Test] Variáveis de ambiente:', diagnostics.environment);
 
     // 2. Testar conexão
-    const tabuladorUrl = Deno.env.get('TABULADOR_URL') ?? '';
-    const tabuladorKey = Deno.env.get('TABULADOR_SERVICE_KEY') ?? '';
-    
     if (!tabuladorUrl || !tabuladorKey) {
-      throw new Error('Credenciais do TabuladorMax não configuradas');
+      const missingVars = [];
+      if (!tabuladorUrl) missingVars.push('TABULADOR_URL');
+      if (!tabuladorKey) missingVars.push('TABULADOR_SERVICE_KEY');
+      
+      throw new Error(`Credenciais do TabuladorMax não configuradas. Faltando: ${missingVars.join(', ')}`);
     }
 
     console.log('🔌 [Test] Conectando ao TabuladorMax:', tabuladorUrl);
@@ -63,30 +82,46 @@ serve(async (req) => {
     // 3. Testar query na tabela leads (tentar variações)
     console.log('📥 [Test] Testando query na tabela leads...');
     
-    const tableVariations = ['leads', '"Leads"', 'Leads', 'lead', '"Lead"'];
+    const tableVariations = ['leads', '"Leads"', 'Leads', '"leads"', 'lead', '"Lead"', 'Lead'];
     let leadsData = null;
     let leadsError = null;
     let count = 0;
     let successTableName = '';
+    let allAttempts: any[] = [];
     
     for (const tableName of tableVariations) {
       console.log(`🔍 [Test] Tentando: ${tableName}`);
+      const attemptStart = Date.now();
       const result = await tabulador
         .from(tableName)
         .select('*', { count: 'exact', head: false })
         .limit(5);
       
+      const attemptDuration = Date.now() - attemptStart;
+      
+      allAttempts.push({
+        table_name: tableName,
+        success: !result.error,
+        error: result.error?.message,
+        error_code: result.error?.code,
+        count: result.count,
+        duration_ms: attemptDuration
+      });
+      
       if (!result.error && result.data) {
         leadsData = result.data;
         count = result.count || 0;
         successTableName = tableName;
-        console.log(`✅ [Test] Sucesso com ${tableName}: ${count} registros totais`);
+        console.log(`✅ [Test] Sucesso com ${tableName}: ${count} registros totais (${attemptDuration}ms)`);
         break;
       } else {
-        console.log(`❌ [Test] Falha com ${tableName}: ${result.error?.message}`);
+        console.log(`❌ [Test] Falha com ${tableName}: ${result.error?.message} (${result.error?.code})`);
         leadsError = result.error;
       }
     }
+
+    // Store all attempts in diagnostics
+    (diagnostics.tables as Record<string, unknown>).attempts = allAttempts;
 
     if (leadsError && !leadsData) {
       console.error('❌ [Test] Erro ao acessar tabela leads:', {
@@ -210,10 +245,16 @@ function get406Troubleshooting(error: { code?: string; message?: string }): stri
     return 'Erro 406: Provavelmente falta o header "Prefer: return=representation" ou há problema com o Content-Type. Verifique as configurações de CORS e headers no Supabase.';
   }
   if (error.code === 'PGRST116') {
-    return 'Tabela não encontrada. Verifique se a tabela "leads" existe no projeto TabuladorMax.';
+    return 'Tabela não encontrada. Verifique se a tabela "leads" existe no projeto TabuladorMax. Use o Supabase Dashboard → Table Editor para confirmar.';
   }
   if (error.code === '42501') {
-    return 'Permissão negada. Verifique se a service role key tem permissão para acessar a tabela.';
+    return 'Permissão negada. Verifique: 1) Se está usando SERVICE ROLE KEY (não anon key), 2) Políticas RLS da tabela, 3) Permissões no schema public';
   }
-  return 'Verifique os logs do Supabase para mais detalhes.';
+  if (error.code === 'PGRST301') {
+    return 'Erro de roteamento/parsing. A tabela pode não existir ou o nome está incorreto. Tente variações como "leads", "Leads", ou "\"Leads\""';
+  }
+  if (error.message?.includes('connect') || error.message?.includes('network')) {
+    return 'Erro de conexão de rede. Verifique: 1) URL está correta, 2) Projeto TabuladorMax está ativo, 3) Não há problemas de firewall';
+  }
+  return 'Verifique os logs do Supabase para mais detalhes. Acesse: Dashboard → Logs → Edge Functions';
 }

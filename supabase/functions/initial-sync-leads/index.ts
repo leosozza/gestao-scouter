@@ -92,14 +92,28 @@ serve(async (req) => {
   const errors: string[] = [];
 
   try {
-    console.log('🚀 Iniciando sincronização FULL de leads...');
-    console.log('📡 Endpoint:', `${Deno.env.get('TABULADOR_URL')}/rest/v1/leads`);
-    console.log('🎯 Tabela origem: leads (TabuladorMax)');
-    console.log('🎯 Tabela destino: leads (Gestão Scouter)');
-
-    // Cliente Gestão Scouter
+    console.log('🚀 [InitialSync] Iniciando sincronização FULL de leads...');
+    
+    // Validate environment variables
     const gestaoUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const gestaoKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const tabuladorUrl = Deno.env.get('TABULADOR_URL') ?? '';
+    const tabuladorKey = Deno.env.get('TABULADOR_SERVICE_KEY') ?? '';
+    
+    if (!gestaoUrl || !gestaoKey) {
+      throw new Error('Credenciais do Gestão Scouter não configuradas (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)');
+    }
+    
+    if (!tabuladorUrl || !tabuladorKey) {
+      throw new Error('Credenciais do TabuladorMax não configuradas (TABULADOR_URL, TABULADOR_SERVICE_KEY)');
+    }
+    
+    console.log('📡 [InitialSync] Gestão URL:', gestaoUrl);
+    console.log('📡 [InitialSync] TabuladorMax URL:', tabuladorUrl);
+    console.log('🎯 [InitialSync] Tabela origem: leads (TabuladorMax)');
+    console.log('🎯 [InitialSync] Tabela destino: leads (Gestão Scouter)');
+
+    // Cliente Gestão Scouter
     const gestao = createClient(gestaoUrl, gestaoKey, {
       auth: {
         persistSession: false,
@@ -108,8 +122,6 @@ serve(async (req) => {
     });
 
     // Cliente TabuladorMax
-    const tabuladorUrl = Deno.env.get('TABULADOR_URL') ?? '';
-    const tabuladorKey = Deno.env.get('TABULADOR_SERVICE_KEY') ?? '';
     const tabulador = createClient(tabuladorUrl, tabuladorKey, {
       auth: {
         persistSession: false,
@@ -124,20 +136,21 @@ serve(async (req) => {
     });
 
     // Buscar TODOS os leads do TabuladorMax
-    console.log('📥 Buscando todos os leads do TabuladorMax...');
+    console.log('📥 [InitialSync] Buscando todos os leads do TabuladorMax...');
     
     // Try different table name variations
-    const tableVariations = ['leads', '"Leads"', 'Leads'];
+    const tableVariations = ['leads', '"Leads"', 'Leads', '"leads"'];
     const allLeads: Lead[] = [];
     let successTableName = '';
     let lastError = null;
+    let tableTestResults: any[] = [];
     
     // First, try using RPC to list tables (more reliable)
-    console.log('🔍 Tentando listar tabelas via RPC...');
+    console.log('🔍 [InitialSync] Tentando listar tabelas via RPC...');
     const { data: rpcTables, error: rpcError } = await tabulador.rpc('list_public_tables');
     
     if (!rpcError && rpcTables) {
-      console.log(`✅ RPC list_public_tables retornou: ${JSON.stringify(rpcTables)}`);
+      console.log(`✅ [InitialSync] RPC list_public_tables retornou ${rpcTables.length} tabelas:`, rpcTables.map((t: any) => t.table_name));
       // Add tables from RPC to variations
       for (const t of rpcTables) {
         const tname = (t as any).table_name;
@@ -146,42 +159,62 @@ serve(async (req) => {
         }
       }
     } else {
-      console.log(`⚠️ RPC list_public_tables falhou: ${rpcError?.message || 'sem erro'}`);
+      console.log(`⚠️ [InitialSync] RPC list_public_tables falhou ou não está disponível: ${rpcError?.message || 'sem erro'}`);
     }
     
-    // Now try each table variation
+    // Now try each table variation to find the right one
+    console.log(`🔍 [InitialSync] Testando ${tableVariations.length} variações de nomes de tabela...`);
     for (const tableName of tableVariations) {
-      console.log(`🔍 Tentando tabela: ${tableName}`);
+      console.log(`🔍 [InitialSync] Testando tabela: ${tableName}`);
+      const testStart = Date.now();
       const { count, error } = await tabulador
         .from(tableName)
         .select('*', { count: 'exact', head: true });
       
+      const testDuration = Date.now() - testStart;
+      
+      tableTestResults.push({
+        table_name: tableName,
+        exists: !error,
+        count: count || 0,
+        error: error?.message,
+        error_code: error?.code,
+        duration_ms: testDuration
+      });
+      
       if (!error) {
         successTableName = tableName;
-        console.log(`✅ Tabela encontrada: ${tableName} (count: ${count})`);
+        console.log(`✅ [InitialSync] Tabela encontrada: ${tableName} (count: ${count}, ${testDuration}ms)`);
         break;
       } else {
         lastError = error;
-        console.log(`❌ Falha com ${tableName}: ${JSON.stringify({
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        })}`);
+        console.log(`❌ [InitialSync] Falha com ${tableName}: ${error.message} (code: ${error.code}, ${testDuration}ms)`);
       }
     }
     
     if (!successTableName) {
-      throw new Error(`Nenhuma tabela de leads encontrada. Último erro: ${lastError?.message}`);
+      const errorMsg = `Nenhuma tabela de leads encontrada após testar ${tableVariations.length} variações. ` +
+        `Último erro: ${lastError?.message || 'desconhecido'} (${lastError?.code || 'sem código'}). ` +
+        `Testados: ${tableVariations.join(', ')}`;
+      console.error(`❌ [InitialSync] ${errorMsg}`);
+      console.log('📊 [InitialSync] Resultados dos testes:', JSON.stringify(tableTestResults, null, 2));
+      
+      errors.push(errorMsg);
+      errors.push('Verifique: 1) Se a tabela "leads" existe no TabuladorMax, 2) Se TABULADOR_SERVICE_KEY está correta, 3) Políticas RLS');
+      
+      throw new Error(errorMsg);
     }
     
+    console.log(`🎯 [InitialSync] Usando tabela: ${successTableName}`);
+    
     // Now fetch all data using pagination
+    console.log(`📄 [InitialSync] Buscando dados da tabela ${successTableName}...`);
     let page = 0;
     const pageSize = 1000;
     let hasMore = true;
 
     while (hasMore) {
-      console.log(`📄 Buscando página ${page + 1} de ${successTableName}...`);
+      console.log(`📄 [InitialSync] Buscando página ${page + 1} de ${successTableName}...`);
       
       const { data, error } = await tabulador
         .from(successTableName)
@@ -190,27 +223,33 @@ serve(async (req) => {
         .order('id', { ascending: true });
 
       if (error) {
-        console.error(`❌ Erro ao buscar leads (página ${page}):`, error);
+        console.error(`❌ [InitialSync] Erro ao buscar leads (página ${page}):`, {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
         
         // Handle 406 error specifically
         if (error.code === '406' || error.message?.includes('406')) {
           throw new Error(`Erro 406 na página ${page}: Verifique os headers da requisição. O TabuladorMax pode estar exigindo headers específicos. Erro original: ${error.message}`);
         }
         
-        throw new Error(`Erro ao buscar leads (página ${page}): ${error.message}`);
+        throw new Error(`Erro ao buscar leads (página ${page}): ${error.message} (código: ${error.code})`);
       }
 
       if (data && data.length > 0) {
         allLeads.push(...data);
-        console.log(`   ✅ Página ${page + 1}: ${data.length} registros`);
+        console.log(`   ✅ [InitialSync] Página ${page + 1}: ${data.length} registros (total acumulado: ${allLeads.length})`);
         page++;
       } else {
         hasMore = false;
       }
     }
 
-    console.log(`✅ Total de ${allLeads.length} leads encontrados`);
-    console.log('📊 Status da busca:', {
+    console.log(`✅ [InitialSync] Total de ${allLeads.length} leads encontrados`);
+    console.log('📊 [InitialSync] Status da busca:', {
+      tabela_usada: successTableName,
       páginas_processadas: page,
       total_registros: allLeads.length,
       tempo_parcial: `${Date.now() - startTime}ms`,
