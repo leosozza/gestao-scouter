@@ -54,9 +54,16 @@ export function UsersPanel() {
 
   const fetchUsers = async () => {
     try {
-      console.log('🔍 Buscando usuários...');
-      const usersData = await getUsersWithRolesSafe();
-      console.log('✅ Usuários carregados:', usersData.length);
+      console.log('🔍 Buscando usuários via RPC...');
+      const { data, error } = await supabase.rpc('list_users_admin');
+      
+      if (error) {
+        console.error('Erro ao buscar usuários:', error);
+        throw error;
+      }
+      
+      const usersData = (data || []) as User[];
+      console.log('✅ Usuários carregados via RPC:', usersData.length);
       setUsers(usersData);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -82,19 +89,15 @@ export function UsersPanel() {
 
     try {
       if (editingUser) {
-        // Update existing user
-        const response = await supabase
-          .from('users')
-          .update({
-            name: formData.name,
-            email: formData.email,
-            role_id: parseInt(formData.role_id),
-            scouter_id: formData.scouter_id ? parseInt(formData.scouter_id) : null,
-          })
-          .eq('id', editingUser.id)
-          .select();
+        // Update existing user using RPC
+        const { error } = await supabase.rpc('update_user_role', {
+          p_user_id: editingUser.id,
+          p_role_id: parseInt(formData.role_id),
+          p_scouter_id: formData.scouter_id ? parseInt(formData.scouter_id) : null,
+          p_supervisor_id: null
+        });
 
-        if (response.error) throw response.error;
+        if (error) throw error;
         toast.success('Usuário atualizado com sucesso');
       } else {
         // Create new user via Supabase Auth
@@ -322,7 +325,7 @@ export function UsersPanel() {
                 <TableCell className="font-medium">{user.name}</TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell className="capitalize">
-                  {user.role_name || user.roles?.name || 'N/A'}
+                  {user.role_name || user.role?.name || 'N/A'}
                 </TableCell>
                 <TableCell>{user.scouter_id || '-'}</TableCell>
                 <TableCell className="text-right">

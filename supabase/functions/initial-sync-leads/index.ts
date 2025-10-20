@@ -125,16 +125,45 @@ serve(async (req) => {
 
     // Buscar TODOS os leads do TabuladorMax
     console.log('📥 Buscando todos os leads do TabuladorMax...');
+    
+    // Try different table name variations
+    const tableVariations = ['leads', '"Leads"', 'Leads'];
     const allLeads: Lead[] = [];
+    let successTableName = '';
+    let lastError = null;
+    
+    // First, find which table name works
+    for (const tableName of tableVariations) {
+      console.log(`🔍 Tentando tabela: ${tableName}`);
+      const { data, error } = await tabulador
+        .from(tableName)
+        .select('*', { count: 'exact', head: true })
+        .limit(1);
+      
+      if (!error && data !== null) {
+        successTableName = tableName;
+        console.log(`✅ Tabela encontrada: ${tableName}`);
+        break;
+      } else {
+        lastError = error;
+        console.log(`❌ Falha com ${tableName}: ${error?.message}`);
+      }
+    }
+    
+    if (!successTableName) {
+      throw new Error(`Nenhuma tabela de leads encontrada. Último erro: ${lastError?.message}`);
+    }
+    
+    // Now fetch all data using pagination
     let page = 0;
     const pageSize = 1000;
     let hasMore = true;
 
     while (hasMore) {
-      console.log(`📄 Buscando página ${page + 1}...`);
+      console.log(`📄 Buscando página ${page + 1} de ${successTableName}...`);
       
       const { data, error } = await tabulador
-        .from('leads')
+        .from(successTableName)
         .select('*')
         .range(page * pageSize, (page + 1) * pageSize - 1)
         .order('id', { ascending: true });

@@ -163,13 +163,30 @@ serve(async (req) => {
       // PULL: TabuladorMax -> Gestão Scouter
       console.log('📥 [Sync] Buscando atualizações de TabuladorMax...');
       
-      const { data: tabuladorUpdates, error: tabuladorError } = await tabulador
-        .from('leads')
-        .select('*')
-        .gte('updated_at', lastSyncDate)
-        .order('updated_at', { ascending: true });
+      // Try different table name variations
+      const tableVariations = ['leads', '"Leads"', 'Leads'];
+      let tabuladorUpdates = null;
+      let tabuladorError = null;
+      
+      for (const tableName of tableVariations) {
+        console.log(`🔍 [Sync] Tentando tabela: ${tableName}`);
+        const result = await tabulador
+          .from(tableName)
+          .select('*')
+          .gte('updated_at', lastSyncDate)
+          .order('updated_at', { ascending: true });
+        
+        if (!result.error && result.data) {
+          tabuladorUpdates = result.data;
+          console.log(`✅ [Sync] Encontrado com ${tableName}: ${tabuladorUpdates.length} registros`);
+          break;
+        } else {
+          tabuladorError = result.error;
+          console.log(`❌ [Sync] Falha com ${tableName}: ${result.error?.message}`);
+        }
+      }
 
-      if (tabuladorError) {
+      if (tabuladorError && !tabuladorUpdates) {
         console.error('❌ [Sync] Erro ao buscar de TabuladorMax:', tabuladorError);
         errors.push(`Erro ao buscar de TabuladorMax: ${tabuladorError.message}`);
       } else if (tabuladorUpdates && tabuladorUpdates.length > 0) {
