@@ -60,14 +60,14 @@ serve(async (req) => {
 
     // Introspect available tables from remote
     const { data: remoteColumns, error: schemaError } = await remoteDb.rpc('get_table_columns', {
-      table_name: 'fichas'
+      table_name: 'leads'
     })
 
     if (schemaError) {
       console.warn('⚠️ [TabMax Sync] Não foi possível introspectar schema remoto:', schemaError.message)
     }
 
-    // Sync fichas from TabuladorMax to local
+    // Sync leads from TabuladorMax to local
     const stats: SyncStats = {
       total: 0,
       inserted: 0,
@@ -85,8 +85,8 @@ serve(async (req) => {
       console.log(`📦 [TabMax Sync] Buscando registros (offset: ${offset})...`)
 
       // Fetch batch from remote
-      const { data: remoteFichas, error: fetchError } = await remoteDb
-        .from('fichas_sync')
+      const { data: remoteLeads, error: fetchError } = await remoteDb
+        .from('leads_sync')
         .select('*')
         .range(offset, offset + pageSize - 1)
 
@@ -96,58 +96,59 @@ serve(async (req) => {
         break
       }
 
-      if (!remoteFichas || remoteFichas.length === 0) {
+      if (!remoteLeads || remoteLeads.length === 0) {
         console.log('✅ [TabMax Sync] Sem mais registros para sincronizar')
         hasMore = false
         break
       }
 
-      stats.total += remoteFichas.length
-      console.log(`📥 [TabMax Sync] Processando ${remoteFichas.length} registros...`)
+      stats.total += remoteLeads.length
+      console.log(`📥 [TabMax Sync] Processando ${remoteLeads.length} registros...`)
 
       // Upsert batch to local DB
-      for (const ficha of remoteFichas) {
+      for (const lead of remoteLeads) {
         try {
           const { error: upsertError } = await localDb
-            .from('fichas')
+            .from('leads')
             .upsert({
-              id: ficha.id,
-              scouter: ficha.scouter,
-              projeto: ficha.projeto,
-              criado: ficha.criado,
-              valor_ficha: ficha.valor_ficha,
-              aprovado: ficha.aprovado,
-              deleted: ficha.deleted || false,
-              raw: {
-                nome: ficha.nome,
-                idade: ficha.idade,
-                telefone: ficha.telefone,
-                email: ficha.email,
-                etapa: ficha.etapa,
-                local_da_abordagem: ficha.local_da_abordagem,
-                ficha_confirmada: ficha.ficha_confirmada,
-                presenca_confirmada: ficha.presenca_confirmada,
-                supervisor_do_scouter: ficha.supervisor_do_scouter,
-                sync_source: 'tabulador_max',
-                synced_at: new Date().toISOString(),
-              },
-              updated_at: ficha.updated_at || new Date().toISOString(),
+              id: lead.id,
+              scouter: lead.scouter,
+              projeto: lead.projeto,
+              criado: lead.criado,
+              valor_ficha: lead.valor_ficha,
+              aprovado: lead.aprovado,
+              deleted: lead.deleted || false,
+              nome: lead.name || lead.nome,
+              age: lead.age,
+              telefone: lead.telefone,
+              email: lead.email,
+              etapa: lead.etapa,
+              local_abordagem: lead.local_abordagem,
+              ficha_confirmada: lead.ficha_confirmada,
+              presenca_confirmada: lead.presenca_confirmada,
+              compareceu: lead.compareceu,
+              supervisor: lead.responsible,
+              sync_source: 'tabulador_max',
+              sync_status: 'synced',
+              last_sync_at: new Date().toISOString(),
+              updated_at: lead.updated_at || new Date().toISOString(),
+              raw: lead.raw || {},
             }, {
               onConflict: 'id',
               ignoreDuplicates: false
             })
 
           if (upsertError) {
-            console.error(`❌ [TabMax Sync] Erro ao inserir/atualizar ficha ${ficha.id}:`, upsertError)
+            console.error(`❌ [TabMax Sync] Erro ao inserir/atualizar lead ${lead.id}:`, upsertError)
             stats.failed++
-            stats.errors.push(`Ficha ${ficha.id}: ${upsertError.message}`)
+            stats.errors.push(`Lead ${lead.id}: ${upsertError.message}`)
           } else {
             stats.updated++
           }
         } catch (err) {
-          console.error(`❌ [TabMax Sync] Exceção ao processar ficha ${ficha.id}:`, err)
+          console.error(`❌ [TabMax Sync] Exceção ao processar lead ${lead.id}:`, err)
           stats.failed++
-          stats.errors.push(`Ficha ${ficha.id}: ${err.message}`)
+          stats.errors.push(`Lead ${lead.id}: ${err.message}`)
         }
       }
 
@@ -165,7 +166,7 @@ serve(async (req) => {
     // Save sync log
     await localDb.from('sync_logs').insert({
       endpoint: 'tabmax-sync',
-      table_name: 'fichas',
+      table_name: 'leads',
       status: stats.failed === 0 ? 'success' : 'error',
       records_count: stats.total,
       response_data: stats,

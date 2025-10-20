@@ -150,7 +150,7 @@ export const BulkImportPanel = ({ onComplete }: BulkImportPanelProps) => {
         
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('table', 'fichas');
+        formData.append('table', 'leads');
 
         const { data: { session } } = await supabase.auth.getSession();
         

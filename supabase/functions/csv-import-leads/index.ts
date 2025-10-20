@@ -95,7 +95,7 @@ serve(async (req) => {
     // Parse request body
     const formData = await req.formData()
     const file = formData.get('file') as File
-    const targetTable = formData.get('table') as string || 'fichas'
+    const targetTable = formData.get('table') as string || 'leads'
 
     if (!file) {
       throw new Error('Nenhum arquivo enviado')
@@ -172,19 +172,26 @@ serve(async (req) => {
         // Generate ID if not present
         const id = row.id || `csv_${Date.now()}_${i}`
         
-        // Prepare data for insertion
-        const fichaData = {
+        // Prepare data for insertion into leads table
+        const leadData = {
           id,
           scouter: row.scouter || null,
           projeto: row.projeto || row.project || null,
           criado: row.criado ? new Date(row.criado).toISOString().split('T')[0] : null,
           valor_ficha: row.valor_ficha ? parseFloat(row.valor_ficha) : null,
           deleted: false,
+          nome: row.nome || null,
+          name: row.nome || null,
+          age: row.idade ? parseInt(row.idade) : null,
+          telefone: row.telefone || null,
+          email: row.email || null,
+          etapa: row.etapa || null,
+          local_abordagem: row.local_da_abordagem || null,
           raw: row,
         }
 
         // Validate required data
-        if (!fichaData.scouter && !fichaData.raw.nome) {
+        if (!leadData.scouter && !leadData.nome) {
           stats.failed++
           stats.errors.push(`Linha ${i + 1}: Dados insuficientes (nome ou scouter ausentes)`)
           continue
@@ -193,7 +200,7 @@ serve(async (req) => {
         // Insert/Update
         const { error: upsertError } = await supabase
           .from(targetTable)
-          .upsert(fichaData, {
+          .upsert(leadData, {
             onConflict: 'id',
             ignoreDuplicates: false
           })
