@@ -127,6 +127,8 @@ export function PermissionsPanel() {
       // Refresh permissions
       await fetchPermissions();
 
+      // Refresh permissions list
+      await fetchPermissions();
       toast.success('Permissão atualizada');
     } catch (error: any) {
       console.error('Error toggling permission:', error);

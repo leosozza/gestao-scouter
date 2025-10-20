@@ -144,6 +144,50 @@ export const BulkImportPanel = ({ onComplete }: BulkImportPanelProps) => {
     setStats({ total: 0, processed: 0, inserted: 0, failed: 0, errors: [] });
 
     try {
+      // Option 1: Use Edge Function for CSV files (recommended for better encoding support)
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        console.log('🚀 Usando Edge Function para importação de CSV...');
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('table', 'leads');
+
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        const response = await fetch(`${supabase.supabaseUrl}/functions/v1/csv-import-leads`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session?.access_token || supabase.supabaseKey}`,
+          },
+          body: formData
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+          throw new Error(result.error || 'Erro na importação');
+        }
+
+        setStats({
+          total: result.stats.total,
+          processed: result.stats.total,
+          inserted: result.stats.updated,
+          failed: result.stats.failed,
+          errors: result.errors || []
+        });
+
+        toast({
+          title: "Importação concluída!",
+          description: `${result.stats.updated} registros importados com sucesso.`
+        });
+
+        if (onComplete) onComplete();
+        return;
+      }
+
+      // Option 2: Original Excel processing (for .xlsx files)
+      console.log('📊 Processando arquivo Excel localmente...');
+      
       // Processar arquivo
       const rawData = await processExcelFile(file);
       const total = rawData.length;
