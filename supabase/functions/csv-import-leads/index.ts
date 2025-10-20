@@ -78,6 +78,46 @@ function detectSeparator(firstLine: string): string {
   return detectedSep
 }
 
+/**
+ * Parse date from multiple formats
+ * Supports: ISO (2024-01-15), DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD, timestamps
+ */
+function parseDate(dateStr: string): string | null {
+  if (!dateStr || dateStr.trim() === '') return null;
+  
+  const trimmed = dateStr.trim();
+  
+  // Try ISO format first
+  const isoDate = new Date(trimmed);
+  if (!isNaN(isoDate.getTime())) {
+    return isoDate.toISOString();
+  }
+  
+  // Try DD/MM/YYYY or DD-MM-YYYY
+  const ddmmyyyyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (ddmmyyyyMatch) {
+    const [, day, month, year] = ddmmyyyyMatch;
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    if (!isNaN(date.getTime())) {
+      return date.toISOString();
+    }
+  }
+  
+  // Try timestamp (milliseconds)
+  if (/^\d+$/.test(trimmed)) {
+    const timestamp = parseInt(trimmed);
+    if (timestamp > 0) {
+      const date = new Date(timestamp);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString();
+      }
+    }
+  }
+  
+  console.warn(`⚠️ Não foi possível parsear data: "${dateStr}"`);
+  return null;
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -177,8 +217,8 @@ serve(async (req) => {
           id,
           scouter: row.scouter || null,
           projeto: row.projeto || row.project || null,
-          criado: row.criado ? new Date(row.criado).toISOString().split('T')[0] : null,
-          valor_ficha: row.valor_ficha ? parseFloat(row.valor_ficha) : null,
+          criado: parseDate(row.criado),
+          valor_ficha: row.valor_ficha ? parseFloat(row.valor_ficha.replace(',', '.')) : null,
           deleted: false,
           nome: row.nome || null,
           name: row.nome || null,

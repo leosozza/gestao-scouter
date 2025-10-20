@@ -161,7 +161,7 @@ serve(async (req) => {
     const { data: lastSync } = await gestao
       .from('sync_status')
       .select('last_sync_at')
-      .eq('id', 'tabulador_max_leads')
+      .eq('id', '00000000-0000-0000-0000-000000000001')
       .single();
 
     const lastSyncDate = lastSync?.last_sync_at
@@ -286,7 +286,7 @@ serve(async (req) => {
     // Atualizar status e logs
     const timestamp = new Date().toISOString();
     await gestao.from('sync_status').upsert({
-      id: 'tabulador_max_leads',
+      id: '00000000-0000-0000-0000-000000000001',
       project_name: 'TabuladorMax',
       last_sync_at: timestamp,
       last_sync_success: errors.length === 0,

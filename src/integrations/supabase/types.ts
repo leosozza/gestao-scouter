@@ -388,27 +388,39 @@ export type Database = {
           created_at: string | null
           details: Json | null
           id: string
+          last_error: string | null
           last_run_at: string | null
+          last_sync_at: string | null
+          last_sync_success: boolean | null
           project_name: string
           status: string | null
+          total_records: number | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           details?: Json | null
           id?: string
+          last_error?: string | null
           last_run_at?: string | null
+          last_sync_at?: string | null
+          last_sync_success?: boolean | null
           project_name: string
           status?: string | null
+          total_records?: number | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           details?: Json | null
           id?: string
+          last_error?: string | null
           last_run_at?: string | null
+          last_sync_at?: string | null
+          last_sync_success?: boolean | null
           project_name?: string
           status?: string | null
+          total_records?: number | null
           updated_at?: string | null
         }
         Relationships: []
