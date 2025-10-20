@@ -10,6 +10,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { createSyncLog } from '@/repositories/syncLogsRepo';
 import { getTabuladorConfig } from '@/repositories/tabuladorConfigRepo';
+import { DiagnosticModal } from './DiagnosticModal';
 
 interface SyncStatus {
   id: string;
@@ -37,6 +38,8 @@ export function TabuladorSync() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isMigrating, setIsMigrating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [diagnosticResult, setDiagnosticResult] = useState<any>(null);
+  const [diagnosticModalOpen, setDiagnosticModalOpen] = useState(false);
   const { toast } = useToast();
 
   const loadSyncStatus = async () => {
@@ -290,11 +293,15 @@ export function TabuladorSync() {
         response_data: data,
       });
 
+      // Store result and open modal
+      setDiagnosticResult(data);
+      setDiagnosticModalOpen(true);
+
       // Show result
       if (data.overall_status === 'ok') {
         toast({
           title: '✅ Diagnóstico Completo',
-          description: 'Todos os testes passaram! Sincronização deve funcionar corretamente.'
+          description: 'Todos os testes passaram! Clique para ver detalhes.'
         });
       } else if (data.overall_status === 'warning') {
         toast({
@@ -636,6 +643,13 @@ export function TabuladorSync() {
           )}
         </CardContent>
       </Card>
+
+      {/* Diagnostic Modal */}
+      <DiagnosticModal
+        open={diagnosticModalOpen}
+        onOpenChange={setDiagnosticModalOpen}
+        result={diagnosticResult}
+      />
     </div>
   );
 }

@@ -1,11 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Database, Upload, RefreshCw, Settings, FileText } from 'lucide-react';
+import { Database, Upload, RefreshCw, Settings, FileText, History } from 'lucide-react';
 import { SupabaseIntegration } from './SupabaseIntegration';
 import { BulkImportPanel } from '../BulkImportPanel';
 import { TabuladorSync } from './TabuladorSync';
 import { TabuladorMaxConfigPanel } from './TabuladorMaxConfigPanel';
 import { SyncLogsViewer } from './SyncLogsViewer';
+import { DiagnosticHistory } from './DiagnosticHistory';
 
 export function IntegrationsPanel() {
   return (
@@ -18,7 +19,7 @@ export function IntegrationsPanel() {
       </div>
 
       <Tabs defaultValue="config" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="config" className="gap-2">
             <Settings className="h-4 w-4" />
             Configuração
@@ -26,6 +27,10 @@ export function IntegrationsPanel() {
           <TabsTrigger value="sync" className="gap-2">
             <RefreshCw className="h-4 w-4" />
             Sincronização
+          </TabsTrigger>
+          <TabsTrigger value="history" className="gap-2">
+            <History className="h-4 w-4" />
+            Histórico
           </TabsTrigger>
           <TabsTrigger value="logs" className="gap-2">
             <FileText className="h-4 w-4" />
@@ -47,6 +52,10 @@ export function IntegrationsPanel() {
 
         <TabsContent value="sync" className="space-y-4 mt-6">
           <TabuladorSync />
+        </TabsContent>
+
+        <TabsContent value="history" className="space-y-4 mt-6">
+          <DiagnosticHistory />
         </TabsContent>
 
         <TabsContent value="logs" className="space-y-4 mt-6">
