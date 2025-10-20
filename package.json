@@ -16,7 +16,8 @@
     "deploy:sync": "bash scripts/deploy-sync-functions.sh",
     "verify:leads": "bash scripts/verify-leads-centralization.sh",
     "verify:leads-setup": "tsx scripts/verify-leads-setup.ts",
-    "validate:migration": "tsx scripts/validate-migration-setup.ts"
+    "validate:migration": "tsx scripts/validate-migration-setup.ts",
+    "analyze-logs": "tsx scripts/analyzeLogs.ts"
   },
   "dependencies": {
     "@geoman-io/leaflet-geoman-free": "^2.18.3",
