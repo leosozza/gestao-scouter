@@ -153,7 +153,7 @@ serve(async (req) => {
       }
 
       // Check if we should continue
-      if (remoteFichas.length < pageSize) {
+      if (remoteLeads.length < pageSize) {
         hasMore = false
       } else {
         offset += pageSize

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, CheckCircle2, XCircle, Clock, Database, AlertCircle } from 'lucide-react';
+import { RefreshCw, CheckCircle2, XCircle, Clock, Database, AlertCircle, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase-helper';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -564,11 +564,28 @@ export function TabuladorSync() {
           </div>
 
           {syncStatus?.last_error && (
-            <div className="mt-4 flex items-start gap-2 p-3 bg-destructive/10 rounded-lg">
-              <AlertCircle className="h-4 w-4 text-destructive mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-destructive">Último Erro:</p>
-                <p className="text-sm text-destructive/80">{syncStatus.last_error}</p>
+            <div className="mt-4 space-y-3">
+              <div className="flex items-start gap-2 p-3 bg-destructive/10 rounded-lg">
+                <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-destructive">Último Erro:</p>
+                  <p className="text-xs text-destructive/80 font-mono mt-1 break-all">
+                    {syncStatus.last_error}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-2 p-3 bg-muted rounded-lg">
+                <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <div className="flex-1 text-xs text-muted-foreground">
+                  <p className="font-medium mb-1">Possíveis soluções:</p>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    <li>Verifique se TABULADOR_SERVICE_KEY está usando SERVICE_ROLE_KEY</li>
+                    <li>Execute o SQL de configuração no TabuladorMax (ver SQL_TABULADORMAX_SETUP.md)</li>
+                    <li>Confirme que a tabela 'leads' existe e tem 218.709 registros</li>
+                    <li>Verifique os logs da Edge Function para mais detalhes</li>
+                  </ul>
+                </div>
               </div>
             </div>
           )}

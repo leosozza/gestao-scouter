@@ -30,6 +30,49 @@ function normalizeDate(dateValue: unknown): string | null {
 }
 
 /**
+ * Detecta automaticamente qual campo de data usar para sincronização
+ */
+async function detectDateField(client: any, tableName: string): Promise<string> {
+  console.log(`🔍 [Sync] Detectando campos de data na tabela ${tableName}...`);
+  
+  // Tentar variações de nome de tabela
+  const tableVariations = [tableName, `"${tableName}"`, tableName.charAt(0).toUpperCase() + tableName.slice(1)];
+  
+  for (const table of tableVariations) {
+    try {
+      const { data, error } = await client
+        .from(table)
+        .select('*')
+        .limit(1);
+      
+      if (!error && data && data.length > 0) {
+        const record = data[0];
+        const fields = Object.keys(record);
+        
+        // Ordem de preferência para campos de data
+        const dateFields = ['updated_at', 'modificado', 'updated', 'modified_at', 'criado', 'created_at'];
+        
+        for (const field of dateFields) {
+          if (fields.includes(field) && record[field]) {
+            console.log(`✅ [Sync] Campo de data detectado: "${field}" na tabela "${table}"`);
+            console.log(`   Valor exemplo: ${record[field]}`);
+            return field;
+          }
+        }
+        
+        console.warn(`⚠️ [Sync] Nenhum campo de data padrão encontrado. Campos disponíveis:`, fields);
+        return 'criado'; // fallback
+      }
+    } catch (err) {
+      console.log(`   Tentativa com "${table}" falhou: ${err.message}`);
+    }
+  }
+  
+  console.warn(`⚠️ [Sync] Usando "criado" como fallback`);
+  return 'criado';
+}
+
+/**
  * Extrai data de atualização com fallback para outros campos
  */
 function getUpdatedAtDate(record: Record<string, unknown>): string {
@@ -178,32 +221,55 @@ serve(async (req) => {
       // PULL: TabuladorMax -> Gestão Scouter
       console.log('📥 [Sync] Buscando atualizações de TabuladorMax...');
       
+      // Detectar campo de data automaticamente
+      const dateField = await detectDateField(tabulador, 'leads');
+      
       // Try different table name variations
       const tableVariations = ['leads', '"Leads"', 'Leads'];
       let tabuladorUpdates = null;
       let tabuladorError = null;
+      let successTableName = '';
       
       for (const tableName of tableVariations) {
         console.log(`🔍 [Sync] Tentando tabela: ${tableName}`);
+        console.log(`   - Campo data: ${dateField}`);
+        console.log(`   - Última sync: ${lastSyncDate}`);
+        
         const result = await tabulador
           .from(tableName)
-          .select('*')
-          .gte('updated_at', lastSyncDate)
-          .order('updated_at', { ascending: true });
+          .select('*', { count: 'exact' })
+          .gte(dateField, lastSyncDate)
+          .order(dateField, { ascending: true });
+        
+        console.log(`📊 [Sync] Resultado da query:`);
+        console.log(`   - Erro: ${result.error?.message || 'nenhum'}`);
+        console.log(`   - Código: ${result.error?.code || 'N/A'}`);
+        console.log(`   - Count: ${result.count ?? 0}`);
+        console.log(`   - Dados: ${result.data?.length ?? 0} registros`);
+        
+        if (result.error) {
+          console.error(`❌ [Sync] Erro completo:`, JSON.stringify(result.error, null, 2));
+          tabuladorError = result.error;
+        }
         
         if (!result.error && result.data) {
           tabuladorUpdates = result.data;
-          console.log(`✅ [Sync] Encontrado com ${tableName}: ${tabuladorUpdates.length} registros`);
+          successTableName = tableName;
+          console.log(`✅ [Sync] Sucesso com tabela "${tableName}": ${tabuladorUpdates.length} registros desde ${lastSyncDate}`);
           break;
         } else {
-          tabuladorError = result.error;
           console.log(`❌ [Sync] Falha com ${tableName}: ${result.error?.message}`);
         }
       }
 
       if (tabuladorError && !tabuladorUpdates) {
         console.error('❌ [Sync] Erro ao buscar de TabuladorMax:', tabuladorError);
-        errors.push(`Erro ao buscar de TabuladorMax: ${tabuladorError.message}`);
+        console.error('💡 [Sync] Verifique:');
+        console.error('   1. TABULADOR_SERVICE_KEY está usando SERVICE_ROLE_KEY (não anon key)');
+        console.error('   2. Tabela "leads" existe no TabuladorMax');
+        console.error('   3. Campo de data existe na tabela');
+        console.error('   4. RLS policies permitem acesso para service_role');
+        errors.push(`Erro ao buscar de TabuladorMax: ${tabuladorError.message} (código: ${tabuladorError.code})`);
       } else if (tabuladorUpdates && tabuladorUpdates.length > 0) {
         console.log(`📦 [Sync] ${tabuladorUpdates.length} registros para sincronizar`);
         
