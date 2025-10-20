@@ -19,6 +19,14 @@
 
 Execute este SQL no projeto TabuladorMax para adicionar suporte a sincronização incremental:
 
+**Opção 1: Execute o script SQL completo (recomendado):**
+```bash
+# Execute o arquivo SQL completo que inclui verificações
+# Arquivo: scripts/sql/tabuladormax_incremental_sync_setup.sql
+```
+
+**Opção 2: Execute os comandos SQL manualmente:**
+
 ```sql
 -- =====================================================
 -- 1. Adicionar coluna updated_at se não existir
