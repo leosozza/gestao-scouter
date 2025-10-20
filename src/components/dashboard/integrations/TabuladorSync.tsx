@@ -553,7 +553,7 @@ export function TabuladorSync() {
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Total de Registros</p>
               <p className="text-sm font-medium">
-                {syncStatus?.total_records?.toLocaleString('pt-BR') || 0}
+                {(syncStatus?.total_records ?? 0).toLocaleString('pt-BR')}
               </p>
             </div>
 
@@ -610,19 +610,19 @@ export function TabuladorSync() {
                         <Badge variant="outline">{log.sync_direction}</Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        {log.records_synced.toLocaleString('pt-BR')}
+                        {(log.records_synced ?? 0).toLocaleString('pt-BR')}
                       </TableCell>
                       <TableCell className="text-right">
-                        {log.records_failed > 0 ? (
+                        {(log.records_failed ?? 0) > 0 ? (
                           <span className="text-destructive font-medium">
-                            {log.records_failed}
+                            {(log.records_failed ?? 0).toLocaleString('pt-BR')}
                           </span>
                         ) : (
-                          log.records_failed
+                          (log.records_failed ?? 0).toLocaleString('pt-BR')
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {log.processing_time_ms?.toLocaleString('pt-BR') || '-'}
+                        {log.processing_time_ms != null ? log.processing_time_ms.toLocaleString('pt-BR') : '-'}
                       </TableCell>
                       <TableCell>
                         {log.completed_at ? (
