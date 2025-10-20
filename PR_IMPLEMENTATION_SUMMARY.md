@@ -14,7 +14,7 @@ Este PR implementa correções e melhorias abrangentes para o sistema de Gestão
 
 ### Migrations SQL (4 arquivos)
 
-#### 1. `supabase/migrations/20251005_users_roles.sql`
+#### 1. `supabase/migrations/20251020_users_roles.sql`
 **Objetivo:** RPCs para gerenciamento seguro de usuários
 
 **Funções criadas:**
@@ -28,7 +28,7 @@ Este PR implementa correções e melhorias abrangentes para o sistema de Gestão
 
 ---
 
-#### 2. `supabase/migrations/20251005_permissions_bitrix.sql`
+#### 2. `supabase/migrations/20251020_permissions_bitrix.sql`
 **Objetivo:** RPCs para gerenciamento de permissões (modelo Bitrix24)
 
 **Funções criadas:**
@@ -43,7 +43,7 @@ Este PR implementa correções e melhorias abrangentes para o sistema de Gestão
 
 ---
 
-#### 3. `supabase/migrations/20251005_tab_max_exposure.sql`
+#### 3. `supabase/migrations/20251020_tab_max_exposure.sql`
 **Objetivo:** Views públicas para sincronização com TabuladorMax
 
 **Views criadas:**
@@ -62,7 +62,7 @@ Este PR implementa correções e melhorias abrangentes para o sistema de Gestão
 
 ---
 
-#### 4. `supabase/migrations/20251005_leads_tinder.sql`
+#### 4. `supabase/migrations/20251020_leads_tinder.sql`
 **Objetivo:** Colunas e RPCs para análise Tinder de Leads
 
 **Colunas adicionadas:**

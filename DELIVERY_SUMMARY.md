@@ -9,19 +9,19 @@ Todas as funcionalidades descritas no PR foram implementadas com sucesso.
 ## 📦 Arquivos Entregues
 
 ### SQL Migrations (4 arquivos - 14.2K total)
-- ✅ `supabase/migrations/20251005_users_roles.sql` (2.5K)
+- ✅ `supabase/migrations/20251020_users_roles.sql` (2.5K)
   - RPCs: `list_users_admin()`, `update_user_role()`
   - Segurança DEFINER, validação de admin
   
-- ✅ `supabase/migrations/20251005_permissions_bitrix.sql` (3.0K)
+- ✅ `supabase/migrations/20251020_permissions_bitrix.sql` (3.0K)
   - RPCs: `list_permissions()`, `set_permission()`, `get_user_permissions_by_module()`
   - Upsert inteligente, formato JSONB
   
-- ✅ `supabase/migrations/20251005_tab_max_exposure.sql` (3.4K)
+- ✅ `supabase/migrations/20251020_tab_max_exposure.sql` (3.4K)
   - Views: `fichas_sync`, `leads_sync`, `tabulador_config_sync`
   - RPC: `get_table_columns()` para introspecção
   
-- ✅ `supabase/migrations/20251005_leads_tinder.sql` (5.3K)
+- ✅ `supabase/migrations/20251020_leads_tinder.sql` (5.3K)
   - Colunas: `match_analisado_por`, `match_analisado_em`
   - RPCs: `set_lead_match()`, `get_pending_tinder_leads()`
 
