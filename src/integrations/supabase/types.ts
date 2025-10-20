@@ -209,6 +209,9 @@ export type Database = {
         Row: {
           address: string | null
           age: number | null
+          analisado_em: string | null
+          analisado_por: string | null
+          aprovado: boolean | null
           bitrix_telemarketing_id: number | null
           cadastro_existe_foto: boolean | null
           celular: number | null
@@ -256,6 +259,9 @@ export type Database = {
         Insert: {
           address?: string | null
           age?: number | null
+          analisado_em?: string | null
+          analisado_por?: string | null
+          aprovado?: boolean | null
           bitrix_telemarketing_id?: number | null
           cadastro_existe_foto?: boolean | null
           celular?: number | null
@@ -303,6 +309,9 @@ export type Database = {
         Update: {
           address?: string | null
           age?: number | null
+          analisado_em?: string | null
+          analisado_por?: string | null
+          aprovado?: boolean | null
           bitrix_telemarketing_id?: number | null
           cadastro_existe_foto?: boolean | null
           celular?: number | null
@@ -940,6 +949,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      set_lead_analysis: {
+        Args: { p_aprovado: boolean; p_lead_id: number }
+        Returns: undefined
       }
       user_has_project_access: {
         Args: { _project: string; _user_id: string }

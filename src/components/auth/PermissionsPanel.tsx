@@ -85,27 +85,14 @@ export function PermissionsPanel() {
 
   const fetchPermissions = async () => {
     try {
-      // Use the new RPC for listing permissions
       const { data, error } = await supabase.rpc('list_permissions');
 
-      if (error) {
-        console.error('Error fetching permissions via RPC:', error);
-        // Fallback to direct query
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('permissions')
-          .select('*')
-          .order('module, action');
-        
-        if (fallbackError) throw fallbackError;
-        
-        const permsData = (fallbackData || []) as Permission[];
-        setPermissions(permsData);
-      } else {
-        const permsData = (data || []) as Permission[];
-        setPermissions(permsData);
-      }
+      if (error) throw error;
       
-      console.log('Permissions loaded:', permissions.length);
+      const permsData = (data || []) as Permission[];
+      setPermissions(permsData);
+      
+      console.log('Permissions loaded via RPC:', permsData.length);
     } catch (error) {
       console.error('Error fetching permissions:', error);
       toast.error('Erro ao carregar permissões');
@@ -125,20 +112,20 @@ export function PermissionsPanel() {
         (p) => p.module === module && p.action === action && p.role_id === roleIdNum
       );
 
-      const newAllowedValue = existingPermission ? !existingPermission.allowed : true;
+      const newAllowed = existingPermission ? !existingPermission.allowed : true;
 
-      // Use the new RPC for setting permissions
-      const { data, error } = await supabase.rpc('set_permission', {
-        target_module: module,
-        target_action: action,
-        target_role_id: roleIdNum,
-        is_allowed: newAllowedValue
+      // Use RPC to set permission
+      const { error } = await supabase.rpc('set_permission', {
+        p_module: module,
+        p_action: action,
+        p_role_id: roleIdNum,
+        p_allowed: newAllowed
       });
 
-      if (error) {
-        console.error('Error toggling permission via RPC:', error);
-        throw error;
-      }
+      if (error) throw error;
+
+      // Refresh permissions
+      await fetchPermissions();
 
       // Refresh permissions list
       await fetchPermissions();

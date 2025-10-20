@@ -52,12 +52,11 @@ export function TinderAnalysisModal({ open, onClose, leads, onComplete }: Tinder
     setShowFeedback(true);
     setTimeout(() => setShowFeedback(false), 500);
 
-    // Update database using RPC to track who analyzed
+    // Update database using RPC
     try {
-      const { data, error } = await supabase.rpc('set_lead_match', {
-        lead_id: leadToUpdate.id?.toString() || '',
-        is_approved: isApproved,
-        table_name: 'leads'
+      const { error } = await supabase.rpc('set_lead_analysis', {
+        p_lead_id: leadToUpdate.id,
+        p_aprovado: isApproved
       });
 
       if (error) {

@@ -125,16 +125,66 @@ serve(async (req) => {
 
     // Buscar TODOS os leads do TabuladorMax
     console.log('📥 Buscando todos os leads do TabuladorMax...');
+    
+    // Try different table name variations
+    const tableVariations = ['leads', '"Leads"', 'Leads'];
     const allLeads: Lead[] = [];
+    let successTableName = '';
+    let lastError = null;
+    
+    // First, try using RPC to list tables (more reliable)
+    console.log('🔍 Tentando listar tabelas via RPC...');
+    const { data: rpcTables, error: rpcError } = await tabulador.rpc('list_public_tables');
+    
+    if (!rpcError && rpcTables) {
+      console.log(`✅ RPC list_public_tables retornou: ${JSON.stringify(rpcTables)}`);
+      // Add tables from RPC to variations
+      for (const t of rpcTables) {
+        const tname = (t as any).table_name;
+        if (tname && !tableVariations.includes(tname)) {
+          tableVariations.push(tname);
+        }
+      }
+    } else {
+      console.log(`⚠️ RPC list_public_tables falhou: ${rpcError?.message || 'sem erro'}`);
+    }
+    
+    // Now try each table variation
+    for (const tableName of tableVariations) {
+      console.log(`🔍 Tentando tabela: ${tableName}`);
+      const { count, error } = await tabulador
+        .from(tableName)
+        .select('*', { count: 'exact', head: true });
+      
+      if (!error) {
+        successTableName = tableName;
+        console.log(`✅ Tabela encontrada: ${tableName} (count: ${count})`);
+        break;
+      } else {
+        lastError = error;
+        console.log(`❌ Falha com ${tableName}: ${JSON.stringify({
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })}`);
+      }
+    }
+    
+    if (!successTableName) {
+      throw new Error(`Nenhuma tabela de leads encontrada. Último erro: ${lastError?.message}`);
+    }
+    
+    // Now fetch all data using pagination
     let page = 0;
     const pageSize = 1000;
     let hasMore = true;
 
     while (hasMore) {
-      console.log(`📄 Buscando página ${page + 1}...`);
+      console.log(`📄 Buscando página ${page + 1} de ${successTableName}...`);
       
       const { data, error } = await tabulador
-        .from('leads')
+        .from(successTableName)
         .select('*')
         .range(page * pageSize, (page + 1) * pageSize - 1)
         .order('id', { ascending: true });

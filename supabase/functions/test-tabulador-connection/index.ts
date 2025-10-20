@@ -60,16 +60,35 @@ serve(async (req) => {
     });
     diagnostics.connection = { status: '✅ Cliente criado' };
 
-    // 3. Testar query na tabela leads
+    // 3. Testar query na tabela leads (tentar variações)
     console.log('📥 [Test] Testando query na tabela leads...');
-    console.log('📡 [Test] Endpoint:', `${tabuladorUrl}/rest/v1/leads`);
     
-    const { data: leadsData, error: leadsError, count } = await tabulador
-      .from('leads')
-      .select('*', { count: 'exact', head: false })
-      .limit(5);
+    const tableVariations = ['leads', '"Leads"', 'Leads', 'lead', '"Lead"'];
+    let leadsData = null;
+    let leadsError = null;
+    let count = 0;
+    let successTableName = '';
+    
+    for (const tableName of tableVariations) {
+      console.log(`🔍 [Test] Tentando: ${tableName}`);
+      const result = await tabulador
+        .from(tableName)
+        .select('*', { count: 'exact', head: false })
+        .limit(5);
+      
+      if (!result.error && result.data) {
+        leadsData = result.data;
+        count = result.count || 0;
+        successTableName = tableName;
+        console.log(`✅ [Test] Sucesso com ${tableName}: ${count} registros totais`);
+        break;
+      } else {
+        console.log(`❌ [Test] Falha com ${tableName}: ${result.error?.message}`);
+        leadsError = result.error;
+      }
+    }
 
-    if (leadsError) {
+    if (leadsError && !leadsData) {
       console.error('❌ [Test] Erro ao acessar tabela leads:', {
         message: leadsError.message,
         code: leadsError.code,
@@ -96,8 +115,10 @@ serve(async (req) => {
       diagnostics.tables = {
         leads: {
           status: '✅ Acessível',
+          table_name_used: successTableName,
           total_count: count,
           sample_count: leadsData?.length || 0,
+          recommendation: `Use "${successTableName}" nas configurações de sincronização`
         }
       };
       diagnostics.leads_sample = leadsData;
