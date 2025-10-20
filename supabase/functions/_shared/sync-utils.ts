@@ -197,20 +197,43 @@ export function handleCorsPreFlight(): Response {
 }
 
 /**
+ * Sanitizes error message to remove stack trace information
+ * Prevents accidental exposure of implementation details
+ */
+function sanitizeErrorMessage(message: string): string {
+  // Remove stack trace lines (lines starting with "at ")
+  const lines = message.split('\n');
+  const cleanLines = lines.filter(line => !line.trim().startsWith('at '));
+  
+  // Take only the first line (main error message)
+  const mainMessage = cleanLines[0] || 'An error occurred';
+  
+  // Remove file paths and line numbers
+  return mainMessage.replace(/\s+at\s+.*$/g, '').replace(/\(.*:\d+:\d+\)/g, '').trim();
+}
+
+/**
  * Extracts error message from various error types
+ * Sanitizes the message to prevent stack trace exposure
  */
 export function extractErrorMessage(error: unknown): string {
+  let message: string;
+  
   if (error instanceof Error) {
-    return error.message;
+    message = error.message;
+  } else if (typeof error === 'string') {
+    message = error;
+  } else {
+    return 'Unknown error occurred';
   }
-  if (typeof error === 'string') {
-    return error;
-  }
-  return 'Unknown error occurred';
+  
+  // Sanitize to remove stack trace information
+  return sanitizeErrorMessage(message);
 }
 
 /**
  * Extracts error details from Supabase errors
+ * Sanitizes messages to prevent stack trace exposure
  */
 export function extractSupabaseError(error: any): {
   message: string;
@@ -218,11 +241,15 @@ export function extractSupabaseError(error: any): {
   details?: string;
   hint?: string;
 } {
+  const message = error?.message || 'Unknown database error';
+  const details = error?.details;
+  const hint = error?.hint;
+  
   return {
-    message: error?.message || 'Unknown database error',
+    message: sanitizeErrorMessage(message),
     code: error?.code,
-    details: error?.details,
-    hint: error?.hint,
+    details: typeof details === 'string' ? sanitizeErrorMessage(details) : details,
+    hint: typeof hint === 'string' ? sanitizeErrorMessage(hint) : hint,
   };
 }
 
