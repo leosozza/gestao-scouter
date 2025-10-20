@@ -343,6 +343,64 @@ npx tsx scripts/syncDiagnostics.ts --verbose
 - [docs/ANALISE_SYNC_TABULADOR.md](../docs/ANALISE_SYNC_TABULADOR.md#troubleshooting)
 - [docs/SYNC_DIAGNOSTICS.md](../docs/SYNC_DIAGNOSTICS.md#ações-recomendadas)
 
+---
+
+### `validate-migration-setup.ts` ⭐ NOVO
+
+**Purpose:** Validates that the TabuladorMax migration setup is complete and correct.
+
+**Usage:**
+```bash
+npm run validate:migration
+```
+
+**What it validates:**
+- ✅ SQL migration scripts exist
+- ✅ Documentation is complete (TABULADORMAX_MIGRATION_GUIDE.md, etc.)
+- ✅ Environment variables are defined (.env.example)
+- ✅ Code uses correct column names (updated_at, not atualizado_at)
+- ✅ No typos in column names across all files
+- ✅ Edge Functions are present and compatible
+- ✅ Sync scripts reference correct fields
+- ✅ All migrations properly applied
+
+**Exit Codes:**
+- `0` - ✅ All validations passed
+- `1` - ❌ One or more validations failed
+
+**Example Output:**
+```
+================================================================================
+📋 VALIDATION REPORT: TabuladorMax Migration Setup
+================================================================================
+
+✅ 1. File: TabuladorMax Incremental Sync Setup SQL
+   Status: PASS
+   File exists: scripts/sql/tabuladormax_incremental_sync_setup.sql
+
+✅ 2. Content: SQL script targets public.leads table
+   Status: PASS
+   Contains expected content: "ALTER TABLE public.leads..."
+
+...
+
+✅ 16. Typo Check: No atualizado_at found
+   Status: PASS
+   All files use correct column name "updated_at"
+
+================================================================================
+📊 SUMMARY: 18 passed | 0 warnings | 0 failed
+================================================================================
+
+✅ All validations passed! Migration setup is ready.
+```
+
+**Related Documentation:**
+- [TABULADORMAX_MIGRATION_GUIDE.md](../TABULADORMAX_MIGRATION_GUIDE.md) - Complete migration guide
+- [MIGRATION_CLARIFICATION.md](../MIGRATION_CLARIFICATION.md) - Column name typo explanation
+
+---
+
 ## 📧 Suporte
 
 Para questões ou problemas:
