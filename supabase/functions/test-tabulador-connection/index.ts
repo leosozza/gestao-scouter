@@ -1,42 +1,74 @@
 /**
  * Edge Function: Teste de Conexão com TabuladorMax
- * Diagnóstico para verificar credenciais e estrutura da tabela
+ * 
+ * Diagnóstico para verificar credenciais e estrutura da tabela com:
+ * - Retry logic para conexões instáveis
+ * - Logging estruturado em JSON
+ * - Métricas de latência e performance
+ * - Sugestões detalhadas para resolução de problemas
+ * - Notificações Bitrix opcionais
  */
 import { serve } from "https://deno.land/std@0.193.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
-};
+import {
+  CORS_HEADERS,
+  LogLevel,
+  logMessage,
+  generateTraceId,
+  createErrorResponse,
+  jsonResponse,
+  handleCorsPreFlight,
+  extractSupabaseError,
+  PerformanceTimer,
+  validateEnvVars,
+  retryWithBackoff,
+  sendBitrixNotification,
+} from '../_shared/sync-utils.ts';
 
 serve(async (req) => {
+  const traceId = generateTraceId();
+  const timer = new PerformanceTimer();
+  const functionName = 'test-tabulador-connection';
+
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return handleCorsPreFlight();
   }
 
-  const startTime = Date.now();
+  // Log request start
+  logMessage(LogLevel.INFO, functionName, 'Connection test started', {
+    method: req.method,
+    trace_id: traceId,
+  });
+
   const diagnostics: Record<string, unknown> = {
     timestamp: new Date().toISOString(),
+    trace_id: traceId,
     environment: {},
     connection: {},
     tables: {},
     leads_sample: null,
-    errors: []
+    errors: [],
+    suggestions: [],
   };
 
   try {
-    console.log('🔍 [Test] Iniciando diagnóstico de conexão...');
+    timer.mark('test_start');
     
-    // 1. Verificar variáveis de ambiente com mais detalhes
+    // 1. Validate environment variables
+    timer.mark('env_check_start');
+    const envValidation = validateEnvVars(['TABULADOR_URL', 'TABULADOR_SERVICE_KEY']);
+    timer.mark('env_check_end');
+
     const tabuladorUrl = Deno.env.get('TABULADOR_URL') ?? '';
     const tabuladorKey = Deno.env.get('TABULADOR_SERVICE_KEY') ?? '';
     
     diagnostics.environment = {
-      TABULADOR_URL: tabuladorUrl ? '✅ Configurado' : '❌ Não configurado',
-      TABULADOR_SERVICE_KEY: tabuladorKey ? '✅ Configurado' : '❌ Não configurado',
-      url_value: tabuladorUrl || 'VAZIO',
-      url_valid: false
+      TABULADOR_URL: tabuladorUrl ? '✅ Configured' : '❌ Not configured',
+      TABULADOR_SERVICE_KEY: tabuladorKey ? '✅ Configured' : '❌ Not configured',
+      url_value: tabuladorUrl || 'EMPTY',
+      url_valid: false,
+      validation_duration_ms: timer.getDurationBetween('env_check_start', 'env_check_end'),
     };
 
     // Validate URL format
@@ -46,25 +78,48 @@ serve(async (req) => {
         diagnostics.environment.url_valid = true;
         diagnostics.environment.url_protocol = urlObj.protocol;
         diagnostics.environment.url_hostname = urlObj.hostname;
+        
+        logMessage(LogLevel.INFO, functionName, 'Environment variables validated', {
+          url: urlObj.hostname,
+          trace_id: traceId,
+        });
       } catch (urlError) {
         diagnostics.environment.url_valid = false;
-        diagnostics.environment.url_error = 'URL inválida - deve ser formato: https://project.supabase.co';
-        (diagnostics.errors as string[]).push(`URL inválida: ${tabuladorUrl}`);
+        diagnostics.environment.url_error = 'Invalid URL - must be format: https://project.supabase.co';
+        (diagnostics.errors as string[]).push(`Invalid URL: ${tabuladorUrl}`);
+        (diagnostics.suggestions as string[]).push('Verify TABULADOR_URL format is correct');
+        
+        logMessage(LogLevel.ERROR, functionName, 'Invalid TABULADOR_URL format', {
+          url: tabuladorUrl,
+          trace_id: traceId,
+        });
       }
     }
 
-    console.log('📋 [Test] Variáveis de ambiente:', diagnostics.environment);
+    // 2. Check if credentials are configured
+    if (!envValidation.valid) {
+      logMessage(LogLevel.ERROR, functionName, 'Missing required environment variables', {
+        missing: envValidation.missing,
+        trace_id: traceId,
+      });
 
-    // 2. Testar conexão
-    if (!tabuladorUrl || !tabuladorKey) {
-      const missingVars = [];
-      if (!tabuladorUrl) missingVars.push('TABULADOR_URL');
-      if (!tabuladorKey) missingVars.push('TABULADOR_SERVICE_KEY');
+      (diagnostics.suggestions as string[]).push(
+        'Configure missing environment variables in Supabase Dashboard',
+        'Go to: Project Settings → Edge Functions → Secrets',
+        `Missing: ${envValidation.missing.join(', ')}`
+      );
       
-      throw new Error(`Credenciais do TabuladorMax não configuradas. Faltando: ${missingVars.join(', ')}`);
+      throw new Error(`TabuladorMax credentials not configured. Missing: ${envValidation.missing.join(', ')}`);
     }
 
-    console.log('🔌 [Test] Conectando ao TabuladorMax:', tabuladorUrl);
+    // 3. Create client with retry logic
+    timer.mark('client_creation_start');
+    
+    logMessage(LogLevel.INFO, functionName, 'Creating TabuladorMax client', {
+      url: tabuladorUrl,
+      trace_id: traceId,
+    });
+
     const tabulador = createClient(tabuladorUrl, tabuladorKey, {
       auth: {
         persistSession: false,
@@ -77,10 +132,19 @@ serve(async (req) => {
         },
       },
     });
-    diagnostics.connection = { status: '✅ Cliente criado' };
+    
+    timer.mark('client_creation_end');
+    diagnostics.connection = {
+      status: '✅ Client created',
+      duration_ms: timer.getDurationBetween('client_creation_start', 'client_creation_end'),
+    };
 
-    // 3. Testar query na tabela leads (tentar variações)
-    console.log('📥 [Test] Testando query na tabela leads...');
+    // 4. Test query on leads table (try variations) with retry logic
+    timer.mark('table_test_start');
+    
+    logMessage(LogLevel.INFO, functionName, 'Testing leads table query', {
+      trace_id: traceId,
+    });
     
     const tableVariations = ['leads', '"Leads"', 'Leads', '"leads"', 'lead', '"Lead"', 'Lead'];
     let leadsData = null;
@@ -90,77 +154,144 @@ serve(async (req) => {
     let allAttempts: any[] = [];
     
     for (const tableName of tableVariations) {
-      console.log(`🔍 [Test] Tentando: ${tableName}`);
       const attemptStart = Date.now();
-      const result = await tabulador
-        .from(tableName)
-        .select('*', { count: 'exact', head: false })
-        .limit(5);
       
-      const attemptDuration = Date.now() - attemptStart;
-      
-      allAttempts.push({
-        table_name: tableName,
-        success: !result.error,
-        error: result.error?.message,
-        error_code: result.error?.code,
-        count: result.count,
-        duration_ms: attemptDuration
-      });
-      
-      if (!result.error && result.data) {
+      try {
+        // Use retry logic for unstable connections
+        const result = await retryWithBackoff(
+          async () => {
+            const res = await tabulador
+              .from(tableName)
+              .select('*', { count: 'exact', head: false })
+              .limit(5);
+            
+            if (res.error) {
+              throw res.error;
+            }
+            return res;
+          },
+          {
+            maxAttempts: 2, // Less aggressive retry for table testing
+            delayMs: 500,
+            backoffMultiplier: 2,
+          },
+          (attempt, error) => {
+            logMessage(LogLevel.WARN, functionName, 'Retrying table query', {
+              table: tableName,
+              attempt,
+              error: extractSupabaseError(error).message,
+              trace_id: traceId,
+            });
+          }
+        );
+        
+        const attemptDuration = Date.now() - attemptStart;
+        
+        allAttempts.push({
+          table_name: tableName,
+          success: true,
+          count: result.count,
+          duration_ms: attemptDuration
+        });
+        
         leadsData = result.data;
         count = result.count || 0;
         successTableName = tableName;
-        console.log(`✅ [Test] Sucesso com ${tableName}: ${count} registros totais (${attemptDuration}ms)`);
+        
+        logMessage(LogLevel.INFO, functionName, 'Table query successful', {
+          table: tableName,
+          count,
+          duration_ms: attemptDuration,
+          trace_id: traceId,
+        });
+        
         break;
-      } else {
-        console.log(`❌ [Test] Falha com ${tableName}: ${result.error?.message} (${result.error?.code})`);
-        leadsError = result.error;
+      } catch (error) {
+        const attemptDuration = Date.now() - attemptStart;
+        const supabaseError = extractSupabaseError(error);
+        
+        allAttempts.push({
+          table_name: tableName,
+          success: false,
+          error: supabaseError.message,
+          error_code: supabaseError.code,
+          duration_ms: attemptDuration
+        });
+        
+        leadsError = error;
+        
+        logMessage(LogLevel.WARN, functionName, 'Table query failed', {
+          table: tableName,
+          error: supabaseError,
+          duration_ms: attemptDuration,
+          trace_id: traceId,
+        });
       }
     }
 
+    timer.mark('table_test_end');
     // Store all attempts in diagnostics
     (diagnostics.tables as Record<string, unknown>).attempts = allAttempts;
+    (diagnostics.tables as Record<string, unknown>).test_duration_ms = timer.getDurationBetween('table_test_start', 'table_test_end');
 
     if (leadsError && !leadsData) {
-      console.error('❌ [Test] Erro ao acessar tabela leads:', {
-        message: leadsError.message,
-        code: leadsError.code,
-        details: leadsError.details,
-        hint: leadsError.hint,
+      const supabaseError = extractSupabaseError(leadsError);
+      const troubleshooting = getTroubleshootingAdvice(supabaseError);
+      
+      logMessage(LogLevel.ERROR, functionName, 'Failed to access leads table', {
+        error: supabaseError,
+        trace_id: traceId,
       });
       
       diagnostics.tables = {
+        ...(diagnostics.tables as Record<string, unknown>),
         leads: {
-          status: '❌ Erro ao acessar',
-          error: leadsError.message,
-          code: leadsError.code,
-          details: leadsError.details,
-          hint: leadsError.hint,
-          troubleshooting: get406Troubleshooting(leadsError),
+          status: '❌ Error accessing table',
+          error: supabaseError.message,
+          code: supabaseError.code,
+          details: supabaseError.details,
+          hint: supabaseError.hint,
+          troubleshooting,
         }
       };
+
+      (diagnostics.suggestions as string[]).push(
+        troubleshooting,
+        'Check if leads table exists in TabuladorMax',
+        'Verify RLS policies allow service role access'
+      );
     } else {
-      console.log('✅ [Test] Tabela leads acessível:', {
+      logMessage(LogLevel.INFO, functionName, 'Leads table accessible', {
+        table: successTableName,
         total: count,
         sample: leadsData?.length || 0,
+        trace_id: traceId,
       });
       
       diagnostics.tables = {
+        ...(diagnostics.tables as Record<string, unknown>),
         leads: {
-          status: '✅ Acessível',
+          status: '✅ Accessible',
           table_name_used: successTableName,
           total_count: count,
           sample_count: leadsData?.length || 0,
-          recommendation: `Use "${successTableName}" nas configurações de sincronização`
+          recommendation: `Use "${successTableName}" in sync configurations`
         }
       };
       diagnostics.leads_sample = leadsData;
+
+      (diagnostics.suggestions as string[]).push(
+        `✅ Connection successful! Use table name "${successTableName}" for synchronization`
+      );
     }
 
-    // 4. Listar todas as tabelas disponíveis (via schema)
-    console.log('📋 [Test] Listando tabelas disponíveis...');
+    // 5. List all available tables (via schema)
+    timer.mark('list_tables_start');
+    
+    logMessage(LogLevel.INFO, functionName, 'Listing available tables', {
+      trace_id: traceId,
+    });
+
     try {
       const { data: tablesData, error: tablesError } = await tabulador
         .from('information_schema.tables')
@@ -168,22 +299,37 @@ serve(async (req) => {
         .eq('table_schema', 'public')
         .order('table_name');
 
+      timer.mark('list_tables_end');
+
       if (tablesError) {
-        console.warn('⚠️ [Test] Não foi possível listar tabelas:', tablesError.message);
+        logMessage(LogLevel.WARN, functionName, 'Could not list tables', {
+          error: extractSupabaseError(tablesError),
+          trace_id: traceId,
+        });
+
         (diagnostics.tables as Record<string, unknown>).available = {
-          status: '⚠️ Erro ao listar',
+          status: '⚠️ Error listing tables',
           error: tablesError.message
         };
       } else {
         const tableNames = tablesData?.map(t => t.table_name) || [];
-        console.log('✅ [Test] Tabelas disponíveis:', tableNames);
+        
+        logMessage(LogLevel.INFO, functionName, 'Tables listed successfully', {
+          count: tableNames.length,
+          trace_id: traceId,
+        });
+
         (diagnostics.tables as Record<string, unknown>).available = tableNames;
       }
     } catch (err) {
-      console.warn('⚠️ [Test] Exceção ao listar tabelas:', err);
+      logMessage(LogLevel.WARN, functionName, 'Exception while listing tables', {
+        error: err instanceof Error ? err.message : 'Unknown error',
+        trace_id: traceId,
+      });
     }
 
-    // 5. Testar outras possíveis tabelas
+    // 6. Test other possible tables
+    timer.mark('test_other_tables_start');
     const possibleTables = ['Leads', 'lead', 'Lead', 'fichas', 'Fichas'];
     const tests: Record<string, unknown> = {};
 
@@ -202,59 +348,86 @@ serve(async (req) => {
       } catch (err) {
         tests[tableName] = {
           exists: false,
-          error: err instanceof Error ? err.message : 'Erro desconhecido'
+          error: err instanceof Error ? err.message : 'Unknown error'
         };
       }
     }
     
-    (diagnostics.tables as Record<string, unknown>).tests = tests;
+    timer.mark('test_other_tables_end');
+    (diagnostics.tables as Record<string, unknown>).other_tables_tested = tests;
 
-    const executionTime = Date.now() - startTime;
+    const executionTime = timer.getDuration();
     diagnostics.execution_time_ms = executionTime;
+    diagnostics.performance_marks = timer.getAllMarks();
     
-    console.log('✅ [Test] Diagnóstico completo em', executionTime, 'ms');
-    console.log('📊 [Test] Resultado:', JSON.stringify(diagnostics, null, 2));
+    logMessage(LogLevel.INFO, functionName, 'Connection test completed successfully', {
+      duration_ms: executionTime,
+      trace_id: traceId,
+      performance_marks: timer.getAllMarks(),
+    });
 
-    return new Response(
-      JSON.stringify(diagnostics, null, 2),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+    return jsonResponse(diagnostics, 200);
 
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error('❌ [Test] Erro no diagnóstico:', message);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     
-    (diagnostics.errors as string[]).push(message);
-    diagnostics.execution_time_ms = Date.now() - startTime;
+    logMessage(LogLevel.ERROR, functionName, 'Connection test failed', {
+      error: errorMessage,
+      trace_id: traceId,
+      duration_ms: timer.getDuration(),
+    });
+    
+    (diagnostics.errors as string[]).push(errorMessage);
+    diagnostics.execution_time_ms = timer.getDuration();
+    diagnostics.performance_marks = timer.getAllMarks();
 
-    return new Response(
-      JSON.stringify(diagnostics, null, 2),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+    // Add general troubleshooting suggestions
+    if (!(diagnostics.suggestions as string[]).length) {
+      (diagnostics.suggestions as string[]).push(
+        'Verify environment variables are correctly configured',
+        'Check if TabuladorMax project is active and accessible',
+        'Review error details and follow specific recommendations',
+        'Consult Supabase logs for more information'
+      );
+    }
+
+    // Send Bitrix notification for critical failures
+    const enableBitrix = Deno.env.get('ENABLE_BITRIX_NOTIFICATIONS') === 'true';
+    if (enableBitrix) {
+      await sendBitrixNotification({
+        title: 'TabuladorMax Connection Test Failed',
+        message: errorMessage,
+        severity: 'error',
+        metadata: {
+          trace_id: traceId,
+          errors: diagnostics.errors,
+          suggestions: diagnostics.suggestions,
+        },
+      });
+    }
+
+    return jsonResponse(diagnostics, 500);
   }
 });
 
-function get406Troubleshooting(error: { code?: string; message?: string }): string {
+/**
+ * Provides troubleshooting advice based on error type
+ */
+function getTroubleshootingAdvice(error: { code?: string; message?: string }): string {
   if (error.code === '406' || error.message?.includes('406')) {
-    return 'Erro 406: Provavelmente falta o header "Prefer: return=representation" ou há problema com o Content-Type. Verifique as configurações de CORS e headers no Supabase.';
+    return 'Error 406: Missing "Prefer: return=representation" header or Content-Type issue. Check CORS and header configuration in Supabase.';
   }
   if (error.code === 'PGRST116') {
-    return 'Tabela não encontrada. Verifique se a tabela "leads" existe no projeto TabuladorMax. Use o Supabase Dashboard → Table Editor para confirmar.';
+    return 'Table not found. Verify that "leads" table exists in TabuladorMax project. Use Supabase Dashboard → Table Editor to confirm.';
   }
   if (error.code === '42501') {
-    return 'Permissão negada. Verifique: 1) Se está usando SERVICE ROLE KEY (não anon key), 2) Políticas RLS da tabela, 3) Permissões no schema public';
+    return 'Permission denied. Verify: 1) Using SERVICE ROLE KEY (not anon key), 2) RLS policies on table, 3) Permissions on public schema';
   }
   if (error.code === 'PGRST301') {
-    return 'Erro de roteamento/parsing. A tabela pode não existir ou o nome está incorreto. Tente variações como "leads", "Leads", ou "\"Leads\""';
+    return 'Routing/parsing error. Table may not exist or name is incorrect. Try variations like "leads", "Leads", or "\\"Leads\\""';
   }
   if (error.message?.includes('connect') || error.message?.includes('network')) {
-    return 'Erro de conexão de rede. Verifique: 1) URL está correta, 2) Projeto TabuladorMax está ativo, 3) Não há problemas de firewall';
+    return 'Network connection error. Verify: 1) URL is correct, 2) TabuladorMax project is active, 3) No firewall issues';
   }
-  return 'Verifique os logs do Supabase para mais detalhes. Acesse: Dashboard → Logs → Edge Functions';
+  return 'Check Supabase logs for more details. Access: Dashboard → Logs → Edge Functions';
 }
