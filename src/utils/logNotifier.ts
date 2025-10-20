@@ -29,7 +29,7 @@ export interface NotificationConfig {
 export type NotificationChannel = 'console' | 'toast' | 'webhook' | 'email';
 
 export interface NotificationFilter {
-  logLevel?: ('ERROR' | 'WARN' | 'INFO')[];
+  logLevel?: ('ERROR' | 'WARN' | 'INFO' | 'LOG')[];
   messageContains?: string[];
   excludeMessageContains?: string[];
 }

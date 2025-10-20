@@ -57,6 +57,103 @@ node scripts/insertFakeLeads.js
 
 ---
 
+### `analyzeLogs.ts` ⭐ NOVO
+
+Script de análise automatizada de logs que diagnostica problemas de sincronização, repara JSON malformado e gera relatórios.
+
+**Funcionalidades:**
+- ✅ Repara JSON malformado automaticamente
+- ✅ Detecta violações de política RLS
+- ✅ Identifica padrões de erro recorrentes
+- ✅ Calcula pontuação de saúde (0-100)
+- ✅ Envia notificações para eventos críticos
+- ✅ Gera relatórios em múltiplos formatos (JSON, Markdown, HTML, Text)
+- ✅ Normaliza campos em português (carimbo de data/hora → timestamp)
+
+**Uso:**
+
+```bash
+# Analisar logs de um arquivo
+npm run analyze-logs -- --input logs.json
+
+# Gerar relatório em Markdown
+npm run analyze-logs -- --input logs.json --output report.md --format markdown
+
+# Gerar relatório em HTML com notificações
+npm run analyze-logs -- --input logs.json --output report.html --format html --notify
+
+# Analisar logs do exemplo (sem arquivo)
+npm run analyze-logs
+
+# Mostrar ajuda
+npm run analyze-logs -- --help
+```
+
+**Flags:**
+- `--input, -i <file>`: Arquivo de entrada com logs (JSON ou texto)
+- `--output, -o <file>`: Arquivo de saída para o relatório
+- `--format, -f <type>`: Formato do relatório: json, markdown, html, text (padrão: markdown)
+- `--notify, -n`: Habilita notificações para problemas críticos
+- `--help, -h`: Mostra ajuda
+
+**Exemplo de Saída:**
+
+```
+🔍 Starting Log Analysis...
+
+📋 Step 1: Validating and normalizing logs...
+✅ Status: VALID
+📊 Logs Processed: 3
+⚠️  WARNINGS:
+   - Log 1: Critical error detected - nova linha viola a política de segurança...
+
+🔎 Step 2: Analyzing logs...
+🔴 Health Score: 26/100
+
+🔴 CRITICAL ISSUES:
+   1. RLS_POLICY_VIOLATION (1 occurrences)
+      Row-Level Security policy violation detected in sync_logs_detailed table
+      💡 Recommendation:
+         CREATE POLICY "service_role_insert" ON sync_logs_detailed 
+         FOR INSERT TO service_role USING (true);
+
+🔔 Step 3: Checking for notifications...
+✅ Sent 2 notification(s)
+   - RLS Policy Violation Detected
+   - System Health Critical
+
+📊 Step 4: Generating report...
+✅ Report saved to: sync-analysis-report.md
+```
+
+**Problema Resolvido:**
+
+O script foi desenvolvido especificamente para resolver o problema de logs malformados do Edge Functions:
+
+```json
+{
+  "event_message": "nova linha viola a política de segurança...",
+  "id": "642d80d6-592a-4fe4-af48-403ea726235d",
+  "log_level": "ERRO",
+{
+  "event_message": "desligamento",
+  ...
+}
+```
+
+O sistema automaticamente:
+1. Repara o JSON malformado
+2. Extrai objetos de log individuais
+3. Normaliza campos em português
+4. Detecta violações de RLS
+5. Fornece soluções SQL prontas
+
+**📚 Documentação Completa:**
+- [docs/LOG_ANALYSIS.md](../docs/LOG_ANALYSIS.md) - Documentação completa (EN)
+- [docs/ANALISE_LOGS_PT.md](../docs/ANALISE_LOGS_PT.md) - Documentação completa (PT)
+
+---
+
 ### `syncDiagnostics.ts` ⭐ NOVO
 
 Script de diagnóstico automatizado que valida configuração, conectividade e permissões para sincronização.
