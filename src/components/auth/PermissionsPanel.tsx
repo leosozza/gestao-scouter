@@ -85,18 +85,27 @@ export function PermissionsPanel() {
 
   const fetchPermissions = async () => {
     try {
-      // @ts-ignore - Supabase types will be generated after migration
-      const response: any = await supabase
-        .from('permissions')
-        .select('*')
-        .order('module, action');
+      // Use the new RPC for listing permissions
+      const { data, error } = await supabase.rpc('list_permissions');
 
-      if (response.error) throw response.error;
+      if (error) {
+        console.error('Error fetching permissions via RPC:', error);
+        // Fallback to direct query
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('permissions')
+          .select('*')
+          .order('module, action');
+        
+        if (fallbackError) throw fallbackError;
+        
+        const permsData = (fallbackData || []) as Permission[];
+        setPermissions(permsData);
+      } else {
+        const permsData = (data || []) as Permission[];
+        setPermissions(permsData);
+      }
       
-      const permsData = (response.data || []) as Permission[];
-      setPermissions(permsData);
-      
-      console.log('Permissions loaded:', permsData.length);
+      console.log('Permissions loaded:', permissions.length);
     } catch (error) {
       console.error('Error fetching permissions:', error);
       toast.error('Erro ao carregar permissões');
@@ -116,44 +125,23 @@ export function PermissionsPanel() {
         (p) => p.module === module && p.action === action && p.role_id === roleIdNum
       );
 
-      if (existingPermission) {
-        // Update existing permission
-        // @ts-ignore - Supabase types will be generated after migration
-        const response: any = await supabase
-          .from('permissions')
-          .update({ allowed: !existingPermission.allowed })
-          .eq('id', existingPermission.id);
+      const newAllowedValue = existingPermission ? !existingPermission.allowed : true;
 
-        if (response.error) throw response.error;
+      // Use the new RPC for setting permissions
+      const { data, error } = await supabase.rpc('set_permission', {
+        target_module: module,
+        target_action: action,
+        target_role_id: roleIdNum,
+        is_allowed: newAllowedValue
+      });
 
-        // Update local state
-        setPermissions(
-          permissions.map((p) =>
-            p.id === existingPermission.id ? { ...p, allowed: !p.allowed } : p
-          )
-        );
-      } else {
-        // Insert new permission
-        // @ts-ignore - Supabase types will be generated after migration
-        const response: any = await supabase
-          .from('permissions')
-          .insert({
-            module,
-            action,
-            role_id: roleIdNum,
-            allowed: true,
-          })
-          .select()
-          .single();
-
-        if (response.error) throw response.error;
-
-        // Update local state
-        if (response.data) {
-          setPermissions([...permissions, response.data as Permission]);
-        }
+      if (error) {
+        console.error('Error toggling permission via RPC:', error);
+        throw error;
       }
 
+      // Refresh permissions list
+      await fetchPermissions();
       toast.success('Permissão atualizada');
     } catch (error: any) {
       console.error('Error toggling permission:', error);

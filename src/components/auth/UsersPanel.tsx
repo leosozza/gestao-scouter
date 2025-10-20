@@ -55,9 +55,20 @@ export function UsersPanel() {
   const fetchUsers = async () => {
     try {
       console.log('🔍 Buscando usuários...');
-      const usersData = await getUsersWithRolesSafe();
-      console.log('✅ Usuários carregados:', usersData.length);
-      setUsers(usersData);
+      
+      // Try using the new RPC first
+      const { data: rpcUsers, error: rpcError } = await supabase.rpc('list_users_admin');
+      
+      if (!rpcError && rpcUsers) {
+        console.log('✅ Usuários carregados via RPC:', rpcUsers.length);
+        setUsers(rpcUsers);
+      } else {
+        // Fallback to repository method
+        console.log('⚠️ RPC falhou, usando método de fallback...');
+        const usersData = await getUsersWithRolesSafe();
+        console.log('✅ Usuários carregados via fallback:', usersData.length);
+        setUsers(usersData);
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('Erro ao carregar usuários');
