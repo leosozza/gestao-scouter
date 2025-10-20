@@ -45,19 +45,22 @@ O sistema de sincronização conecta dois projetos Supabase independentes:
 ### Fluxos de Sincronização
 
 #### 1. Sincronização em Tempo Real (Triggers)
+
 - **Origem**: TabuladorMax (`public.leads`)
-- **Destino**: Gestão Scouter (`public.fichas`)
+- **Destino**: Gestão Scouter (`public.leads`)
 - **Mecanismo**: Triggers SQL + pg_http
 - **Gatilho**: INSERT, UPDATE, DELETE em `leads`
 - **Latência**: < 1 segundo
 
 #### 2. Sincronização Bidirecional (Edge Function)
+
 - **Frequência**: A cada 5 minutos (cron job)
 - **Direção**: Ambos os sentidos
 - **Conflitos**: Última modificação vence (`updated_at`)
 - **Função**: `supabase/functions/sync-tabulador/index.ts`
 
 #### 3. Migração Inicial (Script Manual)
+
 - **Script**: `scripts/syncLeadsToFichas.ts`
 - **Uso**: Primeira carga de dados
 - **Execução**: `npm run migrate:leads`
@@ -75,10 +78,10 @@ O sistema de sincronização conecta dois projetos Supabase independentes:
 # ============================================================================
 # GESTÃO SCOUTER (Aplicação Principal)
 # ============================================================================
-VITE_SUPABASE_PROJECT_ID=ngestyxtopvfeyenyvgt
-VITE_SUPABASE_URL=https://ngestyxtopvfeyenyvgt.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-VITE_SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+VITE_SUPABASE_PROJECT_ID=jstsrgyxrrlklnzgsihd
+VITE_SUPABASE_URL=https://jstsrgyxrrlklnzgsihd.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzdHNyZ3l4cnJsa2xuemdzaWhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA5NDIyOTEsImV4cCI6MjA3NjUxODI5MX0.0uh9Uid5HZ3_TQB0877ncfhlYJwhxdMsQBReHZW2QLg
+VITE_SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzdHNyZ3l4cnJsa2xuemdzaWhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA5NDIyOTEsImV4cCI6MjA3NjUxODI5MX0.0uh9Uid5HZ3_TQB0877ncfhlYJwhxdMsQBReHZW2QLg
 
 # ============================================================================
 # TABULADORMAX (Fonte de Dados)
@@ -90,6 +93,7 @@ TABULADOR_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ### ✅ Validações de Configuração
 
 #### 1. URLs Corretas
+
 ```bash
 # Verificar que URLs são diferentes
 echo "Gestão: $VITE_SUPABASE_URL"
@@ -98,6 +102,7 @@ echo "Tabulador: $TABULADOR_URL"
 ```
 
 #### 2. Service Role Keys Válidas
+
 ```bash
 # Service keys devem começar com eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
 # e ser diferentes entre os projetos
@@ -106,6 +111,7 @@ echo "Tabulador: $TABULADOR_URL"
 #### 3. Permissões de Acesso
 
 **TabuladorMax (leitura)**:
+
 ```sql
 -- Executar no SQL Editor do TabuladorMax
 SELECT COUNT(*) FROM public.leads;
@@ -113,6 +119,7 @@ SELECT COUNT(*) FROM public.leads;
 ```
 
 **Gestão Scouter (escrita)**:
+
 ```sql
 -- Executar no SQL Editor do Gestão Scouter
 INSERT INTO public.fichas (id, nome, deleted)
@@ -126,6 +133,7 @@ DELETE FROM public.fichas WHERE id = '__test_sync__';
 ### 🔐 Segurança
 
 ⚠️ **IMPORTANTE**:
+
 - Service Role Keys devem ser usadas **APENAS** em ambiente servidor
 - **NUNCA** exponha service keys no frontend (`VITE_*` apenas para URLs públicas)
 - Scripts de sincronização (`syncLeadsToFichas.ts`, `syncDiagnostics.ts`) rodam em Node.js (servidor)
@@ -136,17 +144,20 @@ DELETE FROM public.fichas WHERE id = '__test_sync__';
 ## Verificações de Triggers
 
 ### 📍 Localização
+
 Os triggers devem estar instalados no projeto **TabuladorMax** (origem).
 
 ### 🔍 Consultas de Verificação
 
 #### 1. Verificar se a Extensão HTTP está Habilitada
+
 ```sql
 -- Executar no SQL Editor do TabuladorMax
 SELECT * FROM pg_extension WHERE extname = 'http';
 ```
 
 **Resultado Esperado**:
+
 ```
 extname | extversion
 --------|------------
@@ -156,20 +167,22 @@ http    | 1.6
 **Se não encontrar**: Execute `CREATE EXTENSION IF NOT EXISTS http;`
 
 #### 2. Verificar Triggers Instalados
+
 ```sql
 -- Executar no SQL Editor do TabuladorMax
-SELECT 
+SELECT
   tgname AS trigger_name,
   tgenabled AS enabled,
   tgtype,
   pg_get_triggerdef(oid) AS definition
-FROM pg_trigger 
+FROM pg_trigger
 WHERE tgrelid = 'public.leads'::regclass
   AND tgname LIKE '%sync%'
 ORDER BY tgname;
 ```
 
 **Resultado Esperado** (3 triggers):
+
 ```
 trigger_name              | enabled | tgtype | definition
 --------------------------|---------|--------|----------------------------------
@@ -182,22 +195,25 @@ trigger_sync_lead_update  | O       | 17     | CREATE TRIGGER ... AFTER UPDATE
 - **tgtype**: tipo do trigger (INSERT=5, UPDATE=17, DELETE=9)
 
 #### 3. Verificar Funções de Sincronização
+
 ```sql
 -- Executar no SQL Editor do TabuladorMax
-SELECT 
+SELECT
   proname AS function_name,
   pg_get_functiondef(oid) AS definition
-FROM pg_proc 
+FROM pg_proc
 WHERE proname LIKE '%sync_lead%'
 ORDER BY proname;
 ```
 
 **Funções Esperadas**:
+
 - `sync_lead_to_fichas_insert()`
 - `sync_lead_to_fichas_update()`
 - `sync_lead_to_fichas_delete()`
 
 #### 4. Verificar Variáveis de Configuração
+
 ```sql
 -- Executar no SQL Editor do TabuladorMax
 SHOW app.gestao_scouter_url;
@@ -205,6 +221,7 @@ SHOW app.gestao_scouter_service_key;
 ```
 
 **Se retornar vazio**: Execute:
+
 ```sql
 ALTER DATABASE postgres SET app.gestao_scouter_url = 'https://ngestyxtopvfeyenyvgt.supabase.co';
 ALTER DATABASE postgres SET app.gestao_scouter_service_key = 'sua_service_role_key_aqui';
@@ -214,6 +231,7 @@ SELECT pg_reload_conf();
 ### 🛠️ Instalação dos Triggers
 
 Se os triggers não estiverem instalados, execute o script:
+
 ```bash
 # Copiar conteúdo do arquivo e executar no SQL Editor do TabuladorMax
 cat supabase/functions/trigger_sync_leads_to_fichas.sql
@@ -225,8 +243,8 @@ cat supabase/functions/trigger_sync_leads_to_fichas.sql
 
 ### Tabela de Mapeamento Completa
 
-| Campo Lead (TabuladorMax) | Campo Ficha (Gestão)  | Tipo Origem | Tipo Destino | Transformação          |
-|---------------------------|----------------------|-------------|--------------|------------------------|
+| Campo Lead (TabuladorMax) | Campo Ficha (Gestão) | Tipo Origem | Tipo Destino | Transformação          |
+| ------------------------- | -------------------- | ----------- | ------------ | ---------------------- |
 | `id`                      | `id`                 | number      | text         | `String(value)`        |
 | `nome`                    | `nome`               | text        | text         | Direto                 |
 | `telefone`                | `telefone`           | text        | text         | Direto                 |
@@ -255,23 +273,23 @@ cat supabase/functions/trigger_sync_leads_to_fichas.sql
 ```typescript
 function normalizeDate(value: any): string | undefined {
   if (!value) return undefined;
-  
+
   // Se já é string no formato YYYY-MM-DD
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return value;
   }
-  
+
   // Se é Date object
   if (value instanceof Date) {
     return value.toISOString().split('T')[0];
   }
-  
+
   // Se é timestamp
   const date = new Date(value);
   if (!isNaN(date.getTime())) {
     return date.toISOString().split('T')[0];
   }
-  
+
   console.warn(`Data inválida: ${value}`);
   return undefined;
 }
@@ -381,10 +399,10 @@ CREATE INDEX IF NOT EXISTS idx_fichas_deleted ON fichas(deleted);
 function resolveConflict(gestaoRecord: Ficha, tabuladorRecord: Lead): 'gestao' | 'tabulador' {
   const gestaoTime = new Date(gestaoRecord.updated_at || 0).getTime();
   const tabuladorTime = new Date(tabuladorRecord.updated_at || 0).getTime();
-  
+
   if (gestaoTime > tabuladorTime) return 'gestao';
   if (tabuladorTime > gestaoTime) return 'tabulador';
-  
+
   // Empate: prioriza Gestão (aplicação principal)
   return 'gestao';
 }
@@ -399,10 +417,10 @@ function resolveConflict(gestaoRecord: Ficha, tabuladorRecord: Lead): 'gestao' |
 SHOW timezone;  -- Deve retornar 'UTC'
 
 -- Garantir que updated_at sempre usa UTC
-ALTER TABLE fichas 
+ALTER TABLE fichas
   ALTER COLUMN updated_at SET DEFAULT NOW();
-  
-ALTER TABLE leads 
+
+ALTER TABLE leads
   ALTER COLUMN updated_at SET DEFAULT NOW();
 ```
 
@@ -433,20 +451,21 @@ CREATE TRIGGER set_updated_at
 ### 🔴 Problema: Sincronização Não Acontece
 
 #### Sintomas
+
 - Dados novos no TabuladorMax não aparecem no Gestão
 - Alterações no Gestão não propagam para TabuladorMax
 - Tabela `sync_logs` sem registros recentes
 
 #### Possíveis Causas e Correções
 
-| Causa | Verificação | Correção |
-|-------|-------------|----------|
-| **Triggers não instalados** | `SELECT * FROM pg_trigger WHERE tgrelid = 'public.leads'::regclass` no TabuladorMax | Executar `trigger_sync_leads_to_fichas.sql` |
-| **Extensão HTTP desabilitada** | `SELECT * FROM pg_extension WHERE extname = 'http'` | `CREATE EXTENSION IF NOT EXISTS http;` |
-| **URLs/Keys incorretas** | Verificar variáveis `.env` e `app.gestao_scouter_*` | Atualizar configurações |
-| **Edge Function pausada** | Dashboard Supabase → Edge Functions | Reativar função `sync-tabulador` |
-| **Cron job desabilitado** | Dashboard Supabase → Database → Cron Jobs | Habilitar cron de 5 minutos |
-| **RLS bloqueando** | `SELECT * FROM fichas LIMIT 1` com service key | Ajustar policies ou usar service key |
+| Causa                          | Verificação                                                                         | Correção                                    |
+| ------------------------------ | ----------------------------------------------------------------------------------- | ------------------------------------------- |
+| **Triggers não instalados**    | `SELECT * FROM pg_trigger WHERE tgrelid = 'public.leads'::regclass` no TabuladorMax | Executar `trigger_sync_leads_to_fichas.sql` |
+| **Extensão HTTP desabilitada** | `SELECT * FROM pg_extension WHERE extname = 'http'`                                 | `CREATE EXTENSION IF NOT EXISTS http;`      |
+| **URLs/Keys incorretas**       | Verificar variáveis `.env` e `app.gestao_scouter_*`                                 | Atualizar configurações                     |
+| **Edge Function pausada**      | Dashboard Supabase → Edge Functions                                                 | Reativar função `sync-tabulador`            |
+| **Cron job desabilitado**      | Dashboard Supabase → Database → Cron Jobs                                           | Habilitar cron de 5 minutos                 |
+| **RLS bloqueando**             | `SELECT * FROM fichas LIMIT 1` com service key                                      | Ajustar policies ou usar service key        |
 
 #### Checklist de Diagnóstico
 
@@ -473,6 +492,7 @@ SELECT * FROM sync_status ORDER BY updated_at DESC;
 ### 🟡 Problema: Dados Inconsistentes
 
 #### Sintomas
+
 - Contagem de registros diferente entre projetos
 - Campos com valores diferentes para mesmo ID
 - Registros duplicados
@@ -495,10 +515,10 @@ ORDER BY updated_at DESC
 LIMIT 100;
 
 -- Gestão Scouter: Verificar conflitos potenciais
-SELECT 
-  id, 
-  nome, 
-  updated_at, 
+SELECT
+  id,
+  nome,
+  updated_at,
   sync_source,
   last_synced_at
 FROM fichas
@@ -510,11 +530,13 @@ ORDER BY updated_at DESC;
 #### Correções
 
 1. **Re-sincronização Completa**:
+
    ```bash
    npm run migrate:leads
    ```
 
 2. **Forçar Sync Manual**:
+
    ```bash
    # Invocar Edge Function manualmente
    curl -X POST https://ngestyxtopvfeyenyvgt.supabase.co/functions/v1/sync-tabulador \
@@ -522,17 +544,18 @@ ORDER BY updated_at DESC;
    ```
 
 3. **Limpar Duplicatas**:
+
    ```sql
    -- Identificar duplicatas
-   SELECT id, COUNT(*) 
-   FROM fichas 
-   GROUP BY id 
+   SELECT id, COUNT(*)
+   FROM fichas
+   GROUP BY id
    HAVING COUNT(*) > 1;
-   
+
    -- Se houver duplicatas, manter apenas o mais recente
    DELETE FROM fichas a
    USING fichas b
-   WHERE a.id = b.id 
+   WHERE a.id = b.id
      AND a.created_at < b.created_at;
    ```
 
@@ -541,6 +564,7 @@ ORDER BY updated_at DESC;
 ### 🟢 Problema: Performance Degradada
 
 #### Sintomas
+
 - Sincronização demora mais de 30 segundos
 - Timeouts na Edge Function
 - CPU/memória alta no Supabase
@@ -549,12 +573,12 @@ ORDER BY updated_at DESC;
 
 ```sql
 -- Verificar quantidade de registros pendentes
-SELECT COUNT(*) 
-FROM fichas 
+SELECT COUNT(*)
+FROM fichas
 WHERE updated_at > (NOW() - INTERVAL '5 minutes');
 
 -- Verificar índices
-SELECT 
+SELECT
   schemaname,
   tablename,
   indexname,
@@ -563,23 +587,25 @@ FROM pg_indexes
 WHERE tablename = 'fichas';
 
 -- Verificar tamanho da tabela
-SELECT 
+SELECT
   pg_size_pretty(pg_total_relation_size('fichas')) AS size;
 ```
 
 #### Correções
 
 1. **Adicionar/Recriar Índices**:
+
    ```sql
    -- Recriar índice de updated_at
    DROP INDEX IF EXISTS idx_fichas_updated_at;
    CREATE INDEX idx_fichas_updated_at ON fichas(updated_at DESC);
-   
+
    -- Analisar tabela
    ANALYZE fichas;
    ```
 
 2. **Aumentar Batch Size na Edge Function**:
+
    ```typescript
    // supabase/functions/sync-tabulador/index.ts
    const BATCH_SIZE = 500; // Reduzir para 500 se estiver muito lento
@@ -588,9 +614,9 @@ SELECT
 3. **Otimizar Queries**:
    ```sql
    -- Usar LIMIT nas queries de sincronização
-   SELECT * FROM fichas 
-   WHERE updated_at > $lastSync 
-   ORDER BY updated_at ASC 
+   SELECT * FROM fichas
+   WHERE updated_at > $lastSync
+   ORDER BY updated_at ASC
    LIMIT 1000;
    ```
 
@@ -619,15 +645,17 @@ SELECT
 #### Pós-Migração
 
 - [ ] Verificar contagem de registros
+
   ```sql
   -- TabuladorMax
   SELECT COUNT(*) FROM leads;
-  
+
   -- Gestão Scouter
   SELECT COUNT(*) FROM fichas WHERE deleted = false;
   ```
 
 - [ ] Validar integridade de dados
+
   ```sql
   -- Verificar campos obrigatórios preenchidos
   SELECT COUNT(*) FROM fichas WHERE nome IS NULL;
@@ -635,6 +663,7 @@ SELECT
   ```
 
 - [ ] Testar queries da aplicação
+
   ```sql
   -- Queries comuns do dashboard
   SELECT projeto, COUNT(*) FROM fichas GROUP BY projeto;
@@ -644,8 +673,8 @@ SELECT
 - [ ] Validar backup JSON
   ```sql
   -- Verificar campo raw
-  SELECT id, nome, raw->'email' as email_backup 
-  FROM fichas 
+  SELECT id, nome, raw->'email' as email_backup
+  FROM fichas
   LIMIT 5;
   ```
 
@@ -668,8 +697,8 @@ npm run diagnostics:sync
 
 ```sql
 -- Executar no TabuladorMax
-SELECT tgname, tgenabled 
-FROM pg_trigger 
+SELECT tgname, tgenabled
+FROM pg_trigger
 WHERE tgrelid = 'public.leads'::regclass
   AND tgname LIKE '%sync%';
 
@@ -686,9 +715,9 @@ VALUES ('Test Sync', '11999999999', 'Teste');
 -- 2. Aguardar 2-3 segundos
 
 -- 3. Verificar no Gestão Scouter
-SELECT * FROM public.fichas 
-WHERE nome = 'Test Sync' 
-ORDER BY created_at DESC 
+SELECT * FROM public.fichas
+WHERE nome = 'Test Sync'
+ORDER BY created_at DESC
 LIMIT 1;
 
 -- Deve retornar o registro recém-criado
@@ -701,7 +730,7 @@ DELETE FROM public.leads WHERE nome = 'Test Sync';
 
 ```sql
 -- Gestão Scouter: Últimas sincronizações
-SELECT 
+SELECT
   id,
   sync_direction,
   records_synced,
@@ -714,7 +743,7 @@ ORDER BY started_at DESC
 LIMIT 20;
 
 -- Gestão Scouter: Status de saúde
-SELECT 
+SELECT
   project_name,
   last_sync_at,
   last_sync_success,
@@ -725,7 +754,7 @@ FROM sync_status
 ORDER BY updated_at DESC;
 
 -- Gestão Scouter: Registros modificados recentemente
-SELECT 
+SELECT
   id,
   nome,
   projeto,
@@ -739,7 +768,7 @@ ORDER BY updated_at DESC
 LIMIT 50;
 
 -- Gestão Scouter: Distribuição por fonte de sync
-SELECT 
+SELECT
   sync_source,
   COUNT(*) as total,
   MIN(last_synced_at) as oldest_sync,
@@ -762,6 +791,7 @@ GROUP BY sync_source;
 ## 📞 Suporte
 
 Para questões sobre sincronização:
+
 1. Consulte a seção [Troubleshooting](#troubleshooting)
 2. Execute o [script de diagnóstico](./SYNC_DIAGNOSTICS.md)
 3. Verifique os logs do Supabase Dashboard
