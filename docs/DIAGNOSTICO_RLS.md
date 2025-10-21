@@ -1,5 +1,51 @@
 # 🔍 Guia de Diagnóstico RLS - Gestão Scouter
 
+## ✅ Solução Implementada (2025-01-24)
+
+### Problema Identificado
+
+A política RLS `leads_admin_all` estava **INCOMPLETA** - faltava a cláusula `WITH CHECK (true)` necessária para operações de `UPDATE` dentro de `UPSERT`.
+
+**Sintoma:** Erro 42501 (insufficient privilege) ao tentar sincronizar dados do TabuladorMax.
+
+**Causa Raiz:** 
+```sql
+-- ❌ POLÍTICA ANTIGA (INCOMPLETA)
+CREATE POLICY "leads_admin_all"
+  ON public.leads FOR ALL
+  USING (true);  -- ✅ Permite SELECT/ler
+  -- ❌ FALTA: WITH CHECK (true) -- Necessário para INSERT/UPDATE
+```
+
+Quando o PostgREST faz um `UPSERT`:
+1. Tenta `INSERT` → precisa de `WITH CHECK (true)` ✅
+2. Se o registro já existe, tenta `UPDATE` → precisa de `USING (true)` **E** `WITH CHECK (true)` ❌
+
+### Solução Aplicada
+
+```sql
+-- ✅ POLÍTICA CORRETA (COMPLETA)
+CREATE POLICY "leads_full_access"
+  ON public.leads
+  FOR ALL                          -- SELECT, INSERT, UPDATE, DELETE
+  TO public, anon, authenticated   -- Todos os tipos de conexão
+  USING (true)                     -- ✅ Permite ler/visualizar
+  WITH CHECK (true);               -- ✅ Permite inserir/modificar
+```
+
+**Resultado:** UPSERT agora funciona completamente para sincronização! 🎉
+
+**Por que `WITH CHECK (true)` é essencial?**
+
+| Operação | Precisa de `USING` | Precisa de `WITH CHECK` | Status Antes | Status Depois |
+|----------|-------------------|------------------------|--------------|---------------|
+| `SELECT` | ✅ | ❌ | ✅ OK | ✅ OK |
+| `INSERT` | ❌ | ✅ | ✅ OK | ✅ OK |
+| `UPDATE` | ✅ | ✅ | ❌ **FALHAVA** | ✅ **CORRIGIDO** |
+| `UPSERT` | ✅ | ✅ | ❌ **FALHAVA** | ✅ **CORRIGIDO** |
+
+---
+
 ## Visão Geral
 
 Este documento explica como usar o sistema de diagnóstico RLS (Row Level Security) para resolver problemas de sincronização entre TabuladorMax e Gestão Scouter.
@@ -178,7 +224,7 @@ Aguarde **10 segundos** e tente a sincronização novamente.
       "message": "ERRO 42501: Sem permissão para UPSERT. Política RLS incorreta!",
       "details": {
         "error_code": "42501",
-        "hint": "A política service_role_upsert_leads precisa ter USING (true) WITH CHECK (true)"
+        "hint": "A política precisa ter USING (true) WITH CHECK (true)"
       }
     }
   },
@@ -188,16 +234,41 @@ Aguarde **10 segundos** e tente a sincronização novamente.
 }
 ```
 
-**Causa:** Schema cache não foi recarregado após criar/modificar a política RLS
+**Causas Possíveis:**
+1. **Política incompleta:** Tem `USING (true)` mas falta `WITH CHECK (true)` ⚠️ **CAUSA MAIS COMUM**
+2. Schema cache não foi recarregado após criar/modificar a política RLS
+3. Política requer `auth.uid()` mas a função está usando `anon` key
 
-**Solução:**
-1. Execute no **SQL Editor do Gestão Scouter**:
-   ```sql
-   NOTIFY pgrst, 'reload schema';
-   ```
-2. Aguarde **10 segundos**
-3. Execute o diagnóstico novamente
-4. Se ainda falhar, verifique a política RLS manualmente:
+**Solução DEFINITIVA (já aplicada - 2025-01-24):**
+
+```sql
+-- 1. Remover políticas antigas conflitantes
+DROP POLICY IF EXISTS "leads_admin_all" ON public.leads;
+DROP POLICY IF EXISTS "service_role_upsert_leads" ON public.leads;
+DROP POLICY IF EXISTS "leads_authenticated_read" ON public.leads;
+
+-- 2. Criar política COMPLETA com USING e WITH CHECK
+CREATE POLICY "leads_full_access"
+  ON public.leads
+  FOR ALL                          -- SELECT, INSERT, UPDATE, DELETE
+  TO public, anon, authenticated   -- Todas as conexões
+  USING (true)                     -- ✅ Permite ler (SELECT, UPDATE)
+  WITH CHECK (true);               -- ✅ Permite modificar (INSERT, UPDATE)
+
+-- 3. CRÍTICO: Recarregar cache do PostgREST
+NOTIFY pgrst, 'reload schema';
+
+-- 4. Verificar se a política foi criada corretamente
+SELECT policyname, cmd, qual, with_check
+FROM pg_policies 
+WHERE tablename = 'leads';
+-- Deve mostrar: qual = true E with_check = true
+```
+
+**Se o problema persistir após aplicar a solução:**
+1. Aguarde **10 segundos** após executar `NOTIFY pgrst`
+2. Execute o diagnóstico novamente
+3. Verifique a política RLS manualmente:
    ```sql
    SELECT 
      policyname, 
