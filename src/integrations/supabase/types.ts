@@ -80,14 +80,23 @@ export type Database = {
           analisado_em: string | null
           analisado_por: string | null
           aprovado: boolean | null
+          cadastro_existe_foto: boolean | null
+          celular: string | null
           commercial_project_id: string | null
           compareceu: boolean | null
           criado: string | null
+          data_confirmacao_ficha: string | null
+          data_criacao_ficha: string | null
+          date_modify: string | null
           deleted: boolean | null
           email: string | null
           etapa: string | null
+          etapa_fluxo: string | null
+          etapa_funil: string | null
           ficha_confirmada: string | null
+          fonte: string | null
           foto: string | null
+          horario_agendamento: string | null
           id: number
           last_sync_at: string | null
           latitude: number | null
@@ -95,16 +104,25 @@ export type Database = {
           local_da_abordagem: string | null
           localizacao: string | null
           longitude: number | null
+          maxsystem_id_ficha: string | null
           nome: string | null
+          nome_modelo: string | null
+          op_telemarketing: string | null
           presenca_confirmada: boolean | null
           projeto: string | null
           raw: Json | null
+          responsible: string | null
+          responsible_user_id: string | null
           scouter: string | null
           scouter_id: number | null
+          status_fluxo: string | null
+          status_tabulacao: string | null
           supervisor: string | null
           sync_source: string | null
           sync_status: string | null
           telefone: string | null
+          telefone_casa: string | null
+          telefone_trabalho: string | null
           updated_at: string | null
           valor_ficha: number | null
         }
@@ -113,14 +131,23 @@ export type Database = {
           analisado_em?: string | null
           analisado_por?: string | null
           aprovado?: boolean | null
+          cadastro_existe_foto?: boolean | null
+          celular?: string | null
           commercial_project_id?: string | null
           compareceu?: boolean | null
           criado?: string | null
+          data_confirmacao_ficha?: string | null
+          data_criacao_ficha?: string | null
+          date_modify?: string | null
           deleted?: boolean | null
           email?: string | null
           etapa?: string | null
+          etapa_fluxo?: string | null
+          etapa_funil?: string | null
           ficha_confirmada?: string | null
+          fonte?: string | null
           foto?: string | null
+          horario_agendamento?: string | null
           id?: number
           last_sync_at?: string | null
           latitude?: number | null
@@ -128,16 +155,25 @@ export type Database = {
           local_da_abordagem?: string | null
           localizacao?: string | null
           longitude?: number | null
+          maxsystem_id_ficha?: string | null
           nome?: string | null
+          nome_modelo?: string | null
+          op_telemarketing?: string | null
           presenca_confirmada?: boolean | null
           projeto?: string | null
           raw?: Json | null
+          responsible?: string | null
+          responsible_user_id?: string | null
           scouter?: string | null
           scouter_id?: number | null
+          status_fluxo?: string | null
+          status_tabulacao?: string | null
           supervisor?: string | null
           sync_source?: string | null
           sync_status?: string | null
           telefone?: string | null
+          telefone_casa?: string | null
+          telefone_trabalho?: string | null
           updated_at?: string | null
           valor_ficha?: number | null
         }
@@ -146,14 +182,23 @@ export type Database = {
           analisado_em?: string | null
           analisado_por?: string | null
           aprovado?: boolean | null
+          cadastro_existe_foto?: boolean | null
+          celular?: string | null
           commercial_project_id?: string | null
           compareceu?: boolean | null
           criado?: string | null
+          data_confirmacao_ficha?: string | null
+          data_criacao_ficha?: string | null
+          date_modify?: string | null
           deleted?: boolean | null
           email?: string | null
           etapa?: string | null
+          etapa_fluxo?: string | null
+          etapa_funil?: string | null
           ficha_confirmada?: string | null
+          fonte?: string | null
           foto?: string | null
+          horario_agendamento?: string | null
           id?: number
           last_sync_at?: string | null
           latitude?: number | null
@@ -161,16 +206,25 @@ export type Database = {
           local_da_abordagem?: string | null
           localizacao?: string | null
           longitude?: number | null
+          maxsystem_id_ficha?: string | null
           nome?: string | null
+          nome_modelo?: string | null
+          op_telemarketing?: string | null
           presenca_confirmada?: boolean | null
           projeto?: string | null
           raw?: Json | null
+          responsible?: string | null
+          responsible_user_id?: string | null
           scouter?: string | null
           scouter_id?: number | null
+          status_fluxo?: string | null
+          status_tabulacao?: string | null
           supervisor?: string | null
           sync_source?: string | null
           sync_status?: string | null
           telefone?: string | null
+          telefone_casa?: string | null
+          telefone_trabalho?: string | null
           updated_at?: string | null
           valor_ficha?: number | null
         }
