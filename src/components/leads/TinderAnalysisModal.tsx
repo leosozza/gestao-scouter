@@ -157,7 +157,7 @@ export function TinderAnalysisModal({ open, onClose, leads, onComplete }: Tinder
                           {(lead.nome || 'U').charAt(0).toUpperCase()}
                         </div>
                       )}
-                      {lead.cadastro_existe_foto === 'SIM' && (
+                      {(lead.cadastro_existe_foto === 'SIM' || lead.cadastro_existe_foto === true) && (
                         <Badge className="absolute top-4 right-4 bg-green-500">
                           Foto Cadastrada
                         </Badge>
