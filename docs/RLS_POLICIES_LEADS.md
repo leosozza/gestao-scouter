@@ -32,7 +32,42 @@ SELECT
 
 ## 🎯 Recommended RLS Policies
 
-### Policy 1: Allow Authenticated Users to Read Non-Deleted Leads
+### Policy 1: Allow Service Role to Perform UPSERT (Critical for TabuladorMax Sync)
+
+**Purpose:** Enable TabuladorMax to sync leads via service_role
+
+```sql
+-- Create policy for service_role UPSERT operations
+CREATE POLICY "service_role_upsert_leads"
+  ON public.leads
+  FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+COMMENT ON POLICY "service_role_upsert_leads" ON public.leads IS 
+  'Permite que service_role (usado pelo TabuladorMax) faça UPSERT de leads via sincronização';
+```
+
+**What it does:**
+- Allows service_role to INSERT, UPDATE, SELECT, and DELETE
+- Required for TabuladorMax batch exports using `Prefer: resolution=merge-duplicates`
+- Uses `USING (true)` to allow reading any row (needed for UPSERT existence check)
+- Uses `WITH CHECK (true)` to allow writing any row (needed for INSERT/UPDATE)
+
+**Security:**
+- Only applies to `service_role` (not regular users)
+- Regular users still require their own specific policies
+- Maintains audit trail via `created_at`/`updated_at`
+
+**Why it's necessary:**
+- UPSERT operations require both INSERT and UPDATE permissions simultaneously
+- Without this policy, you'll see "new row violates row-level security policy" errors
+- Service role needs full access to perform batch synchronization
+
+---
+
+### Policy 2: Allow Authenticated Users to Read Non-Deleted Leads
 
 **Purpose:** Enable all authenticated users to view active leads
 
@@ -56,7 +91,7 @@ USING (
 - Automatically filters out soft-deleted records
 - Simple and permissive for dashboard/reports
 
-### Policy 2: Allow Authenticated Users to Insert Leads
+### Policy 3: Allow Authenticated Users to Insert Leads
 
 **Purpose:** Enable lead creation through the UI
 
@@ -83,7 +118,7 @@ WITH CHECK (
 - Ensures new leads are not created as deleted
 - Basic validation at the RLS level
 
-### Policy 3: Allow Users to Update Their Own Leads (Optional)
+### Policy 4: Allow Users to Update Their Own Leads (Optional)
 
 **Purpose:** Enable users to edit leads they created
 
@@ -132,7 +167,7 @@ USING (deleted = false OR deleted IS NULL)
 WITH CHECK (true);
 ```
 
-### Policy 4: Allow Soft Delete (Admins Only)
+### Policy 5: Allow Soft Delete (Admins Only)
 
 **Purpose:** Enable soft-delete for authorized users only
 

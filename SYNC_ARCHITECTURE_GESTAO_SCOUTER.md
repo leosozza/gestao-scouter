@@ -26,15 +26,35 @@
 ## 🔧 Setup Necessário
 
 ### No Gestão Scouter (já configurado):
+
+**Tabela `public.leads`** com 49 campos (ver mapeamento completo em `PROMPT_TABULADORMAX.md`)
+
+**🔒 Política RLS Obrigatória:**
+
 ```sql
--- Tabela leads com schema completo (49 campos)
--- RLS Policy para permitir acesso via service_role
-CREATE POLICY "Allow service_role full access"
-ON public.leads FOR ALL
-TO service_role
-USING (true)
-WITH CHECK (true);
+-- Permite UPSERT do TabuladorMax via service_role
+CREATE POLICY "service_role_upsert_leads"
+  ON public.leads
+  FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+COMMENT ON POLICY "service_role_upsert_leads" ON public.leads IS 
+  'Permite que service_role (usado pelo TabuladorMax) faça UPSERT de leads via sincronização';
 ```
+
+**Por que é necessária:**
+- TabuladorMax usa `service_role_key` do Gestão Scouter para autenticação
+- Operação UPSERT requer permissões de INSERT e UPDATE simultaneamente
+- `FOR ALL` cobre todas as operações (INSERT, UPDATE, DELETE, SELECT)
+- `TO service_role` limita a política apenas ao role de serviço
+- Sem esta política: erro "new row violates row-level security policy"
+
+**Segurança:**
+- Aplica-se apenas ao `service_role` (não afeta usuários comuns)
+- Usuários autenticados continuam com políticas específicas
+- Mantém auditoria via `created_at`/`updated_at`
 
 ### No TabuladorMax (já configurado):
 - Credenciais do Gestão Scouter (URL + Service Key)

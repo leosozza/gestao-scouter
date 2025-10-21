@@ -49,6 +49,35 @@ Este prompt deve ser aplicado no projeto **TabuladorMax** para validar e corrigi
 
 ---
 
+## 🔒 Pré-requisito: Política RLS no Gestão Scouter
+
+**⚠️ CRÍTICO:** Antes de testar a sincronização, verifique se a seguinte política RLS está ativa no Gestão Scouter:
+
+```sql
+CREATE POLICY "service_role_upsert_leads"
+  ON public.leads
+  FOR ALL
+  TO service_role
+  USING (true)
+  WITH CHECK (true);
+```
+
+**Por que é necessária:**
+- TabuladorMax usa `service_role_key` para enviar dados
+- UPSERT requer permissões de INSERT e UPDATE simultaneamente
+- Sem ela: erro "new row violates row-level security policy"
+
+**Verificar se existe:**
+```sql
+SELECT policyname, cmd, roles, qual, with_check
+FROM pg_policies
+WHERE tablename = 'leads' AND policyname = 'service_role_upsert_leads';
+```
+
+**Resultado esperado:** Deve retornar 1 linha com a política configurada
+
+---
+
 ## ✅ Checklist de Validação
 
 ### 1. Edge Function Obrigatória
