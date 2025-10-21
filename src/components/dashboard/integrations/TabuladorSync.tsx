@@ -232,11 +232,11 @@ export function TabuladorSync() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          {log.records_synced.toLocaleString('pt-BR')}
+                          {(log.records_synced ?? 0).toLocaleString('pt-BR')}
                         </TableCell>
                         <TableCell className="text-right">
-                          <span className={log.records_failed > 0 ? 'text-destructive' : ''}>
-                            {log.records_failed.toLocaleString('pt-BR')}
+                          <span className={(log.records_failed ?? 0) > 0 ? 'text-destructive' : ''}>
+                            {(log.records_failed ?? 0).toLocaleString('pt-BR')}
                           </span>
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
