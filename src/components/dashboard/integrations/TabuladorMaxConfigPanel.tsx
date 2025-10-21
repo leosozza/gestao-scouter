@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Database,
   CheckCircle,
@@ -14,6 +15,7 @@ import {
   TestTube2,
   Eye,
   EyeOff,
+  ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getTabuladorConfig, saveTabuladorConfig, testTabuladorConnection } from '@/repositories/tabuladorConfigRepo';
@@ -31,6 +33,19 @@ export function TabuladorMaxConfigPanel() {
   const [isTesting, setIsTesting] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string; count?: number } | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Determinar status da conexão
+  const getConnectionStatus = () => {
+    if (testResult?.success) return { color: 'bg-green-500', label: 'Conectado' };
+    if (testResult?.success === false) return { color: 'bg-yellow-500', label: 'Erro' };
+    if (!config.project_id || !config.url || !config.publishable_key) {
+      return { color: 'bg-red-500', label: 'Desconectado' };
+    }
+    return { color: 'bg-gray-400', label: 'Não testado' };
+  };
+
+  const status = getConnectionStatus();
 
   useEffect(() => {
     loadConfig();
@@ -120,18 +135,29 @@ export function TabuladorMaxConfigPanel() {
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <Database className="h-6 w-6" />
-          <div>
-            <CardTitle>Configuração do TabuladorMax</CardTitle>
-            <CardDescription>
-              Configure a conexão com o banco de dados do TabuladorMax
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CardHeader className="pb-3">
+          <CollapsibleTrigger className="flex items-center justify-between w-full hover:opacity-80 transition-opacity">
+            <div className="flex items-center gap-3">
+              <Database className="h-6 w-6" />
+              <div className="text-left">
+                <CardTitle className="flex items-center gap-2">
+                  Configuração do TabuladorMax
+                  <div className="flex items-center gap-2">
+                    <div className={`h-2.5 w-2.5 rounded-full ${status.color} animate-pulse`} />
+                    <span className="text-xs font-normal text-muted-foreground">{status.label}</span>
+                  </div>
+                </CardTitle>
+                <CardDescription>
+                  Configure a conexão com o banco de dados do TabuladorMax
+                </CardDescription>
+              </div>
+            </div>
+            <ChevronDown className={`h-5 w-5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent className="space-y-6">
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -264,7 +290,9 @@ export function TabuladorMaxConfigPanel() {
             </div>
           </div>
         </div>
-      </CardContent>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }
