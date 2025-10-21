@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, CheckCircle2, Database, AlertCircle, Info } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { RefreshCw, CheckCircle2, Database, AlertCircle, Info, Stethoscope } from 'lucide-react';
 import { supabase } from '@/lib/supabase-helper';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { toast } from 'sonner';
 
 interface SyncStatus {
   id: string;
@@ -32,6 +34,7 @@ export function TabuladorSync() {
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
 
   const loadSyncStatus = async () => {
     try {
@@ -66,6 +69,80 @@ export function TabuladorSync() {
       }
     } catch (error) {
       console.error('Erro ao carregar sync logs:', error);
+    }
+  };
+
+  const runDiagnostic = async () => {
+    setIsDiagnosing(true);
+    
+    try {
+      console.log('🔍 Executando diagnóstico RLS...');
+      
+      const { data, error } = await supabase.functions.invoke('diagnose-gestao-rls', {
+        body: {}
+      });
+
+      if (error) {
+        console.error('Erro ao executar diagnóstico:', error);
+        toast.error('Erro ao executar diagnóstico', {
+          description: error.message
+        });
+        return;
+      }
+
+      console.log('Resultado do diagnóstico:', data);
+
+      // Analisar resultados
+      const results = data as any;
+      const allTestsPassed = results.success;
+      
+      if (allTestsPassed) {
+        toast.success('✅ Diagnóstico Completo', {
+          description: 'Todas as verificações passaram! Sistema configurado corretamente.',
+          duration: 5000
+        });
+      } else {
+        // Mostrar problemas encontrados
+        const problems = [];
+        if (results.tests.connection.status === 'error') {
+          problems.push(`Conexão: ${results.tests.connection.message}`);
+        }
+        if (results.tests.rls_policies.status === 'error') {
+          problems.push(`RLS: ${results.tests.rls_policies.message}`);
+        }
+        if (results.tests.schema_reload.status === 'error') {
+          problems.push(`Schema: ${results.tests.schema_reload.message}`);
+        }
+        if (results.tests.upsert_test.status === 'error') {
+          problems.push(`UPSERT: ${results.tests.upsert_test.message}`);
+        }
+
+        toast.error('❌ Problemas Encontrados', {
+          description: problems.join(' | '),
+          duration: 8000
+        });
+
+        // Mostrar recomendações
+        if (results.recommendations?.length > 0) {
+          setTimeout(() => {
+            toast.info('📋 Recomendações', {
+              description: results.recommendations.join(' • '),
+              duration: 10000
+            });
+          }, 1000);
+        }
+      }
+
+      // Recarregar dados após diagnóstico
+      await Promise.all([loadSyncStatus(), loadSyncLogs()]);
+
+    } catch (error) {
+      console.error('Erro fatal no diagnóstico:', error);
+      toast.error('Erro Fatal', {
+        description: error instanceof Error ? error.message : 'Erro desconhecido ao executar diagnóstico'
+      });
+    } finally {
+      setIsDiagnosing(false);
     }
   };
 
@@ -109,22 +186,42 @@ export function TabuladorSync() {
                 </CardDescription>
               </div>
             </div>
-            <Badge 
-              variant={syncStatus?.last_sync_success ? 'default' : 'secondary'}
-              className="text-sm"
-            >
-              {syncStatus?.last_sync_success ? (
-                <>
-                  <CheckCircle2 className="h-4 w-4 mr-1" />
-                  Ativo
-                </>
-              ) : (
-                <>
-                  <AlertCircle className="h-4 w-4 mr-1" />
-                  Aguardando Dados
-                </>
-              )}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={runDiagnostic}
+                disabled={isDiagnosing}
+                variant="outline"
+                size="sm"
+              >
+                {isDiagnosing ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Diagnosticando...
+                  </>
+                ) : (
+                  <>
+                    <Stethoscope className="h-4 w-4 mr-2" />
+                    Diagnóstico RLS
+                  </>
+                )}
+              </Button>
+              <Badge 
+                variant={syncStatus?.last_sync_success ? 'default' : 'secondary'}
+                className="text-sm"
+              >
+                {syncStatus?.last_sync_success ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 mr-1" />
+                    Ativo
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    Aguardando Dados
+                  </>
+                )}
+              </Badge>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">

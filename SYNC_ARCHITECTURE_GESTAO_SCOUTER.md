@@ -194,12 +194,39 @@ EXECUTE FUNCTION notify_tabulador_on_lead_change();
 - Nenhuma configuração adicional necessária
 - Dados aparecem assim que são enviados do TabuladorMax
 
+## 🔧 Diagnóstico e Troubleshooting
+
+### Botão "Diagnóstico RLS" na UI
+
+O painel de sincronização possui um botão **"Diagnóstico RLS"** que executa automaticamente:
+- ✅ Teste de conexão com tabela `leads`
+- ✅ Verificação de políticas RLS
+- ✅ Reload de schema cache
+- ✅ Teste de UPSERT
+
+### Erro 42501 - Insufficient Privilege
+
+Se receber erro **42501**, significa que a política RLS está incorreta ou schema cache desatualizado.
+
+**Solução Rápida:**
+1. Clique em **"Diagnóstico RLS"** no painel de integrações
+2. Aguarde os resultados aparecerem
+3. Siga as recomendações apresentadas
+
+**Solução Manual:**
+```sql
+NOTIFY pgrst, 'reload schema';
+```
+
+Aguarde 10 segundos e tente novamente.
+
 ## 📚 Documentação Relacionada
 
+- [DIAGNOSTICO_RLS.md](./docs/DIAGNOSTICO_RLS.md) - Guia completo de diagnóstico
 - [README.md](./README.md) - Visão geral do projeto
 - [LEADS_DATA_SOURCE.md](./LEADS_DATA_SOURCE.md) - Arquitetura de dados
-- [CSV_IMPORT_GUIDE.md](./CSV_IMPORT_GUIDE.md) - Importação massiva
-- Documentação do TabuladorMax: `GESTAO_SCOUTER_EXPORT_GUIDE.md`
+- Edge Function: `supabase/functions/diagnose-gestao-rls/index.ts`
+- Componente UI: `src/components/dashboard/integrations/TabuladorSync.tsx`
 
 ---
 

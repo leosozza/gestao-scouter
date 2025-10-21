@@ -1,1 +1,4 @@
 project_id = "jstsrgyxrrlklnzgsihd"
+
+[functions.diagnose-gestao-rls]
+verify_jwt = false
