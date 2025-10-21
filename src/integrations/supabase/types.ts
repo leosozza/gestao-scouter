@@ -109,9 +109,11 @@ export type Database = {
           localizacao: string | null
           longitude: number | null
           maxsystem_id_ficha: string | null
+          modificado: string | null
           nome: string | null
           nome_modelo: string | null
           op_telemarketing: string | null
+          origem_sincronizacao: string | null
           presenca_confirmada: boolean | null
           projeto: string | null
           raw: Json | null
@@ -127,6 +129,7 @@ export type Database = {
           telefone: string | null
           telefone_casa: string | null
           telefone_trabalho: string | null
+          ultima_sincronizacao: string | null
           updated_at: string | null
           valor_ficha: number | null
         }
@@ -164,9 +167,11 @@ export type Database = {
           localizacao?: string | null
           longitude?: number | null
           maxsystem_id_ficha?: string | null
+          modificado?: string | null
           nome?: string | null
           nome_modelo?: string | null
           op_telemarketing?: string | null
+          origem_sincronizacao?: string | null
           presenca_confirmada?: boolean | null
           projeto?: string | null
           raw?: Json | null
@@ -182,6 +187,7 @@ export type Database = {
           telefone?: string | null
           telefone_casa?: string | null
           telefone_trabalho?: string | null
+          ultima_sincronizacao?: string | null
           updated_at?: string | null
           valor_ficha?: number | null
         }
@@ -219,9 +225,11 @@ export type Database = {
           localizacao?: string | null
           longitude?: number | null
           maxsystem_id_ficha?: string | null
+          modificado?: string | null
           nome?: string | null
           nome_modelo?: string | null
           op_telemarketing?: string | null
+          origem_sincronizacao?: string | null
           presenca_confirmada?: boolean | null
           projeto?: string | null
           raw?: Json | null
@@ -237,6 +245,7 @@ export type Database = {
           telefone?: string | null
           telefone_casa?: string | null
           telefone_trabalho?: string | null
+          ultima_sincronizacao?: string | null
           updated_at?: string | null
           valor_ficha?: number | null
         }
