@@ -146,9 +146,10 @@ serve(async (req) => {
             stats.updated++
           }
         } catch (err) {
-          console.error(`❌ [TabMax Sync] Exceção ao processar lead ${lead.id}:`, err)
+          const error = err instanceof Error ? err : new Error(String(err))
+          console.error(`❌ [TabMax Sync] Exceção ao processar lead ${lead.id}:`, error)
           stats.failed++
-          stats.errors.push(`Lead ${lead.id}: ${err.message}`)
+          stats.errors.push(`Lead ${lead.id}: ${error.message}`)
         }
       }
 
@@ -185,7 +186,8 @@ serve(async (req) => {
       },
     )
 
-  } catch (error) {
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error(String(err))
     console.error('❌ [TabMax Sync] Erro fatal:', error)
     
     return new Response(

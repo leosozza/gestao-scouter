@@ -113,7 +113,7 @@ serve(async (req) => {
 
     // Validar API key
     const apiKey = req.headers.get('x-api-key') || request.api_key;
-    if (!validateApiKey(apiKey)) {
+    if (!apiKey || !validateApiKey(apiKey)) {
       return new Response(
         JSON.stringify({ 
           error: 'API key inválida',

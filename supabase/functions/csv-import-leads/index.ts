@@ -254,9 +254,10 @@ serve(async (req) => {
         }
 
       } catch (err) {
-        console.error(`❌ Exceção na linha ${i + 1}:`, err)
+        const error = err instanceof Error ? err : new Error(String(err))
+        console.error(`❌ Exceção na linha ${i + 1}:`, error)
         stats.failed++
-        stats.errors.push(`Linha ${i + 1}: ${err.message}`)
+        stats.errors.push(`Linha ${i + 1}: ${error.message}`)
       }
     }
 
@@ -287,7 +288,8 @@ serve(async (req) => {
       },
     )
 
-  } catch (error) {
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error(String(err))
     console.error('❌ [CSV Import] Erro fatal:', error)
     
     return new Response(

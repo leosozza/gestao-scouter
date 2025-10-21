@@ -64,7 +64,8 @@ async function detectDateField(client: any, tableName: string): Promise<string> 
         return 'criado'; // fallback
       }
     } catch (err) {
-      console.log(`   Tentativa com "${table}" falhou: ${err.message}`);
+      const error = err instanceof Error ? err : new Error(String(err))
+      console.log(`   Tentativa com "${table}" falhou: ${error.message}`);
     }
   }
   

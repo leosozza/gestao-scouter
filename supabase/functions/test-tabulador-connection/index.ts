@@ -75,17 +75,19 @@ serve(async (req) => {
     if (tabuladorUrl) {
       try {
         const urlObj = new URL(tabuladorUrl);
-        diagnostics.environment.url_valid = true;
-        diagnostics.environment.url_protocol = urlObj.protocol;
-        diagnostics.environment.url_hostname = urlObj.hostname;
+        const env = diagnostics.environment as Record<string, unknown>;
+        env.url_valid = true;
+        env.url_protocol = urlObj.protocol;
+        env.url_hostname = urlObj.hostname;
         
         logMessage(LogLevel.INFO, functionName, 'Environment variables validated', {
           url: urlObj.hostname,
           trace_id: traceId,
         });
       } catch (urlError) {
-        diagnostics.environment.url_valid = false;
-        diagnostics.environment.url_error = 'Invalid URL - must be format: https://project.supabase.co';
+        const env = diagnostics.environment as Record<string, unknown>;
+        env.url_valid = false;
+        env.url_error = 'Invalid URL - must be format: https://project.supabase.co';
         (diagnostics.errors as string[]).push(`Invalid URL: ${tabuladorUrl}`);
         (diagnostics.suggestions as string[]).push('Verify TABULADOR_URL format is correct');
         
