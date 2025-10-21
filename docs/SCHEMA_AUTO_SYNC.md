@@ -33,10 +33,11 @@ O Auto-Sync **analisa ambos os schemas**, identifica diferenças e adiciona auto
 1. Clique em **"Sincronizar Schema"**
 2. Confirme a ação no diálogo que aparecer
 3. Aguarde 5-15 segundos enquanto o sistema:
-   - Analisa o schema do TabuladorMax
-   - Analisa o schema do Gestão Scouter
-   - Identifica colunas faltantes
-   - Adiciona as colunas necessárias
+   - Chama TabuladorMax para exportar schema
+   - TabuladorMax lê schema local (via service_role interno)
+   - TabuladorMax envia schema para Gestão Scouter
+   - Gestão Scouter identifica colunas faltantes
+   - Gestão Scouter adiciona as colunas necessárias
    - Cria índices para otimização
    - Recarrega o schema cache
 
@@ -48,78 +49,125 @@ Você verá um toast com o resultado:
 - ✅ **Já atualizado:** "Todas as colunas já estão atualizadas!"
 - ❌ **Erro:** Mensagem detalhada do problema
 
+## 🔒 Segurança: Como Funciona Sem Service Role Keys
+
+O Auto-Sync funciona em dois passos usando Edge Functions que se comunicam via HTTP:
+
+### Arquitetura Nova (Lovable Cloud Compatible)
+
+```
+┌────────────────────────┐
+│  Gestão Scouter (UI)   │
+│  Botão: "Sincronizar   │
+│  Schema"               │
+└────────────┬───────────┘
+             │
+             │ 1. POST /export-schema
+             │    Auth: Bearer <tabulador_anon_key>
+             │    Body: { target_url, target_api_key }
+             │
+             ▼
+┌────────────────────────┐
+│   TabuladorMax         │
+│   export-schema        │
+│   Edge Function        │
+└────────────┬───────────┘
+             │
+             │ 2. Lê schema local
+             │    (usa service_role INTERNO)
+             │
+             │ 3. POST /receive-schema-from-tabulador
+             │    Auth: Bearer <gestao_anon_key>
+             │    Body: { columns: [...] }
+             │
+             ▼
+┌────────────────────────┐
+│  Gestão Scouter        │
+│  receive-schema        │
+│  Edge Function         │
+└────────────┬───────────┘
+             │
+             │ 4. Compara schemas
+             │ 5. Executa ALTER TABLE
+             │    (usa service_role INTERNO)
+             │ 6. Cria índices
+             │ 7. NOTIFY pgrst
+             │
+             ▼
+          ✅ Sucesso!
+```
+
+**Vantagens desta arquitetura:**
+- ✅ Service Role Keys nunca saem dos projetos (usados apenas internamente)
+- ✅ Comunicação via ANON_KEYs (seguras para exposição)
+- ✅ Funciona 100% no Lovable Cloud
+- ✅ Sem necessidade de configuração manual de secrets
+- ✅ Zero risco de vazamento de credenciais sensíveis
+
 ## 🔧 Como Funciona Internamente
 
-### Edge Function: `sync-schema-from-tabulador`
+### Edge Function 1: `export-schema` (TabuladorMax)
+
+⚠️ **IMPORTANTE:** Esta função precisa ser criada manualmente no TabuladorMax.
 
 ```typescript
-// 1. Conecta em ambos os projetos
-const tabuladorClient = createClient(TABULADOR_URL, TABULADOR_SERVICE_KEY);
-const gestaoClient = createClient(GESTAO_URL, GESTAO_SERVICE_KEY);
-
-// 2. Lê schemas via information_schema.columns
-const tabuladorColumns = await tabuladorClient
-  .from('information_schema.columns')
-  .select('column_name, data_type, is_nullable, column_default')
-  .eq('table_name', 'leads');
-
-const gestaoColumns = await gestaoClient
-  .from('information_schema.columns')
-  .select('column_name, data_type, is_nullable, column_default')
-  .eq('table_name', 'leads');
-
-// 3. Identifica colunas faltantes
-const missingColumns = tabuladorColumns.filter(
-  col => !gestaoColumns.find(gc => gc.column_name === col.column_name)
+// Lê schema local usando service_role INTERNO
+const localClient = createClient(
+  Deno.env.get('SUPABASE_URL'),           // URL do TabuladorMax (automático)
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') // Service Role INTERNO (automático)
 );
 
-// 4. Gera SQL
-ALTER TABLE public.leads
-ADD COLUMN IF NOT EXISTS campo_novo_1 TEXT,
-ADD COLUMN IF NOT EXISTS campo_novo_2 INTEGER,
-ADD COLUMN IF NOT EXISTS campo_novo_3 TIMESTAMPTZ;
+const { data: columns } = await localClient
+  .from('information_schema.columns')
+  .select('*')
+  .eq('table_name', 'leads');
 
-// 5. Cria índices
-CREATE INDEX IF NOT EXISTS idx_leads_campo_novo_1 ON public.leads(campo_novo_1);
-
-// 6. Recarrega cache
-NOTIFY pgrst, 'reload schema';
+// Envia para Gestão Scouter
+await fetch(`${target_url}/functions/v1/receive-schema-from-tabulador`, {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${target_api_key}`, // ANON_KEY do Gestão (seguro)
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ columns })
+});
 ```
 
-### Fluxo de Dados
+**📚 Guia completo:** Ver `docs/TABULADORMAX_EXPORT_SCHEMA_GUIDE.md` para instruções detalhadas de como criar esta função no TabuladorMax.
 
+---
+
+### Edge Function 2: `receive-schema-from-tabulador` (Gestão Scouter)
+
+✅ **JÁ IMPLEMENTADA** no Gestão Scouter.
+
+```typescript
+// Recebe schema do TabuladorMax
+const { columns } = await req.json();
+
+// Lê schema local usando service_role INTERNO
+const gestaoClient = createClient(
+  Deno.env.get('SUPABASE_URL'),           // URL do Gestão (automático)
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') // Service Role INTERNO (automático)
+);
+
+const { data: localColumns } = await gestaoClient
+  .from('information_schema.columns')
+  .select('*')
+  .eq('table_name', 'leads');
+
+// Compara e adiciona colunas faltantes
+const missingColumns = columns.filter(
+  col => !localColumns.find(lc => lc.column_name === col.column_name)
+);
+
+// Executa ALTER TABLE
+await gestaoClient.rpc('exec_sql', {
+  sql: `ALTER TABLE public.leads ADD COLUMN ...`
+});
 ```
-┌─────────────────────┐
-│   TabuladorMax      │
-│   Schema Analysis   │
-└──────────┬──────────┘
-           │
-           │ Read information_schema.columns
-           │
-           ▼
-┌─────────────────────┐
-│  Gestão Scouter     │
-│  Schema Analysis    │
-└──────────┬──────────┘
-           │
-           │ Compare schemas
-           │
-           ▼
-┌─────────────────────┐
-│  Generate SQL       │
-│  - ALTER TABLE      │
-│  - CREATE INDEX     │
-│  - NOTIFY pgrst     │
-└──────────┬──────────┘
-           │
-           │ Execute SQL
-           │
-           ▼
-┌─────────────────────┐
-│  Gestão Scouter     │
-│  Schema Updated ✅  │
-└─────────────────────┘
-```
+
+---
 
 ## 📊 Mapeamento de Tipos
 
@@ -162,40 +210,44 @@ NOTIFY pgrst, 'reload schema';
 
 ### Validações Implementadas:
 
-1. **Credenciais:** Verifica se todas as credenciais estão configuradas
-2. **Conexão:** Testa conexão com ambos os projetos
+1. **Credenciais:** Verifica se todas as credenciais estão disponíveis
+2. **Conexão:** Testa comunicação entre projetos
 3. **Tipos:** Apenas adiciona colunas com tipos suportados
 4. **Idempotência:** Pode ser executado múltiplas vezes sem erro
 5. **Logs:** Registra todas as operações para auditoria
 
 ## 🐛 Troubleshooting
 
-### Erro: "Credenciais do TabuladorMax não configuradas"
+### Erro: "Erro ao chamar TabuladorMax"
 
-**Causa:** Secrets `TABULADOR_URL` ou `TABULADOR_SERVICE_KEY` não estão definidos.
-
-**Solução:**
-1. Acesse o painel de configurações
-2. Adicione os secrets necessários
-3. Tente novamente
-
-### Erro: "Erro ao ler schema do TabuladorMax"
-
-**Causa:** Problema de conexão ou permissão no TabuladorMax.
+**Causa:** Edge Function `export-schema` não existe no TabuladorMax.
 
 **Solução:**
-1. Verifique se a URL está correta
-2. Verifique se a Service Key tem permissão
-3. Teste a conexão manualmente
+1. Consulte `docs/TABULADORMAX_EXPORT_SCHEMA_GUIDE.md`
+2. Crie a Edge Function no TabuladorMax
+3. Faça deploy da função
+4. Tente novamente
 
-### Erro: "Tipo não suportado"
+### Erro: "target_url e target_api_key são obrigatórios"
 
-**Causa:** TabuladorMax possui colunas com tipos personalizados ou enums.
+**Causa:** Configuração incorreta na UI.
 
 **Solução:**
-1. Verifique os logs para ver qual tipo não é suportado
-2. Adicione o tipo no mapeamento da edge function
-3. Ou crie a coluna manualmente no SQL Editor
+1. Verifique se os secrets estão configurados corretamente
+2. Confirme URLs do TabuladorMax e Gestão Scouter
+3. Verifique ANON_KEYS de ambos os projetos
+
+### Erro: "401 Unauthorized"
+
+**Causa:** ANON_KEY incorreto ou Edge Function com `verify_jwt = true`.
+
+**Solução:**
+1. Verifique `supabase/config.toml` no TabuladorMax:
+   ```toml
+   [functions.export-schema]
+   verify_jwt = false  # DEVE SER false
+   ```
+2. Confirme ANON_KEYS corretos
 
 ### Sincronização não reflete imediatamente
 
@@ -253,31 +305,37 @@ Após executar o Auto-Sync, verifique:
 
 ## 🔗 Arquivos Relacionados
 
-- **Edge Function:** `supabase/functions/sync-schema-from-tabulador/index.ts`
+### No Gestão Scouter (✅ Implementado):
+- **Edge Function:** `supabase/functions/receive-schema-from-tabulador/index.ts`
 - **UI Component:** `src/components/dashboard/integrations/TabuladorSync.tsx`
 - **Configuração:** `supabase/config.toml`
 - **Arquitetura:** `SYNC_ARCHITECTURE_GESTAO_SCOUTER.md`
 - **Diagnóstico:** `docs/DIAGNOSTICO_RLS.md`
 
+### No TabuladorMax (⚠️ Precisa ser criado):
+- **Edge Function:** `supabase/functions/export-schema/index.ts`
+- **Guia de Implementação:** `docs/TABULADORMAX_EXPORT_SCHEMA_GUIDE.md`
+
 ## 💡 Dicas
 
 1. **Execute periodicamente:** Faça Auto-Sync após cada atualização no TabuladorMax
-2. **Verifique logs:** Sempre confira os logs da edge function para detalhes
-3. **Dry-run disponível:** Você pode chamar a edge function com `dry_run: true` para apenas ver o que seria feito
-4. **Índices automáticos:** O sistema cria índices apenas para colunas que precisam
-5. **Idempotente:** Seguro executar múltiplas vezes
+2. **Verifique logs:** Sempre confira os logs das edge functions para detalhes
+3. **Idempotente:** Seguro executar múltiplas vezes
+4. **Teste antes:** Use curl para testar manualmente se necessário
+5. **Monitore erros:** Fique atento a erros 401 (autenticação)
 
 ## 📞 Suporte
 
 Se o Auto-Sync não resolver seu problema:
 
 1. Execute "Diagnóstico RLS" para análise detalhada
-2. Confira os logs da edge function no console
+2. Confira os logs das edge functions no console
 3. Verifique se as credenciais estão corretas
 4. Consulte `SYNC_ARCHITECTURE_GESTAO_SCOUTER.md`
 5. Consulte `docs/DIAGNOSTICO_RLS.md`
+6. Verifique `docs/TABULADORMAX_EXPORT_SCHEMA_GUIDE.md`
 
 ---
 
 **Última atualização:** 2025-10-21  
-**Status:** ✅ Implementado e funcional
+**Status:** ✅ Implementado no Gestão Scouter | ⚠️ Aguardando implementação no TabuladorMax

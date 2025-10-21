@@ -152,44 +152,70 @@ export function TabuladorSync() {
     setIsSyncingSchema(true);
     
     try {
-      console.log('🔄 Sincronizando schema com TabuladorMax...');
-      
-      const { data, error } = await supabase.functions.invoke('sync-schema-from-tabulador', {
-        body: { dry_run: false }
-      });
+      console.log('🔄 Solicitando schema do TabuladorMax...');
 
-      if (error) {
-        console.error('Erro ao sincronizar schema:', error);
-        toast.error('Erro ao sincronizar schema', {
-          description: error.message
+      // Get TabuladorMax configuration
+      const TABULADOR_URL = import.meta.env.VITE_TABULADOR_URL;
+      const TABULADOR_ANON_KEY = import.meta.env.VITE_TABULADOR_ANON_KEY;
+      const GESTAO_URL = import.meta.env.VITE_SUPABASE_URL;
+      const GESTAO_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      if (!TABULADOR_URL || !TABULADOR_ANON_KEY) {
+        toast.error('❌ Configuração Incompleta', {
+          description: 'Credenciais do TabuladorMax não configuradas',
+          duration: 8000
         });
         return;
       }
+      
+      // Call TabuladorMax to export schema
+      console.log('📤 Chamando TabuladorMax para exportar schema...');
+      
+      const response = await fetch(`${TABULADOR_URL}/functions/v1/export-schema`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${TABULADOR_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'apikey': TABULADOR_ANON_KEY,
+        },
+        body: JSON.stringify({
+          target_url: GESTAO_URL,
+          target_api_key: GESTAO_ANON_KEY,
+        }),
+      });
 
-      console.log('Resultado da sincronização:', data);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erro ao chamar TabuladorMax: ${response.status} - ${errorText}`);
+      }
 
-      const result = data as any;
+      const result = await response.json();
+      console.log('Resultado da sincronização:', result);
       
       if (result.success) {
-        if (result.columns_added.length === 0) {
+        const targetResult = result.target_response;
+        
+        if (targetResult?.columns_added?.length === 0) {
           toast.success('✅ Schema Sincronizado', {
             description: 'Todas as colunas já estão atualizadas!',
             duration: 5000
           });
         } else {
           toast.success('✅ Schema Atualizado!', {
-            description: `${result.columns_added.length} coluna(s) adicionada(s) e ${result.indexes_created.length} índice(s) criado(s)`,
+            description: `${targetResult?.columns_added?.length || 0} coluna(s) adicionada(s) e ${targetResult?.indexes_created?.length || 0} índice(s) criado(s)`,
             duration: 8000
           });
 
           // Mostrar detalhes das colunas adicionadas
-          setTimeout(() => {
-            const columnNames = result.columns_added.map((c: any) => c.name).join(', ');
-            toast.info('📊 Colunas Adicionadas', {
-              description: columnNames,
-              duration: 10000
-            });
-          }, 1000);
+          if (targetResult?.columns_added?.length > 0) {
+            setTimeout(() => {
+              const columnNames = targetResult.columns_added.map((c: any) => c.name).join(', ');
+              toast.info('📊 Colunas Adicionadas', {
+                description: columnNames,
+                duration: 10000
+              });
+            }, 1000);
+          }
         }
 
         // Recarregar dados
