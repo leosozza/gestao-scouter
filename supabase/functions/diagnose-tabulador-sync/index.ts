@@ -14,6 +14,12 @@
  * 6. Teste de leitura de dados
  * 7. Análise de estrutura de dados
  * 
+ * Melhorias:
+ * - Logging estruturado em JSON para rastreabilidade
+ * - Métricas de performance detalhadas
+ * - Notificações Bitrix opcionais para problemas críticos
+ * - Trace IDs para correlação de logs
+ * 
  * Deploy:
  * supabase functions deploy diagnose-tabulador-sync
  * 
@@ -23,14 +29,21 @@
 
 import { serve } from "https://deno.land/std@0.193.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
-};
+import {
+  CORS_HEADERS,
+  LogLevel,
+  logMessage,
+  generateTraceId,
+  jsonResponse,
+  handleCorsPreFlight,
+  extractSupabaseError,
+  PerformanceTimer,
+  sendBitrixNotification,
+} from '../_shared/sync-utils.ts';
 
 interface DiagnosticResult {
   timestamp: string;
+  trace_id: string;
   overall_status: 'ok' | 'warning' | 'error';
   tests: {
     environment: TestResult;
@@ -42,6 +55,8 @@ interface DiagnosticResult {
   };
   recommendations: string[];
   errors: string[];
+  total_duration_ms?: number;
+  bitrix_notification_sent?: boolean;
 }
 
 interface TestResult {
@@ -54,10 +69,13 @@ interface TestResult {
 /**
  * Testa variáveis de ambiente
  */
-async function testEnvironment(): Promise<TestResult> {
+async function testEnvironment(traceId: string): Promise<TestResult> {
   const start = Date.now();
+  const functionName = 'diagnose-tabulador-sync:testEnvironment';
   
   try {
+    logMessage(LogLevel.INFO, functionName, 'Testing environment variables', { trace_id: traceId });
+
     const tabuladorUrl = Deno.env.get('TABULADOR_URL') ?? '';
     const tabuladorKey = Deno.env.get('TABULADOR_SERVICE_KEY') ?? '';
     
@@ -66,13 +84,18 @@ async function testEnvironment(): Promise<TestResult> {
     if (!tabuladorKey) missing.push('TABULADOR_SERVICE_KEY');
     
     if (missing.length > 0) {
+      logMessage(LogLevel.ERROR, functionName, 'Missing environment variables', {
+        missing,
+        trace_id: traceId,
+      });
+
       return {
         status: 'error',
-        message: `Variáveis de ambiente faltando: ${missing.join(', ')}`,
+        message: `Missing environment variables: ${missing.join(', ')}`,
         details: {
-          TABULADOR_URL: tabuladorUrl ? '✅ Configurada' : '❌ Faltando',
-          TABULADOR_SERVICE_KEY: tabuladorKey ? '✅ Configurada' : '❌ Faltando',
-          instructions: 'Configure no Supabase Dashboard → Project Settings → Edge Functions → Secrets'
+          TABULADOR_URL: tabuladorUrl ? '✅ Configured' : '❌ Missing',
+          TABULADOR_SERVICE_KEY: tabuladorKey ? '✅ Configured' : '❌ Missing',
+          instructions: 'Configure in Supabase Dashboard → Project Settings → Edge Functions → Secrets'
         },
         duration_ms: Date.now() - start
       };
@@ -85,13 +108,19 @@ async function testEnvironment(): Promise<TestResult> {
       const urlObj = new URL(tabuladorUrl);
       urlValid = true;
     } catch (e) {
-      urlError = e instanceof Error ? e.message : 'URL inválida';
+      urlError = e instanceof Error ? e.message : 'Invalid URL';
     }
     
     if (!urlValid) {
+      logMessage(LogLevel.ERROR, functionName, 'Invalid TABULADOR_URL format', {
+        url: tabuladorUrl,
+        error: urlError,
+        trace_id: traceId,
+      });
+
       return {
         status: 'error',
-        message: 'TABULADOR_URL inválida',
+        message: 'Invalid TABULADOR_URL',
         details: {
           url: tabuladorUrl,
           error: urlError,
@@ -101,9 +130,15 @@ async function testEnvironment(): Promise<TestResult> {
       };
     }
     
+    logMessage(LogLevel.INFO, functionName, 'Environment variables validated successfully', {
+      url: tabuladorUrl,
+      trace_id: traceId,
+      duration_ms: Date.now() - start,
+    });
+
     return {
       status: 'ok',
-      message: 'Variáveis de ambiente configuradas corretamente',
+      message: 'Environment variables configured correctly',
       details: {
         url: tabuladorUrl,
         key_configured: true,
@@ -112,9 +147,15 @@ async function testEnvironment(): Promise<TestResult> {
       duration_ms: Date.now() - start
     };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Error testing environment';
+    
+    logMessage(LogLevel.ERROR, functionName, errorMessage, {
+      trace_id: traceId,
+    });
+
     return {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Erro ao testar ambiente',
+      message: errorMessage,
       duration_ms: Date.now() - start
     };
   }
@@ -123,11 +164,15 @@ async function testEnvironment(): Promise<TestResult> {
 /**
  * Testa conectividade com TabuladorMax
  */
-async function testConnectivity(tabuladorUrl: string, tabuladorKey: string): Promise<TestResult> {
+async function testConnectivity(tabuladorUrl: string, tabuladorKey: string, traceId: string): Promise<TestResult> {
   const start = Date.now();
+  const functionName = 'diagnose-tabulador-sync:testConnectivity';
   
   try {
-    console.log('🔌 [Diagnostic] Testando conectividade...');
+    logMessage(LogLevel.INFO, functionName, 'Testing connectivity', {
+      url: tabuladorUrl,
+      trace_id: traceId,
+    });
     
     const tabulador = createClient(tabuladorUrl, tabuladorKey, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -190,11 +235,15 @@ async function testConnectivity(tabuladorUrl: string, tabuladorKey: string): Pro
 /**
  * Testa autenticação e credenciais
  */
-async function testAuthentication(tabuladorUrl: string, tabuladorKey: string): Promise<TestResult> {
+async function testAuthentication(tabuladorUrl: string, tabuladorKey: string, traceId: string): Promise<TestResult> {
   const start = Date.now();
+  const functionName = 'diagnose-tabulador-sync:testAuthentication';
   
   try {
-    console.log('🔐 [Diagnostic] Testando autenticação...');
+    logMessage(LogLevel.INFO, functionName, 'Testing authentication', {
+      url: tabuladorUrl,
+      trace_id: traceId,
+    });
     
     const tabulador = createClient(tabuladorUrl, tabuladorKey, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -273,11 +322,14 @@ async function testAuthentication(tabuladorUrl: string, tabuladorKey: string): P
 /**
  * Lista e testa tabelas disponíveis
  */
-async function testTables(tabuladorUrl: string, tabuladorKey: string): Promise<TestResult> {
+async function testTables(tabuladorUrl: string, tabuladorKey: string, traceId: string): Promise<TestResult> {
   const start = Date.now();
+  const functionName = 'diagnose-tabulador-sync:testTables';
   
   try {
-    console.log('📊 [Diagnostic] Testando tabelas...');
+    logMessage(LogLevel.INFO, functionName, 'Testing tables', {
+      trace_id: traceId,
+    });
     
     const tabulador = createClient(tabuladorUrl, tabuladorKey, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -359,11 +411,14 @@ async function testTables(tabuladorUrl: string, tabuladorKey: string): Promise<T
 /**
  * Verifica permissões RLS
  */
-async function testPermissions(tabuladorUrl: string, tabuladorKey: string): Promise<TestResult> {
+async function testPermissions(tabuladorUrl: string, tabuladorKey: string, traceId: string): Promise<TestResult> {
   const start = Date.now();
+  const functionName = 'diagnose-tabulador-sync:testPermissions';
   
   try {
-    console.log('🔒 [Diagnostic] Testando permissões...');
+    logMessage(LogLevel.INFO, functionName, 'Testing permissions', {
+      trace_id: traceId,
+    });
     
     const tabulador = createClient(tabuladorUrl, tabuladorKey, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -411,11 +466,14 @@ async function testPermissions(tabuladorUrl: string, tabuladorKey: string): Prom
 /**
  * Analisa estrutura dos dados
  */
-async function testDataStructure(tabuladorUrl: string, tabuladorKey: string): Promise<TestResult> {
+async function testDataStructure(tabuladorUrl: string, tabuladorKey: string, traceId: string): Promise<TestResult> {
   const start = Date.now();
+  const functionName = 'diagnose-tabulador-sync:testDataStructure';
   
   try {
-    console.log('🔍 [Diagnostic] Analisando estrutura de dados...');
+    logMessage(LogLevel.INFO, functionName, 'Analyzing data structure', {
+      trace_id: traceId,
+    });
     
     const tabulador = createClient(tabuladorUrl, tabuladorKey, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -488,116 +546,189 @@ async function testDataStructure(tabuladorUrl: string, tabuladorKey: string): Pr
 }
 
 serve(async (req) => {
+  const traceId = generateTraceId();
+  const timer = new PerformanceTimer();
+  const functionName = 'diagnose-tabulador-sync';
+
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return handleCorsPreFlight();
   }
+
+  logMessage(LogLevel.INFO, functionName, 'Starting comprehensive diagnostics', {
+    method: req.method,
+    trace_id: traceId,
+  });
 
   const result: DiagnosticResult = {
     timestamp: new Date().toISOString(),
+    trace_id: traceId,
     overall_status: 'ok',
     tests: {
-      environment: { status: 'skipped', message: 'Não executado' },
-      connectivity: { status: 'skipped', message: 'Não executado' },
-      authentication: { status: 'skipped', message: 'Não executado' },
-      tables: { status: 'skipped', message: 'Não executado' },
-      permissions: { status: 'skipped', message: 'Não executado' },
-      data_structure: { status: 'skipped', message: 'Não executado' },
+      environment: { status: 'skipped', message: 'Not executed' },
+      connectivity: { status: 'skipped', message: 'Not executed' },
+      authentication: { status: 'skipped', message: 'Not executed' },
+      tables: { status: 'skipped', message: 'Not executed' },
+      permissions: { status: 'skipped', message: 'Not executed' },
+      data_structure: { status: 'skipped', message: 'Not executed' },
     },
     recommendations: [],
     errors: []
   };
 
   try {
-    console.log('🚀 [Diagnostic] Iniciando diagnóstico completo...');
+    timer.mark('diagnostics_start');
     
     // Test 1: Environment
-    result.tests.environment = await testEnvironment();
+    timer.mark('env_test_start');
+    result.tests.environment = await testEnvironment(traceId);
+    timer.mark('env_test_end');
     if (result.tests.environment.status === 'error') {
       result.overall_status = 'error';
-      result.errors.push('Variáveis de ambiente não configuradas corretamente');
-      result.recommendations.push('Configure TABULADOR_URL e TABULADOR_SERVICE_KEY no Supabase Dashboard');
+      result.errors.push('Environment variables not configured correctly');
+      result.recommendations.push('Configure TABULADOR_URL and TABULADOR_SERVICE_KEY in Supabase Dashboard');
       
-      return new Response(JSON.stringify(result, null, 2), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      result.total_duration_ms = timer.getDuration();
+      
+      logMessage(LogLevel.ERROR, functionName, 'Diagnostics failed at environment check', {
+        trace_id: traceId,
+        duration_ms: result.total_duration_ms,
       });
+
+      return jsonResponse(result, 500);
     }
     
     const tabuladorUrl = Deno.env.get('TABULADOR_URL')!;
     const tabuladorKey = Deno.env.get('TABULADOR_SERVICE_KEY')!;
     
     // Test 2: Connectivity
-    result.tests.connectivity = await testConnectivity(tabuladorUrl, tabuladorKey);
+    timer.mark('connectivity_test_start');
+    result.tests.connectivity = await testConnectivity(tabuladorUrl, tabuladorKey, traceId);
+    timer.mark('connectivity_test_end');
+    
     if (result.tests.connectivity.status === 'error') {
       result.overall_status = 'error';
-      result.errors.push('Falha na conectividade com TabuladorMax');
-      result.recommendations.push('Verifique se a URL está correta e o projeto está ativo');
+      result.errors.push('Connectivity failure with TabuladorMax');
+      result.recommendations.push('Verify URL is correct and project is active');
     }
     
     // Test 3: Authentication
-    result.tests.authentication = await testAuthentication(tabuladorUrl, tabuladorKey);
+    timer.mark('auth_test_start');
+    result.tests.authentication = await testAuthentication(tabuladorUrl, tabuladorKey, traceId);
+    timer.mark('auth_test_end');
+    
     if (result.tests.authentication.status === 'error') {
       result.overall_status = 'error';
-      result.errors.push('Falha na autenticação - credenciais inválidas');
-      result.recommendations.push('Use a SERVICE ROLE KEY do projeto TabuladorMax');
+      result.errors.push('Authentication failure - invalid credentials');
+      result.recommendations.push('Use SERVICE ROLE KEY from TabuladorMax project');
     }
     
     // Test 4: Tables
-    result.tests.tables = await testTables(tabuladorUrl, tabuladorKey);
+    timer.mark('tables_test_start');
+    result.tests.tables = await testTables(tabuladorUrl, tabuladorKey, traceId);
+    timer.mark('tables_test_end');
+    
     if (result.tests.tables.status === 'error') {
       result.overall_status = 'error';
-      result.errors.push('Nenhuma tabela de leads encontrada com dados');
-      result.recommendations.push('Verifique se a tabela "leads" existe no TabuladorMax');
+      result.errors.push('No leads table found with data');
+      result.recommendations.push('Verify that "leads" table exists in TabuladorMax');
     }
     
     // Test 5: Permissions
-    result.tests.permissions = await testPermissions(tabuladorUrl, tabuladorKey);
+    timer.mark('permissions_test_start');
+    result.tests.permissions = await testPermissions(tabuladorUrl, tabuladorKey, traceId);
+    timer.mark('permissions_test_end');
+    
     if (result.tests.permissions.status === 'error') {
       if (result.overall_status !== 'error') {
         result.overall_status = 'warning';
       }
-      result.errors.push('Problemas de permissão detectados');
-      result.recommendations.push('Verifique as políticas RLS da tabela leads');
+      result.errors.push('Permission problems detected');
+      result.recommendations.push('Verify RLS policies on leads table');
     }
     
     // Test 6: Data Structure
-    result.tests.data_structure = await testDataStructure(tabuladorUrl, tabuladorKey);
+    timer.mark('structure_test_start');
+    result.tests.data_structure = await testDataStructure(tabuladorUrl, tabuladorKey, traceId);
+    timer.mark('structure_test_end');
+    
     if (result.tests.data_structure.status === 'warning') {
       if (result.overall_status === 'ok') {
         result.overall_status = 'warning';
       }
-      result.recommendations.push('Alguns campos esperados podem estar faltando na tabela');
+      result.recommendations.push('Some expected fields may be missing from table');
     }
+    
+    timer.mark('diagnostics_end');
+    result.total_duration_ms = timer.getDuration();
     
     // Overall recommendations
     if (result.overall_status === 'ok') {
-      result.recommendations.push('✅ Todos os testes passaram! A sincronização deve funcionar corretamente.');
-      result.recommendations.push('Execute initial-sync-leads para fazer a migração inicial dos dados.');
+      result.recommendations.push('✅ All tests passed! Synchronization should work correctly.');
+      result.recommendations.push('Run initial-sync-leads to perform initial data migration.');
     } else if (result.overall_status === 'warning') {
-      result.recommendations.push('⚠️ Alguns avisos foram encontrados, mas a sincronização pode funcionar.');
-      result.recommendations.push('Revise os detalhes dos testes para possíveis melhorias.');
+      result.recommendations.push('⚠️ Some warnings found, but synchronization may work.');
+      result.recommendations.push('Review test details for possible improvements.');
     } else {
-      result.recommendations.push('❌ Problemas críticos detectados. Resolva os erros antes de tentar sincronizar.');
-      result.recommendations.push('Consulte a documentação: TABULADORMAX_CONFIGURATION_GUIDE.md');
+      result.recommendations.push('❌ Critical problems detected. Resolve errors before attempting sync.');
+      result.recommendations.push('Consult documentation: TABULADORMAX_CONFIGURATION_GUIDE.md');
     }
     
-    console.log('✅ [Diagnostic] Diagnóstico completo!');
+    // Send Bitrix notification if there are critical issues
+    const enableBitrix = Deno.env.get('ENABLE_BITRIX_NOTIFICATIONS') === 'true';
+    if (enableBitrix && result.overall_status === 'error') {
+      const notification = await sendBitrixNotification({
+        title: 'TabuladorMax Sync Diagnostics Failed',
+        message: `Critical issues detected: ${result.errors.join(', ')}`,
+        severity: 'error',
+        metadata: {
+          trace_id: traceId,
+          tests: result.tests,
+          errors: result.errors,
+          recommendations: result.recommendations,
+        },
+      });
+      result.bitrix_notification_sent = notification.success;
+    }
     
-    return new Response(JSON.stringify(result, null, 2), {
-      status: result.overall_status === 'error' ? 500 : 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    logMessage(LogLevel.INFO, functionName, 'Diagnostics completed', {
+      overall_status: result.overall_status,
+      duration_ms: result.total_duration_ms,
+      trace_id: traceId,
+      performance_marks: timer.getAllMarks(),
     });
+    
+    const httpStatus = result.overall_status === 'error' ? 500 : 200;
+    return jsonResponse(result, httpStatus);
     
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error('❌ [Diagnostic] Erro fatal:', message);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    logMessage(LogLevel.ERROR, functionName, 'Fatal error in diagnostics', {
+      error: errorMessage,
+      trace_id: traceId,
+      duration_ms: timer.getDuration(),
+    });
     
     result.overall_status = 'error';
-    result.errors.push(`Erro fatal: ${message}`);
+    result.errors.push(`Fatal error: ${errorMessage}`);
+    result.total_duration_ms = timer.getDuration();
     
-    return new Response(JSON.stringify(result, null, 2), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    // Send Bitrix notification for critical failures
+    const enableBitrix = Deno.env.get('ENABLE_BITRIX_NOTIFICATIONS') === 'true';
+    if (enableBitrix) {
+      const notification = await sendBitrixNotification({
+        title: 'TabuladorMax Diagnostics Critical Error',
+        message: errorMessage,
+        severity: 'error',
+        metadata: {
+          trace_id: traceId,
+          error: errorMessage,
+        },
+      });
+      result.bitrix_notification_sent = notification.success;
+    }
+    
+    return jsonResponse(result, 500);
   }
 });
