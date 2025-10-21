@@ -12,7 +12,8 @@
 ### O que o Gestão Scouter precisa?
 1. ✅ Tabela `public.leads` com 49 campos (já existe)
 2. ✅ RLS policies configuradas (já existe)
-3. ❌ **NENHUMA Edge Function necessária**
+3. ✅ Interface de monitoramento read-only (já existe)
+4. ❌ **NENHUMA Edge Function necessária**
 
 ## ❌ O que NÃO é necessário
 
@@ -113,13 +114,14 @@ EXECUTE FUNCTION notify_tabulador_on_lead_change();
 
 ## 🚨 Erros Comuns
 
-### "get-leads-count não encontrada"
-**Causa:** Código antigo tentava chamar essa função do TabuladorMax.  
-**Solução:** ✅ Removida do código (não é necessária).
+### "Edge Functions de PULL removidas"
+**Status:** ✅ Arquitetura simplificada em 2025-10-21  
+**Removidas:**
+- `sync-tabulador` - Tentava fazer PULL do TabuladorMax (desnecessário)
+- `test-tabulador-connection` - Testava funções que não existem no TabuladorMax
+- `diagnose-tabulador-sync` - Diagnosticava fluxo PULL obsoleto
 
-### "get-leads-for-sync não encontrada"
-**Causa:** Código antigo tentava chamar essa função do TabuladorMax.  
-**Solução:** ✅ Removida do código (não é necessária).
+**Motivo da remoção:** O fluxo correto é PUSH unidirecional do TabuladorMax. Estas Edge Functions implementavam um fluxo PULL que nunca foi necessário.
 
 ### "Connection failed"
 **Causa:** Credenciais incorretas ou RLS bloqueando.  
