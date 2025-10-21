@@ -114,6 +114,13 @@ export function PermissionsPanel() {
 
       const newAllowed = existingPermission ? !existingPermission.allowed : true;
 
+      console.log('🔐 [Permissions] Atualizando permissão:', {
+        module,
+        action,
+        role_id: roleIdNum,
+        allowed: newAllowed,
+      });
+
       // Use RPC to set permission
       const { error } = await supabase.rpc('set_permission', {
         p_module: module,
@@ -122,17 +129,27 @@ export function PermissionsPanel() {
         p_allowed: newAllowed
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [Permissions] Erro ao atualizar:', error);
+        throw error;
+      }
+
+      console.log('✅ [Permissions] Permissão atualizada com sucesso');
 
       // Refresh permissions
       await fetchPermissions();
-
-      // Refresh permissions list
-      await fetchPermissions();
-      toast.success('Permissão atualizada');
+      
+      toast.success(`✅ ${module} - ${action}: ${newAllowed ? 'Permitido' : 'Negado'}`);
     } catch (error: any) {
-      console.error('Error toggling permission:', error);
-      toast.error('Erro ao atualizar permissão');
+      console.error('❌ [Permissions] Exceção ao atualizar permissão:', error);
+      
+      const errorMessage = error?.message || 'Erro desconhecido';
+      const errorDetails = error?.details || '';
+      const errorHint = error?.hint || '';
+      
+      toast.error(
+        `❌ Erro: ${errorMessage}${errorDetails ? `\n${errorDetails}` : ''}${errorHint ? `\n💡 ${errorHint}` : ''}`
+      );
     }
   };
 

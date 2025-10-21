@@ -1,8 +1,9 @@
 /**
  * Edge Function: Sincronização incremental entre Gestão Scouter e TabuladorMax
  * 
- * Suporta sincronização incremental pull (TabuladorMax -> Gestão) ou 
- * push (Gestão -> TabuladorMax) baseada em updated_at desde o último checkpoint.
+ * Atualizado para usar Edge Functions do TabuladorMax ao invés de acesso direto
+ * com SERVICE_ROLE_KEY. Isso aumenta segurança e permite comunicação entre projetos
+ * Lovable Cloud sem precisar copiar chaves manualmente.
  * 
  * Query params:
  * - direction: 'pull' ou 'push' (padrão: 'pull')
@@ -220,75 +221,63 @@ serve(async (req) => {
 
     if (direction === 'pull') {
       // PULL: TabuladorMax -> Gestão Scouter
-      console.log('📥 [Sync] Buscando atualizações de TabuladorMax...');
+      // Usar Edge Function do TabuladorMax ao invés de acesso direto
+      console.log('📥 [Sync] Buscando atualizações via Edge Function do TabuladorMax...');
       
-      // Detectar campo de data automaticamente
-      const dateField = await detectDateField(tabulador, 'leads');
-      
-      // Try different table name variations
-      const tableVariations = ['leads', '"Leads"', 'Leads'];
-      let tabuladorUpdates = null;
-      let tabuladorError = null;
-      let successTableName = '';
-      
-      for (const tableName of tableVariations) {
-        console.log(`🔍 [Sync] Tentando tabela: ${tableName}`);
-        console.log(`   - Campo data: ${dateField}`);
-        console.log(`   - Última sync: ${lastSyncDate}`);
-        
-        const result = await tabulador
-          .from(tableName)
-          .select('*', { count: 'exact' })
-          .gte(dateField, lastSyncDate)
-          .order(dateField, { ascending: true });
-        
-        console.log(`📊 [Sync] Resultado da query:`);
-        console.log(`   - Erro: ${result.error?.message || 'nenhum'}`);
-        console.log(`   - Código: ${result.error?.code || 'N/A'}`);
-        console.log(`   - Count: ${result.count ?? 0}`);
-        console.log(`   - Dados: ${result.data?.length ?? 0} registros`);
-        
-        if (result.error) {
-          console.error(`❌ [Sync] Erro completo:`, JSON.stringify(result.error, null, 2));
-          tabuladorError = result.error;
-        }
-        
-        if (!result.error && result.data) {
-          tabuladorUpdates = result.data;
-          successTableName = tableName;
-          console.log(`✅ [Sync] Sucesso com tabela "${tableName}": ${tabuladorUpdates.length} registros desde ${lastSyncDate}`);
-          break;
-        } else {
-          console.log(`❌ [Sync] Falha com ${tableName}: ${result.error?.message}`);
-        }
-      }
+      try {
+        // Chamar Edge Function get-leads-for-sync do TabuladorMax
+        const response = await fetch(
+          `${tabuladorUrl}/functions/v1/get-leads-for-sync`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${tabuladorKey}`, // ANON KEY funciona aqui!
+            },
+            body: JSON.stringify({
+              lastSyncDate: lastSyncDate,
+              limit: 5000
+            })
+          }
+        );
 
-      if (tabuladorError && !tabuladorUpdates) {
-        console.error('❌ [Sync] Erro ao buscar de TabuladorMax:', tabuladorError);
-        console.error('💡 [Sync] Verifique:');
-        console.error('   1. TABULADOR_SERVICE_KEY está usando SERVICE_ROLE_KEY (não anon key)');
-        console.error('   2. Tabela "leads" existe no TabuladorMax');
-        console.error('   3. Campo de data existe na tabela');
-        console.error('   4. RLS policies permitem acesso para service_role');
-        errors.push(`Erro ao buscar de TabuladorMax: ${tabuladorError.message} (código: ${tabuladorError.code})`);
-      } else if (tabuladorUpdates && tabuladorUpdates.length > 0) {
-        console.log(`📦 [Sync] ${tabuladorUpdates.length} registros para sincronizar`);
-        
-        const leadsToSync = tabuladorUpdates.map(mapTabuladorToLocal);
-        const { data, error } = await gestao
-          .from('leads')
-          .upsert(leadsToSync, { onConflict: 'id' })
-          .select('id');
-        
-        if (!error) {
-          recordsSynced = data?.length || 0;
-          console.log(`✅ [Sync] ${recordsSynced} registros sincronizados (pull)`);
-        } else {
-          console.error('❌ [Sync] Erro ao sincronizar:', error);
-          errors.push(`Erro ao sincronizar TabuladorMax → Gestão: ${error.message}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
-      } else {
-        console.log('ℹ️ [Sync] Nenhum registro novo para sincronizar');
+
+        const result = await response.json();
+        
+        if (!result.success) {
+          throw new Error(result.error || 'Falha ao buscar leads do TabuladorMax');
+        }
+
+        const tabuladorUpdates = result.leads || [];
+        console.log(`📦 [Sync] ${tabuladorUpdates.length} leads recebidos do TabuladorMax`);
+        console.log(`📊 [Sync] Total no TabuladorMax: ${result.total || 0}`);
+
+        if (tabuladorUpdates.length > 0) {
+          const leadsToSync = tabuladorUpdates.map(mapTabuladorToLocal);
+          const { data, error } = await gestao
+            .from('leads')
+            .upsert(leadsToSync, { onConflict: 'id' })
+            .select('id');
+          
+          if (!error) {
+            recordsSynced = data?.length || 0;
+            console.log(`✅ [Sync] ${recordsSynced} registros sincronizados (pull)`);
+          } else {
+            console.error('❌ [Sync] Erro ao sincronizar:', error);
+            errors.push(`Erro ao sincronizar TabuladorMax → Gestão: ${error.message}`);
+          }
+        } else {
+          console.log('ℹ️ [Sync] Nenhum registro novo para sincronizar');
+        }
+      } catch (fetchError) {
+        const errorMsg = fetchError instanceof Error ? fetchError.message : 'Erro desconhecido';
+        console.error('❌ [Sync] Erro ao chamar Edge Function do TabuladorMax:', errorMsg);
+        errors.push(`Erro ao buscar de TabuladorMax: ${errorMsg}`);
+        errors.push('💡 Verifique se a Edge Function "get-leads-for-sync" está deployada no TabuladorMax');
       }
     } else {
       // PUSH: Gestão Scouter -> TabuladorMax

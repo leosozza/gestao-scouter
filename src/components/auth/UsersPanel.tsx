@@ -200,8 +200,46 @@ export function UsersPanel() {
     setIsDialogOpen(true);
   };
 
+  const loadUsers = async () => {
+    setLoading(true);
+    await fetchUsers();
+    setLoading(false);
+  };
+
   if (loading) {
-    return <div>Carregando...</div>;
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-center py-8">
+            <div className="text-muted-foreground">Carregando usuários...</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!users || users.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Gestão de Usuários</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div className="flex flex-col items-center justify-center py-8 space-y-4">
+            <UserPlus className="h-12 w-12 text-muted-foreground" />
+            <div className="text-center">
+              <h3 className="font-semibold mb-2">Nenhum usuário encontrado</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                A tabela de usuários está vazia. Verifique se a migration foi executada.
+              </p>
+              <Button onClick={loadUsers} variant="outline">
+                Recarregar
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (

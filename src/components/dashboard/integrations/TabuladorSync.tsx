@@ -203,7 +203,7 @@ export function TabuladorSync() {
       console.log('📊 [TabuladorSync] Resultado do teste:', {
         status: leadsInfo?.status,
         total: leadsInfo?.total_count,
-        tabelas_disponíveis: data.tables?.available?.length,
+        hint: leadsInfo?.hint,
       });
 
       if (leadsInfo?.status?.includes('✅')) {
@@ -218,8 +218,8 @@ export function TabuladorSync() {
         });
 
         toast({
-          title: 'Conexão bem-sucedida!',
-          description: `Encontrados ${leadsInfo.total_count || 0} leads na tabela. ${data.tables.available?.length || 0} tabelas disponíveis.`
+          title: '✅ Conexão bem-sucedida!',
+          description: `${leadsInfo.total_count || 0} leads encontrados no TabuladorMax via Edge Function.`
         });
       } else {
         // Log warning/error
@@ -232,9 +232,17 @@ export function TabuladorSync() {
           response_data: data,
         });
 
+        const errorMsg = leadsInfo?.error || 'Problema na conexão';
+        const hintMsg = leadsInfo?.hint || 'Verifique se as Edge Functions estão deployadas no TabuladorMax';
+
         toast({
-          title: 'Problema na conexão',
-          description: leadsInfo?.error || 'Verifique os logs da edge function para mais detalhes',
+          title: '❌ Problema na conexão',
+          description: (
+            <div className="space-y-2">
+              <p className="font-semibold">{errorMsg}</p>
+              <p className="text-xs text-muted-foreground">{hintMsg}</p>
+            </div>
+          ),
           variant: 'destructive'
         });
       }

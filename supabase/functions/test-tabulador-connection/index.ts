@@ -141,63 +141,83 @@ serve(async (req) => {
       duration_ms: timer.getDurationBetween('client_creation_start', 'client_creation_end'),
     };
 
-    // 4. Test query on leads table (try variations) with retry logic
+    // 4. Test table access via Edge Function
     timer.mark('table_test_start');
     
-    logMessage(LogLevel.INFO, functionName, 'Testing leads table query', {
+    logMessage(LogLevel.INFO, functionName, 'Testing table access via TabuladorMax Edge Function', {
       trace_id: traceId,
     });
     
-    const tableVariations = ['leads', '"Leads"', 'Leads', '"leads"', 'lead', '"Lead"', 'Lead'];
-    let leadsData = null;
-    let leadsError = null;
-    let count = 0;
-    let successTableName = '';
-    let allAttempts: any[] = [];
+    const tableTests: Record<string, any> = {};
     
-    for (const tableName of tableVariations) {
-      const attemptStart = Date.now();
-      
-      try {
-        // Use retry logic for unstable connections
-        const result = await retryWithBackoff(
-          async () => {
-            const res = await tabulador
-              .from(tableName)
-              .select('*', { count: 'exact', head: false })
-              .limit(5);
-            
-            if (res.error) {
-              throw res.error;
-            }
-            return res;
-          },
-          {
-            maxAttempts: 2, // Less aggressive retry for table testing
-            delayMs: 500,
-            backoffMultiplier: 2,
-          },
-          (attempt, error) => {
-            logMessage(LogLevel.WARN, functionName, 'Retrying table query', {
-              table: tableName,
-              attempt,
-              error: extractSupabaseError(error).message,
-              trace_id: traceId,
-            });
+    try {
+      // Chamar Edge Function get-leads-count do TabuladorMax
+      const response = await fetch(
+        `${tabuladorUrl}/functions/v1/get-leads-count`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${tabuladorKey}`,
           }
-        );
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        tableTests['leads'] = {
+          status: '❌ Edge Function Error',
+          error: `HTTP ${response.status}: ${errorText}`,
+          hint: 'Verifique se a Edge Function "get-leads-count" está deployada no TabuladorMax'
+        };
         
-        const attemptDuration = Date.now() - attemptStart;
-        
-        allAttempts.push({
-          table_name: tableName,
-          success: true,
-          count: result.count,
-          duration_ms: attemptDuration
+        logMessage(LogLevel.ERROR, functionName, 'Edge Function call failed', {
+          status: response.status,
+          error: errorText,
+          trace_id: traceId,
         });
+      } else {
+        const result = await response.json();
         
-        leadsData = result.data;
-        count = result.count || 0;
+        if (result.success) {
+          tableTests['leads'] = {
+            status: '✅ Accessible',
+            total_count: result.total_leads || 0,
+            timestamp: result.timestamp
+          };
+          
+          logMessage(LogLevel.INFO, functionName, 'Table access successful via Edge Function', {
+            count: result.total_leads,
+            trace_id: traceId,
+          });
+        } else {
+          tableTests['leads'] = {
+            status: '❌ Error',
+            error: result.error || 'Unknown error'
+          };
+          
+          logMessage(LogLevel.ERROR, functionName, 'Edge Function returned error', {
+            error: result.error,
+            trace_id: traceId,
+          });
+        }
+      }
+    } catch (fetchError) {
+      const errorMsg = fetchError instanceof Error ? fetchError.message : 'Unknown error';
+      tableTests['leads'] = {
+        status: '❌ Exception',
+        error: errorMsg,
+        hint: 'Verifique conectividade e se a Edge Function está deployada'
+      };
+      
+      logMessage(LogLevel.ERROR, functionName, 'Exception calling Edge Function', {
+        error: errorMsg,
+        trace_id: traceId,
+      });
+    }
+    
+    let leadsData = null;
+    let count = tableTests['leads']?.total_count || 0;
         successTableName = tableName;
         
         logMessage(LogLevel.INFO, functionName, 'Table query successful', {
