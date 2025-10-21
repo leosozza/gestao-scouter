@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, CheckCircle2, Database, AlertCircle, Info, Stethoscope } from 'lucide-react';
+import { RefreshCw, CheckCircle2, Database, AlertCircle, Info, Stethoscope, Workflow } from 'lucide-react';
 import { supabase } from '@/lib/supabase-helper';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface SyncStatus {
   id: string;
@@ -35,6 +36,7 @@ export function TabuladorSync() {
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
+  const [isSyncingSchema, setIsSyncingSchema] = useState(false);
 
   const loadSyncStatus = async () => {
     try {
@@ -146,6 +148,69 @@ export function TabuladorSync() {
     }
   };
 
+  const syncSchemaFromTabulador = async () => {
+    setIsSyncingSchema(true);
+    
+    try {
+      console.log('🔄 Sincronizando schema com TabuladorMax...');
+      
+      const { data, error } = await supabase.functions.invoke('sync-schema-from-tabulador', {
+        body: { dry_run: false }
+      });
+
+      if (error) {
+        console.error('Erro ao sincronizar schema:', error);
+        toast.error('Erro ao sincronizar schema', {
+          description: error.message
+        });
+        return;
+      }
+
+      console.log('Resultado da sincronização:', data);
+
+      const result = data as any;
+      
+      if (result.success) {
+        if (result.columns_added.length === 0) {
+          toast.success('✅ Schema Sincronizado', {
+            description: 'Todas as colunas já estão atualizadas!',
+            duration: 5000
+          });
+        } else {
+          toast.success('✅ Schema Atualizado!', {
+            description: `${result.columns_added.length} coluna(s) adicionada(s) e ${result.indexes_created.length} índice(s) criado(s)`,
+            duration: 8000
+          });
+
+          // Mostrar detalhes das colunas adicionadas
+          setTimeout(() => {
+            const columnNames = result.columns_added.map((c: any) => c.name).join(', ');
+            toast.info('📊 Colunas Adicionadas', {
+              description: columnNames,
+              duration: 10000
+            });
+          }, 1000);
+        }
+
+        // Recarregar dados
+        await Promise.all([loadSyncStatus(), loadSyncLogs()]);
+      } else {
+        toast.error('❌ Erro na Sincronização', {
+          description: result.error || 'Erro desconhecido',
+          duration: 8000
+        });
+      }
+
+    } catch (error) {
+      console.error('Erro fatal na sincronização:', error);
+      toast.error('Erro Fatal', {
+        description: error instanceof Error ? error.message : 'Erro desconhecido ao sincronizar schema'
+      });
+    } finally {
+      setIsSyncingSchema(false);
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
@@ -187,6 +252,52 @@ export function TabuladorSync() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    disabled={isSyncingSchema}
+                    variant="default"
+                    size="sm"
+                  >
+                    {isSyncingSchema ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Sincronizando...
+                      </>
+                    ) : (
+                      <>
+                        <Workflow className="h-4 w-4 mr-2" />
+                        Sincronizar Schema
+                      </>
+                    )}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Sincronizar Schema Automático</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Este processo irá:
+                      <ul className="list-disc list-inside mt-2 space-y-1">
+                        <li>Analisar a tabela <code>leads</code> do TabuladorMax</li>
+                        <li>Identificar colunas faltantes no Gestão Scouter</li>
+                        <li>Adicionar automaticamente as colunas necessárias</li>
+                        <li>Criar índices para otimização</li>
+                        <li>Recarregar o schema cache</li>
+                      </ul>
+                      <p className="mt-3 font-semibold">
+                        Deseja continuar?
+                      </p>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={syncSchemaFromTabulador}>
+                      Sincronizar
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              
               <Button
                 onClick={runDiagnostic}
                 disabled={isDiagnosing}
@@ -205,6 +316,7 @@ export function TabuladorSync() {
                   </>
                 )}
               </Button>
+              
               <Badge 
                 variant={syncStatus?.last_sync_success ? 'default' : 'secondary'}
                 className="text-sm"

@@ -196,6 +196,28 @@ EXECUTE FUNCTION notify_tabulador_on_lead_change();
 
 ## 🔧 Diagnóstico e Troubleshooting
 
+### Botão "Sincronizar Schema" na UI
+
+O painel de sincronização possui um botão **"🔄 Sincronizar Schema"** que:
+- 🔍 Analisa automaticamente schemas de ambos os projetos
+- 📊 Identifica colunas faltantes no Gestão Scouter
+- ➕ Adiciona automaticamente todas as colunas necessárias
+- 🔧 Cria índices para otimização
+- 🔄 Recarrega schema cache
+- ✅ Elimina erros PGRST204 e 42501 relacionados a campos
+
+**Como usar:**
+1. Clique em **"Sincronizar Schema"** no painel de integrações
+2. Confirme a ação
+3. Aguarde 5-15 segundos
+4. Verifique o resultado no toast
+
+**Quando usar:**
+- Após atualizações no TabuladorMax que adicionaram novos campos
+- Quando aparecem erros de "coluna não encontrada"
+- Antes de iniciar sincronização de dados
+- Periodicamente para garantir compatibilidade
+
 ### Botão "Diagnóstico RLS" na UI
 
 O painel de sincronização possui um botão **"Diagnóstico RLS"** que executa automaticamente:
@@ -209,9 +231,10 @@ O painel de sincronização possui um botão **"Diagnóstico RLS"** que executa 
 Se receber erro **42501**, significa que a política RLS está incorreta ou schema cache desatualizado.
 
 **Solução Rápida:**
-1. Clique em **"Diagnóstico RLS"** no painel de integrações
-2. Aguarde os resultados aparecerem
-3. Siga as recomendações apresentadas
+1. Clique em **"Sincronizar Schema"** para garantir compatibilidade
+2. Clique em **"Diagnóstico RLS"** no painel de integrações
+3. Aguarde os resultados aparecerem
+4. Siga as recomendações apresentadas
 
 **Solução Manual:**
 ```sql
@@ -220,11 +243,26 @@ NOTIFY pgrst, 'reload schema';
 
 Aguarde 10 segundos e tente novamente.
 
+### Erro PGRST204 - Coluna não encontrada
+
+Se receber erro **PGRST204**, significa que TabuladorMax está tentando enviar dados para colunas que não existem no Gestão Scouter.
+
+**Solução Automática:**
+1. Clique em **"Sincronizar Schema"** no painel de integrações
+2. Aguarde a sincronização completar
+3. Verifique o toast para ver quantas colunas foram adicionadas
+4. Teste novamente a sincronização de dados
+
+**Solução Manual:**
+Execute o SQL gerado pela edge function `sync-schema-from-tabulador`.
+
 ## 📚 Documentação Relacionada
 
+- [SCHEMA_AUTO_SYNC.md](./docs/SCHEMA_AUTO_SYNC.md) - Guia completo de Auto-Sync de Schema
 - [DIAGNOSTICO_RLS.md](./docs/DIAGNOSTICO_RLS.md) - Guia completo de diagnóstico
 - [README.md](./README.md) - Visão geral do projeto
 - [LEADS_DATA_SOURCE.md](./LEADS_DATA_SOURCE.md) - Arquitetura de dados
+- Edge Function: `supabase/functions/sync-schema-from-tabulador/index.ts`
 - Edge Function: `supabase/functions/diagnose-gestao-rls/index.ts`
 - Componente UI: `src/components/dashboard/integrations/TabuladorSync.tsx`
 
