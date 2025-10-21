@@ -345,6 +345,22 @@ export default function Leads() {
                 <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
                   <CardTitle>Lista de Leads</CardTitle>
                   <div className="flex gap-2 flex-wrap">
+                    <Button 
+                      variant="outline"
+                      className="rounded-xl"
+                      onClick={() => setShowColumnConfig(true)}
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Colunas
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="rounded-xl"
+                      onClick={() => setShowTinderConfig(true)}
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Config Análise
+                    </Button>
                     {selectedLeads.length > 0 && (
                       <Button 
                         variant="destructive"
@@ -414,6 +430,18 @@ export default function Leads() {
         open={showCreateDialog}
         onClose={() => setShowCreateDialog(false)}
         onSuccess={handleCreateSuccess}
+      />
+
+      {/* Column Configuration Modal */}
+      <ColumnSelectorModal 
+        open={showColumnConfig}
+        onOpenChange={setShowColumnConfig}
+      />
+
+      {/* Tinder Configuration Modal */}
+      <TinderConfigModal 
+        open={showTinderConfig}
+        onOpenChange={setShowTinderConfig}
       />
 
       {/* Delete Confirmation Dialog */}

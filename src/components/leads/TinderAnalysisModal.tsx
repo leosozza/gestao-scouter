@@ -7,6 +7,8 @@ import { Heart, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase-helper';
 import { toast } from 'sonner';
 import type { Lead } from '@/repositories/types';
+import { useTinderCardConfig } from '@/hooks/useTinderCardConfig';
+import { ALL_LEAD_FIELDS } from '@/config/leadFields';
 
 interface TinderAnalysisModalProps {
   open: boolean;
@@ -26,6 +28,7 @@ export function TinderAnalysisModal({ open, onClose, leads, onComplete }: Tinder
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackType, setFeedbackType] = useState<'approve' | 'reject'>('approve');
   const currentIndexRef = useRef(currentIndex);
+  const { config } = useTinderCardConfig();
 
   const childRefs = useMemo(
     () =>
@@ -97,6 +100,27 @@ export function TinderAnalysisModal({ open, onClose, leads, onComplete }: Tinder
     return null;
   };
 
+  const getFieldValue = (lead: Lead, fieldKey: string) => {
+    return (lead as any)[fieldKey];
+  };
+
+  const getFieldLabel = (fieldKey: string) => {
+    const field = ALL_LEAD_FIELDS.find(f => f.key === fieldKey);
+    return field?.label || fieldKey;
+  };
+
+  const getPhotoUrl = (lead: Lead) => {
+    if (!config.photoField || config.photoField === 'none') return null;
+    const value = getFieldValue(lead, config.photoField);
+    
+    // Handle boolean fields (cadastro_existe_foto)
+    if (typeof value === 'boolean' || value === 'SIM') {
+      return lead.foto; // Fallback to foto field
+    }
+    
+    return value;
+  };
+
   const currentLead = getCurrentLead();
   const totalLeads = leads.length;
   const currentPosition = totalLeads - currentIndex;
@@ -146,74 +170,74 @@ export function TinderAnalysisModal({ open, onClose, leads, onComplete }: Tinder
                   <div className="w-full h-full bg-white rounded-2xl shadow-2xl overflow-hidden border-2 border-gray-200">
                     {/* Photo Section */}
                     <div className="h-64 bg-gradient-to-br from-blue-400 to-purple-500 relative">
-                      {lead.foto ? (
+                      {getPhotoUrl(lead) ? (
                         <img
-                          src={lead.foto}
-                          alt={lead.nome || 'Lead'}
+                          src={getPhotoUrl(lead) as string}
+                          alt={getFieldValue(lead, 'nome') || 'Lead'}
                           className="w-full h-full object-cover"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-white text-6xl font-bold">
-                          {(lead.nome || 'U').charAt(0).toUpperCase()}
+                          {(getFieldValue(lead, 'nome') || 'U').toString().charAt(0).toUpperCase()}
                         </div>
-                      )}
-                      {(lead.cadastro_existe_foto === 'SIM' || lead.cadastro_existe_foto === true) && (
-                        <Badge className="absolute top-4 right-4 bg-green-500">
-                          Foto Cadastrada
-                        </Badge>
                       )}
                     </div>
 
                     {/* Info Section */}
                     <div className="p-6 space-y-4">
+                      {/* Main Fields */}
                       <div>
-                        <h3 className="text-2xl font-bold text-gray-900">
-                          {lead.nome || 'Nome não informado'}
-                        </h3>
-                        {lead.idade && (
-                          <p className="text-lg text-gray-600">{lead.idade} anos</p>
-                        )}
+                        {config.mainFields.map((fieldKey, idx) => {
+                          const value = getFieldValue(lead, fieldKey);
+                          if (!value) return null;
+                          
+                          if (idx === 0) {
+                            return (
+                              <h3 key={fieldKey} className="text-2xl font-bold text-gray-900">
+                                {value}
+                              </h3>
+                            );
+                          }
+                          return (
+                            <p key={fieldKey} className="text-lg text-gray-600">
+                              {value}
+                            </p>
+                          );
+                        })}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        {lead.scouter && (
-                          <div>
-                            <p className="text-sm text-gray-500">Scouter</p>
-                            <p className="font-medium text-gray-900">{lead.scouter}</p>
-                          </div>
-                        )}
-                        {lead.local_da_abordagem && (
-                          <div>
-                            <p className="text-sm text-gray-500">Local</p>
-                            <p className="font-medium text-gray-900">{lead.local_da_abordagem}</p>
-                          </div>
-                        )}
-                        {lead.projetos && (
-                          <div>
-                            <p className="text-sm text-gray-500">Projeto</p>
-                            <p className="font-medium text-gray-900">{lead.projetos}</p>
-                          </div>
-                        )}
-                        {lead.supervisor_do_scouter && (
-                          <div>
-                            <p className="text-sm text-gray-500">Supervisor</p>
-                            <p className="font-medium text-gray-900">{lead.supervisor_do_scouter}</p>
-                          </div>
-                        )}
-                      </div>
+                      {/* Detail Fields */}
+                      {config.detailFields.length > 0 && (
+                        <div className="grid grid-cols-2 gap-4">
+                          {config.detailFields.map(fieldKey => {
+                            const value = getFieldValue(lead, fieldKey);
+                            if (!value) return null;
+                            
+                            return (
+                              <div key={fieldKey}>
+                                <p className="text-sm text-gray-500">{getFieldLabel(fieldKey)}</p>
+                                <p className="font-medium text-gray-900">{value}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
 
-                      {/* Status Badges */}
-                      <div className="flex flex-wrap gap-2">
-                        {lead.ficha_confirmada === 'Sim' && (
-                          <Badge variant="default">Ficha Confirmada</Badge>
-                        )}
-                        {lead.presenca_confirmada === 'Sim' && (
-                          <Badge variant="secondary">Presença Confirmada</Badge>
-                        )}
-                        {lead.etapa && (
-                          <Badge variant="outline">{lead.etapa}</Badge>
-                        )}
-                      </div>
+                      {/* Badge Fields */}
+                      {config.badgeFields.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {config.badgeFields.map(fieldKey => {
+                            const value = getFieldValue(lead, fieldKey);
+                            if (!value || value === 'Não' || value === false) return null;
+                            
+                            return (
+                              <Badge key={fieldKey} variant="default">
+                                {getFieldLabel(fieldKey)}
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </TinderCard>
