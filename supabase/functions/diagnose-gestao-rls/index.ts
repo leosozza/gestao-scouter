@@ -265,7 +265,6 @@ serve(async (req) => {
     console.log('🧪 Teste 4: Testando permissões de UPSERT...');
     try {
       const testLead = {
-        id: `test-diagnostic-${Date.now()}`,
         nome: 'Teste Diagnóstico RLS',
         telefone: '99999999999',
         projeto: 'DIAGNOSTIC_TEST',
@@ -274,14 +273,15 @@ serve(async (req) => {
 
       const { data: upsertData, error: upsertError } = await supabase
         .from('leads')
-        .upsert(testLead, { onConflict: 'id' })
-        .select('id');
+        .insert(testLead)
+        .select('id')
+        .single();
 
       if (upsertError) {
         if (upsertError.code === '42501') {
           result.tests.upsert_test = {
             status: 'error',
-            message: 'ERRO 42501: Sem permissão para UPSERT. Política RLS incorreta!',
+            message: 'ERRO 42501: Sem permissão para INSERT. Política RLS incorreta!',
             details: {
               error_code: upsertError.code,
               error_message: upsertError.message,
@@ -295,7 +295,7 @@ serve(async (req) => {
         } else {
           result.tests.upsert_test = {
             status: 'error',
-            message: `Erro no UPSERT: ${upsertError.message}`,
+            message: `Erro no INSERT: ${upsertError.message}`,
             details: upsertError
           };
           result.success = false;
@@ -303,21 +303,23 @@ serve(async (req) => {
       } else {
         result.tests.upsert_test = {
           status: 'ok',
-          message: 'UPSERT funcionando corretamente',
-          details: { test_id: upsertData?.[0]?.id }
+          message: 'INSERT funcionando corretamente (permissões OK)',
+          details: { test_id: upsertData?.id }
         };
-        console.log('✅ UPSERT OK');
+        console.log('✅ INSERT OK');
 
         // Limpar registro de teste
-        await supabase
-          .from('leads')
-          .delete()
-          .eq('id', testLead.id);
+        if (upsertData?.id) {
+          await supabase
+            .from('leads')
+            .delete()
+            .eq('id', upsertData.id);
+        }
       }
     } catch (error) {
       result.tests.upsert_test = {
         status: 'error',
-        message: `Erro ao testar UPSERT: ${error instanceof Error ? error.message : String(error)}`,
+        message: `Erro ao testar INSERT: ${error instanceof Error ? error.message : String(error)}`,
         details: error
       };
       result.success = false;
