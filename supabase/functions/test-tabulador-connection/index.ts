@@ -216,94 +216,30 @@ serve(async (req) => {
       });
     }
     
-    let leadsData = null;
-    let count = tableTests['leads']?.total_count || 0;
-        successTableName = tableName;
-        
-        logMessage(LogLevel.INFO, functionName, 'Table query successful', {
-          table: tableName,
-          count,
-          duration_ms: attemptDuration,
-          trace_id: traceId,
-        });
-        
-        break;
-      } catch (error) {
-        const attemptDuration = Date.now() - attemptStart;
-        const supabaseError = extractSupabaseError(error);
-        
-        allAttempts.push({
-          table_name: tableName,
-          success: false,
-          error: supabaseError.message,
-          error_code: supabaseError.code,
-          duration_ms: attemptDuration
-        });
-        
-        leadsError = error;
-        
-        logMessage(LogLevel.WARN, functionName, 'Table query failed', {
-          table: tableName,
-          error: supabaseError,
-          duration_ms: attemptDuration,
-          trace_id: traceId,
-        });
-      }
-    }
-
     timer.mark('table_test_end');
-    // Store all attempts in diagnostics
-    (diagnostics.tables as Record<string, unknown>).attempts = allAttempts;
-    (diagnostics.tables as Record<string, unknown>).test_duration_ms = timer.getDurationBetween('table_test_start', 'table_test_end');
+    
+    const count = tableTests['leads']?.total_count || 0;
+    const isSuccess = tableTests['leads']?.status === '✅ Accessible';
 
-    if (leadsError && !leadsData) {
-      const supabaseError = extractSupabaseError(leadsError);
-      const troubleshooting = getTroubleshootingAdvice(supabaseError);
-      
-      logMessage(LogLevel.ERROR, functionName, 'Failed to access leads table', {
-        error: supabaseError,
+    if (!isSuccess) {
+      logMessage(LogLevel.ERROR, functionName, 'Failed to access leads table via Edge Function', {
+        error: tableTests['leads']?.error || 'Unknown error',
         trace_id: traceId,
       });
-      
-      diagnostics.tables = {
-        ...(diagnostics.tables as Record<string, unknown>),
-        leads: {
-          status: '❌ Error accessing table',
-          error: supabaseError.message,
-          code: supabaseError.code,
-          details: supabaseError.details,
-          hint: supabaseError.hint,
-          troubleshooting,
-        }
-      };
 
       (diagnostics.suggestions as string[]).push(
-        troubleshooting,
-        'Check if leads table exists in TabuladorMax',
-        'Verify RLS policies allow service role access'
+        'Verify Edge Function "get-leads-count" is deployed in TabuladorMax',
+        'Check TabuladorMax project connectivity',
+        'Review TabuladorMax Edge Function logs'
       );
     } else {
-      logMessage(LogLevel.INFO, functionName, 'Leads table accessible', {
-        table: successTableName,
+      logMessage(LogLevel.INFO, functionName, 'Leads table accessible via Edge Function', {
         total: count,
-        sample: leadsData?.length || 0,
         trace_id: traceId,
       });
-      
-      diagnostics.tables = {
-        ...(diagnostics.tables as Record<string, unknown>),
-        leads: {
-          status: '✅ Accessible',
-          table_name_used: successTableName,
-          total_count: count,
-          sample_count: leadsData?.length || 0,
-          recommendation: `Use "${successTableName}" in sync configurations`
-        }
-      };
-      diagnostics.leads_sample = leadsData;
 
       (diagnostics.suggestions as string[]).push(
-        `✅ Connection successful! Use table name "${successTableName}" for synchronization`
+        `✅ Connection successful! Total leads: ${count}`
       );
     }
 
