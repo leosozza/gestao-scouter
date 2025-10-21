@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, CheckCircle2, XCircle, Clock, Database, AlertCircle, Info } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { RefreshCw, CheckCircle2, XCircle, Clock, Database, AlertCircle, Info, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase-helper';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -11,6 +12,7 @@ import { ptBR } from 'date-fns/locale';
 import { createSyncLog } from '@/repositories/syncLogsRepo';
 import { getTabuladorConfig } from '@/repositories/tabuladorConfigRepo';
 import { DiagnosticModal } from './DiagnosticModal';
+import { TabuladorSetupGuide } from './TabuladorSetupGuide';
 
 interface SyncStatus {
   id: string;
@@ -466,7 +468,7 @@ export function TabuladorSync() {
 
   return (
     <div className="space-y-6">
-      {/* Status Card */}
+      {/* Main Card with Tabs */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -479,46 +481,74 @@ export function TabuladorSync() {
                 </CardDescription>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button 
-                onClick={runDiagnostic} 
-                disabled={isMigrating || isSyncing}
-                size="sm"
-                variant="outline"
-              >
-                <AlertCircle className="h-4 w-4 mr-2" />
-                Diagnóstico Completo
-              </Button>
-              <Button 
-                onClick={testConnection} 
-                disabled={isMigrating || isSyncing}
-                size="sm"
-                variant="outline"
-              >
-                <AlertCircle className="h-4 w-4 mr-2" />
-                Testar Conexão
-              </Button>
-              <Button 
-                onClick={triggerInitialMigration} 
-                disabled={isMigrating || isSyncing}
-                size="sm"
-                variant="outline"
-              >
-                <Database className={`h-4 w-4 mr-2 ${isMigrating ? 'animate-spin' : ''}`} />
-                Migração Inicial
-              </Button>
-              <Button 
-                onClick={triggerSync} 
-                disabled={isSyncing || isMigrating}
-                size="sm"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
-                Sincronizar Agora
-              </Button>
-            </div>
+            <Badge 
+              variant={syncStatus?.last_sync_success ? 'default' : 'destructive'}
+              className="text-sm"
+            >
+              {syncStatus?.last_sync_success ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                  Conectado
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-4 w-4 mr-1" />
+                  Erro na Configuração
+                </>
+              )}
+            </Badge>
           </div>
         </CardHeader>
         <CardContent>
+          <Tabs defaultValue={syncStatus?.last_sync_success === false ? 'setup' : 'sync'} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="sync">
+                <Database className="h-4 w-4 mr-2" />
+                Sincronização
+              </TabsTrigger>
+              <TabsTrigger value="setup">
+                <Settings className="h-4 w-4 mr-2" />
+                Configuração
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="sync" className="space-y-6 mt-6">
+              {/* Status Section */}
+              <Card className="border-0 shadow-none">
+                <CardHeader className="px-0 pt-0">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">Status da Sincronização</CardTitle>
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={runDiagnostic} 
+                        disabled={isMigrating || isSyncing}
+                        size="sm"
+                        variant="outline"
+                      >
+                        <AlertCircle className="h-4 w-4 mr-2" />
+                        Diagnóstico
+                      </Button>
+                      <Button 
+                        onClick={testConnection} 
+                        disabled={isMigrating || isSyncing}
+                        size="sm"
+                        variant="outline"
+                      >
+                        <AlertCircle className="h-4 w-4 mr-2" />
+                        Testar
+                      </Button>
+                      <Button 
+                        onClick={triggerSync} 
+                        disabled={isSyncing || isMigrating}
+                        size="sm"
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+                        Sincronizar
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="px-0">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Status</p>
@@ -582,31 +612,18 @@ export function TabuladorSync() {
                   </p>
                 </div>
               </div>
-              
-              <div className="flex items-start gap-2 p-3 bg-muted rounded-lg">
-                <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                <div className="flex-1 text-xs text-muted-foreground">
-                  <p className="font-medium mb-1">Possíveis soluções:</p>
-                  <ul className="list-disc list-inside space-y-0.5">
-                    <li>Verifique se TABULADOR_SERVICE_KEY está usando SERVICE_ROLE_KEY</li>
-                    <li>Execute o SQL de configuração no TabuladorMax (ver SQL_TABULADORMAX_SETUP.md)</li>
-                    <li>Confirme que a tabela 'leads' existe e tem 218.709 registros</li>
-                    <li>Verifique os logs da Edge Function para mais detalhes</li>
-                  </ul>
-                </div>
-              </div>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Logs Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Histórico de Sincronizações</CardTitle>
+      {/* Logs Section */}
+      <Card className="border-0 shadow-none">
+        <CardHeader className="px-0">
+          <CardTitle className="text-base">Histórico de Sincronizações</CardTitle>
           <CardDescription>Últimas 10 sincronizações executadas</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-0">
           {syncLogs.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Database className="h-12 w-12 mx-auto mb-4 opacity-20" />
@@ -666,6 +683,14 @@ export function TabuladorSync() {
               </Table>
             </div>
           )}
+        </CardContent>
+      </Card>
+    </TabsContent>
+
+    <TabsContent value="setup" className="mt-6">
+      <TabuladorSetupGuide />
+    </TabsContent>
+  </Tabs>
         </CardContent>
       </Card>
 
