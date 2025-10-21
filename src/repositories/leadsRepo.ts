@@ -344,10 +344,13 @@ export async function getUniqueScouters(): Promise<string[]> {
  * @param ids - Array de IDs dos leads a deletar
  */
 export async function deleteLeads(ids: (string | number)[]): Promise<void> {
+  // Converte todos os IDs para número para garantir compatibilidade
+  const numericIds = ids.map(id => typeof id === 'string' ? parseInt(id, 10) : id);
+  
   const { error } = await supabase
     .from('leads')
     .update({ deleted: true })
-    .in('id', ids);
+    .in('id', numericIds);
 
   if (error) {
     console.error('❌ [LeadsRepo] Erro ao deletar leads:', error);
