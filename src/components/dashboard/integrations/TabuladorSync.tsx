@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { RefreshCw, CheckCircle2, XCircle, Clock, Database, AlertCircle, Info, Settings } from 'lucide-react';
+import { RefreshCw, CheckCircle2, XCircle, Clock, Database, AlertCircle, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase-helper';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,7 +11,6 @@ import { ptBR } from 'date-fns/locale';
 import { createSyncLog } from '@/repositories/syncLogsRepo';
 import { getTabuladorConfig } from '@/repositories/tabuladorConfigRepo';
 import { DiagnosticModal } from './DiagnosticModal';
-import { TabuladorSetupGuide } from './TabuladorSetupGuide';
 
 interface SyncStatus {
   id: string;
@@ -499,20 +497,7 @@ export function TabuladorSync() {
             </Badge>
           </div>
         </CardHeader>
-        <CardContent>
-          <Tabs defaultValue={syncStatus?.last_sync_success === false ? 'setup' : 'sync'} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="sync">
-                <Database className="h-4 w-4 mr-2" />
-                Sincronização
-              </TabsTrigger>
-              <TabsTrigger value="setup">
-                <Settings className="h-4 w-4 mr-2" />
-                Configuração
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="sync" className="space-y-6 mt-6">
+        <CardContent className="space-y-6 mt-6">
               {/* Status Section */}
               <Card className="border-0 shadow-none">
                 <CardHeader className="px-0 pt-0">
@@ -685,12 +670,6 @@ export function TabuladorSync() {
           )}
         </CardContent>
       </Card>
-    </TabsContent>
-
-    <TabsContent value="setup" className="mt-6">
-      <TabuladorSetupGuide />
-    </TabsContent>
-  </Tabs>
         </CardContent>
       </Card>
 

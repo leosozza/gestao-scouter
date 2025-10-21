@@ -67,52 +67,40 @@ Para informações completas sobre a arquitetura de dados, consulte:
 
 ## 🔄 Sincronização com TabuladorMax
 
-Este projeto implementa sincronização bidirecional automática com TabuladorMax através de Edge Functions:
+Este projeto recebe dados do **TabuladorMax** através de sincronização PUSH unidirecional.
 
-### Funcionalidades
+### Como Funciona
 
-- **Sincronização Full**: Importa todos os leads do TabuladorMax
-- **Sincronização Incremental**: 
-  - **Pull**: TabuladorMax → Gestão Scouter (a cada 5 min)
-  - **Push**: Gestão Scouter → TabuladorMax (a cada 5 min)
-- **Queue-based Sync**: Alterações automáticas enfileiradas e processadas
-- **Retry Logic**: Tentativas exponenciais em caso de falha
-- **Logging Detalhado**: Rastreamento completo de todas as operações
+**TabuladorMax → Gestão Scouter** (PUSH)
+- O TabuladorMax envia dados para a tabela `leads` do Gestão Scouter
+- Usa REST API com Service Role Key do TabuladorMax
+- Edge Function `export-to-gestao-scouter-batch` no TabuladorMax
+- Processamento em lotes com validação de schema
+- Interface de monitoramento completa no TabuladorMax
 
-### Edge Functions
+### O que é Necessário no Gestão Scouter
 
-| Função | Descrição | Trigger |
-|--------|-----------|---------|
-| `test-tabulador-connection` | Testa credenciais e acesso | Manual |
-| `initial-sync-leads` | Sincronização completa (full) | Manual/Agendado |
-| `sync-tabulador?direction=pull` | Sincronização incremental (pull) | Cron (5 min) |
-| `sync-tabulador?direction=push` | Sincronização incremental (push) | Cron (5 min) |
-| `process-sync-queue` | Processa fila de alterações | Cron (1 min) |
+1. ✅ Tabela `public.leads` com 49 campos (já configurada)
+2. ✅ RLS policies para service_role (já configuradas)
+3. ❌ **NENHUMA Edge Function necessária**
 
-### Configuração
+**Importante:** Não é necessário criar Edge Functions no Gestão Scouter para receber dados. O TabuladorMax acessa a tabela `leads` diretamente via REST API.
 
-Para configurar a sincronização, consulte a documentação completa:
+### Documentação Completa
 
-📖 **[Guia de Setup](./docs/SYNC_TabuladorMax_SETUP.md)** - Passo a passo completo  
-🏗️ **[Arquitetura](./docs/SYNC_TabuladorMax_ARCHITECTURE.md)** - Diagramas e detalhes técnicos
+📖 **[Arquitetura de Sincronização](./SYNC_ARCHITECTURE_GESTAO_SCOUTER.md)** - Guia completo da arquitetura  
+🔧 **[Troubleshooting](#-erros-comuns-de-sincronização)** - Soluções para problemas comuns
 
-**Quick Start:**
-```bash
-# 1. Executar migration
-# Dashboard → SQL Editor → 20251018_sync_leads_tabMax.sql
+### Erros Comuns
 
-# 2. Configurar secrets
-# Dashboard → Project Settings → Edge Functions → Secrets
-# Adicionar: TABULADOR_URL, TABULADOR_SERVICE_KEY, etc.
+**"get-leads-count não encontrada"**  
+✅ Erro corrigido - essa função não é necessária no Gestão Scouter
 
-# 3. Testar conexão
-curl -X POST https://your-project.supabase.co/functions/v1/test-tabulador-connection \
-  -H "Authorization: Bearer YOUR_ANON_KEY"
+**"Connection failed"**  
+→ Verifique as credenciais no TabuladorMax (URL + Service Key do Gestão Scouter)
 
-# 4. Executar sync inicial
-curl -X POST https://your-project.supabase.co/functions/v1/initial-sync-leads \
-  -H "Authorization: Bearer YOUR_ANON_KEY"
-```
+**"Schema inválido"**  
+→ Execute a validação de schema no TabuladorMax e aplique as correções sugeridas
 
 ### Estrutura do Projeto
 
