@@ -9,6 +9,10 @@ import { FilterHeader } from '@/components/shared/FilterHeader'
 import { AIAnalysis } from '@/components/shared/AIAnalysis'
 import { TinderAnalysisModal } from '@/components/leads/TinderAnalysisModal'
 import { CreateLeadDialog } from '@/components/leads/CreateLeadDialog'
+import { ColumnSelectorModal } from '@/components/leads/ColumnSelectorModal'
+import { TinderConfigModal } from '@/components/leads/TinderConfigModal'
+import { useLeadColumnConfig } from '@/hooks/useLeadColumnConfig'
+import { ALL_LEAD_FIELDS } from '@/config/leadFields'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Plus, Users, TrendingUp, Calendar, Phone, Heart, ThumbsUp, ThumbsDown, Clock, Trash2 } from 'lucide-react'
+import { Plus, Users, TrendingUp, Calendar, Phone, Heart, ThumbsUp, ThumbsDown, Clock, Trash2, Settings } from 'lucide-react'
 import { getLeads, deleteLeads } from '@/repositories/leadsRepo'
 import type { Lead, LeadsFilters } from '@/repositories/types'
 import { formatDateBR } from '@/utils/dataHelpers'
@@ -35,6 +39,9 @@ export default function Leads() {
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showColumnConfig, setShowColumnConfig] = useState(false)
+  const [showTinderConfig, setShowTinderConfig] = useState(false)
+  const { visibleColumns } = useLeadColumnConfig()
 
   const filterOptions = [
     {
@@ -70,7 +77,16 @@ export default function Leads() {
     }
   ]
 
-  const tableColumns = [
+  const allTableColumns = ALL_LEAD_FIELDS;
+  
+  const tableColumns = allTableColumns.filter(col => visibleColumns.includes(col.key)).map(col => ({
+    key: col.key,
+    label: col.label,
+    sortable: col.sortable,
+    formatter: col.formatter
+  }));
+
+  const tableColumnsOld = [
     { 
       key: 'nome', 
       label: 'Nome', 
