@@ -66,6 +66,15 @@ export const useLeadColumnConfig = () => {
     setVisibleColumns(['nome', 'scouter', 'projetos']); // Minimum required
   };
 
+  const reorderColumns = (oldIndex: number, newIndex: number) => {
+    setVisibleColumns(prev => {
+      const result = Array.from(prev);
+      const [removed] = result.splice(oldIndex, 1);
+      result.splice(newIndex, 0, removed);
+      return result;
+    });
+  };
+
   const canToggle = (key: string) => {
     if (key === 'nome') return false; // Nome is mandatory
     if (visibleColumns.includes(key)) {
@@ -78,6 +87,7 @@ export const useLeadColumnConfig = () => {
     visibleColumns,
     toggleColumn,
     setColumns,
+    reorderColumns,
     resetToDefault,
     selectAll,
     clearAll,

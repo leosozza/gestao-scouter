@@ -79,12 +79,19 @@ export default function Leads() {
 
   const allTableColumns = ALL_LEAD_FIELDS;
   
-  const tableColumns = allTableColumns.filter(col => visibleColumns.includes(col.key)).map(col => ({
-    key: col.key,
-    label: col.label,
-    sortable: col.sortable,
-    formatter: col.formatter
-  }));
+  const tableColumns = allTableColumns
+    .filter(col => visibleColumns.includes(col.key))
+    .sort((a, b) => {
+      const indexA = visibleColumns.indexOf(a.key);
+      const indexB = visibleColumns.indexOf(b.key);
+      return indexA - indexB;
+    })
+    .map(col => ({
+      key: col.key,
+      label: col.label,
+      sortable: col.sortable,
+      formatter: col.formatter
+    }));
 
   const tableColumnsOld = [
     { 
