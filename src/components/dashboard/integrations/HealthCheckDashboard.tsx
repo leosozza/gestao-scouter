@@ -58,15 +58,16 @@ export function HealthCheckDashboard() {
     try {
       setIsLoading(true);
 
-      // Load latest health check
-      const { data: healthCheck, error: healthError } = await supabase
+      // Load latest sync status (não usar string em campo UUID)
+      const { data: healthCheck } = await supabase
         .from('sync_status')
         .select('*')
-        .eq('id', 'health_check')
-        .single();
+        .order('last_sync_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       // Load diagnostic stats
-      const { data: diagnostics, error: diagError } = await supabase
+      const { data: diagnostics } = await supabase
         .from('sync_logs_detailed')
         .select('status, execution_time_ms, created_at')
         .eq('table_name', 'diagnostic')
@@ -74,14 +75,10 @@ export function HealthCheckDashboard() {
         .limit(100);
 
       // Load recent sync logs
-      const { data: syncs, error: syncError } = await supabase
+      const { data: syncs } = await supabase
         .from('sync_logs')
         .select('created_at')
         .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
-
-      if (healthError && healthError.code !== 'PGRST116') {
-        console.error('Error loading health check:', healthError);
-      }
 
       // Calculate metrics
       const totalDiags = diagnostics?.length || 0;
@@ -160,11 +157,11 @@ export function HealthCheckDashboard() {
     
     toast({
       title: 'Health Check Iniciado',
-      description: 'Verificando status de todos os componentes...',
+      description: 'Verificando conexão com TabuladorMax...',
     });
 
     try {
-      const { data, error } = await supabase.functions.invoke('sync-health');
+      const { data, error } = await supabase.functions.invoke('diagnose-tabulador-sync');
 
       if (error) {
         throw error;
@@ -172,7 +169,10 @@ export function HealthCheckDashboard() {
 
       toast({
         title: 'Health Check Completo',
-        description: `Status: ${data.status}`,
+        description: data.overall_status === 'healthy' 
+          ? 'Todos os componentes operacionais' 
+          : 'Problemas detectados na conexão',
+        variant: data.overall_status === 'healthy' ? 'default' : 'destructive',
       });
 
       await loadHealthMetrics();
