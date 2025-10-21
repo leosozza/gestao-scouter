@@ -76,48 +76,65 @@ export default function Leads() {
       label: 'Nome', 
       sortable: true,
       formatter: (value: string) => (
-        <div className="font-medium">{value}</div>
+        <div className="font-medium">{value || '-'}</div>
       )
     },
     { 
       key: 'scouter', 
       label: 'Scouter', 
-      sortable: true 
+      sortable: true,
+      formatter: (value: string) => value || '-'
     },
     { 
       key: 'projetos', 
       label: 'Projeto', 
-      sortable: true 
+      sortable: true,
+      formatter: (value: string) => value || '-'
     },
     { 
-      key: 'modelo', 
-      label: 'Modelo', 
-      sortable: true 
-    },
-    { 
-      key: 'etapa', 
-      label: 'Status', 
+      key: 'telefone', 
+      label: 'Telefone', 
       sortable: true,
       formatter: (value: string) => (
-        <Badge 
-          variant={getStatusVariant(value)} 
-          className="rounded-xl"
-        >
-          {value}
-        </Badge>
+        <div className="flex items-center gap-2">
+          {value ? (
+            <>
+              <Phone className="w-3 h-3 text-muted-foreground" />
+              {value}
+            </>
+          ) : '-'}
+        </div>
       )
     },
     { 
-      key: 'data_criacao_ficha', 
-      label: 'Data Criação', 
+      key: 'valor_ficha', 
+      label: 'Valor Ficha', 
       sortable: true,
-      formatter: (value: string) => value ? formatDateBR(value) : '-'
+      formatter: (value: number) => value ? `R$ ${value.toFixed(2)}` : '-'
+    },
+    {
+      key: 'cadastro_existe_foto',
+      label: 'Foto',
+      sortable: true,
+      formatter: (value: boolean | string) => {
+        const hasFoto = value === true || value === 'SIM';
+        return (
+          <Badge variant={hasFoto ? "default" : "outline"} className="rounded-xl">
+            {hasFoto ? 'Sim' : 'Não'}
+          </Badge>
+        );
+      }
     },
     { 
-      key: 'idade', 
-      label: 'Idade', 
+      key: 'criado', 
+      label: 'Data Criação', 
       sortable: true,
-      formatter: (value: number) => value || '-'
+      formatter: (value: string) => (
+        <div className="flex items-center gap-2">
+          <Calendar className="w-3 h-3 text-muted-foreground" />
+          {value ? formatDateBR(value) : '-'}
+        </div>
+      )
     },
     {
       key: 'aprovado',
@@ -127,7 +144,7 @@ export default function Leads() {
         if (value === true) {
           return (
             <Badge variant="default" className="bg-green-500 rounded-xl">
-              <Heart className="w-3 h-3 mr-1" fill="white" />
+              <ThumbsUp className="w-3 h-3 mr-1" />
               Sim
             </Badge>
           );
@@ -146,32 +163,6 @@ export default function Leads() {
             </Badge>
           );
         }
-      }
-    },
-    {
-      key: 'indicadores',
-      label: 'Indicadores',
-      formatter: (value: any, row: Lead) => {
-        if (!row) return <div className="flex gap-1"></div>;
-        return (
-          <div className="flex gap-1">
-            {row.cadastro_existe_foto === 'SIM' && (
-              <Badge variant="secondary" className="text-xs rounded-xl">
-                Foto
-              </Badge>
-            )}
-            {row.presenca_confirmada === 'Sim' && (
-              <Badge variant="outline" className="text-xs rounded-xl">
-                Confirmado
-              </Badge>
-            )}
-            {row.ficha_confirmada === 'Sim' && (
-              <Badge variant="default" className="text-xs rounded-xl">
-                Validado
-              </Badge>
-            )}
-          </div>
-        );
       }
     }
   ]
