@@ -9,6 +9,46 @@ Este prompt deve ser aplicado no projeto **TabuladorMax** para validar e corrigi
 
 ---
 
+## 📋 Tabela de Mapeamento de Campos (TabuladorMax → Gestão Scouter)
+
+| Campo TabuladorMax | Campo Gestão Scouter | Tipo | Obrigatório | Observações |
+|-------------------|---------------------|------|-------------|-------------|
+| **Campos com nome idêntico** |
+| `nome` | `nome` | text | ✅ | Nome do lead |
+| `telefone` | `telefone` | text | ✅ | Telefone principal |
+| `email` | `email` | text | ❌ | Email do lead |
+| `projeto` | `projeto` | text | ✅ | Nome do projeto |
+| `scouter` | `scouter` | text | ✅ | Nome do scouter |
+| `supervisor` | `supervisor` | text | ❌ | Nome do supervisor |
+| `latitude` | `latitude` | float8 | ❌ | Coordenada geográfica |
+| `longitude` | `longitude` | float8 | ❌ | Coordenada geográfica |
+| `valor_ficha` | `valor_ficha` | numeric | ❌ | Valor da ficha |
+| `etapa` | `etapa` | text | ❌ | Etapa do processo |
+| `foto` | `foto` | text | ❌ | URL da foto |
+| `localizacao` | `localizacao` | text | ❌ | Descrição da localização |
+| `deleted` | `deleted` | boolean | ❌ | Indica registro deletado |
+| **Campos com aliases/mapeamento necessário** |
+| `data_agendamento` | `criado` | timestamptz | ✅ | Data de criação do lead |
+| `idade` | `age` | integer | ❌ | Idade do lead |
+| `modificado` | `updated_at` | timestamptz | ❌ | Auto-gerenciado pelo DB |
+| `responsavel` | `responsible` | text | ❌ | Responsável pelo lead |
+| `local_da_abordagem` | `local_abordagem` | text | ❌ | Local onde ocorreu a abordagem |
+| **Campos novos (adicionados em 2025-10-21)** |
+| `data_criacao_agendamento` | `data_criacao_agendamento` | timestamptz | ❌ | Data de criação do agendamento |
+| `data_retorno_ligacao` | `data_retorno_ligacao` | timestamptz | ❌ | Data programada para retorno |
+| `funil_fichas` | `funil_fichas` | text | ❌ | Estágio do funil de fichas |
+| `gerenciamento_funil` | `gerenciamento_funil` | text | ❌ | Status de gerenciamento do funil |
+| **Campos gerados automaticamente pelo Gestão Scouter** |
+| `origem_sincronizacao` | `sync_source` | text | ❌ | Usar valor: "tabuladormax" |
+| `ultima_sincronizacao` | `last_sync_at` | timestamptz | ❌ | Auto-gerenciado pela API |
+
+### ⚠️ Campos que NÃO devem ser enviados
+- `id`: Será gerado automaticamente pelo Gestão Scouter
+- `created_at`: Gerenciado automaticamente
+- `analisado_por`, `analisado_em`: Campos internos do Gestão Scouter
+
+---
+
 ## ✅ Checklist de Validação
 
 ### 1. Edge Function Obrigatória

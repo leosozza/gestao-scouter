@@ -20,6 +20,8 @@ export interface LeadDataPoint {
   criado?: string;
   data?: string;
   data_agendamento?: string;
+  data_criacao_agendamento?: string;
+  data_retorno_ligacao?: string;
   
   // Valores
   valor_ficha?: number;
@@ -32,6 +34,11 @@ export interface LeadDataPoint {
   agendado?: string;
   tabulacao?: string;
   resultado_ligacao?: string;
+  funilfichas?: string;
+  funil_fichas?: string;
+  gerenciamentofunil?: string;
+  gerenciamento_funil?: string;
+  etapafunil?: string;
   
   // Campos adicionais de cadastro
   cadastro_existe_foto?: string | boolean;

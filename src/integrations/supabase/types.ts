@@ -86,7 +86,9 @@ export type Database = {
           compareceu: boolean | null
           criado: string | null
           data_confirmacao_ficha: string | null
+          data_criacao_agendamento: string | null
           data_criacao_ficha: string | null
+          data_retorno_ligacao: string | null
           date_modify: string | null
           deleted: boolean | null
           email: string | null
@@ -96,6 +98,8 @@ export type Database = {
           ficha_confirmada: string | null
           fonte: string | null
           foto: string | null
+          funil_fichas: string | null
+          gerenciamento_funil: string | null
           horario_agendamento: string | null
           id: number
           last_sync_at: string | null
@@ -137,7 +141,9 @@ export type Database = {
           compareceu?: boolean | null
           criado?: string | null
           data_confirmacao_ficha?: string | null
+          data_criacao_agendamento?: string | null
           data_criacao_ficha?: string | null
+          data_retorno_ligacao?: string | null
           date_modify?: string | null
           deleted?: boolean | null
           email?: string | null
@@ -147,6 +153,8 @@ export type Database = {
           ficha_confirmada?: string | null
           fonte?: string | null
           foto?: string | null
+          funil_fichas?: string | null
+          gerenciamento_funil?: string | null
           horario_agendamento?: string | null
           id?: number
           last_sync_at?: string | null
@@ -188,7 +196,9 @@ export type Database = {
           compareceu?: boolean | null
           criado?: string | null
           data_confirmacao_ficha?: string | null
+          data_criacao_agendamento?: string | null
           data_criacao_ficha?: string | null
+          data_retorno_ligacao?: string | null
           date_modify?: string | null
           deleted?: boolean | null
           email?: string | null
@@ -198,6 +208,8 @@ export type Database = {
           ficha_confirmada?: string | null
           fonte?: string | null
           foto?: string | null
+          funil_fichas?: string | null
+          gerenciamento_funil?: string | null
           horario_agendamento?: string | null
           id?: number
           last_sync_at?: string | null

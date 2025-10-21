@@ -49,8 +49,12 @@ export interface Lead {
   tabulacao?: string;
   agendado?: string;
   funilfichas?: string;
+  funil_fichas?: string;
   gerenciamentofunil?: string;
+  gerenciamento_funil?: string;
   etapafunil?: string;
+  data_criacao_agendamento?: string;
+  data_retorno_ligacao?: string;
 }
 
 export interface AppSettings {
