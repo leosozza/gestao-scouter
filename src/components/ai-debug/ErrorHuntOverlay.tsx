@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useErrorHunt } from '@/contexts/ErrorHuntContext';
+import { useToast } from '@/hooks/use-toast';
 
 export function ErrorHuntOverlay() {
   const { isActive, captureElementContext } = useErrorHunt();
   const [highlightedElement, setHighlightedElement] = useState<HTMLElement | null>(null);
   const [highlightStyle, setHighlightStyle] = useState<React.CSSProperties>({});
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!isActive) {
@@ -32,6 +34,13 @@ export function ErrorHuntOverlay() {
         
         const target = e.target as HTMLElement;
         captureElementContext(target, e);
+        
+        // Toast de confirmação
+        toast({
+          title: "✅ Elemento capturado!",
+          description: "Abrindo modal de análise...",
+          duration: 2000,
+        });
       }
     };
 
@@ -77,7 +86,9 @@ export function ErrorHuntOverlay() {
       {/* Overlay hint */}
       <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none">
         <div className="bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-pulse">
-          <span className="text-sm font-medium">🔍 Modo Caça Erro Ativo - Duplo-clique em qualquer elemento</span>
+          <span className="text-sm font-medium">
+            🔍 Modo Caça Erro Ativo - Duplo-clique para capturar contexto e perguntar à IA
+          </span>
         </div>
       </div>
 

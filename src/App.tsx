@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { PWABadge } from "@/components/PWABadge";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { GlobalErrorCaptureHandler } from "@/components/ai-debug/GlobalErrorCaptureHandler";
 
 // Lazy load page components for better code splitting
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -42,6 +43,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <PWABadge />
+        <GlobalErrorCaptureHandler />
         <BrowserRouter>
           <Suspense fallback={<LoadingSpinner />}>
             <Routes>

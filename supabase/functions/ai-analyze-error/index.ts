@@ -53,38 +53,91 @@ serve(async (req) => {
       .update({ status: 'analyzing' })
       .eq('id', analysis_id);
 
-    // 4. Preparar contexto para IA
-    const context = `
-Você é um especialista em debug e correção de código. Analise o seguinte erro:
+    // 4. ENRIQUECER CONTEXTO: Chamar database inspector e log aggregator
+    console.log('📊 Enriquecendo contexto com database inspector...');
+    const { data: dbInspection } = await supabase.functions.invoke('ai-database-inspector');
+    
+    console.log('📋 Enriquecendo contexto com log aggregator...');
+    const { data: logAggregation } = await supabase.functions.invoke('ai-log-aggregator');
 
-**Tipo de Erro:** ${analysis.error_type}
+    // 5. Preparar contexto ULTRA-RICO para IA
+    const elementInfo = analysis.element_context ? `
+=== ELEMENTO CLICADO ===
+Tag: ${analysis.element_context.tag_name}
+Classes: ${analysis.element_context.class_name}
+ID: ${analysis.element_context.id}
+Texto: ${analysis.element_context.text_content}
+Componente React: ${analysis.element_context.react_component || 'Desconhecido'}
+XPath: ${analysis.element_context.xpath}
+` : '';
+
+    const dbInfo = dbInspection ? `
+=== BANCO DE DADOS ===
+Total de tabelas: ${dbInspection.tables?.length || 0}
+Tabelas principais: leads, fichas, scouters, users
+${dbInspection.tables?.slice(0, 3).map((t: any) => `
+Tabela: ${t.table_name}
+Colunas: ${t.columns?.slice(0, 5).map((c: any) => c.column_name).join(', ')}
+Total de linhas: ${t.row_count}
+`).join('\n')}
+` : '';
+
+    const logsInfo = logAggregation ? `
+=== LOGS DO SISTEMA (últimos 30 minutos) ===
+Total de eventos: ${logAggregation.aggregated_timeline?.length || 0}
+Erros: ${logAggregation.error_summary?.total_errors || 0}
+Erro mais comum: ${logAggregation.error_summary?.most_common_error || 'Nenhum'}
+
+Últimos 10 eventos:
+${logAggregation.aggregated_timeline?.slice(0, 10).map((log: any) => 
+  `[${log.timestamp}] ${log.source} ${log.level}: ${log.message}`
+).join('\n')}
+` : '';
+
+    const context = `
+Você é um especialista em debug e correção de código React/TypeScript com Supabase. 
+Analise o seguinte erro com TODO o contexto disponível:
+
+=== ERRO REPORTADO ===
+**Tipo:** ${analysis.error_type}
 **Mensagem:** ${analysis.error_message}
 **Stack Trace:** ${analysis.error_stack || 'Não disponível'}
 **Rota:** ${analysis.route || 'Não especificada'}
+${elementInfo}
 
-**Console Logs:**
+=== CONSOLE LOGS CAPTURADOS ===
 ${JSON.stringify(analysis.console_logs, null, 2)}
 
-**Network Requests:**
+=== NETWORK REQUESTS ===
 ${JSON.stringify(analysis.network_requests, null, 2)}
+${dbInfo}
+${logsInfo}
 
-**Contexto Adicional:**
+=== CONTEXTO ADICIONAL ===
 ${JSON.stringify(analysis.error_context, null, 2)}
 
-Analise profundamente este erro e forneça:
-1. Causa raiz do problema
-2. Impacto do erro
-3. 3-5 sugestões de correção (ordenadas por prioridade)
+ANÁLISE PROFUNDA:
+Com base em TODO este contexto (elemento clicado, logs, banco de dados, histórico de erros):
 
-Para cada sugestão de correção, retorne:
-- title: título curto e claro
-- description: descrição detalhada da correção
-- fix_type: tipo (code_change, config_change, dependency_update)
-- file_path: caminho do arquivo (se aplicável)
-- suggested_code: código corrigido (se aplicável)
-- priority: high, medium, low
+1. **Causa Raiz** - Identifique o problema EXATO (arquivo + linha se possível)
+2. **Impacto** - Quem é afetado e como
+3. **Correções** - 3-5 soluções priorizadas
 
-Retorne em formato JSON válido.
+Para cada correção, retorne JSON:
+{
+  "root_cause": "descrição detalhada da causa raiz",
+  "impact": "impacto do erro",
+  "fixes": [
+    {
+      "title": "título curto e claro",
+      "description": "descrição detalhada",
+      "fix_type": "code_change|config_change|dependency_update",
+      "file_path": "caminho/do/arquivo",
+      "suggested_code": "código corrigido",
+      "priority": "high|medium|low"
+    }
+  ]
+}
 `;
 
     // 5. Chamar IA baseado no provider
