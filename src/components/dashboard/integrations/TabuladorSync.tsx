@@ -246,9 +246,47 @@ export function TabuladorSync() {
 
     loadData();
 
-    // Atualizar a cada 30 segundos
-    const interval = setInterval(loadData, 30000);
-    return () => clearInterval(interval);
+    // Atualizar a cada 5 segundos
+    const interval = setInterval(loadData, 5000);
+
+    // Setup realtime listeners
+    const logsChannel = supabase
+      .channel('sync-logs-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'sync_logs'
+        },
+        (payload) => {
+          console.log('🔔 Novo log de sync:', payload);
+          loadSyncLogs();
+        }
+      )
+      .subscribe();
+
+    const statusChannel = supabase
+      .channel('sync-status-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'sync_status'
+        },
+        (payload) => {
+          console.log('🔔 Status atualizado:', payload);
+          loadSyncStatus();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(logsChannel);
+      supabase.removeChannel(statusChannel);
+    };
   }, []);
 
   if (isLoading) {

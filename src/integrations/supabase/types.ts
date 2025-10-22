@@ -458,6 +458,54 @@ export type Database = {
         }
         Relationships: []
       }
+      sync_queue: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_error: string | null
+          max_retries: number | null
+          next_retry_at: string | null
+          operation: string
+          payload: Json
+          processed_at: string | null
+          retry_count: number | null
+          row_id: string
+          status: string
+          sync_direction: string
+          table_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_error?: string | null
+          max_retries?: number | null
+          next_retry_at?: string | null
+          operation: string
+          payload: Json
+          processed_at?: string | null
+          retry_count?: number | null
+          row_id: string
+          status?: string
+          sync_direction?: string
+          table_name?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_error?: string | null
+          max_retries?: number | null
+          next_retry_at?: string | null
+          operation?: string
+          payload?: Json
+          processed_at?: string | null
+          retry_count?: number | null
+          row_id?: string
+          status?: string
+          sync_direction?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       sync_status: {
         Row: {
           created_at: string | null

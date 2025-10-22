@@ -161,7 +161,7 @@ export function HealthCheckDashboard() {
     });
 
     try {
-      const { data, error } = await supabase.functions.invoke('diagnose-tabulador-sync');
+      const { data, error } = await supabase.functions.invoke('health-check-sync');
 
       if (error) {
         throw error;
@@ -169,10 +169,10 @@ export function HealthCheckDashboard() {
 
       toast({
         title: 'Health Check Completo',
-        description: data.overall_status === 'healthy' 
+        description: data.status === 'healthy' 
           ? 'Todos os componentes operacionais' 
           : 'Problemas detectados na conexão',
-        variant: data.overall_status === 'healthy' ? 'default' : 'destructive',
+        variant: data.status === 'healthy' ? 'default' : 'destructive',
       });
 
       await loadHealthMetrics();
