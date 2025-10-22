@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { 
   RefreshCw, 
   CheckCircle2, 
@@ -76,6 +78,9 @@ export default function SyncMonitor() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isProcessingQueue, setIsProcessingQueue] = useState(false);
+  const [autoProcess, setAutoProcess] = useState<boolean>(() => {
+    return localStorage.getItem('auto_process_queue') === 'true';
+  });
   const { toast } = useToast();
 
   const loadSyncStatus = async () => {
@@ -207,6 +212,21 @@ export default function SyncMonitor() {
     return () => clearInterval(interval);
   }, []);
 
+  // Auto-processamento da fila
+  useEffect(() => {
+    if (!autoProcess) return;
+
+    const queueProcessor = setInterval(async () => {
+      const pending = syncQueue.filter(q => q.status === 'pending').length;
+      if (pending > 0 && !isProcessingQueue && !isSyncing) {
+        console.log(`🔄 Auto-processando ${pending} itens da fila...`);
+        await processQueue();
+      }
+    }, 60000); // 60 segundos
+
+    return () => clearInterval(queueProcessor);
+  }, [autoProcess, syncQueue, isProcessingQueue, isSyncing]);
+
   // Calcular estatísticas
   const stats = {
     totalSynced: syncLogs.reduce((sum, log) => sum + log.records_synced, 0),
@@ -242,30 +262,62 @@ export default function SyncMonitor() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Monitor de Sincronização</h1>
-          <p className="text-muted-foreground">
-            Acompanhe a sincronização bidirecional com TabuladorMax
-          </p>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Monitor de Sincronização</h1>
+            <p className="text-muted-foreground">
+              Acompanhe a sincronização bidirecional com TabuladorMax
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              onClick={processQueue} 
+              disabled={isProcessingQueue || isSyncing}
+              variant="outline"
+            >
+              <List className={`h-4 w-4 mr-2 ${isProcessingQueue ? 'animate-spin' : ''}`} />
+              Processar Fila
+            </Button>
+            <Button 
+              onClick={triggerSync} 
+              disabled={isSyncing || isProcessingQueue}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+              Sincronizar Agora
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button 
-            onClick={processQueue} 
-            disabled={isProcessingQueue || isSyncing}
-            variant="outline"
-          >
-            <List className={`h-4 w-4 mr-2 ${isProcessingQueue ? 'animate-spin' : ''}`} />
-            Processar Fila
-          </Button>
-          <Button 
-            onClick={triggerSync} 
-            disabled={isSyncing || isProcessingQueue}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
-            Sincronizar Agora
-          </Button>
-        </div>
+
+        {/* Auto-Process Control */}
+        <Card className="bg-card/50">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="auto-process" className="text-base font-semibold">
+                  Processamento Automático
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  A fila será processada automaticamente a cada 60 segundos enquanto houver itens pendentes
+                </p>
+              </div>
+              <Switch
+                id="auto-process"
+                checked={autoProcess}
+                onCheckedChange={(checked) => {
+                  setAutoProcess(checked);
+                  localStorage.setItem('auto_process_queue', String(checked));
+                  toast({
+                    title: checked ? 'Auto-processamento ativado' : 'Auto-processamento desativado',
+                    description: checked 
+                      ? 'A fila será processada automaticamente a cada 60 segundos'
+                      : 'Use o botão "Processar Fila" para processar manualmente'
+                  });
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Stats Cards */}
