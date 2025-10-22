@@ -84,10 +84,10 @@ export function TabuladorMaxConfigPanel() {
         enabled: config.enabled,
       });
 
-      if (saved && saved.id) {
-        console.log('✅ [TabuladorMaxConfigPanel] Salvamento confirmado com ID:', saved.id);
+      if (saved && saved.project_id) {
+        console.log('✅ [TabuladorMaxConfigPanel] Salvamento confirmado:', saved.project_id);
         toast.success('✅ Configuração salva com sucesso', {
-          description: `ID: ${saved.id.substring(0, 8)}... | Projeto: ${saved.project_id}`
+          description: `Projeto: ${saved.project_id} | URL: ${saved.url}`
         });
         setConfig(saved); // Atualizar estado com dados completos
         setTestResult(null); // Clear previous test results

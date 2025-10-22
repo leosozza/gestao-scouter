@@ -15,9 +15,9 @@ export async function getTabuladorConfig(): Promise<TabuladorMaxConfig | null> {
     if (stored) {
       const config = JSON.parse(stored) as TabuladorMaxConfig;
       
-      // VALIDAR SE TEM ID - se não tiver, ignorar localStorage
-      if (!config.id) {
-        console.log('⚠️ [TabuladorConfigRepo] Config do localStorage sem ID, buscando do banco...');
+      // VALIDAR SE TEM project_id - se não tiver, ignorar localStorage
+      if (!config.project_id) {
+        console.log('⚠️ [TabuladorConfigRepo] Config do localStorage sem project_id, buscando do banco...');
         localStorage.removeItem('tabuladormax_config'); // Limpar cache inválido
       } else {
         console.log('✅ [TabuladorConfigRepo] Configuração carregada do localStorage');
