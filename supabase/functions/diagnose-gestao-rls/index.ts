@@ -54,8 +54,8 @@ serve(async (req) => {
   console.log('🔍 Iniciando diagnóstico RLS do Gestão Scouter');
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') ?? '';
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
     
     if (!supabaseUrl || !supabaseKey) {
       return new Response(
