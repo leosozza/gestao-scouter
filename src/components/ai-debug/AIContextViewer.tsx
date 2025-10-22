@@ -13,7 +13,7 @@ interface AIContextViewerProps {
 export function AIContextViewer({ analysis, databaseContext, sourceContext, logContext }: AIContextViewerProps) {
   return (
     <Tabs defaultValue="analysis" className="w-full">
-      <TabsList className="grid w-full grid-cols-5">
+      <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         <TabsTrigger value="analysis">Análise IA</TabsTrigger>
         <TabsTrigger value="database">
           Banco {databaseContext && <Badge variant="secondary" className="ml-1">✓</Badge>}

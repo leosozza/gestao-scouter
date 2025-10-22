@@ -57,7 +57,7 @@ export function ErrorCaptureModal({ open, onOpenChange, onAnalyze }: ErrorCaptur
         </DialogHeader>
 
         <Tabs defaultValue="element" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
             <TabsTrigger value="element">
               Elemento {clickedElement && <Badge variant="secondary" className="ml-1">1</Badge>}
             </TabsTrigger>

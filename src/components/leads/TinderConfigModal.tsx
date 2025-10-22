@@ -155,9 +155,9 @@ export function TinderConfigModal({ open, onOpenChange }: TinderConfigModalProps
         </DialogHeader>
 
         <DndContext onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
             {/* Preview - 40% */}
-            <div className="col-span-2 space-y-4">
+            <div className="lg:col-span-2 space-y-4">
               <h3 className="text-sm font-semibold">Preview do Card</h3>
               
               {/* Card Preview */}
@@ -242,7 +242,7 @@ export function TinderConfigModal({ open, onOpenChange }: TinderConfigModalProps
             </div>
 
             {/* Available Fields - 60% */}
-            <div className="col-span-3 space-y-4">
+            <div className="lg:col-span-3 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Campos Disponíveis</h3>
                 <Button

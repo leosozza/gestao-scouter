@@ -20,34 +20,41 @@ export function IntegrationsPanel() {
       </div>
 
       <Tabs defaultValue="config" className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-7">
           <TabsTrigger value="config" className="gap-2">
             <Settings className="h-4 w-4" />
-            Configuração
+            <span className="hidden sm:inline">Configuração</span>
+            <span className="sm:hidden">Config</span>
           </TabsTrigger>
           <TabsTrigger value="sync" className="gap-2">
             <RefreshCw className="h-4 w-4" />
-            Sincronização
+            <span className="hidden sm:inline">Sincronização</span>
+            <span className="sm:hidden">Sync</span>
           </TabsTrigger>
           <TabsTrigger value="health" className="gap-2">
             <Activity className="h-4 w-4" />
-            Health Check
+            <span className="hidden sm:inline">Health Check</span>
+            <span className="sm:hidden">Health</span>
           </TabsTrigger>
           <TabsTrigger value="history" className="gap-2">
             <History className="h-4 w-4" />
-            Histórico
+            <span className="hidden sm:inline">Histórico</span>
+            <span className="sm:hidden">Hist</span>
           </TabsTrigger>
           <TabsTrigger value="logs" className="gap-2">
             <FileText className="h-4 w-4" />
-            Logs
+            <span className="hidden sm:inline">Logs</span>
+            <span className="sm:hidden">Log</span>
           </TabsTrigger>
           <TabsTrigger value="import" className="gap-2">
             <Upload className="h-4 w-4" />
-            Importação CSV
+            <span className="hidden sm:inline">Importação CSV</span>
+            <span className="sm:hidden">CSV</span>
           </TabsTrigger>
           <TabsTrigger value="webhooks" className="gap-2">
             <Database className="h-4 w-4" />
-            Webhooks
+            <span className="hidden sm:inline">Webhooks</span>
+            <span className="sm:hidden">Web</span>
           </TabsTrigger>
         </TabsList>
 

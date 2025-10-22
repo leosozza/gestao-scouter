@@ -24,30 +24,36 @@ export default function ConfiguracoesPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-6 rounded-2xl">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-6 rounded-2xl">
             <TabsTrigger value="usuarios" className="rounded-xl">
               <UserCog className="h-4 w-4 mr-2" />
-              Usuários
+              <span className="hidden sm:inline">Usuários</span>
+              <span className="sm:hidden">Users</span>
             </TabsTrigger>
             <TabsTrigger value="permissoes" className="rounded-xl">
               <Shield className="h-4 w-4 mr-2" />
-              Permissões
+              <span className="hidden sm:inline">Permissões</span>
+              <span className="sm:hidden">Perm</span>
             </TabsTrigger>
             <TabsTrigger value="integracoes" className="rounded-xl">
               <Database className="h-4 w-4 mr-2" />
-              Integrações
+              <span className="hidden sm:inline">Integrações</span>
+              <span className="sm:hidden">Integ</span>
             </TabsTrigger>
             <TabsTrigger value="bitrix" className="rounded-xl">
               <Layers className="h-4 w-4 mr-2" />
-              Bitrix24
+              <span className="hidden sm:inline">Bitrix24</span>
+              <span className="sm:hidden">B24</span>
             </TabsTrigger>
             <TabsTrigger value="importacoes" className="rounded-xl">
               <FileText className="h-4 w-4 mr-2" />
-              Importações
+              <span className="hidden sm:inline">Importações</span>
+              <span className="sm:hidden">Import</span>
             </TabsTrigger>
             <TabsTrigger value="ia-debug" className="rounded-xl">
               <Brain className="h-4 w-4 mr-2" />
-              IA Debug
+              <span className="hidden sm:inline">IA Debug</span>
+              <span className="sm:hidden">IA</span>
             </TabsTrigger>
           </TabsList>
 

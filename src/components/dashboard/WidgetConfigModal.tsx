@@ -145,7 +145,7 @@ export function WidgetConfigModal({ open, onOpenChange, onSave, initialWidget }:
         </DialogHeader>
         
         <Tabs defaultValue="basic" className="mt-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
             <TabsTrigger value="basic">Configuração Básica</TabsTrigger>
             <TabsTrigger value="visual">Aparência</TabsTrigger>
             <TabsTrigger value="formula">Fórmula</TabsTrigger>
