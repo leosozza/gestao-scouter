@@ -1,8 +1,13 @@
 import { ReactNode } from 'react'
-import { Layers3 } from 'lucide-react'
+import { Layers3, Bug } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar'
 import { AIAnalysisFloating } from '@/components/shared/AIAnalysisFloating'
+import { ErrorHuntOverlay } from '@/components/ai-debug/ErrorHuntOverlay'
+import { ErrorHuntIndicator } from '@/components/ai-debug/ErrorHuntIndicator'
+import { useErrorHunt } from '@/contexts/ErrorHuntContext'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 
 interface AppShellProps {
   sidebar: ReactNode
@@ -10,6 +15,8 @@ interface AppShellProps {
 }
 
 export function AppShell({ sidebar, children }: AppShellProps) {
+  const { isActive, toggleMode } = useErrorHunt();
+  
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="min-h-screen bg-background text-foreground flex w-full">
@@ -28,12 +35,25 @@ export function AppShell({ sidebar, children }: AppShellProps) {
             </div>
             
             <div className="flex items-center gap-2">
+              <Button
+                variant={isActive ? "default" : "outline"}
+                size="sm"
+                onClick={toggleMode}
+                className="gap-2"
+              >
+                <Bug className="h-4 w-4" />
+                {isActive && <Badge variant="secondary" className="ml-1">Ativo</Badge>}
+              </Button>
               <AIAnalysisFloating />
               <Avatar className="h-8 w-8">
                 <AvatarFallback>GS</AvatarFallback>
               </Avatar>
             </div>
           </header>
+          
+          {/* Error Hunt Overlay */}
+          <ErrorHuntOverlay />
+          <ErrorHuntIndicator />
 
           {/* Main Content Area */}
           <main className="flex-1 p-4 md:p-6 space-y-6">

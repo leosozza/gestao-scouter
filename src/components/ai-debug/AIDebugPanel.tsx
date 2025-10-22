@@ -23,6 +23,9 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AIProviderConfig } from './AIProviderConfig';
 import { FixSuggestionCard } from './FixSuggestionCard';
+import { ErrorCaptureModal } from './ErrorCaptureModal';
+import { AIContextViewer } from './AIContextViewer';
+import { useErrorHunt } from '@/contexts/ErrorHuntContext';
 
 interface ErrorAnalysis {
   id: string;
@@ -49,16 +52,25 @@ interface FixSuggestion {
 }
 
 export function AIDebugPanel() {
+  const { clickedElement } = useErrorHunt();
   const [analyses, setAnalyses] = useState<ErrorAnalysis[]>([]);
   const [selectedAnalysis, setSelectedAnalysis] = useState<ErrorAnalysis | null>(null);
   const [fixes, setFixes] = useState<FixSuggestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
+  const [showCaptureModal, setShowCaptureModal] = useState(false);
 
   // Form para nova análise
   const [errorMessage, setErrorMessage] = useState('');
   const [errorStack, setErrorStack] = useState('');
+  
+  // Abrir modal quando elemento é capturado
+  useEffect(() => {
+    if (clickedElement) {
+      setShowCaptureModal(true);
+    }
+  }, [clickedElement]);
 
   useEffect(() => {
     fetchAnalyses();
@@ -157,6 +169,47 @@ export function AIDebugPanel() {
     }
   };
 
+  const createAnalysisFromCapture = async (captureData: any) => {
+    try {
+      setAnalyzing(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Não autenticado');
+
+      const { data: analysis, error: analysisError } = await supabase
+        .from('error_analyses')
+        .insert({
+          user_id: user.id,
+          error_type: 'captured',
+          error_message: captureData.description || 'Erro capturado via modo Caça Erro',
+          error_context: captureData.element_context || {},
+          element_context: captureData.element_context || {},
+          console_logs: captureData.console_logs || [],
+          network_requests: captureData.network_requests || [],
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (analysisError) throw analysisError;
+
+      toast.success('Análise em andamento...');
+
+      const { error: analyzeError } = await supabase.functions.invoke('ai-analyze-error', {
+        body: { analysis_id: analysis.id }
+      });
+
+      if (analyzeError) throw analyzeError;
+
+      await fetchAnalyses();
+      toast.success('Análise concluída!');
+    } catch (error: any) {
+      console.error('Erro:', error);
+      toast.error(error.message || 'Erro ao analisar');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
   const applyFix = async (fixId: string) => {
     try {
       const { error } = await supabase.functions.invoke('apply-fix', {
@@ -223,8 +276,15 @@ export function AIDebugPanel() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <>
+      <ErrorCaptureModal
+        open={showCaptureModal}
+        onOpenChange={setShowCaptureModal}
+        onAnalyze={createAnalysisFromCapture}
+      />
+      
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Brain className="h-8 w-8 text-primary" />
@@ -430,6 +490,7 @@ export function AIDebugPanel() {
           )}
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </>
   );
 }

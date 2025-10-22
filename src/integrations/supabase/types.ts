@@ -249,14 +249,18 @@ export type Database = {
           analyzed_at: string | null
           console_logs: Json | null
           created_at: string
+          database_context: Json | null
+          element_context: Json | null
           error_context: Json | null
           error_message: string
           error_stack: string | null
           error_type: string
           id: string
+          log_context: Json | null
           metadata: Json | null
           network_requests: Json | null
           route: string | null
+          source_context: Json | null
           status: string
           suggested_fixes: Json | null
           user_id: string
@@ -268,14 +272,18 @@ export type Database = {
           analyzed_at?: string | null
           console_logs?: Json | null
           created_at?: string
+          database_context?: Json | null
+          element_context?: Json | null
           error_context?: Json | null
           error_message: string
           error_stack?: string | null
           error_type: string
           id?: string
+          log_context?: Json | null
           metadata?: Json | null
           network_requests?: Json | null
           route?: string | null
+          source_context?: Json | null
           status?: string
           suggested_fixes?: Json | null
           user_id: string
@@ -287,14 +295,18 @@ export type Database = {
           analyzed_at?: string | null
           console_logs?: Json | null
           created_at?: string
+          database_context?: Json | null
+          element_context?: Json | null
           error_context?: Json | null
           error_message?: string
           error_stack?: string | null
           error_type?: string
           id?: string
+          log_context?: Json | null
           metadata?: Json | null
           network_requests?: Json | null
           route?: string | null
+          source_context?: Json | null
           status?: string
           suggested_fixes?: Json | null
           user_id?: string
