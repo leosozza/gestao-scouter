@@ -146,7 +146,7 @@ export function SyncLogsViewer() {
                       <Badge variant="outline">{log.table_name}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      {log.records_count !== undefined ? (
+                      {log.records_count != null ? (
                         <span className="font-medium">
                           {log.records_count.toLocaleString('pt-BR')}
                         </span>
@@ -155,7 +155,7 @@ export function SyncLogsViewer() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {log.execution_time_ms !== undefined ? (
+                      {log.execution_time_ms != null ? (
                         <span className="text-xs">
                           {log.execution_time_ms}ms
                         </span>
