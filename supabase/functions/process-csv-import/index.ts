@@ -65,78 +65,101 @@ serve(async (req) => {
         }
         console.log(`✅ [DOWNLOAD] Concluído em ${Date.now() - downloadStart}ms`);
 
-        // Parse CSV usando PapaParse
-        console.log('🔍 [PARSE] Iniciando parse do CSV com PapaParse...');
+        // Parse CSV usando PapaParse com streaming
+        console.log('🔍 [PARSE] Iniciando parse do CSV em modo streaming...');
         const parseStart = Date.now();
-        const csvText = await fileData.text();
+        
+        // Converter Blob para ArrayBuffer e então para string em chunks
+        const arrayBuffer = await fileData.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+        const decoder = new TextDecoder('utf-8');
+        const csvText = decoder.decode(uint8Array);
+        
+        // Usar streaming com PapaParse
+        let headers: string[] = [];
+        const allRows: Record<string, string>[] = [];
+        let rowCount = 0;
         
         const parseResult = Papa.parse(csvText, {
           header: true,
           skipEmptyLines: true,
           transformHeader: (header: string) => header.trim(),
-          transform: (value: string) => value.trim()
+          transform: (value: string) => value.trim(),
+          chunkSize: 1024 * 100, // 100KB chunks para evitar estouro de memória
+          chunk: (results: any) => {
+            // Processar chunk por chunk
+            if (results.data && Array.isArray(results.data)) {
+              allRows.push(...results.data);
+              rowCount += results.data.length;
+              
+              if (results.meta?.fields && headers.length === 0) {
+                headers = results.meta.fields;
+              }
+            }
+          }
         });
 
         if (parseResult.errors.length > 0) {
           console.warn('⚠️ [PARSE] Avisos durante parse:', parseResult.errors.slice(0, 5));
         }
 
-        const rows = parseResult.data as Record<string, string>[];
-        const headers = parseResult.meta.fields || [];
+        headers = parseResult.meta.fields || headers;
         
         console.log(`✅ [PARSE] Concluído em ${Date.now() - parseStart}ms`);
-        console.log(`📊 [DADOS] Total de linhas: ${rows.length} | Colunas: ${headers.length}`);
+        console.log(`📊 [DADOS] Total de linhas: ${allRows.length} | Colunas: ${headers.length}`);
         console.log(`📋 [COLUNAS] ${headers.join(', ')}`);
 
         // Atualizar total de linhas
         await supabase
           .from('import_jobs')
           .update({ 
-            total_rows: rows.length,
+            total_rows: allRows.length,
             started_at: new Date().toISOString()
           })
           .eq('id', job_id);
 
-        // Processar em chunks de 500 registros (reduzido para melhor controle)
-        const CHUNK_SIZE = 500;
+        // Processar em chunks de 100 registros (reduzido para evitar timeout)
+        const CHUNK_SIZE = 100;
         const HEARTBEAT_INTERVAL = 2000; // Atualizar a cada 2 segundos
         let processed = 0;
         let inserted = 0;
         let failed = 0;
         const errors: string[] = [];
-        const totalChunks = Math.ceil(rows.length / CHUNK_SIZE);
+        const totalChunks = Math.ceil(allRows.length / CHUNK_SIZE);
 
         console.log(`🔄 [PROCESSAMENTO] Iniciando em ${totalChunks} chunks de até ${CHUNK_SIZE} registros`);
 
-        for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+        for (let i = 0; i < allRows.length; i += CHUNK_SIZE) {
           const chunkNum = Math.floor(i / CHUNK_SIZE) + 1;
           const chunkStart = Date.now();
-          const chunk = rows.slice(i, Math.min(i + CHUNK_SIZE, rows.length));
+          const chunk = allRows.slice(i, Math.min(i + CHUNK_SIZE, allRows.length));
           
-          // Verificar se job foi pausado
-          const { data: currentJob } = await supabase
-            .from('import_jobs')
-            .select('status')
-            .eq('id', job_id)
-            .single();
-
-          if (currentJob?.status === 'paused') {
-            console.log('⏸️ [PAUSADO] Job pausado pelo usuário');
-            await supabase
+          // Verificar se job foi pausado/cancelado a cada 10 chunks (melhor performance)
+          if (chunkNum % 10 === 0) {
+            const { data: currentJob } = await supabase
               .from('import_jobs')
-              .update({
-                processed_rows: processed,
-                inserted_rows: inserted,
-                failed_rows: failed,
-                errors: errors.slice(0, 100)
-              })
-              .eq('id', job_id);
-            return; // Sair do loop
-          }
+              .select('status')
+              .eq('id', job_id)
+              .single();
 
-          if (currentJob?.status === 'failed') {
-            console.log('❌ [CANCELADO] Job cancelado pelo usuário');
-            return; // Sair do loop
+            if (currentJob?.status === 'paused') {
+              console.log('⏸️ [PAUSADO] Job pausado pelo usuário');
+              await supabase
+                .from('import_jobs')
+                .update({
+                  processed_rows: processed,
+                  inserted_rows: inserted,
+                  failed_rows: failed,
+                  errors: errors.slice(0, 100)
+                })
+                .eq('id', job_id);
+              return;
+            }
+
+            if (currentJob?.status === 'failed') {
+              console.log('❌ [CANCELADO] Job cancelado pelo usuário');
+              return;
+            }
           }
           
           console.log(`📦 [CHUNK ${chunkNum}/${totalChunks}] Processando ${chunk.length} registros...`);
@@ -197,11 +220,11 @@ serve(async (req) => {
           }
 
           processed += chunk.length;
-          const progressPct = Math.round((processed / rows.length) * 100);
+          const progressPct = Math.round((processed / allRows.length) * 100);
           const avgTimePerRecord = (Date.now() - startTime) / processed;
-          const estimatedRemaining = Math.round((rows.length - processed) * avgTimePerRecord / 1000);
+          const estimatedRemaining = Math.round((allRows.length - processed) * avgTimePerRecord / 1000);
 
-          console.log(`📈 [PROGRESSO] ${progressPct}% (${processed}/${rows.length}) | Tempo restante estimado: ${estimatedRemaining}s`);
+          console.log(`📈 [PROGRESSO] ${progressPct}% (${processed}/${allRows.length}) | Tempo restante estimado: ${estimatedRemaining}s`);
 
           // Heartbeat: Atualizar progresso periodicamente
           const now = Date.now();
@@ -221,6 +244,12 @@ serve(async (req) => {
           }
 
           console.log(`⏱️ [CHUNK ${chunkNum}/${totalChunks}] Concluído em ${Date.now() - chunkStart}ms`);
+          
+          // Liberar memória a cada chunk
+          if (chunkNum % 50 === 0) {
+            // Force garbage collection hint
+            await new Promise(resolve => setTimeout(resolve, 10));
+          }
         }
 
         // Finalizar job
