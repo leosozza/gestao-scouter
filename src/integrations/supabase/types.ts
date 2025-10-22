@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          key: string
+          updated_at: string | null
+          value: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          key: string
+          updated_at?: string | null
+          value?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          key?: string
+          updated_at?: string | null
+          value?: Json | null
+        }
+        Relationships: []
+      }
       dashboard_configs: {
         Row: {
           config: Json
@@ -53,6 +77,7 @@ export type Database = {
           created_at: string | null
           id: string
           name: string
+          position: number | null
           updated_at: string | null
           user_id: string
         }
@@ -61,6 +86,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           name: string
+          position?: number | null
           updated_at?: string | null
           user_id: string
         }
@@ -69,6 +95,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           name?: string
+          position?: number | null
           updated_at?: string | null
           user_id?: string
         }

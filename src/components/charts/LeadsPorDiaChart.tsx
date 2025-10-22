@@ -55,6 +55,12 @@ export function LeadsPorDiaChart({ startDate, endDate, rows, height = 280 }: Pro
 
   const renderCustomizedLabel = (props: any) => {
     const { x, y, width, value } = props;
+    
+    // Validar se value é um número válido
+    if (isNaN(value) || value === null || value === undefined) {
+      return null;
+    }
+    
     return (
       <text
         x={x + width / 2}
@@ -91,7 +97,7 @@ export function LeadsPorDiaChart({ startDate, endDate, rows, height = 280 }: Pro
           labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
         />
         <Bar 
-          dataKey="fichas" 
+          dataKey="leads" 
           fill="hsl(var(--primary))" 
           radius={[4, 4, 0, 0]}
         >
