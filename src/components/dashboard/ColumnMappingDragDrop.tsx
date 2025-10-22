@@ -20,11 +20,15 @@ interface DraggableFieldProps {
 }
 
 function DraggableField({ field, isDragging, isMapped }: DraggableFieldProps) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: field });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging: isCurrentDragging } = useSortable({ 
+    id: field,
+    disabled: isDragging 
+  });
   
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    opacity: isCurrentDragging ? 0.5 : 1,
   };
 
   return (
@@ -32,8 +36,8 @@ function DraggableField({ field, isDragging, isMapped }: DraggableFieldProps) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center gap-2 px-3 py-2 rounded-md border bg-card cursor-grab active:cursor-grabbing",
-        isDragging && "opacity-50",
+        "flex items-center gap-2 px-3 py-2 rounded-md border bg-card cursor-grab active:cursor-grabbing touch-none",
+        isDragging && "shadow-lg scale-105 rotate-2 bg-card border-primary",
         isMapped && "border-primary/50 bg-primary/5"
       )}
       {...attributes}
@@ -312,9 +316,11 @@ export function ColumnMappingDragDrop({
         </div>
       </div>
 
-      <DragOverlay>
+      <DragOverlay dropAnimation={null}>
         {activeId ? (
-          <DraggableField field={activeId} isDragging />
+          <div className="cursor-grabbing">
+            <DraggableField field={activeId} isDragging />
+          </div>
         ) : null}
       </DragOverlay>
     </DndContext>
