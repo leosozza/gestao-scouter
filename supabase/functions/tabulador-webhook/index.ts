@@ -310,51 +310,73 @@ serve(async (req) => {
           } else {
             inserted += data?.length || 0;
             
-            // ✅ NOVO: Enriquecer leads inseridos com nomes das SPAs
+            // ✅ ABORDAGEM HÍBRIDA: Enriquecer leads inseridos com nomes das SPAs
             if (data && data.length > 0) {
               for (const lead of data) {
                 if (lead.bitrix_projeto_id || lead.bitrix_scouter_id) {
                   const updates: any = {};
+                  let enrichmentFailed = false;
                   
-                  // Buscar nome do projeto
-                  if (lead.bitrix_projeto_id) {
-                    const { data: projeto } = await supabase
-                      .from('bitrix_projetos_comerciais')
-                      .select('title')
-                      .eq('id', lead.bitrix_projeto_id)
-                      .single();
-                    if (projeto) {
-                      updates.projeto = projeto.title;
-                      updates.commercial_project_id = String(lead.bitrix_projeto_id);
-                    }
-                  }
-                  
-                  // Buscar nome do scouter e copiar geolocalização se necessário
-                  if (lead.bitrix_scouter_id) {
-                    const { data: scouter } = await supabase
-                      .from('bitrix_scouters')
-                      .select('title, latitude, longitude, geolocalizacao')
-                      .eq('id', lead.bitrix_scouter_id)
-                      .single();
-                    if (scouter) {
-                      updates.scouter = scouter.title;
-                      
-                      // Copiar geolocalização do scouter se lead não tiver
-                      if ((!lead.latitude || !lead.longitude) && scouter.latitude && scouter.longitude) {
-                        updates.latitude = scouter.latitude;
-                        updates.longitude = scouter.longitude;
-                        if (scouter.geolocalizacao) {
-                          updates.localizacao = scouter.geolocalizacao;
-                        }
+                  try {
+                    // Buscar nome do projeto
+                    if (lead.bitrix_projeto_id) {
+                      const { data: projeto } = await supabase
+                        .from('bitrix_projetos_comerciais')
+                        .select('title')
+                        .eq('id', lead.bitrix_projeto_id)
+                        .single();
+                      if (projeto) {
+                        updates.projeto = projeto.title;
+                        updates.commercial_project_id = String(lead.bitrix_projeto_id);
+                      } else {
+                        enrichmentFailed = true;
                       }
                     }
-                  }
-                  
-                  // Aplicar updates se houver
-                  if (Object.keys(updates).length > 0) {
+                    
+                    // Buscar nome do scouter e copiar geolocalização se necessário
+                    if (lead.bitrix_scouter_id) {
+                      const { data: scouter } = await supabase
+                        .from('bitrix_scouters')
+                        .select('title, latitude, longitude, geolocalizacao')
+                        .eq('id', lead.bitrix_scouter_id)
+                        .single();
+                      if (scouter) {
+                        updates.scouter = scouter.title;
+                        
+                        // Copiar geolocalização do scouter se lead não tiver
+                        if ((!lead.latitude || !lead.longitude) && scouter.latitude && scouter.longitude) {
+                          updates.latitude = scouter.latitude;
+                          updates.longitude = scouter.longitude;
+                          if (scouter.geolocalizacao) {
+                            updates.localizacao = scouter.geolocalizacao;
+                          }
+                        }
+                      } else {
+                        enrichmentFailed = true;
+                      }
+                    }
+                    
+                    // Se o enriquecimento falhou (IDs não encontrados), marcar para cron
+                    if (enrichmentFailed) {
+                      updates.needs_enrichment = true;
+                      console.log(`⏳ Lead ${lead.id} marcado para enriquecimento via cron`);
+                    } else {
+                      updates.needs_enrichment = false;
+                    }
+                    
+                    // Aplicar updates se houver
+                    if (Object.keys(updates).length > 0) {
+                      await supabase
+                        .from('leads')
+                        .update(updates)
+                        .eq('id', lead.id);
+                    }
+                  } catch (error) {
+                    // Se houver erro, marcar para enriquecimento posterior
+                    console.error(`Erro ao enriquecer lead ${lead.id}:`, error);
                     await supabase
                       .from('leads')
-                      .update(updates)
+                      .update({ needs_enrichment: true })
                       .eq('id', lead.id);
                   }
                 }

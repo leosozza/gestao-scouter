@@ -200,6 +200,7 @@ export type Database = {
           longitude: number | null
           maxsystem_id_ficha: string | null
           modificado: string | null
+          needs_enrichment: boolean | null
           nome: string | null
           nome_modelo: string | null
           op_telemarketing: string | null
@@ -261,6 +262,7 @@ export type Database = {
           longitude?: number | null
           maxsystem_id_ficha?: string | null
           modificado?: string | null
+          needs_enrichment?: boolean | null
           nome?: string | null
           nome_modelo?: string | null
           op_telemarketing?: string | null
@@ -322,6 +324,7 @@ export type Database = {
           longitude?: number | null
           maxsystem_id_ficha?: string | null
           modificado?: string | null
+          needs_enrichment?: boolean | null
           nome?: string | null
           nome_modelo?: string | null
           op_telemarketing?: string | null

@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.enrich-leads-from-bitrix]
 verify_jwt = false
+
+[functions.enrich-pending-leads]
+verify_jwt = false
