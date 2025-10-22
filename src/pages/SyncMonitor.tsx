@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -168,7 +168,7 @@ export default function SyncMonitor() {
     }
   };
 
-  const processQueue = async () => {
+  const processQueue = useCallback(async () => {
     setIsProcessingQueue(true);
     toast({
       title: 'Processando fila',
@@ -196,7 +196,7 @@ export default function SyncMonitor() {
     } finally {
       setIsProcessingQueue(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -225,7 +225,7 @@ export default function SyncMonitor() {
     }, 60000); // 60 segundos
 
     return () => clearInterval(queueProcessor);
-  }, [autoProcess, syncQueue, isProcessingQueue, isSyncing]);
+  }, [autoProcess, syncQueue, isProcessingQueue, isSyncing, processQueue]);
 
   // Calcular estatísticas
   const stats = {
