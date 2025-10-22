@@ -10,6 +10,7 @@ import { Upload, FileText, ArrowRight, ArrowLeft, AlertCircle, CheckCircle2, XCi
 import { toast } from 'sonner';
 import { DEFAULT_FICHAS_MAPPINGS, FieldMapping } from '@/config/fieldMappings';
 import { ColumnMappingDragDrop } from './ColumnMappingDragDrop';
+import { findBestMatch } from '@/utils/stringSimilarity';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -242,15 +243,17 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
           const headers = results.data[0] as string[];
           const sampleData = results.data.slice(1) as string[][];
 
-          // Auto-map columns
+          // Auto-map columns com algoritmo inteligente
           const autoMapping: ColumnMappingWithPriority = {};
+          const availableFields = DEFAULT_FICHAS_MAPPINGS.map(m => ({
+            name: m.supabaseField,
+            aliases: m.legacyAliases
+          }));
+
           headers.forEach(csvHeader => {
-            const normalized = csvHeader.toLowerCase().trim();
-            const match = DEFAULT_FICHAS_MAPPINGS.find(m =>
-              m.legacyAliases.some(alias => alias.toLowerCase() === normalized)
-            );
+            const match = findBestMatch(csvHeader, availableFields, 0.6);
             if (match) {
-              autoMapping[match.supabaseField] = { primary: csvHeader };
+              autoMapping[match.field] = { primary: csvHeader };
             }
           });
 
@@ -280,18 +283,41 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
 
   const handleAutoMap = () => {
     const autoMapping: ColumnMappingWithPriority = {};
+    const mappingResults: { exact: number; high: number; contextual: number } = { 
+      exact: 0, 
+      high: 0, 
+      contextual: 0 
+    };
+
+    // Preparar campos disponíveis com aliases
+    const availableFields = DEFAULT_FICHAS_MAPPINGS.map(m => ({
+      name: m.supabaseField,
+      aliases: m.legacyAliases
+    }));
+
     wizardState.csvHeaders.forEach(csvHeader => {
-      const normalized = csvHeader.toLowerCase().trim();
-      const match = DEFAULT_FICHAS_MAPPINGS.find(m =>
-        m.legacyAliases.some(alias => alias.toLowerCase() === normalized)
-      );
+      const match = findBestMatch(csvHeader, availableFields, 0.6);
+      
       if (match) {
-        autoMapping[match.supabaseField] = { primary: csvHeader };
+        autoMapping[match.field] = { primary: csvHeader };
+        
+        // Contabilizar tipo de match
+        if (match.matchType === 'exact') mappingResults.exact++;
+        else if (match.matchType === 'high') mappingResults.high++;
+        else if (match.matchType === 'contextual') mappingResults.contextual++;
       }
     });
 
     setWizardState(prev => ({ ...prev, columnMapping: autoMapping }));
-    toast.success(`${Object.keys(autoMapping).length} campos mapeados!`);
+    
+    const total = Object.keys(autoMapping).length;
+    const details = [
+      mappingResults.exact > 0 ? `${mappingResults.exact} exato${mappingResults.exact > 1 ? 's' : ''}` : '',
+      mappingResults.high > 0 ? `${mappingResults.high} similar${mappingResults.high > 1 ? 'es' : ''}` : '',
+      mappingResults.contextual > 0 ? `${mappingResults.contextual} contextual${mappingResults.contextual > 1 ? 'is' : ''}` : ''
+    ].filter(Boolean).join(', ');
+    
+    toast.success(`${total} campo${total !== 1 ? 's' : ''} mapeado${total !== 1 ? 's' : ''} (${details})`);
   };
 
   const handleMappingConfirm = async () => {
