@@ -3,5 +3,8 @@ project_id = "jstsrgyxrrlklnzgsihd"
 [functions.diagnose-gestao-rls]
 verify_jwt = false
 
+[functions.health-check-sync]
+verify_jwt = false
+
 [functions.receive-schema-from-tabulador]
 verify_jwt = false

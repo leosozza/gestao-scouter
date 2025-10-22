@@ -160,9 +160,24 @@ export function TabuladorSync() {
         .select('*')
         .single();
 
-      if (configError || !config) {
+      if (configError) {
+        if (configError.code === 'PGRST116') {
+          toast.error('❌ Nenhuma Configuração Encontrada', {
+            description: 'Primeiro configure o TabuladorMax na seção acima e clique em "Salvar Configuração"',
+            duration: 8000,
+          });
+        } else {
+          toast.error('❌ Erro ao Buscar Configuração', {
+            description: `Erro: ${configError.message}`,
+            duration: 8000,
+          });
+        }
+        return;
+      }
+
+      if (!config || !config.url || !config.publishable_key) {
         toast.error('❌ Configuração Incompleta', {
-          description: 'Configure o TabuladorMax na seção "Configuração do TabuladorMax" acima',
+          description: 'Alguns campos obrigatórios estão vazios. Verifique a configuração.',
           duration: 8000,
         });
         return;
