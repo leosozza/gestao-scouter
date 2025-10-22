@@ -17,23 +17,32 @@ interface EnrichStats {
   errors: number;
 }
 
+interface SyncProgress {
+  entity: 'projetos' | 'scouters';
+  message: string;
+}
+
 export function BitrixSyncPanel() {
   const [syncingSpas, setSyncingSpas] = useState(false);
   const [enrichingLeads, setEnrichingLeads] = useState(false);
   const [syncStats, setSyncStats] = useState<SyncStats | null>(null);
   const [enrichStats, setEnrichStats] = useState<EnrichStats | null>(null);
   const [enrichProgress, setEnrichProgress] = useState(0);
+  const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null);
 
   const handleSyncSpas = async () => {
     setSyncingSpas(true);
     setSyncStats(null);
+    setSyncProgress(null);
 
     try {
       console.log('🔄 Iniciando sincronização de SPAs do Bitrix24...');
       
+      setSyncProgress({ entity: 'projetos', message: 'Buscando projetos do Bitrix24...' });
+      
       toast({
         title: '🔄 Sincronizando SPAs',
-        description: 'Buscando todos os registros do Bitrix24...',
+        description: 'Buscando todos os registros do Bitrix24 com paginação...',
       });
 
       const { data, error } = await supabase.functions.invoke('sync-bitrix-spas', {
@@ -49,9 +58,12 @@ export function BitrixSyncPanel() {
         });
 
         const timeInSeconds = (data.processing_time_ms / 1000).toFixed(1);
+        const totalRecords = data.projetos.total + data.scouters.total;
+        const totalSynced = data.projetos.synced + data.scouters.synced;
+        
         toast({
           title: '✅ SPAs sincronizadas com sucesso',
-          description: `${data.projetos.synced} projetos e ${data.scouters.synced} scouters em ${timeInSeconds}s`,
+          description: `${totalSynced} de ${totalRecords} registros em ${timeInSeconds}s\n📁 ${data.projetos.synced}/${data.projetos.total} projetos\n👤 ${data.scouters.synced}/${data.scouters.total} scouters`,
         });
       } else {
         throw new Error(data.errors?.[0]?.error || 'Erro desconhecido');
@@ -65,6 +77,7 @@ export function BitrixSyncPanel() {
       });
     } finally {
       setSyncingSpas(false);
+      setSyncProgress(null);
     }
   };
 
@@ -166,6 +179,15 @@ export function BitrixSyncPanel() {
               </>
             )}
           </Button>
+
+          {syncProgress && (
+            <div className="bg-muted/50 p-3 rounded-md">
+              <div className="flex items-center gap-2 text-sm">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>{syncProgress.message}</span>
+              </div>
+            </div>
+          )}
 
           {syncStats && (
             <div className="grid grid-cols-2 gap-4 mt-4">

@@ -62,45 +62,62 @@ function parseGeolocalizacao(geoStr: string | null): { lat: number | null; lng: 
 /**
  * Buscar SPAs do Bitrix24 com paginação completa
  */
-async function fetchBitrixSPA(entityTypeId: string): Promise<any[]> {
+async function fetchBitrixSPA(entityTypeId: string): Promise<{ items: any[], total: number }> {
   let allItems: any[] = [];
   let start = 0;
   let hasMore = true;
+  let totalRecords = 0;
   
   console.log(`📡 Buscando SPAs do Bitrix24: entityTypeId=${entityTypeId}`);
   
   while (hasMore) {
     const url = `${BITRIX_BASE}/crm.item.list.json?entityTypeId=${entityTypeId}&start=${start}`;
     
+    console.log(`🔍 Requisição: ${url}`);
     const response = await fetch(url);
+    
     if (!response.ok) {
       throw new Error(`Erro ao buscar SPAs: ${response.status} ${response.statusText}`);
     }
     
     const data = await response.json();
     
+    // Log completo da resposta
+    console.log(`📦 Resposta Bitrix24:`, JSON.stringify({
+      total: data.total,
+      next: data.next,
+      itemsCount: data.result?.items?.length || 0
+    }));
+    
     if (!data.result || !data.result.items) {
       throw new Error('Resposta inválida do Bitrix24');
+    }
+    
+    // Capturar total na primeira requisição
+    if (start === 0) {
+      totalRecords = data.total || 0;
+      console.log(`📊 Total de registros disponíveis: ${totalRecords}`);
     }
     
     const items = data.result.items;
     allItems = allItems.concat(items);
     
-    const pageNum = Math.floor(start / 50) + 1;
-    console.log(`✅ Página ${pageNum}: ${items.length} registros (total acumulado: ${allItems.length})`);
+    const currentPage = Math.floor(start / 50) + 1;
+    const estimatedPages = Math.ceil(totalRecords / 50);
+    console.log(`✅ Página ${currentPage}/${estimatedPages}: ${items.length} registros | Acumulado: ${allItems.length}/${totalRecords}`);
     
     // Bitrix24 retorna "next" quando há próxima página
-    if (data.next !== undefined && items.length === 50) {
+    if (data.next !== undefined) {
       start = data.next;
       // Rate limiting entre requisições
       await new Promise(resolve => setTimeout(resolve, 100));
     } else {
       hasMore = false;
+      console.log(`✅ Sincronização completa: ${allItems.length} de ${totalRecords} registros`);
     }
   }
   
-  console.log(`✅ Sincronização completa: ${allItems.length} registros totais`);
-  return allItems;
+  return { items: allItems, total: totalRecords };
 }
 
 /**
@@ -109,7 +126,12 @@ async function fetchBitrixSPA(entityTypeId: string): Promise<any[]> {
 async function syncProjetos(supabase: any): Promise<{ total: number; synced: number }> {
   console.log('🔄 Sincronizando Projetos Comerciais...');
   
-  const items = await fetchBitrixSPA(PROJETOS_SPA_ID);
+  const { items, total } = await fetchBitrixSPA(PROJETOS_SPA_ID);
+  
+  if (items.length === 0) {
+    console.log('⚠️ Nenhum projeto encontrado no Bitrix24');
+    return { total: 0, synced: 0 };
+  }
   
   const projetos = items.map(item => ({
     id: parseInt(item.id),
@@ -128,8 +150,8 @@ async function syncProjetos(supabase: any): Promise<{ total: number; synced: num
     throw error;
   }
   
-  console.log(`✅ ${data?.length || 0} projetos sincronizados`);
-  return { total: items.length, synced: data?.length || 0 };
+  console.log(`✅ ${data?.length || 0} projetos sincronizados de ${total} disponíveis`);
+  return { total, synced: data?.length || 0 };
 }
 
 /**
@@ -138,7 +160,12 @@ async function syncProjetos(supabase: any): Promise<{ total: number; synced: num
 async function syncScouters(supabase: any): Promise<{ total: number; synced: number }> {
   console.log('🔄 Sincronizando Scouters...');
   
-  const items = await fetchBitrixSPA(SCOUTERS_SPA_ID);
+  const { items, total } = await fetchBitrixSPA(SCOUTERS_SPA_ID);
+  
+  if (items.length === 0) {
+    console.log('⚠️ Nenhum scouter encontrado no Bitrix24');
+    return { total: 0, synced: 0 };
+  }
   
   const scouters = items.map(item => {
     const chave = item[FIELD_CHAVE] || null;
@@ -167,8 +194,8 @@ async function syncScouters(supabase: any): Promise<{ total: number; synced: num
     throw error;
   }
   
-  console.log(`✅ ${data?.length || 0} scouters sincronizados`);
-  return { total: items.length, synced: data?.length || 0 };
+  console.log(`✅ ${data?.length || 0} scouters sincronizados de ${total} disponíveis`);
+  return { total, synced: data?.length || 0 };
 }
 
 serve(async (req) => {
