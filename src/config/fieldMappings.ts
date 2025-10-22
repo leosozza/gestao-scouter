@@ -346,8 +346,15 @@ export const DEFAULT_FICHAS_MAPPINGS: FieldMapping[] = [
   
   // IDs externos
   {
+    supabaseField: 'id',
+    legacyAliases: ['ID', 'id', 'ID Bitrix', 'Bitrix ID', 'Lead ID', 'eu ia', 'eu_id'],
+    dataType: 'number',
+    isRequired: false,
+    description: 'ID único do lead (Bitrix)'
+  },
+  {
     supabaseField: 'maxsystem_id_ficha',
-    legacyAliases: ['MaxSystem ID', 'ID MaxSystem', 'ID'],
+    legacyAliases: ['MaxSystem ID', 'ID MaxSystem'],
     dataType: 'text',
     isRequired: false,
     description: 'ID no MaxSystem'
@@ -363,6 +370,7 @@ export const DEFAULT_FICHAS_MAPPINGS: FieldMapping[] = [
 
 // Lista completa de campos da tabela leads para o drag-and-drop
 export const ALL_LEADS_FIELDS = [
+  { name: 'id', description: 'ID único do lead (Bitrix)' },
   { name: 'nome', description: 'Nome do candidato (obrigatório)' },
   { name: 'telefone', description: 'Telefone de contato' },
   { name: 'email', description: 'E-mail do candidato' },
