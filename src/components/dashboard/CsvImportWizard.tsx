@@ -35,19 +35,15 @@ interface WizardStep {
   file?: File;
 }
 
-interface ImportJob {
-  id: string;
-  file_name: string;
-  status: string;
-  total_rows: number | null;
+interface ProcessingProgress {
+  status: 'processing' | 'completed' | 'failed' | 'cancelled';
+  total_rows: number;
   processed_rows: number;
   inserted_rows: number;
   failed_rows: number;
-  error_message: string | null;
-  errors?: any;
-  created_at: string;
-  started_at: string | null;
-  completed_at: string | null;
+  errors: string[];
+  error_message?: string;
+  started_at: Date;
 }
 
 interface CsvImportWizardProps {
@@ -63,167 +59,9 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
     columnMapping: {},
   });
   const [uploadingFile, setUploadingFile] = useState(false);
-  const [processingImport, setProcessingImport] = useState(false);
-  const [importJob, setImportJob] = useState<ImportJob | null>(null);
-  const [existingJob, setExistingJob] = useState<ImportJob | null>(null);
+  const [progress, setProgress] = useState<ProcessingProgress | null>(null);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
-
-  // Check for existing pending/processing jobs on mount
-  useEffect(() => {
-    if (!open) return;
-
-    const checkExistingJobs = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data } = await supabase
-          .from('import_jobs')
-          .select('*')
-          .eq('user_id', user.id)
-          .in('status', ['pending', 'processing'])
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (data) {
-          // Check if job is stalled (no update in last 5 minutes)
-          const lastUpdate = new Date(data.started_at || data.created_at).getTime();
-          const now = Date.now();
-          const minutesSinceUpdate = (now - lastUpdate) / 1000 / 60;
-
-          if (minutesSinceUpdate > 5 && data.status === 'processing') {
-            toast.warning('Detectada importação travada. Você pode cancelá-la e tentar novamente.');
-          }
-
-          setExistingJob(data as any);
-          setImportJob(data as any);
-          setWizardState(prev => ({ ...prev, step: 'processing' }));
-        }
-      } catch (error) {
-        console.error('Erro ao verificar jobs existentes:', error);
-      }
-    };
-
-    checkExistingJobs();
-  }, [open]);
-
-  // Poll job status with stall detection
-  useEffect(() => {
-    if (!importJob || importJob.status === 'completed' || importJob.status === 'failed') {
-      return;
-    }
-
-    let lastProcessedRows = importJob.processed_rows;
-    let stallCount = 0;
-
-    const interval = setInterval(async () => {
-      const { data } = await supabase
-        .from('import_jobs')
-        .select('*')
-        .eq('id', importJob.id)
-        .maybeSingle();
-
-      if (data) {
-        setImportJob(data as any);
-        
-        // Detectar se travou (sem progresso em 3 verificações consecutivas)
-        if (data.status === 'processing') {
-          if (data.processed_rows === lastProcessedRows) {
-            stallCount++;
-            if (stallCount >= 3) {
-              toast.error('Importação parece estar travada. Considere cancelar e tentar novamente.', {
-                duration: 10000,
-                action: {
-                  label: 'Cancelar',
-                  onClick: () => cancelCurrentJob()
-                }
-              });
-            }
-          } else {
-            stallCount = 0;
-            lastProcessedRows = data.processed_rows;
-          }
-        }
-        
-        if (data.status === 'completed') {
-          toast.success(`Importação concluída! ${data.inserted_rows} registros inseridos.`);
-        } else if (data.status === 'failed') {
-          toast.error(`Importação falhou: ${data.error_message}`);
-        }
-      }
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [importJob]);
-
-  const cancelCurrentJob = async () => {
-    if (!importJob) return;
-
-    try {
-      const { error } = await supabase
-        .from('import_jobs')
-        .update({ 
-          status: 'failed',
-          error_message: 'Cancelado pelo usuário',
-          completed_at: new Date().toISOString()
-        })
-        .eq('id', importJob.id);
-
-      if (error) throw error;
-
-      toast.success('Importação cancelada');
-      setImportJob(null);
-      setShowCancelDialog(false);
-      setWizardState({ step: 'upload', csvHeaders: [], sampleData: [], columnMapping: {} });
-    } catch (error) {
-      console.error('Erro ao cancelar job:', error);
-      toast.error('Erro ao cancelar importação');
-    }
-  };
-
-  const pauseCurrentJob = async () => {
-    if (!importJob) return;
-
-    try {
-      const { error } = await supabase
-        .from('import_jobs')
-        .update({ status: 'paused' })
-        .eq('id', importJob.id);
-
-      if (error) throw error;
-
-      toast.success('Importação pausada');
-    } catch (error) {
-      console.error('Erro ao pausar job:', error);
-      toast.error('Erro ao pausar importação');
-    }
-  };
-
-  const resumeCurrentJob = async () => {
-    if (!importJob) return;
-
-    try {
-      const { error: updateError } = await supabase
-        .from('import_jobs')
-        .update({ status: 'processing' })
-        .eq('id', importJob.id);
-
-      if (updateError) throw updateError;
-
-      // Reiniciar processamento
-      const { error: processError } = await supabase.functions.invoke('process-csv-import', {
-        body: { job_id: importJob.id }
-      });
-
-      if (processError) throw processError;
-
-      toast.success('Importação retomada');
-    } catch (error) {
-      console.error('Erro ao retomar job:', error);
-      toast.error('Erro ao retomar importação');
-    }
-  };
+  const [cancelRequested, setCancelRequested] = useState(false);
 
   const handleFileUpload = async (file: File) => {
     try {
@@ -320,72 +158,131 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
     toast.success(`${total} campo${total !== 1 ? 's' : ''} mapeado${total !== 1 ? 's' : ''} (${details})`);
   };
 
-  const handleMappingConfirm = async () => {
-    try {
-      setProcessingImport(true);
-
-      if (Object.keys(wizardState.columnMapping).length === 0) {
-        toast.error('Mapeie pelo menos uma coluna');
-        setProcessingImport(false);
-        return;
+  const mapRowToLead = (row: any, mapping: ColumnMappingWithPriority) => {
+    const lead: any = {};
+    
+    Object.entries(mapping).forEach(([targetField, priorities]) => {
+      const value = priorities.primary ? row[priorities.primary] : 
+                    priorities.secondary ? row[priorities.secondary] : 
+                    priorities.tertiary ? row[priorities.tertiary] : null;
+      
+      if (value !== null && value !== undefined && value !== '') {
+        lead[targetField] = value;
       }
+    });
+    
+    return lead;
+  };
 
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Não autenticado');
-
-      if (!wizardState.file) throw new Error('Arquivo não encontrado');
-
-      toast.info('Enviando arquivo...');
-
-      // Upload file
-      const filePath = `${user.id}/${Date.now()}_${wizardState.file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from('csv-imports')
-        .upload(filePath, wizardState.file);
-
-      if (uploadError) throw uploadError;
-
-      // Create job
-      const { data: newJob, error: jobError } = await supabase
-        .from('import_jobs')
-        .insert([{
-          file_path: filePath,
-          file_name: wizardState.fileName!,
-          file_size: wizardState.fileSize!,
-          column_mapping: wizardState.columnMapping as any,
-          target_table: 'leads',
-          status: 'pending',
-          user_id: user.id
-        }])
-        .select()
-        .single();
-
-      if (jobError) throw jobError;
-
-      // Start processing
-      const { error: processError } = await supabase.functions.invoke('process-csv-import', {
-        body: { job_id: newJob.id }
-      });
-
-      if (processError) throw processError;
-
-      setImportJob(newJob as any);
-      setWizardState(prev => ({ ...prev, step: 'processing' }));
-      toast.success('Importação iniciada!');
-      setProcessingImport(false);
-    } catch (error: any) {
-      console.error('Erro:', error);
-      toast.error(error.message);
-      setProcessingImport(false);
+  const handleMappingConfirm = async () => {
+    if (Object.keys(wizardState.columnMapping).length === 0) {
+      toast.error('Mapeie pelo menos uma coluna');
+      return;
     }
+
+    if (!wizardState.file) {
+      toast.error('Arquivo não encontrado');
+      return;
+    }
+
+    // Iniciar processamento
+    setWizardState(prev => ({ ...prev, step: 'processing' }));
+    setCancelRequested(false);
+
+    const progressState: ProcessingProgress = {
+      status: 'processing',
+      total_rows: 0,
+      processed_rows: 0,
+      inserted_rows: 0,
+      failed_rows: 0,
+      errors: [],
+      started_at: new Date()
+    };
+    setProgress(progressState);
+
+    toast.info('Processando CSV...');
+
+    Papa.parse(wizardState.file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        const rows = results.data;
+        progressState.total_rows = rows.length;
+        setProgress({ ...progressState });
+
+        const CHUNK_SIZE = 500;
+        
+        for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+          // Verificar cancelamento
+          if (cancelRequested) {
+            progressState.status = 'cancelled';
+            progressState.error_message = 'Cancelado pelo usuário';
+            setProgress({ ...progressState });
+            toast.info('Importação cancelada');
+            return;
+          }
+
+          const chunk = rows.slice(i, i + CHUNK_SIZE);
+          const records = chunk.map(row => mapRowToLead(row, wizardState.columnMapping));
+
+          try {
+            const { error } = await supabase
+              .from('leads')
+              .insert(records);
+
+            if (error) {
+              progressState.failed_rows += records.length;
+              progressState.errors.push(`Chunk ${i}-${i + chunk.length}: ${error.message}`);
+            } else {
+              progressState.inserted_rows += records.length;
+            }
+          } catch (err: any) {
+            progressState.failed_rows += records.length;
+            progressState.errors.push(`Chunk ${i}-${i + chunk.length}: ${err.message}`);
+          }
+
+          progressState.processed_rows = Math.min(i + CHUNK_SIZE, rows.length);
+          setProgress({ ...progressState });
+        }
+
+        // Finalizar
+        progressState.status = progressState.failed_rows === progressState.total_rows ? 'failed' : 'completed';
+        if (progressState.status === 'failed') {
+          progressState.error_message = 'Todos os registros falharam';
+        }
+        setProgress({ ...progressState });
+
+        if (progressState.status === 'completed') {
+          toast.success(`Importação concluída! ${progressState.inserted_rows} registros inseridos.`);
+        } else {
+          toast.error('Importação falhou. Verifique os erros.');
+        }
+      },
+      error: (error) => {
+        progressState.status = 'failed';
+        progressState.error_message = error.message;
+        setProgress({ ...progressState });
+        toast.error(`Erro ao processar CSV: ${error.message}`);
+      }
+    });
+  };
+
+  const handleCancelImport = () => {
+    setCancelRequested(true);
+    setShowCancelDialog(false);
   };
 
   const handleClose = () => {
+    // Não permitir fechar enquanto processa
+    if (progress?.status === 'processing') {
+      toast.warning('Aguarde o processamento terminar ou cancele a importação');
+      return;
+    }
+    
     setWizardState({ step: 'upload', csvHeaders: [], sampleData: [], columnMapping: {} });
     setUploadingFile(false);
-    setProcessingImport(false);
-    setImportJob(null);
-    setExistingJob(null);
+    setProgress(null);
+    setCancelRequested(false);
     onClose();
   };
 
@@ -454,8 +351,7 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
 
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={handleClose}>Cancelar</Button>
-                <Button onClick={handleMappingConfirm} disabled={processingImport}>
-                  {processingImport ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                <Button onClick={handleMappingConfirm}>
                   Iniciar Importação
                 </Button>
               </div>
@@ -463,59 +359,59 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
           )}
 
           {/* Processing Step */}
-          {wizardState.step === 'processing' && importJob && (
+          {wizardState.step === 'processing' && progress && (
             <div className="space-y-6">
               <div className="text-center space-y-4">
                 <div className="flex justify-center">
-                  {importJob.status === 'processing' ? (
+                  {progress.status === 'processing' ? (
                     <Loader2 className="h-16 w-16 animate-spin text-primary" />
-                  ) : importJob.status === 'paused' ? (
-                    <Pause className="h-16 w-16 text-yellow-600" />
-                  ) : importJob.status === 'completed' ? (
+                  ) : progress.status === 'completed' ? (
                     <CheckCircle2 className="h-16 w-16 text-green-600" />
+                  ) : progress.status === 'cancelled' ? (
+                    <XCircle className="h-16 w-16 text-yellow-600" />
                   ) : (
                     <XCircle className="h-16 w-16 text-red-600" />
                   )}
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold">
-                    {importJob.status === 'processing' ? 'Processando' :
-                     importJob.status === 'paused' ? 'Pausado' :
-                     importJob.status === 'completed' ? 'Concluído' : 'Falhou'}
+                    {progress.status === 'processing' ? 'Processando no navegador' :
+                     progress.status === 'completed' ? 'Concluído' :
+                     progress.status === 'cancelled' ? 'Cancelado' : 'Falhou'}
                   </h3>
-                  <p className="text-sm text-muted-foreground">{importJob.file_name}</p>
+                  <p className="text-sm text-muted-foreground">{wizardState.fileName}</p>
                 </div>
               </div>
 
-              {importJob.total_rows && (
+              {progress.total_rows > 0 && (
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
                     <span>Progresso</span>
-                    <span>{importJob.processed_rows} / {importJob.total_rows}</span>
+                    <span>{progress.processed_rows} / {progress.total_rows}</span>
                   </div>
-                  <Progress value={(importJob.processed_rows / importJob.total_rows) * 100} />
+                  <Progress value={(progress.processed_rows / progress.total_rows) * 100} />
                   
                   <div className="grid grid-cols-3 gap-4 text-sm">
                     <div className="text-center">
                       <div className="text-muted-foreground text-xs">Total</div>
-                      <div className="font-medium">{importJob.total_rows}</div>
+                      <div className="font-medium">{progress.total_rows}</div>
                     </div>
                     <div className="text-center">
                       <div className="text-muted-foreground text-xs">Inseridos</div>
-                      <div className="font-medium text-green-600">{importJob.inserted_rows}</div>
+                      <div className="font-medium text-green-600">{progress.inserted_rows}</div>
                     </div>
                     <div className="text-center">
                       <div className="text-muted-foreground text-xs">Falharam</div>
-                      <div className="font-medium text-red-600">{importJob.failed_rows}</div>
+                      <div className="font-medium text-red-600">{progress.failed_rows}</div>
                     </div>
                   </div>
 
-                  {importJob.status === 'processing' && importJob.processed_rows > 0 && importJob.started_at && (
+                  {progress.status === 'processing' && progress.processed_rows > 0 && (
                     <div className="text-xs text-center text-muted-foreground">
                       {(() => {
-                        const elapsedMs = Date.now() - new Date(importJob.started_at).getTime();
-                        const recordsPerSecond = (importJob.processed_rows / (elapsedMs / 1000)).toFixed(1);
-                        const remainingRecords = importJob.total_rows - importJob.processed_rows;
+                        const elapsedMs = Date.now() - progress.started_at.getTime();
+                        const recordsPerSecond = (progress.processed_rows / (elapsedMs / 1000)).toFixed(1);
+                        const remainingRecords = progress.total_rows - progress.processed_rows;
                         const estimatedSeconds = Math.round(remainingRecords / parseFloat(recordsPerSecond));
                         return `${recordsPerSecond} registros/s • ~${estimatedSeconds}s restantes`;
                       })()}
@@ -524,26 +420,26 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
                 </div>
               )}
 
-              {importJob.error_message && (
+              {progress.error_message && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Erro</AlertTitle>
-                  <AlertDescription>{importJob.error_message}</AlertDescription>
+                  <AlertDescription>{progress.error_message}</AlertDescription>
                 </Alert>
               )}
 
-              {importJob.errors && Array.isArray(importJob.errors) && importJob.errors.length > 0 && (
+              {progress.errors && progress.errors.length > 0 && (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Erros ({importJob.errors.length})</AlertTitle>
+                  <AlertTitle>Erros ({progress.errors.length})</AlertTitle>
                   <AlertDescription>
                     <ScrollArea className="h-32 mt-2">
                       <div className="space-y-1 text-xs font-mono">
-                        {importJob.errors.slice(0, 10).map((error, i) => (
+                        {progress.errors.slice(0, 10).map((error, i) => (
                           <div key={i}>{error}</div>
                         ))}
-                        {importJob.errors.length > 10 && (
-                          <div className="italic">... e mais {importJob.errors.length - 10}</div>
+                        {progress.errors.length > 10 && (
+                          <div className="italic">... e mais {progress.errors.length - 10}</div>
                         )}
                       </div>
                     </ScrollArea>
@@ -552,27 +448,12 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
               )}
 
               <div className="flex gap-2">
-                {importJob.status === 'processing' && (
-                  <>
-                    <Button onClick={() => pauseCurrentJob()} variant="outline" className="flex-1">
-                      Pausar
-                    </Button>
-                    <Button onClick={() => setShowCancelDialog(true)} variant="ghost">
-                      Cancelar
-                    </Button>
-                  </>
+                {progress.status === 'processing' && (
+                  <Button onClick={() => setShowCancelDialog(true)} variant="destructive" className="flex-1">
+                    Cancelar Importação
+                  </Button>
                 )}
-                {importJob.status === 'paused' && (
-                  <>
-                    <Button onClick={() => resumeCurrentJob()} variant="default" className="flex-1">
-                      Continuar
-                    </Button>
-                    <Button onClick={() => setShowCancelDialog(true)} variant="ghost">
-                      Cancelar
-                    </Button>
-                  </>
-                )}
-                {importJob.status !== 'processing' && importJob.status !== 'paused' && (
+                {progress.status !== 'processing' && (
                   <Button onClick={handleClose} className="flex-1">Fechar</Button>
                 )}
               </div>
@@ -586,12 +467,12 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Cancelar Importação?</AlertDialogTitle>
             <AlertDialogDescription>
-              Os registros já processados serão mantidos no banco.
+              Os registros já processados permanecerão no banco de dados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Continuar</AlertDialogCancel>
-            <AlertDialogAction onClick={cancelCurrentJob}>Sim, Cancelar</AlertDialogAction>
+            <AlertDialogCancel>Continuar Importando</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelImport}>Sim, Cancelar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
