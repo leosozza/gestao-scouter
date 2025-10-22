@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 
 export function ErrorHuntIndicator() {
-  const { isActive, capturedLogs, capturedErrors, networkRequests, clearContext, toggleMode } = useErrorHunt();
+  const { isActive, capturedLogs, capturedErrors, networkRequests, clearContext, toggleMode, modalOpen } = useErrorHunt();
 
-  if (!isActive) return null;
+  if (!isActive || modalOpen) return null;
 
   const hasNewData = capturedLogs.length > 0 || capturedErrors.length > 0 || networkRequests.length > 0;
 
