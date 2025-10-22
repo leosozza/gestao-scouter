@@ -52,6 +52,8 @@ export function DiagnosticModal({ open, onOpenChange, result }: DiagnosticModalP
   };
 
   const getStatusBadge = (status: string) => {
+    if (!status) return <Badge variant="outline">UNKNOWN</Badge>;
+    
     const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
       ok: 'default',
       warning: 'secondary',
