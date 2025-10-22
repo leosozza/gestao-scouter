@@ -207,12 +207,12 @@ export async function fetchPaginatedLeads(
 
   if (filters.scouter) {
     console.log('👤 [LeadsRepo] Aplicando filtro scouter:', filters.scouter);
-    query = query.eq('scouter', filters.scouter);
+    query = query.ilike('scouter', `%${filters.scouter}%`);
   }
 
   if (filters.projeto) {
     console.log('📁 [LeadsRepo] Aplicando filtro projeto:', filters.projeto);
-    query = query.eq('projeto', filters.projeto);
+    query = query.ilike('projeto', `%${filters.projeto}%`);
   }
 
   if (filters.etapa) {
@@ -273,12 +273,12 @@ export async function fetchAllLeadsFromSupabase(filters: LeadsFilters = {}): Pro
 
   if (filters.scouter) {
     console.log('👤 [LeadsRepo] Filtro scouter:', filters.scouter);
-    query = query.eq('scouter', filters.scouter);
+    query = query.ilike('scouter', `%${filters.scouter}%`);
   }
 
   if (filters.projeto) {
     console.log('📁 [LeadsRepo] Filtro projeto:', filters.projeto);
-    query = query.eq('projeto', filters.projeto);
+    query = query.ilike('projeto', `%${filters.projeto}%`);
   }
 
   if (filters.etapa) {
