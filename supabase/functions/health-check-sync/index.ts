@@ -41,6 +41,7 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY')!;
     const tabuladorUrl = Deno.env.get('TABULADOR_URL');
     const tabuladorKey = Deno.env.get('TABULADOR_SERVICE_KEY');
+    const tabuladorPublishableKey = Deno.env.get('TABULADOR_PUBLISHABLE_KEY');
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -84,15 +85,19 @@ Deno.serve(async (req) => {
 
         // Se Edge Function não existe (404) ou não autorizada (401), testar REST API
         if (countResponse.status === 404 || countResponse.status === 401) {
-          console.log('⚠️ Edge Function não disponível, testando REST API...');
+          console.log('⚠️ Edge Function não disponível, testando REST API com publishable_key...');
+          
+          if (!tabuladorPublishableKey) {
+            throw new Error('TABULADOR_PUBLISHABLE_KEY não configurado');
+          }
           
           const restResponse = await fetch(
             `${tabuladorUrl}/rest/v1/leads?select=id&limit=1`,
             {
               method: 'HEAD',
               headers: {
-                'apikey': tabuladorKey,
-                'Authorization': `Bearer ${tabuladorKey}`,
+                'apikey': tabuladorPublishableKey,
+                'Authorization': `Bearer ${tabuladorPublishableKey}`,
               },
             }
           );
