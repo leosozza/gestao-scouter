@@ -41,7 +41,7 @@ interface ProcessingProgress {
   processed_rows: number;
   inserted_rows: number;
   failed_rows: number;
-  errors: string[];
+  errors: Array<{ row: number; data: any; error: string }>;
   error_message?: string;
   started_at: Date;
 }
@@ -210,7 +210,7 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
         progressState.total_rows = rows.length;
         setProgress({ ...progressState });
 
-        const CHUNK_SIZE = 500;
+        const CHUNK_SIZE = 100; // Reduzir para melhor granularidade de erros
         
         for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
           // Verificar cancelamento
@@ -223,25 +223,45 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
           }
 
           const chunk = rows.slice(i, i + CHUNK_SIZE);
-          const records = chunk.map(row => mapRowToLead(row, wizardState.columnMapping));
+          
+          // Inserir registro por registro para capturar erros específicos
+          for (let j = 0; j < chunk.length; j++) {
+            const rowIndex = i + j + 2; // +2 porque: +1 para linha do Excel, +1 para header
+            const row = chunk[j];
+            const record = mapRowToLead(row, wizardState.columnMapping);
 
-          try {
-            const { error } = await supabase
-              .from('leads')
-              .insert(records);
+            try {
+              const { error } = await supabase
+                .from('leads')
+                .insert([record]);
 
-            if (error) {
-              progressState.failed_rows += records.length;
-              progressState.errors.push(`Chunk ${i}-${i + chunk.length}: ${error.message}`);
-            } else {
-              progressState.inserted_rows += records.length;
+              if (error) {
+                progressState.failed_rows++;
+                progressState.errors.push({
+                  row: rowIndex,
+                  data: record,
+                  error: error.message
+                });
+              } else {
+                progressState.inserted_rows++;
+              }
+            } catch (err: any) {
+              progressState.failed_rows++;
+              progressState.errors.push({
+                row: rowIndex,
+                data: record,
+                error: err.message
+              });
             }
-          } catch (err: any) {
-            progressState.failed_rows += records.length;
-            progressState.errors.push(`Chunk ${i}-${i + chunk.length}: ${err.message}`);
+
+            progressState.processed_rows++;
+            
+            // Atualizar UI a cada 10 registros
+            if (progressState.processed_rows % 10 === 0) {
+              setProgress({ ...progressState });
+            }
           }
 
-          progressState.processed_rows = Math.min(i + CHUNK_SIZE, rows.length);
           setProgress({ ...progressState });
         }
 
@@ -431,18 +451,44 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
               {progress.errors && progress.errors.length > 0 && (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Erros ({progress.errors.length})</AlertTitle>
+                  <AlertTitle>Erros Detalhados ({progress.errors.length})</AlertTitle>
                   <AlertDescription>
-                    <ScrollArea className="h-32 mt-2">
-                      <div className="space-y-1 text-xs font-mono">
-                        {progress.errors.slice(0, 10).map((error, i) => (
-                          <div key={i}>{error}</div>
-                        ))}
-                        {progress.errors.length > 10 && (
-                          <div className="italic">... e mais {progress.errors.length - 10}</div>
-                        )}
-                      </div>
-                    </ScrollArea>
+                    <div className="space-y-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const errorText = progress.errors.map(e => 
+                            `Linha ${e.row}: ${e.error}\nDados: ${JSON.stringify(e.data, null, 2)}`
+                          ).join('\n\n---\n\n');
+                          navigator.clipboard.writeText(errorText);
+                          toast.success('Erros copiados para área de transferência');
+                        }}
+                      >
+                        Copiar Todos os Erros
+                      </Button>
+                      <ScrollArea className="h-64 mt-2 border rounded-md p-2">
+                        <div className="space-y-3 text-xs">
+                          {progress.errors.map((error, i) => (
+                            <div key={i} className="border-l-2 border-destructive pl-3 py-2">
+                              <div className="font-semibold text-destructive mb-1">
+                                Linha {error.row}: {error.error}
+                              </div>
+                              <div className="text-muted-foreground font-mono">
+                                {Object.entries(error.data)
+                                  .filter(([_, value]) => value)
+                                  .map(([key, value]) => (
+                                    <div key={key}>
+                                      <span className="font-semibold">{key}:</span> {String(value)}
+                                    </div>
+                                  ))
+                                }
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </div>
                   </AlertDescription>
                 </Alert>
               )}
