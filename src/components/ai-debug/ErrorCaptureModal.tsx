@@ -91,7 +91,13 @@ export function ErrorCaptureModal({ open, onOpenChange, onAnalyze }: ErrorCaptur
                     <div>
                       <span className="font-semibold">Props:</span>
                       <pre className="bg-muted p-2 rounded mt-1 text-xs overflow-x-auto">
-                        {JSON.stringify(clickedElement.react_props, null, 2)}
+                        {(() => {
+                          try {
+                            return JSON.stringify(clickedElement.react_props, null, 2);
+                          } catch (e) {
+                            return '[Erro ao serializar props]';
+                          }
+                        })()}
                       </pre>
                     </div>
                   )}
@@ -112,7 +118,18 @@ export function ErrorCaptureModal({ open, onOpenChange, onAnalyze }: ErrorCaptur
                       {new Date(log.timestamp).toLocaleTimeString()}
                     </span>
                     {log.args.map((arg, j) => (
-                      <span key={j}>{typeof arg === 'object' ? JSON.stringify(arg) : String(arg)}</span>
+                      <span key={j}>
+                        {typeof arg === 'object' ? 
+                          (() => {
+                            try {
+                              return JSON.stringify(arg);
+                            } catch {
+                              return '[Circular]';
+                            }
+                          })() 
+                          : String(arg)
+                        }
+                      </span>
                     ))}
                   </div>
                 ))

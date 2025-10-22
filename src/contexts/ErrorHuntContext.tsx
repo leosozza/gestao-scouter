@@ -53,6 +53,46 @@ export function ErrorHuntProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const captureElementContext = useCallback((element: HTMLElement, event: MouseEvent) => {
+    // Safely serialize objects, removing circular references and functions
+    const safeSerialize = (obj: any, maxDepth = 3, currentDepth = 0): any => {
+      if (currentDepth > maxDepth) return '[Max Depth Reached]';
+      if (obj === null || obj === undefined) return obj;
+      
+      // Handle primitives
+      if (typeof obj !== 'object' && typeof obj !== 'function') return obj;
+      
+      // Handle functions
+      if (typeof obj === 'function') return '[Function]';
+      
+      // Handle DOM elements
+      if (obj instanceof HTMLElement) return `[HTMLElement: ${obj.tagName}]`;
+      
+      // Handle React elements
+      if (obj.$$typeof) return '[React Element]';
+      
+      // Handle arrays
+      if (Array.isArray(obj)) {
+        return obj.slice(0, 10).map(item => safeSerialize(item, maxDepth, currentDepth + 1));
+      }
+      
+      // Handle objects
+      const serialized: any = {};
+      const keys = Object.keys(obj).slice(0, 20); // Limit keys
+      
+      for (const key of keys) {
+        // Skip circular reference indicators
+        if (key.startsWith('__react') || key.startsWith('_owner')) continue;
+        
+        try {
+          serialized[key] = safeSerialize(obj[key], maxDepth, currentDepth + 1);
+        } catch {
+          serialized[key] = '[Error Serializing]';
+        }
+      }
+      
+      return serialized;
+    };
+
     // Get DOM path
     const getDomPath = (el: HTMLElement): string => {
       const path: string[] = [];
@@ -74,7 +114,7 @@ export function ErrorHuntProvider({ children }: { children: ReactNode }) {
         const fiber = (el as any)[fiberKey];
         return {
           component: fiber?.type?.name || fiber?.type?.displayName || typeof fiber?.type,
-          props: fiber?.memoizedProps,
+          props: safeSerialize(fiber?.memoizedProps), // Sanitize props
         };
       }
       return {};
@@ -114,25 +154,62 @@ export function ErrorHuntProvider({ children }: { children: ReactNode }) {
     const originalWarn = console.warn;
 
     console.log = (...args: any[]) => {
+      // Sanitize args to avoid circular references
+      const safeArgs = args.map(arg => {
+        if (typeof arg === 'object' && arg !== null) {
+          try {
+            JSON.stringify(arg);
+            return arg;
+          } catch {
+            return String(arg);
+          }
+        }
+        return arg;
+      });
+      
       setState(prev => ({
         ...prev,
-        capturedLogs: [...prev.capturedLogs.slice(-49), { timestamp: Date.now(), level: 'log', args }],
+        capturedLogs: [...prev.capturedLogs.slice(-49), { timestamp: Date.now(), level: 'log', args: safeArgs }],
       }));
       originalLog(...args);
     };
 
     console.error = (...args: any[]) => {
+      const safeArgs = args.map(arg => {
+        if (typeof arg === 'object' && arg !== null) {
+          try {
+            JSON.stringify(arg);
+            return arg;
+          } catch {
+            return String(arg);
+          }
+        }
+        return arg;
+      });
+      
       setState(prev => ({
         ...prev,
-        capturedLogs: [...prev.capturedLogs.slice(-49), { timestamp: Date.now(), level: 'error', args }],
+        capturedLogs: [...prev.capturedLogs.slice(-49), { timestamp: Date.now(), level: 'error', args: safeArgs }],
       }));
       originalError(...args);
     };
 
     console.warn = (...args: any[]) => {
+      const safeArgs = args.map(arg => {
+        if (typeof arg === 'object' && arg !== null) {
+          try {
+            JSON.stringify(arg);
+            return arg;
+          } catch {
+            return String(arg);
+          }
+        }
+        return arg;
+      });
+      
       setState(prev => ({
         ...prev,
-        capturedLogs: [...prev.capturedLogs.slice(-49), { timestamp: Date.now(), level: 'warn', args }],
+        capturedLogs: [...prev.capturedLogs.slice(-49), { timestamp: Date.now(), level: 'warn', args: safeArgs }],
       }));
       originalWarn(...args);
     };
