@@ -241,9 +241,6 @@ serve(async (req) => {
     
     console.log(`✅ Batch ${batchIndex + 1}/${totalBatches} concluído`);
   }
-    
-    console.log(`✅ Batch ${batchIndex + 1}/${totalBatches} concluído`);
-  }
 
     const processingTime = Date.now() - startTime;
 
