@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     const TABULADOR_URL = Deno.env.get('TABULADOR_URL');
     const TABULADOR_SERVICE_KEY = Deno.env.get('TABULADOR_SERVICE_KEY') || Deno.env.get('tabulador_service_key');
     const GESTAO_URL = Deno.env.get('GESTAO_URL') || Deno.env.get('SUPABASE_URL');
-    const GESTAO_SERVICE_KEY = Deno.env.get('GESTAO_KEY') || Deno.env.get('gestao_service_key') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const GESTAO_SERVICE_KEY = Deno.env.get('GESTAO_KEY') || Deno.env.get('gestao_service_key') || Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY');
 
     if (!TABULADOR_URL || !TABULADOR_SERVICE_KEY) {
       throw new Error('Credenciais do TabuladorMax não configuradas');

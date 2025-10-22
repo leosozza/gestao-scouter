@@ -55,13 +55,13 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') ?? '';
     
     if (!supabaseUrl || !supabaseKey) {
       return new Response(
         JSON.stringify({ 
           error: 'Configuração do Supabase não encontrada',
-          hint: 'SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são necessários'
+          hint: 'SUPABASE_URL e SUPABASE_ANON_KEY são necessários'
         }),
         { 
           status: 500, 

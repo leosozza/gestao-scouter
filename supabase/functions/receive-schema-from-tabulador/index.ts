@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
 
     // Get Gestão Scouter credentials
     const GESTAO_URL = Deno.env.get('SUPABASE_URL');
-    const GESTAO_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const GESTAO_SERVICE_KEY = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY');
 
     if (!GESTAO_URL || !GESTAO_SERVICE_KEY) {
       throw new Error('Credenciais do Gestão Scouter não configuradas');

@@ -57,7 +57,7 @@ serve(async (req) => {
   try {
     // Criar clientes Supabase
     const gestaoUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const gestaoKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const gestaoKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') ?? '';
     const gestao = createClient(gestaoUrl, gestaoKey);
 
     const tabuladorUrl = Deno.env.get('TABULADOR_URL') ?? '';
