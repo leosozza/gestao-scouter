@@ -14,8 +14,15 @@ export async function getTabuladorConfig(): Promise<TabuladorMaxConfig | null> {
     const stored = localStorage.getItem('tabuladormax_config');
     if (stored) {
       const config = JSON.parse(stored) as TabuladorMaxConfig;
-      console.log('✅ [TabuladorConfigRepo] Configuração carregada do localStorage');
-      return config;
+      
+      // VALIDAR SE TEM ID - se não tiver, ignorar localStorage
+      if (!config.id) {
+        console.log('⚠️ [TabuladorConfigRepo] Config do localStorage sem ID, buscando do banco...');
+        localStorage.removeItem('tabuladormax_config'); // Limpar cache inválido
+      } else {
+        console.log('✅ [TabuladorConfigRepo] Configuração carregada do localStorage');
+        return config;
+      }
     }
 
     // Try to get from Supabase table if it exists
@@ -68,6 +75,13 @@ export async function saveTabuladorConfig(config: Omit<TabuladorMaxConfig, 'id' 
 
     // Try to save to Supabase if table exists
     try {
+      console.log('📤 [TabuladorConfigRepo] Tentando UPSERT no Supabase...');
+      console.log('📋 [TabuladorConfigRepo] Dados:', {
+        project_id: config.project_id,
+        url: config.url,
+        enabled: config.enabled
+      });
+      
       const { data, error } = await supabase
         .from('tabulador_config')
         .upsert(
@@ -85,13 +99,24 @@ export async function saveTabuladorConfig(config: Omit<TabuladorMaxConfig, 'id' 
         .select()
         .single();
 
-      if (error) throw error;
-      console.log('✅ [TabuladorConfigRepo] Configuração salva no Supabase');
+      if (error) {
+        console.error('❌ [TabuladorConfigRepo] Erro UPSERT:', error);
+        console.error('📊 [TabuladorConfigRepo] Código do erro:', error.code);
+        console.error('💬 [TabuladorConfigRepo] Mensagem:', error.message);
+        throw error; // IMPORTANTE: Re-lançar erro para o painel capturar
+      }
+      
+      console.log('✅ [TabuladorConfigRepo] UPSERT bem-sucedido!');
+      console.log('📋 [TabuladorConfigRepo] Dados salvos:', data);
+      
+      // Atualizar localStorage com dados completos (incluindo ID)
+      localStorage.setItem('tabuladormax_config', JSON.stringify(data));
+      
       return data as TabuladorMaxConfig;
     } catch (dbError) {
-      // If Supabase save fails, that's OK - we have localStorage
-      console.log('ℹ️ [TabuladorConfigRepo] Não foi possível salvar no Supabase, usando apenas localStorage');
-      return configWithTimestamp as TabuladorMaxConfig;
+      console.error('❌ [TabuladorConfigRepo] Exceção no UPSERT:', dbError);
+      // REMOVER fallback silencioso - deixar erro subir
+      throw dbError;
     }
   } catch (error) {
     console.error('❌ [TabuladorConfigRepo] Exceção ao salvar configuração:', error);

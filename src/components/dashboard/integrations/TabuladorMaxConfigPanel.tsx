@@ -67,6 +67,7 @@ export function TabuladorMaxConfigPanel() {
   };
 
   const handleSave = async () => {
+    // Validate required fields
     if (!config.project_id || !config.url || !config.publishable_key) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
@@ -74,6 +75,8 @@ export function TabuladorMaxConfigPanel() {
 
     setIsSaving(true);
     try {
+      console.log('💾 [TabuladorMaxConfigPanel] Iniciando salvamento...');
+      
       const saved = await saveTabuladorConfig({
         project_id: config.project_id,
         url: config.url,
@@ -81,15 +84,27 @@ export function TabuladorMaxConfigPanel() {
         enabled: config.enabled,
       });
 
-      if (saved) {
-        toast.success('Configuração salva com sucesso');
-        // Mantém o testResult anterior - não limpa status após salvar
+      if (saved && saved.id) {
+        console.log('✅ [TabuladorMaxConfigPanel] Salvamento confirmado com ID:', saved.id);
+        toast.success('✅ Configuração salva com sucesso', {
+          description: `ID: ${saved.id.substring(0, 8)}... | Projeto: ${saved.project_id}`
+        });
+        setConfig(saved); // Atualizar estado com dados completos
+        setTestResult(null); // Clear previous test results
       } else {
-        toast.error('Erro ao salvar configuração');
+        console.error('⚠️ [TabuladorMaxConfigPanel] Salvou mas retornou sem ID:', saved);
+        toast.error('⚠️ Configuração parcialmente salva', {
+          description: 'Dados salvos no navegador mas não sincronizados com o banco'
+        });
       }
     } catch (error) {
-      console.error('Erro ao salvar:', error);
-      toast.error('Erro ao salvar configuração');
+      console.error('❌ [TabuladorMaxConfigPanel] Erro crítico ao salvar:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      toast.error('❌ Erro ao salvar configuração', {
+        description: errorMessage,
+        duration: 10000
+      });
     } finally {
       setIsSaving(false);
     }

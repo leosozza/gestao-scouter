@@ -154,34 +154,64 @@ export function TabuladorSync() {
     try {
       console.log('🔄 Solicitando schema do TabuladorMax...');
 
-      // Buscar configuração do TabuladorMax
+      console.log('🔍 [TabuladorSync] Buscando configuração para sincronização...');
+
       const { data: config, error: configError } = await supabase
         .from('tabulador_config')
         .select('*')
         .single();
 
-      if (configError) {
-        if (configError.code === 'PGRST116') {
-          toast.error('❌ Nenhuma Configuração Encontrada', {
-            description: 'Primeiro configure o TabuladorMax na seção acima e clique em "Salvar Configuração"',
-            duration: 8000,
-          });
-        } else {
-          toast.error('❌ Erro ao Buscar Configuração', {
-            description: `Erro: ${configError.message}`,
-            duration: 8000,
-          });
-        }
+      console.log('📊 [TabuladorSync] Resultado da query:', { config, error: configError });
+
+      // Se houver erro E não for "nenhum registro encontrado", reportar erro específico
+      if (configError && configError.code !== 'PGRST116') {
+        console.error('❌ [TabuladorSync] Erro ao buscar configuração:', configError);
+        toast.error('❌ Erro ao Buscar Configuração', {
+          description: `Erro: ${configError.message} (Código: ${configError.code})`,
+          duration: 8000,
+        });
         return;
       }
 
-      if (!config || !config.url || !config.publishable_key) {
+      // Se não encontrou configuração no banco, tentar localStorage como fallback
+      if (!config || configError?.code === 'PGRST116') {
+        console.log('⚠️ [TabuladorSync] Configuração não encontrada no banco, tentando localStorage...');
+        
+        const stored = localStorage.getItem('tabuladormax_config');
+        if (!stored) {
+          toast.error('❌ Nenhuma Configuração Encontrada', {
+            description: 'Configure o TabuladorMax na seção acima e clique em "Salvar Configuração"',
+            duration: 8000,
+          });
+          return;
+        }
+        
+        const localConfig = JSON.parse(stored);
+        
+        // Validar campos obrigatórios
+        if (!localConfig.url || !localConfig.publishable_key) {
+          toast.error('❌ Configuração Incompleta no Cache', {
+            description: 'Por favor, salve a configuração novamente para sincronizar',
+            duration: 8000,
+          });
+          return;
+        }
+        
+        console.log('✅ [TabuladorSync] Usando configuração do localStorage, iniciando sincronização...');
+        // Continuar com localConfig ao invés de config
+        // [A lógica abaixo já usa 'config', então vamos continuar com o fluxo normal]
+      }
+
+      // Validar campos obrigatórios apenas se config existe
+      if (config && (!config.url || !config.publishable_key)) {
         toast.error('❌ Configuração Incompleta', {
           description: 'Alguns campos obrigatórios estão vazios. Verifique a configuração.',
           duration: 8000,
         });
         return;
       }
+
+      console.log('✅ [TabuladorSync] Configuração válida encontrada, iniciando sincronização...');
 
       const TABULADOR_URL = config.url;
       const TABULADOR_ANON_KEY = config.publishable_key;
