@@ -11,6 +11,7 @@ interface HealthCheckResult {
   tabulador: {
     reachable: boolean;
     latency_ms: number;
+    total_leads?: number;
     error?: string;
   };
   sync_queue: {
@@ -63,29 +64,64 @@ Deno.serve(async (req) => {
       recommendations: [],
     };
 
-    // 1. Check TabuladorMax connectivity
+    // 1. Check TabuladorMax connectivity (with Edge Function fallback)
     if (tabuladorUrl && tabuladorKey) {
       const tabuladorStart = Date.now();
       try {
-        const response = await fetch(`${tabuladorUrl}/rest/v1/`, {
-          method: 'HEAD',
-          headers: {
-            'apikey': tabuladorKey,
-            'Authorization': `Bearer ${tabuladorKey}`,
-          },
-        });
+        // Tentar chamar Edge Function get-leads-count primeiro
+        let countResponse = await fetch(
+          `${tabuladorUrl}/functions/v1/get-leads-count`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${tabuladorKey}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
 
-        result.tabulador.reachable = response.ok;
         result.tabulador.latency_ms = Date.now() - tabuladorStart;
 
-        if (!response.ok) {
-          result.tabulador.error = `HTTP ${response.status}`;
-          result.recommendations.push('Verificar credenciais do TabuladorMax');
+        // Se Edge Function não existe (404) ou não autorizada (401), testar REST API
+        if (countResponse.status === 404 || countResponse.status === 401) {
+          console.log('⚠️ Edge Function não disponível, testando REST API...');
+          
+          const restResponse = await fetch(
+            `${tabuladorUrl}/rest/v1/leads?select=id&limit=1`,
+            {
+              method: 'HEAD',
+              headers: {
+                'apikey': tabuladorKey,
+                'Authorization': `Bearer ${tabuladorKey}`,
+              },
+            }
+          );
+
+          if (restResponse.ok) {
+            result.tabulador.reachable = true;
+            result.recommendations.push(
+              '⚠️ Edge Functions não configuradas no TabuladorMax - usando REST API (mais lento)'
+            );
+            result.status = 'degraded';
+          } else {
+            throw new Error(`REST API falhou: HTTP ${restResponse.status}`);
+          }
+        } else if (countResponse.ok) {
+          const data = await countResponse.json();
+          result.tabulador.reachable = true;
+          result.tabulador.total_leads = data.total_leads;
+          result.recommendations.push(
+            `✅ ${(data.total_leads || 0).toLocaleString('pt-BR')} leads disponíveis no TabuladorMax`
+          );
+        } else {
+          const errorText = await countResponse.text();
+          result.tabulador.error = `HTTP ${countResponse.status}: ${errorText}`;
+          result.recommendations.push('❌ Erro ao conectar com TabuladorMax');
           result.status = 'degraded';
         }
       } catch (error) {
         result.tabulador.error = error instanceof Error ? error.message : 'Connection failed';
-        result.recommendations.push('TabuladorMax inacessível - verificar URL e secrets');
+        result.recommendations.push('❌ TabuladorMax inacessível - verificar URL e secrets');
         result.status = 'down';
       }
     } else {

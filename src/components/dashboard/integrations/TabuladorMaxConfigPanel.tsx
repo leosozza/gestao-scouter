@@ -83,7 +83,7 @@ export function TabuladorMaxConfigPanel() {
 
       if (saved) {
         toast.success('Configuração salva com sucesso');
-        setTestResult(null); // Clear previous test results
+        // Mantém o testResult anterior - não limpa status após salvar
       } else {
         toast.error('Erro ao salvar configuração');
       }
