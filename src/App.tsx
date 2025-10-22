@@ -43,9 +43,9 @@ const App = () => (
         <Toaster />
         <Sonner />
         <PWABadge />
-        <GlobalErrorCaptureHandler />
         <BrowserRouter>
           <Suspense fallback={<LoadingSpinner />}>
+            <GlobalErrorCaptureHandler />
             <Routes>
               {/* Rotas públicas */}
               <Route path="/login" element={<Login />} />

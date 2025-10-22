@@ -3,8 +3,9 @@ import { useErrorHunt } from '@/contexts/ErrorHuntContext';
 import { ErrorCaptureModal } from './ErrorCaptureModal';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { ErrorBoundary } from './ErrorBoundary';
 
-export function GlobalErrorCaptureHandler() {
+function GlobalErrorCaptureHandlerInner() {
   const { clickedElement, capturedLogs, capturedErrors, networkRequests, clearContext } = useErrorHunt();
   const [modalOpen, setModalOpen] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -97,5 +98,14 @@ export function GlobalErrorCaptureHandler() {
       onOpenChange={setModalOpen}
       onAnalyze={handleAnalyze}
     />
+  );
+}
+
+// Safe wrapper with ErrorBoundary
+export function GlobalErrorCaptureHandler() {
+  return (
+    <ErrorBoundary fallback={null}>
+      <GlobalErrorCaptureHandlerInner />
+    </ErrorBoundary>
   );
 }
