@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.receive-schema-from-tabulador]
 verify_jwt = false
+
+[functions.sync-bitrix-spas]
+verify_jwt = false
+
+[functions.enrich-leads-from-bitrix]
+verify_jwt = false

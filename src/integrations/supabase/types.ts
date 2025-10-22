@@ -38,6 +38,66 @@ export type Database = {
         }
         Relationships: []
       }
+      bitrix_projetos_comerciais: {
+        Row: {
+          created_at: string | null
+          id: number
+          raw_data: Json | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id: number
+          raw_data?: Json | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: number
+          raw_data?: Json | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      bitrix_scouters: {
+        Row: {
+          chave: string | null
+          created_at: string | null
+          geolocalizacao: string | null
+          id: number
+          latitude: number | null
+          longitude: number | null
+          raw_data: Json | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          chave?: string | null
+          created_at?: string | null
+          geolocalizacao?: string | null
+          id: number
+          latitude?: number | null
+          longitude?: number | null
+          raw_data?: Json | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          chave?: string | null
+          created_at?: string | null
+          geolocalizacao?: string | null
+          id?: number
+          latitude?: number | null
+          longitude?: number | null
+          raw_data?: Json | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       dashboard_configs: {
         Row: {
           config: Json
@@ -107,6 +167,8 @@ export type Database = {
           analisado_em: string | null
           analisado_por: string | null
           aprovado: boolean | null
+          bitrix_projeto_id: number | null
+          bitrix_scouter_id: number | null
           cadastro_existe_foto: boolean | null
           celular: string | null
           commercial_project_id: string | null
@@ -165,6 +227,8 @@ export type Database = {
           analisado_em?: string | null
           analisado_por?: string | null
           aprovado?: boolean | null
+          bitrix_projeto_id?: number | null
+          bitrix_scouter_id?: number | null
           cadastro_existe_foto?: boolean | null
           celular?: string | null
           commercial_project_id?: string | null
@@ -223,6 +287,8 @@ export type Database = {
           analisado_em?: string | null
           analisado_por?: string | null
           aprovado?: boolean | null
+          bitrix_projeto_id?: number | null
+          bitrix_scouter_id?: number | null
           cadastro_existe_foto?: boolean | null
           celular?: string | null
           commercial_project_id?: string | null

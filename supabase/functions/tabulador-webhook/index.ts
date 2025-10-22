@@ -90,8 +90,16 @@ function normalizeLeadToFicha(lead: any): any {
     telefone: lead.telefone,
     email: lead.email,
     idade: lead.idade ? String(lead.idade) : null,
+    
+    // ✅ NOVO: Processar PARENT_IDs do Bitrix24
+    bitrix_projeto_id: lead.PARENT_ID_1120 ? parseInt(lead.PARENT_ID_1120) : null,
+    bitrix_scouter_id: lead.PARENT_ID_1096 ? parseInt(lead.PARENT_ID_1096) : null,
+    
+    // Manter campos legados para compatibilidade
     projeto: lead.projeto,
     scouter: lead.scouter,
+    commercial_project_id: lead.PARENT_ID_1120 ? String(lead.PARENT_ID_1120) : null,
+    
     supervisor: lead.supervisor,
     localizacao: lead.localizacao,
     latitude: lead.latitude,
@@ -277,7 +285,7 @@ serve(async (req) => {
           const { data, error } = await supabase
             .from('leads')
             .insert(toInsert)
-            .select('id');
+            .select('id, bitrix_projeto_id, bitrix_scouter_id, latitude, longitude');
 
           if (error) {
             console.error('Erro ao inserir fichas:', error);
@@ -301,6 +309,57 @@ serve(async (req) => {
             });
           } else {
             inserted += data?.length || 0;
+            
+            // ✅ NOVO: Enriquecer leads inseridos com nomes das SPAs
+            if (data && data.length > 0) {
+              for (const lead of data) {
+                if (lead.bitrix_projeto_id || lead.bitrix_scouter_id) {
+                  const updates: any = {};
+                  
+                  // Buscar nome do projeto
+                  if (lead.bitrix_projeto_id) {
+                    const { data: projeto } = await supabase
+                      .from('bitrix_projetos_comerciais')
+                      .select('title')
+                      .eq('id', lead.bitrix_projeto_id)
+                      .single();
+                    if (projeto) {
+                      updates.projeto = projeto.title;
+                      updates.commercial_project_id = String(lead.bitrix_projeto_id);
+                    }
+                  }
+                  
+                  // Buscar nome do scouter e copiar geolocalização se necessário
+                  if (lead.bitrix_scouter_id) {
+                    const { data: scouter } = await supabase
+                      .from('bitrix_scouters')
+                      .select('title, latitude, longitude, geolocalizacao')
+                      .eq('id', lead.bitrix_scouter_id)
+                      .single();
+                    if (scouter) {
+                      updates.scouter = scouter.title;
+                      
+                      // Copiar geolocalização do scouter se lead não tiver
+                      if ((!lead.latitude || !lead.longitude) && scouter.latitude && scouter.longitude) {
+                        updates.latitude = scouter.latitude;
+                        updates.longitude = scouter.longitude;
+                        if (scouter.geolocalizacao) {
+                          updates.localizacao = scouter.geolocalizacao;
+                        }
+                      }
+                    }
+                  }
+                  
+                  // Aplicar updates se houver
+                  if (Object.keys(updates).length > 0) {
+                    await supabase
+                      .from('leads')
+                      .update(updates)
+                      .eq('id', lead.id);
+                  }
+                }
+              }
+            }
           }
         }
 
