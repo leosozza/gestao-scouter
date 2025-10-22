@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { AlertCircle, CheckCircle2, Clock, FileText, Trash2, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, FileText, Trash2, XCircle, Pause, Play, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -69,7 +69,7 @@ export function ImportHistoryPanel() {
     // Atualizar a cada 3 segundos se houver jobs em andamento
     const interval = setInterval(() => {
       const hasActiveJobs = jobs.some(j => 
-        j.status === 'pending' || j.status === 'processing'
+        j.status === 'pending' || j.status === 'processing' || j.status === 'paused'
       );
       if (hasActiveJobs) {
         fetchJobs();
@@ -117,6 +117,86 @@ export function ImportHistoryPanel() {
     }
   };
 
+  const pauseJob = async (jobId: string) => {
+    try {
+      const { error } = await supabase
+        .from('import_jobs')
+        .update({ 
+          status: 'paused'
+        })
+        .eq('id', jobId);
+
+      if (error) throw error;
+
+      toast.success('Job pausado');
+      fetchJobs();
+    } catch (error) {
+      console.error('Erro ao pausar job:', error);
+      toast.error('Erro ao pausar job');
+    }
+  };
+
+  const restartJob = async (jobId: string) => {
+    try {
+      // Reiniciar job falhado ou pausado
+      const { error: updateError } = await supabase
+        .from('import_jobs')
+        .update({ 
+          status: 'pending',
+          error_message: null,
+          started_at: null,
+          completed_at: null,
+          processed_rows: 0,
+          inserted_rows: 0,
+          failed_rows: 0,
+          errors: []
+        })
+        .eq('id', jobId);
+
+      if (updateError) throw updateError;
+
+      // Chamar edge function para processar novamente
+      const { error: processError } = await supabase.functions.invoke('process-csv-import', {
+        body: { job_id: jobId }
+      });
+
+      if (processError) throw processError;
+
+      toast.success('Job reiniciado');
+      fetchJobs();
+    } catch (error) {
+      console.error('Erro ao reiniciar job:', error);
+      toast.error('Erro ao reiniciar job');
+    }
+  };
+
+  const resetJob = async (jobId: string) => {
+    try {
+      const { error } = await supabase
+        .from('import_jobs')
+        .update({ 
+          status: 'pending',
+          error_message: null,
+          started_at: null,
+          completed_at: null,
+          processed_rows: 0,
+          inserted_rows: 0,
+          failed_rows: 0,
+          errors: [],
+          total_rows: null
+        })
+        .eq('id', jobId);
+
+      if (error) throw error;
+
+      toast.success('Job resetado. Clique em reiniciar para processar novamente.');
+      fetchJobs();
+    } catch (error) {
+      console.error('Erro ao resetar job:', error);
+      toast.error('Erro ao resetar job');
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
@@ -125,6 +205,8 @@ export function ImportHistoryPanel() {
         return <Badge variant="secondary" className="gap-1"><Clock className="h-3 w-3" /> Processando</Badge>;
       case 'pending':
         return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> Pendente</Badge>;
+      case 'paused':
+        return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> Pausado</Badge>;
       case 'failed':
         return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> Falhou</Badge>;
       default:
@@ -195,7 +277,49 @@ export function ImportHistoryPanel() {
                         </div>
                         <div className="flex items-center gap-2">
                           {getStatusBadge(job.status)}
-                          {(job.status === 'pending' || job.status === 'processing') && (
+                          
+                          {/* Processing: Pausar e Cancelar */}
+                          {job.status === 'processing' && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => pauseJob(job.id)}
+                              >
+                                Pausar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => cancelJob(job.id)}
+                              >
+                                Cancelar
+                              </Button>
+                            </>
+                          )}
+
+                          {/* Paused: Reiniciar e Cancelar */}
+                          {job.status === 'paused' && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => restartJob(job.id)}
+                              >
+                                Continuar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => cancelJob(job.id)}
+                              >
+                                Cancelar
+                              </Button>
+                            </>
+                          )}
+
+                          {/* Pending: Cancelar */}
+                          {job.status === 'pending' && (
                             <Button
                               size="sm"
                               variant="ghost"
@@ -204,7 +328,36 @@ export function ImportHistoryPanel() {
                               Cancelar
                             </Button>
                           )}
-                          {(job.status === 'completed' || job.status === 'failed') && (
+
+                          {/* Failed: Reiniciar, Reset e Deletar */}
+                          {job.status === 'failed' && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => restartJob(job.id)}
+                              >
+                                Reiniciar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => resetJob(job.id)}
+                              >
+                                Reset
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => deleteJob(job.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+
+                          {/* Completed: Deletar */}
+                          {job.status === 'completed' && (
                             <Button
                               size="sm"
                               variant="ghost"

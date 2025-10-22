@@ -113,6 +113,32 @@ serve(async (req) => {
           const chunkStart = Date.now();
           const chunk = rows.slice(i, Math.min(i + CHUNK_SIZE, rows.length));
           
+          // Verificar se job foi pausado
+          const { data: currentJob } = await supabase
+            .from('import_jobs')
+            .select('status')
+            .eq('id', job_id)
+            .single();
+
+          if (currentJob?.status === 'paused') {
+            console.log('⏸️ [PAUSADO] Job pausado pelo usuário');
+            await supabase
+              .from('import_jobs')
+              .update({
+                processed_rows: processed,
+                inserted_rows: inserted,
+                failed_rows: failed,
+                errors: errors.slice(0, 100)
+              })
+              .eq('id', job_id);
+            return; // Sair do loop
+          }
+
+          if (currentJob?.status === 'failed') {
+            console.log('❌ [CANCELADO] Job cancelado pelo usuário');
+            return; // Sair do loop
+          }
+          
           console.log(`📦 [CHUNK ${chunkNum}/${totalChunks}] Processando ${chunk.length} registros...`);
           
           // Mapear registros

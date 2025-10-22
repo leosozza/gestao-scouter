@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Upload, FileText, ArrowRight, ArrowLeft, AlertCircle, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Upload, FileText, ArrowRight, ArrowLeft, AlertCircle, CheckCircle2, XCircle, Loader2, Clock, Pause, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import { DEFAULT_FICHAS_MAPPINGS, FieldMapping } from '@/config/fieldMappings';
 import { ColumnMappingDragDrop } from './ColumnMappingDragDrop';
@@ -177,6 +178,49 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
     } catch (error) {
       console.error('Erro ao cancelar job:', error);
       toast.error('Erro ao cancelar importação');
+    }
+  };
+
+  const pauseCurrentJob = async () => {
+    if (!importJob) return;
+
+    try {
+      const { error } = await supabase
+        .from('import_jobs')
+        .update({ status: 'paused' })
+        .eq('id', importJob.id);
+
+      if (error) throw error;
+
+      toast.success('Importação pausada');
+    } catch (error) {
+      console.error('Erro ao pausar job:', error);
+      toast.error('Erro ao pausar importação');
+    }
+  };
+
+  const resumeCurrentJob = async () => {
+    if (!importJob) return;
+
+    try {
+      const { error: updateError } = await supabase
+        .from('import_jobs')
+        .update({ status: 'processing' })
+        .eq('id', importJob.id);
+
+      if (updateError) throw updateError;
+
+      // Reiniciar processamento
+      const { error: processError } = await supabase.functions.invoke('process-csv-import', {
+        body: { job_id: importJob.id }
+      });
+
+      if (processError) throw processError;
+
+      toast.success('Importação retomada');
+    } catch (error) {
+      console.error('Erro ao retomar job:', error);
+      toast.error('Erro ao retomar importação');
     }
   };
 
@@ -399,6 +443,8 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
                 <div className="flex justify-center">
                   {importJob.status === 'processing' ? (
                     <Loader2 className="h-16 w-16 animate-spin text-primary" />
+                  ) : importJob.status === 'paused' ? (
+                    <Pause className="h-16 w-16 text-yellow-600" />
                   ) : importJob.status === 'completed' ? (
                     <CheckCircle2 className="h-16 w-16 text-green-600" />
                   ) : (
@@ -408,6 +454,7 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
                 <div>
                   <h3 className="text-lg font-semibold">
                     {importJob.status === 'processing' ? 'Processando' :
+                     importJob.status === 'paused' ? 'Pausado' :
                      importJob.status === 'completed' ? 'Concluído' : 'Falhou'}
                   </h3>
                   <p className="text-sm text-muted-foreground">{importJob.file_name}</p>
@@ -480,11 +527,26 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
 
               <div className="flex gap-2">
                 {importJob.status === 'processing' && (
-                  <Button onClick={() => setShowCancelDialog(true)} variant="outline" className="flex-1">
-                    Cancelar
-                  </Button>
+                  <>
+                    <Button onClick={() => pauseCurrentJob()} variant="outline" className="flex-1">
+                      Pausar
+                    </Button>
+                    <Button onClick={() => setShowCancelDialog(true)} variant="ghost">
+                      Cancelar
+                    </Button>
+                  </>
                 )}
-                {importJob.status !== 'processing' && (
+                {importJob.status === 'paused' && (
+                  <>
+                    <Button onClick={() => resumeCurrentJob()} variant="default" className="flex-1">
+                      Continuar
+                    </Button>
+                    <Button onClick={() => setShowCancelDialog(true)} variant="ghost">
+                      Cancelar
+                    </Button>
+                  </>
+                )}
+                {importJob.status !== 'processing' && importJob.status !== 'paused' && (
                   <Button onClick={handleClose} className="flex-1">Fechar</Button>
                 )}
               </div>
