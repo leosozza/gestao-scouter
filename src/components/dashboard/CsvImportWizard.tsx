@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { DEFAULT_FICHAS_MAPPINGS } from '@/config/fieldMappings';
 import { ColumnMappingDragDrop } from './ColumnMappingDragDrop';
 import { ColumnMappingWithPriority } from '@/hooks/useColumnMapping';
+import Papa from 'papaparse';
 
 interface WizardStep {
   step: 'upload' | 'mapping' | 'processing';
@@ -19,6 +20,7 @@ interface WizardStep {
   headers?: string[];
   sampleData?: string[][];
   jobId?: string;
+  file?: File;
 }
 
 interface ImportJob {
@@ -43,64 +45,62 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
   const [columnMapping, setColumnMapping] = useState<ColumnMappingWithPriority>({});
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Step 1: Upload para Storage
+  // Step 1: Processar CSV localmente com PapaParse
   const handleFileUpload = async (file: File) => {
     try {
       setIsProcessing(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuário não autenticado');
-
-      const filePath = `${user.id}/${Date.now()}_${file.name}`;
-      
-      toast.info('Enviando arquivo para o storage...');
-      
-      const { error: uploadError } = await supabase.storage
-        .from('csv-imports')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) throw uploadError;
-
       toast.info('Analisando cabeçalhos do CSV...');
 
-      // Obter cabeçalhos
-      const { data: headersData, error: headersError } = await supabase.functions.invoke('parse-csv-headers', {
-        body: { file_path: filePath }
-      });
+      Papa.parse(file, {
+        preview: 10,
+        skipEmptyLines: true,
+        complete: (results) => {
+          if (!results.data || results.data.length === 0) {
+            toast.error('Arquivo CSV vazio ou inválido');
+            setIsProcessing(false);
+            return;
+          }
 
-      if (headersError || !headersData?.success) {
-        throw new Error(headersData?.error || 'Erro ao analisar cabeçalhos');
-      }
+          const headers = results.data[0] as string[];
+          const sampleData = results.data.slice(1, 6) as string[][];
 
-      // Auto-mapear colunas usando DEFAULT_FICHAS_MAPPINGS
-      const autoMapping: ColumnMappingWithPriority = {};
-      headersData.headers.forEach((csvHeader: string) => {
-        const normalizedHeader = csvHeader.toLowerCase().trim();
-        const match = DEFAULT_FICHAS_MAPPINGS.find(mapping => 
-          mapping.legacyAliases.some(alias => alias.toLowerCase() === normalizedHeader)
-        );
-        if (match) {
-          autoMapping[match.supabaseField] = { primary: csvHeader };
+          // Auto-mapear colunas usando DEFAULT_FICHAS_MAPPINGS
+          const autoMapping: ColumnMappingWithPriority = {};
+          let mappedCount = 0;
+
+          headers.forEach((csvHeader: string) => {
+            const normalizedHeader = csvHeader.toLowerCase().trim();
+            const match = DEFAULT_FICHAS_MAPPINGS.find(mapping => 
+              mapping.legacyAliases.some(alias => alias.toLowerCase() === normalizedHeader)
+            );
+            if (match) {
+              autoMapping[match.supabaseField] = { primary: csvHeader };
+              mappedCount++;
+            }
+          });
+
+          setColumnMapping(autoMapping);
+          setWizardState({ 
+            step: 'mapping',
+            fileName: file.name,
+            fileSize: file.size,
+            headers,
+            sampleData,
+            file
+          });
+
+          toast.success(`${headers.length} colunas detectadas! ${mappedCount} campos auto-mapeados.`);
+          setIsProcessing(false);
+        },
+        error: (error) => {
+          console.error('Erro ao analisar CSV:', error);
+          toast.error(`Erro ao ler CSV: ${error.message}`);
+          setIsProcessing(false);
         }
       });
-
-      setColumnMapping(autoMapping);
-      setWizardState({ 
-        step: 'mapping',
-        fileUrl: filePath,
-        fileName: file.name,
-        fileSize: file.size,
-        headers: headersData.headers,
-        sampleData: headersData.sampleData
-      });
-
-      toast.success('Arquivo enviado! Configure o mapeamento de colunas.');
     } catch (error: any) {
-      console.error('Erro ao fazer upload:', error);
-      toast.error(error.message || 'Erro ao enviar arquivo');
-    } finally {
+      console.error('Erro ao processar arquivo:', error);
+      toast.error(error.message || 'Erro ao processar arquivo');
       setIsProcessing(false);
     }
   };
@@ -127,7 +127,7 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
     toast.success(`${mappedCount} campos mapeados automaticamente!`);
   };
 
-  // Step 2: Confirmar Mapeamento e Iniciar Processamento
+  // Step 2: Confirmar Mapeamento, Upload e Iniciar Processamento
   const handleMappingConfirm = async () => {
     try {
       setIsProcessing(true);
@@ -138,8 +138,28 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
       const mappedCount = Object.keys(columnMapping).length;
       if (mappedCount === 0) {
         toast.error('Mapeie pelo menos uma coluna antes de continuar');
+        setIsProcessing(false);
         return;
       }
+
+      if (!wizardState.file) {
+        toast.error('Arquivo não encontrado');
+        setIsProcessing(false);
+        return;
+      }
+
+      toast.info('Enviando arquivo para o storage...');
+
+      // Agora fazer upload do arquivo
+      const filePath = `${user.id}/${Date.now()}_${wizardState.file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from('csv-imports')
+        .upload(filePath, wizardState.file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
 
       toast.info('Criando job de importação...');
 
@@ -147,7 +167,7 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
       const { data: newJob, error: jobError } = await supabase
         .from('import_jobs')
         .insert([{
-          file_path: wizardState.fileUrl!,
+          file_path: filePath,
           file_name: wizardState.fileName!,
           file_size: wizardState.fileSize!,
           column_mapping: columnMapping as any,
