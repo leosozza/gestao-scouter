@@ -161,6 +161,66 @@ export type Database = {
         }
         Relationships: []
       }
+      import_jobs: {
+        Row: {
+          column_mapping: Json
+          completed_at: string | null
+          created_at: string | null
+          error_message: string | null
+          errors: Json | null
+          failed_rows: number | null
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          inserted_rows: number | null
+          processed_rows: number | null
+          started_at: string | null
+          status: string
+          target_table: string
+          total_rows: number | null
+          user_id: string | null
+        }
+        Insert: {
+          column_mapping: Json
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          errors?: Json | null
+          failed_rows?: number | null
+          file_name: string
+          file_path: string
+          file_size: number
+          id?: string
+          inserted_rows?: number | null
+          processed_rows?: number | null
+          started_at?: string | null
+          status?: string
+          target_table?: string
+          total_rows?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          column_mapping?: Json
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          errors?: Json | null
+          failed_rows?: number | null
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          inserted_rows?: number | null
+          processed_rows?: number | null
+          started_at?: string | null
+          status?: string
+          target_table?: string
+          total_rows?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           age: number | null
@@ -745,10 +805,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_user_role: {
-        Args: { _user_id: string }
-        Returns: string
-      }
+      get_user_role: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -757,7 +814,7 @@ export type Database = {
         Returns: boolean
       }
       list_permissions: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           action: string
           allowed: boolean
@@ -768,13 +825,13 @@ export type Database = {
         }[]
       }
       list_public_tables: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           table_name: string
         }[]
       }
       list_users_admin: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           created_at: string
           email: string
