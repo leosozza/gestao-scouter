@@ -69,9 +69,9 @@ Deno.serve(async (req) => {
     if (tabuladorUrl && tabuladorKey) {
       const tabuladorStart = Date.now();
       try {
-        // Tentar chamar Edge Function get-leads-count primeiro
+        // Tentar chamar Edge Function get-leads-for-sync primeiro
         let countResponse = await fetch(
-          `${tabuladorUrl}/functions/v1/get-leads-count`,
+          `${tabuladorUrl}/functions/v1/get-leads-for-sync`,
           {
             method: 'POST',
             headers: {

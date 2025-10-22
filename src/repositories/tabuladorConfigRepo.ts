@@ -68,38 +68,26 @@ export async function saveTabuladorConfig(config: Omit<TabuladorMaxConfig, 'id' 
 
     // Try to save to Supabase if table exists
     try {
-      const existing = await getTabuladorConfig();
-      
-      if (existing && existing.project_id) {
-        // Update existing
-        const { error } = await supabase
-          .from('tabulador_config')
-          .update(configWithTimestamp)
-          .eq('project_id', existing.project_id);
+      const { data, error } = await supabase
+        .from('tabulador_config')
+        .upsert(
+          {
+            project_id: config.project_id,
+            url: config.url,
+            publishable_key: config.publishable_key,
+            enabled: config.enabled,
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict: 'project_id',
+          }
+        )
+        .select()
+        .single();
 
-        if (error) throw error;
-        console.log('✅ [TabuladorConfigRepo] Configuração atualizada no Supabase');
-        return { ...config, updated_at: configWithTimestamp.updated_at } as TabuladorMaxConfig;
-      } else {
-        // Insert new - ensure required fields are present
-        const insertData = {
-          project_id: configWithTimestamp.project_id || 'default',
-          url: configWithTimestamp.url || '',
-          publishable_key: configWithTimestamp.publishable_key,
-          enabled: configWithTimestamp.enabled ?? false,
-          created_at: new Date().toISOString()
-        };
-        
-        const { data, error } = await supabase
-          .from('tabulador_config')
-          .insert([insertData])
-          .select()
-          .single();
-
-        if (error) throw error;
-        console.log('✅ [TabuladorConfigRepo] Configuração criada no Supabase');
-        return data as TabuladorMaxConfig;
-      }
+      if (error) throw error;
+      console.log('✅ [TabuladorConfigRepo] Configuração salva no Supabase');
+      return data as TabuladorMaxConfig;
     } catch (dbError) {
       // If Supabase save fails, that's OK - we have localStorage
       console.log('ℹ️ [TabuladorConfigRepo] Não foi possível salvar no Supabase, usando apenas localStorage');

@@ -154,19 +154,24 @@ export function TabuladorSync() {
     try {
       console.log('🔄 Solicitando schema do TabuladorMax...');
 
-      // Get TabuladorMax configuration
-      const TABULADOR_URL = import.meta.env.VITE_TABULADOR_URL;
-      const TABULADOR_ANON_KEY = import.meta.env.VITE_TABULADOR_ANON_KEY;
-      const GESTAO_URL = import.meta.env.VITE_SUPABASE_URL;
-      const GESTAO_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      // Buscar configuração do TabuladorMax
+      const { data: config, error: configError } = await supabase
+        .from('tabulador_config')
+        .select('*')
+        .single();
 
-      if (!TABULADOR_URL || !TABULADOR_ANON_KEY) {
+      if (configError || !config) {
         toast.error('❌ Configuração Incompleta', {
-          description: 'Credenciais do TabuladorMax não configuradas',
-          duration: 8000
+          description: 'Configure o TabuladorMax na seção "Configuração do TabuladorMax" acima',
+          duration: 8000,
         });
         return;
       }
+
+      const TABULADOR_URL = config.url;
+      const TABULADOR_ANON_KEY = config.publishable_key;
+      const GESTAO_URL = import.meta.env.VITE_SUPABASE_URL;
+      const GESTAO_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       
       // Call TabuladorMax to export schema
       console.log('📤 Chamando TabuladorMax para exportar schema...');
