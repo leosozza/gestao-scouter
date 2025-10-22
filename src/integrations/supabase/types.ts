@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_provider_configs: {
+        Row: {
+          api_key_encrypted: string | null
+          config: Json | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          model: string
+          provider: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          api_key_encrypted?: string | null
+          config?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          model: string
+          provider: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          api_key_encrypted?: string | null
+          config?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          model?: string
+          provider?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           created_at: string | null
@@ -98,6 +137,47 @@ export type Database = {
         }
         Relationships: []
       }
+      code_snapshots: {
+        Row: {
+          analysis_id: string | null
+          created_at: string
+          description: string | null
+          file_count: number | null
+          id: string
+          snapshot_data: Json
+          total_size_bytes: number | null
+          user_id: string
+        }
+        Insert: {
+          analysis_id?: string | null
+          created_at?: string
+          description?: string | null
+          file_count?: number | null
+          id?: string
+          snapshot_data: Json
+          total_size_bytes?: number | null
+          user_id: string
+        }
+        Update: {
+          analysis_id?: string | null
+          created_at?: string
+          description?: string | null
+          file_count?: number | null
+          id?: string
+          snapshot_data?: Json
+          total_size_bytes?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "code_snapshots_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "error_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboard_configs: {
         Row: {
           config: Json
@@ -160,6 +240,128 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      error_analyses: {
+        Row: {
+          ai_model: string | null
+          ai_provider: string
+          analysis_result: Json | null
+          analyzed_at: string | null
+          console_logs: Json | null
+          created_at: string
+          error_context: Json | null
+          error_message: string
+          error_stack: string | null
+          error_type: string
+          id: string
+          metadata: Json | null
+          network_requests: Json | null
+          route: string | null
+          status: string
+          suggested_fixes: Json | null
+          user_id: string
+        }
+        Insert: {
+          ai_model?: string | null
+          ai_provider?: string
+          analysis_result?: Json | null
+          analyzed_at?: string | null
+          console_logs?: Json | null
+          created_at?: string
+          error_context?: Json | null
+          error_message: string
+          error_stack?: string | null
+          error_type: string
+          id?: string
+          metadata?: Json | null
+          network_requests?: Json | null
+          route?: string | null
+          status?: string
+          suggested_fixes?: Json | null
+          user_id: string
+        }
+        Update: {
+          ai_model?: string | null
+          ai_provider?: string
+          analysis_result?: Json | null
+          analyzed_at?: string | null
+          console_logs?: Json | null
+          created_at?: string
+          error_context?: Json | null
+          error_message?: string
+          error_stack?: string | null
+          error_type?: string
+          id?: string
+          metadata?: Json | null
+          network_requests?: Json | null
+          route?: string | null
+          status?: string
+          suggested_fixes?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      fix_suggestions: {
+        Row: {
+          analysis_id: string
+          applied_at: string | null
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          diff: string | null
+          file_path: string | null
+          fix_description: string
+          fix_title: string
+          fix_type: string
+          id: string
+          original_code: string | null
+          snapshot_id: string | null
+          status: string
+          suggested_code: string | null
+        }
+        Insert: {
+          analysis_id: string
+          applied_at?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          diff?: string | null
+          file_path?: string | null
+          fix_description: string
+          fix_title: string
+          fix_type: string
+          id?: string
+          original_code?: string | null
+          snapshot_id?: string | null
+          status?: string
+          suggested_code?: string | null
+        }
+        Update: {
+          analysis_id?: string
+          applied_at?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          diff?: string | null
+          file_path?: string | null
+          fix_description?: string
+          fix_title?: string
+          fix_type?: string
+          id?: string
+          original_code?: string | null
+          snapshot_id?: string | null
+          status?: string
+          suggested_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fix_suggestions_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "error_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       import_jobs: {
         Row: {
