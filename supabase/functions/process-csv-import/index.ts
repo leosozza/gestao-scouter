@@ -84,11 +84,37 @@ serve(async (req) => {
             const values = line.split(',').map(v => v.trim().replace(/"/g, '').replace(/\r/g, ''));
             const record: any = {};
             
-            // Aplicar column_mapping do job
-            Object.entries(job.column_mapping as Record<string, string>).forEach(([csvCol, dbCol]) => {
-              const idx = headers.indexOf(csvCol);
-              if (idx >= 0 && values[idx]) {
-                record[dbCol] = values[idx];
+            // Aplicar column_mapping do job com suporte a priorização
+            const mapping = job.column_mapping as Record<string, any>;
+            Object.entries(mapping).forEach(([dbField, priorities]) => {
+              // Se priorities é um objeto com primary/secondary/tertiary
+              if (typeof priorities === 'object' && priorities !== null) {
+                const primary = priorities.primary;
+                const secondary = priorities.secondary;
+                const tertiary = priorities.tertiary;
+                
+                // Tentar primary, depois secondary, depois tertiary
+                let value = null;
+                if (primary) {
+                  const idx = headers.indexOf(primary);
+                  if (idx >= 0 && values[idx]) value = values[idx];
+                }
+                if (!value && secondary) {
+                  const idx = headers.indexOf(secondary);
+                  if (idx >= 0 && values[idx]) value = values[idx];
+                }
+                if (!value && tertiary) {
+                  const idx = headers.indexOf(tertiary);
+                  if (idx >= 0 && values[idx]) value = values[idx];
+                }
+                
+                if (value) record[dbField] = value;
+              } else {
+                // Suporte legado: mapeamento simples string -> string
+                const idx = headers.indexOf(priorities);
+                if (idx >= 0 && values[idx]) {
+                  record[dbField] = values[idx];
+                }
               }
             });
             

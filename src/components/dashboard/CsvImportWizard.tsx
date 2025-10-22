@@ -4,12 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Upload, MapPin, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Upload, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DEFAULT_FICHAS_MAPPINGS } from '@/config/fieldMappings';
+import { ColumnMappingDragDrop } from './ColumnMappingDragDrop';
+import { ColumnMappingWithPriority } from '@/hooks/useColumnMapping';
 
 interface WizardStep {
   step: 'upload' | 'mapping' | 'processing';
@@ -40,7 +40,7 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
   const [wizardState, setWizardState] = useState<WizardStep>({ step: 'upload' });
   const [uploadProgress, setUploadProgress] = useState(0);
   const [job, setJob] = useState<ImportJob | null>(null);
-  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
+  const [columnMapping, setColumnMapping] = useState<ColumnMappingWithPriority>({});
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Step 1: Upload para Storage
@@ -75,14 +75,14 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
       }
 
       // Auto-mapear colunas usando DEFAULT_FICHAS_MAPPINGS
-      const autoMapping: Record<string, string> = {};
+      const autoMapping: ColumnMappingWithPriority = {};
       headersData.headers.forEach((csvHeader: string) => {
         const normalizedHeader = csvHeader.toLowerCase().trim();
         const match = DEFAULT_FICHAS_MAPPINGS.find(mapping => 
           mapping.legacyAliases.some(alias => alias.toLowerCase() === normalizedHeader)
         );
         if (match) {
-          autoMapping[csvHeader] = match.supabaseField;
+          autoMapping[match.supabaseField] = { primary: csvHeader };
         }
       });
 
@@ -105,6 +105,28 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
     }
   };
 
+  // Auto-mapear usando DEFAULT_FICHAS_MAPPINGS
+  const handleAutoMap = () => {
+    if (!wizardState.headers) return;
+    
+    const autoMapping: ColumnMappingWithPriority = {};
+    let mappedCount = 0;
+    
+    wizardState.headers.forEach((csvHeader: string) => {
+      const normalizedHeader = csvHeader.toLowerCase().trim();
+      const match = DEFAULT_FICHAS_MAPPINGS.find(mapping => 
+        mapping.legacyAliases.some(alias => alias.toLowerCase() === normalizedHeader)
+      );
+      if (match) {
+        autoMapping[match.supabaseField] = { primary: csvHeader };
+        mappedCount++;
+      }
+    });
+
+    setColumnMapping(autoMapping);
+    toast.success(`${mappedCount} campos mapeados automaticamente!`);
+  };
+
   // Step 2: Confirmar Mapeamento e Iniciar Processamento
   const handleMappingConfirm = async () => {
     try {
@@ -113,8 +135,8 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
       if (!user) throw new Error('Usuário não autenticado');
 
       // Validar que pelo menos uma coluna foi mapeada
-      const mappedColumns = Object.values(columnMapping).filter(v => v);
-      if (mappedColumns.length === 0) {
+      const mappedCount = Object.keys(columnMapping).length;
+      if (mappedCount === 0) {
         toast.error('Mapeie pelo menos uma coluna antes de continuar');
         return;
       }
@@ -124,15 +146,15 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
       // Criar job
       const { data: newJob, error: jobError } = await supabase
         .from('import_jobs')
-        .insert({
-          user_id: user.id,
-          file_path: wizardState.fileUrl,
-          file_name: wizardState.fileName,
-          file_size: wizardState.fileSize,
-          column_mapping: columnMapping,
+        .insert([{
+          file_path: wizardState.fileUrl!,
+          file_name: wizardState.fileName!,
+          file_size: wizardState.fileSize!,
+          column_mapping: columnMapping as any,
           target_table: 'leads',
-          status: 'pending'
-        })
+          status: 'pending',
+          user_id: user.id
+        }])
         .select()
         .single();
 
@@ -186,6 +208,10 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
   }, [wizardState.jobId]);
 
   const handleClose = () => {
+    if (wizardState.step === 'processing' && job?.status === 'processing') {
+      toast.warning('Importação em andamento. Aguarde a conclusão.');
+      return;
+    }
     setWizardState({ step: 'upload' });
     setUploadProgress(0);
     setJob(null);
@@ -260,62 +286,17 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
               <div>
                 <p className="font-medium">{wizardState.fileName}</p>
                 <p className="text-sm text-muted-foreground">
-                  {(wizardState.fileSize! / (1024 * 1024)).toFixed(2)} MB
+                  {(wizardState.fileSize! / (1024 * 1024)).toFixed(2)} MB • {wizardState.headers.length} colunas
                 </p>
               </div>
-              <Badge>{wizardState.headers.length} colunas</Badge>
             </div>
 
-            <Card>
-              <CardContent className="pt-6">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Coluna CSV</TableHead>
-                      <TableHead>Amostra</TableHead>
-                      <TableHead>→</TableHead>
-                      <TableHead>Campo no Banco</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {wizardState.headers.map((header, idx) => (
-                      <TableRow key={idx}>
-                        <TableCell className="font-mono text-sm">{header}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {wizardState.sampleData?.[0]?.[idx]?.substring(0, 30) || '-'}
-                        </TableCell>
-                        <TableCell>
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                        </TableCell>
-                        <TableCell>
-                          <Select
-                            value={columnMapping[header] || ''}
-                            onValueChange={(value) => {
-                              setColumnMapping(prev => ({
-                                ...prev,
-                                [header]: value
-                              }));
-                            }}
-                          >
-                            <SelectTrigger className="w-[200px]">
-                              <SelectValue placeholder="Ignorar coluna" />
-                            </SelectTrigger>
-                          <SelectContent>
-                              <SelectItem value="">Ignorar</SelectItem>
-                              {DEFAULT_FICHAS_MAPPINGS.map((mapping) => (
-                                <SelectItem key={mapping.supabaseField} value={mapping.supabaseField}>
-                                  {mapping.supabaseField}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <ColumnMappingDragDrop
+              csvHeaders={wizardState.headers}
+              mapping={columnMapping}
+              onMappingChange={setColumnMapping}
+              onAutoMap={handleAutoMap}
+            />
 
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={handleClose}>
@@ -328,7 +309,7 @@ export function CsvImportWizard({ open, onClose }: CsvImportWizardProps) {
                     Iniciando...
                   </>
                 ) : (
-                  <>Iniciar Importação</>
+                  <>Confirmar e Iniciar Importação</>
                 )}
               </Button>
             </div>
