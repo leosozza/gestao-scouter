@@ -18,8 +18,9 @@ const corsHeaders = {
 };
 
 const BITRIX_BASE = 'https://maxsystem.bitrix24.com.br/rest/9/ia31i2r3aenevk0g';
-const PROJETOS_SPA_ID = '1120';
-const SCOUTERS_SPA_ID = '1096';
+// IDs corretos das entidades SPAs no Bitrix24
+const PROJETOS_SPA_ID = '176'; // Projetos Comerciais
+const SCOUTERS_SPA_ID = '178'; // Scouters
 
 // Campos customizados do Bitrix24
 const FIELD_CHAVE = 'ufCrm32_1739219729812';
