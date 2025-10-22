@@ -30,6 +30,11 @@ export function BitrixSyncPanel() {
 
     try {
       console.log('🔄 Iniciando sincronização de SPAs do Bitrix24...');
+      
+      toast({
+        title: '🔄 Sincronizando SPAs',
+        description: 'Buscando todos os registros do Bitrix24...',
+      });
 
       const { data, error } = await supabase.functions.invoke('sync-bitrix-spas', {
         method: 'POST'
@@ -43,9 +48,10 @@ export function BitrixSyncPanel() {
           scouters: data.scouters
         });
 
+        const timeInSeconds = (data.processing_time_ms / 1000).toFixed(1);
         toast({
           title: '✅ SPAs sincronizadas com sucesso',
-          description: `${data.projetos.synced} projetos e ${data.scouters.synced} scouters atualizados`,
+          description: `${data.projetos.synced} projetos e ${data.scouters.synced} scouters em ${timeInSeconds}s`,
         });
       } else {
         throw new Error(data.errors?.[0]?.error || 'Erro desconhecido');
@@ -69,11 +75,16 @@ export function BitrixSyncPanel() {
 
     try {
       console.log('🔧 Iniciando enriquecimento de leads...');
+      
+      toast({
+        title: '🔄 Enriquecendo Leads',
+        description: 'Buscando dados do Bitrix24 para todos os leads...',
+      });
 
-      // Simular progress bar
+      // Simular progress bar baseado em tempo estimado
       const progressInterval = setInterval(() => {
-        setEnrichProgress(prev => Math.min(prev + 5, 90));
-      }, 500);
+        setEnrichProgress(prev => Math.min(prev + 5, 95));
+      }, 1000);
 
       const { data, error } = await supabase.functions.invoke('enrich-leads-from-bitrix', {
         method: 'POST'
@@ -91,9 +102,10 @@ export function BitrixSyncPanel() {
       });
 
       if (data.success) {
+        const timeInSeconds = (data.processing_time_ms / 1000).toFixed(1);
         toast({
           title: '✅ Leads enriquecidos com sucesso',
-          description: `${data.enriched} de ${data.total_leads} leads atualizados`,
+          description: `${data.enriched} de ${data.total_leads} leads em ${timeInSeconds}s`,
         });
       } else {
         toast({
@@ -112,6 +124,7 @@ export function BitrixSyncPanel() {
       });
     } finally {
       setEnrichingLeads(false);
+      setTimeout(() => setEnrichProgress(0), 2000);
     }
   };
 

@@ -59,26 +59,47 @@ function parseGeolocalizacao(geoStr: string | null): { lat: number | null; lng: 
 }
 
 /**
- * Buscar SPAs do Bitrix24
+ * Buscar SPAs do Bitrix24 com paginação completa
  */
 async function fetchBitrixSPA(entityTypeId: string): Promise<any[]> {
-  const url = `${BITRIX_BASE}/crm.item.list.json?entityTypeId=${entityTypeId}&start=-1`;
+  let allItems: any[] = [];
+  let start = 0;
+  let hasMore = true;
   
   console.log(`📡 Buscando SPAs do Bitrix24: entityTypeId=${entityTypeId}`);
   
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Erro ao buscar SPAs: ${response.status} ${response.statusText}`);
+  while (hasMore) {
+    const url = `${BITRIX_BASE}/crm.item.list.json?entityTypeId=${entityTypeId}&start=${start}`;
+    
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Erro ao buscar SPAs: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.result || !data.result.items) {
+      throw new Error('Resposta inválida do Bitrix24');
+    }
+    
+    const items = data.result.items;
+    allItems = allItems.concat(items);
+    
+    const pageNum = Math.floor(start / 50) + 1;
+    console.log(`✅ Página ${pageNum}: ${items.length} registros (total acumulado: ${allItems.length})`);
+    
+    // Bitrix24 retorna "next" quando há próxima página
+    if (data.next !== undefined && items.length === 50) {
+      start = data.next;
+      // Rate limiting entre requisições
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } else {
+      hasMore = false;
+    }
   }
   
-  const data = await response.json();
-  
-  if (!data.result || !data.result.items) {
-    throw new Error('Resposta inválida do Bitrix24');
-  }
-  
-  console.log(`✅ ${data.result.items.length} registros recebidos`);
-  return data.result.items;
+  console.log(`✅ Sincronização completa: ${allItems.length} registros totais`);
+  return allItems;
 }
 
 /**

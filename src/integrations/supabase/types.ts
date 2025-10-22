@@ -192,6 +192,7 @@ export type Database = {
           horario_agendamento: string | null
           id: number
           last_sync_at: string | null
+          last_synced_at: string | null
           latitude: number | null
           local_abordagem: string | null
           local_da_abordagem: string | null
@@ -252,6 +253,7 @@ export type Database = {
           horario_agendamento?: string | null
           id?: number
           last_sync_at?: string | null
+          last_synced_at?: string | null
           latitude?: number | null
           local_abordagem?: string | null
           local_da_abordagem?: string | null
@@ -312,6 +314,7 @@ export type Database = {
           horario_agendamento?: string | null
           id?: number
           last_sync_at?: string | null
+          last_synced_at?: string | null
           latitude?: number | null
           local_abordagem?: string | null
           local_da_abordagem?: string | null

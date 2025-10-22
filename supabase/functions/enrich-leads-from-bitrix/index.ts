@@ -108,19 +108,18 @@ serve(async (req) => {
 
     console.log(`✅ Cache: ${projetosMap.size} projetos, ${scoutersMap.size} scouters`);
 
-    // 2. Buscar leads com campos NULL
+    // 2. Buscar TODOS os leads com campos NULL (sem limite)
     const { data: leadsToEnrich, error: leadsError } = await supabase
       .from('leads')
-      .select('id, scouter, projeto, latitude, longitude')
-      .or('scouter.is.null,projeto.is.null')
-      .limit(500); // Processar em batches de 500
+      .select('id, scouter, projeto, latitude, longitude, bitrix_scouter_id, bitrix_projeto_id')
+      .or('scouter.is.null,projeto.is.null,bitrix_scouter_id.is.null,bitrix_projeto_id.is.null');
 
     if (leadsError) {
       throw new Error(`Erro ao buscar leads: ${leadsError.message}`);
     }
 
     const totalLeads = leadsToEnrich?.length || 0;
-    console.log(`📋 ${totalLeads} leads para enriquecer`);
+    console.log(`📋 ${totalLeads} leads precisam de enriquecimento`);
 
     if (totalLeads === 0) {
       return new Response(
@@ -146,8 +145,19 @@ serve(async (req) => {
     let enriched = 0;
     let skipped = 0;
 
-    // 3. Processar cada lead
-    for (const lead of leadsToEnrich || []) {
+    // 3. Processar leads em batches para evitar timeout
+    const BATCH_SIZE = 100;
+    const totalBatches = Math.ceil(totalLeads / BATCH_SIZE);
+
+    for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+      const batchStart = batchIndex * BATCH_SIZE;
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, totalLeads);
+      const batch = (leadsToEnrich || []).slice(batchStart, batchEnd);
+      
+      console.log(`📦 Processando batch ${batchIndex + 1}/${totalBatches} (leads ${batchStart + 1}-${batchEnd})`);
+
+      // Processar cada lead do batch
+      for (const lead of batch) {
       try {
         processed++;
         
@@ -228,6 +238,12 @@ serve(async (req) => {
         });
       }
     }
+    
+    console.log(`✅ Batch ${batchIndex + 1}/${totalBatches} concluído`);
+  }
+    
+    console.log(`✅ Batch ${batchIndex + 1}/${totalBatches} concluído`);
+  }
 
     const processingTime = Date.now() - startTime;
 
