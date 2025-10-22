@@ -6,8 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ErrorBoundary } from './ErrorBoundary';
 
 function GlobalErrorCaptureHandlerInner() {
-  const { clickedElement, capturedLogs, capturedErrors, networkRequests, clearContext } = useErrorHunt();
-  const [modalOpen, setModalOpen] = useState(false);
+  const { clickedElement, capturedLogs, capturedErrors, networkRequests, clearContext, modalOpen, setModalOpen } = useErrorHunt();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { toast } = useToast();
 

@@ -3,13 +3,13 @@ import { useErrorHunt } from '@/contexts/ErrorHuntContext';
 import { useToast } from '@/hooks/use-toast';
 
 export function ErrorHuntOverlay() {
-  const { isActive, captureElementContext } = useErrorHunt();
+  const { isActive, captureElementContext, modalOpen } = useErrorHunt();
   const [highlightedElement, setHighlightedElement] = useState<HTMLElement | null>(null);
   const [highlightStyle, setHighlightStyle] = useState<React.CSSProperties>({});
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!isActive) {
+    if (!isActive || modalOpen) {
       setHighlightedElement(null);
       return;
     }
@@ -18,6 +18,12 @@ export function ErrorHuntOverlay() {
     let clickTimeout: NodeJS.Timeout;
 
     const handleClick = (e: MouseEvent) => {
+      // Ignorar cliques dentro de dialogs/modals
+      const target = e.target as HTMLElement;
+      if (target.closest('[role="dialog"]')) {
+        return;
+      }
+
       clickCount++;
       
       if (clickCount === 1) {
@@ -32,7 +38,6 @@ export function ErrorHuntOverlay() {
         e.preventDefault();
         e.stopPropagation();
         
-        const target = e.target as HTMLElement;
         captureElementContext(target, e);
         
         // Toast de confirmação
@@ -77,9 +82,9 @@ export function ErrorHuntOverlay() {
       document.removeEventListener('mouseover', handleMouseOver);
       document.removeEventListener('mouseout', handleMouseOut);
     };
-  }, [isActive, captureElementContext]);
+  }, [isActive, modalOpen, captureElementContext, toast]);
 
-  if (!isActive) return null;
+  if (!isActive || modalOpen) return null;
 
   return (
     <>

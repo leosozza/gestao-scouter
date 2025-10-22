@@ -29,12 +29,14 @@ interface ErrorHuntState {
   capturedErrors: Error[];
   networkRequests: NetworkRequest[];
   clickedElement: ElementContext | null;
+  modalOpen: boolean;
 }
 
 interface ErrorHuntContextType extends ErrorHuntState {
   toggleMode: () => void;
   captureElementContext: (element: HTMLElement, event: MouseEvent) => void;
   clearContext: () => void;
+  setModalOpen: (open: boolean) => void;
 }
 
 const ErrorHuntContext = createContext<ErrorHuntContextType | undefined>(undefined);
@@ -46,10 +48,15 @@ export function ErrorHuntProvider({ children }: { children: ReactNode }) {
     capturedErrors: [],
     networkRequests: [],
     clickedElement: null,
+    modalOpen: false,
   });
 
   const toggleMode = useCallback(() => {
     setState(prev => ({ ...prev, isActive: !prev.isActive }));
+  }, []);
+
+  const setModalOpen = useCallback((open: boolean) => {
+    setState(prev => ({ ...prev, modalOpen: open }));
   }, []);
 
   const captureElementContext = useCallback((element: HTMLElement, event: MouseEvent) => {
@@ -304,6 +311,7 @@ export function ErrorHuntProvider({ children }: { children: ReactNode }) {
         toggleMode,
         captureElementContext,
         clearContext,
+        setModalOpen,
       }}
     >
       {children}
