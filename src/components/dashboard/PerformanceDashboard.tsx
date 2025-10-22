@@ -96,14 +96,9 @@ export function PerformanceDashboard() {
     tempoMedioEntreFichas: 0
   });
 
-  // Filters state - use string dates like in Projeção page
-  const [dataInicio, setDataInicio] = useState(() => {
-    const thirtyDaysAgo = addDays(new Date(), -30);
-    return format(thirtyDaysAgo, 'yyyy-MM-dd');
-  });
-  const [dataFim, setDataFim] = useState(() => {
-    return format(new Date(), 'yyyy-MM-dd');
-  });
+  // Filters state - no default dates to show all leads (like Leads page)
+  const [dataInicio, setDataInicio] = useState('');
+  const [dataFim, setDataFim] = useState('');
   const [selectedScouters, setSelectedScouters] = useState<string[]>([]);
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
 
@@ -473,11 +468,11 @@ export function PerformanceDashboard() {
         {/* Gráfico de Barras por Dia */}
         <div className="rounded-lg border bg-card p-4">
           <div className="mb-2 text-sm font-medium">
-            Leads por dia ({new Date(dataInicio).toLocaleDateString('pt-BR')} – {new Date(dataFim).toLocaleDateString('pt-BR')})
+            Leads por dia {dataInicio && dataFim ? `(${new Date(dataInicio).toLocaleDateString('pt-BR')} – ${new Date(dataFim).toLocaleDateString('pt-BR')})` : '(Todos os períodos)'}
           </div>
           <LeadsPorDiaChart
-            startDate={new Date(dataInicio)}
-            endDate={new Date(dataFim)}
+            startDate={dataInicio ? new Date(dataInicio) : addDays(new Date(), -30)}
+            endDate={dataFim ? new Date(dataFim) : new Date()}
             rows={leads}
             height={280}
           />
@@ -485,8 +480,8 @@ export function PerformanceDashboard() {
 
         {/* Painel de IA */}
         <AIInsightsPanel
-          startDate={new Date(dataInicio)}
-          endDate={new Date(dataFim)}
+          startDate={dataInicio ? new Date(dataInicio) : addDays(new Date(), -30)}
+          endDate={dataFim ? new Date(dataFim) : new Date()}
           rows={leads}
           projectName={selectedProjects[0] || null}
         />
