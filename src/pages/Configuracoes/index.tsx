@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { AppShell } from '@/layouts/AppShell'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Shield, UserCog, Database, Layers } from 'lucide-react'
+import { Shield, UserCog, Database, Layers, FileText } from 'lucide-react'
 import { IntegrationsPanel } from '@/components/dashboard/integrations/IntegrationsPanel'
 import { UsersPanel } from '@/components/auth/UsersPanel'
 import { PermissionsPanel } from '@/components/auth/PermissionsPanel'
 import { BitrixSyncPanel } from '@/components/dashboard/integrations/BitrixSyncPanel'
+import { ImportHistoryPanel } from '@/components/dashboard/ImportHistoryPanel'
 
 export default function ConfiguracoesPage() {
   const [activeTab, setActiveTab] = useState('usuarios')
@@ -22,7 +23,7 @@ export default function ConfiguracoesPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4 rounded-2xl">
+          <TabsList className="grid w-full grid-cols-5 rounded-2xl">
             <TabsTrigger value="usuarios" className="rounded-xl">
               <UserCog className="h-4 w-4 mr-2" />
               Usuários
@@ -38,6 +39,10 @@ export default function ConfiguracoesPage() {
             <TabsTrigger value="bitrix" className="rounded-xl">
               <Layers className="h-4 w-4 mr-2" />
               Bitrix24
+            </TabsTrigger>
+            <TabsTrigger value="importacoes" className="rounded-xl">
+              <FileText className="h-4 w-4 mr-2" />
+              Importações
             </TabsTrigger>
           </TabsList>
 
@@ -59,6 +64,11 @@ export default function ConfiguracoesPage() {
           {/* Bitrix24 */}
           <TabsContent value="bitrix" className="space-y-4">
             <BitrixSyncPanel />
+          </TabsContent>
+
+          {/* Histórico de Importações */}
+          <TabsContent value="importacoes" className="space-y-4">
+            <ImportHistoryPanel />
           </TabsContent>
         </Tabs>
       </div>

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.1";
+import Papa from "npm:papaparse@5.4.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -45,10 +46,16 @@ serve(async (req) => {
 
     // 3. Iniciar processamento em background
     EdgeRuntime.waitUntil((async () => {
+      const startTime = Date.now();
+      let lastHeartbeat = Date.now();
+      
       try {
-        console.log('📥 Baixando arquivo do storage...');
+        console.log('🚀 [INÍCIO] Processamento do job:', job_id);
+        console.log('📄 Arquivo:', job.file_name, '| Tamanho:', job.file_size, 'bytes');
         
         // Download arquivo do storage
+        console.log('📥 [DOWNLOAD] Baixando arquivo do storage...');
+        const downloadStart = Date.now();
         const { data: fileData, error: downloadError } = await supabase.storage
           .from('csv-imports')
           .download(job.file_path);
@@ -56,102 +63,145 @@ serve(async (req) => {
         if (downloadError) {
           throw new Error(`Erro ao baixar arquivo: ${downloadError.message}`);
         }
+        console.log(`✅ [DOWNLOAD] Concluído em ${Date.now() - downloadStart}ms`);
 
+        // Parse CSV usando PapaParse
+        console.log('🔍 [PARSE] Iniciando parse do CSV com PapaParse...');
+        const parseStart = Date.now();
         const csvText = await fileData.text();
-        const lines = csvText.split('\n').filter(line => line.trim().length > 0);
         
-        console.log(`📊 Total de linhas no CSV: ${lines.length - 1}`);
+        const parseResult = Papa.parse(csvText, {
+          header: true,
+          skipEmptyLines: true,
+          transformHeader: (header: string) => header.trim(),
+          transform: (value: string) => value.trim()
+        });
 
-        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, '').replace(/\r/g, ''));
+        if (parseResult.errors.length > 0) {
+          console.warn('⚠️ [PARSE] Avisos durante parse:', parseResult.errors.slice(0, 5));
+        }
+
+        const rows = parseResult.data as Record<string, string>[];
+        const headers = parseResult.meta.fields || [];
+        
+        console.log(`✅ [PARSE] Concluído em ${Date.now() - parseStart}ms`);
+        console.log(`📊 [DADOS] Total de linhas: ${rows.length} | Colunas: ${headers.length}`);
+        console.log(`📋 [COLUNAS] ${headers.join(', ')}`);
 
         // Atualizar total de linhas
         await supabase
           .from('import_jobs')
-          .update({ total_rows: lines.length - 1 })
+          .update({ 
+            total_rows: rows.length,
+            started_at: new Date().toISOString()
+          })
           .eq('id', job_id);
 
-        // Processar em chunks de 1000 registros
-        const CHUNK_SIZE = 1000;
+        // Processar em chunks de 500 registros (reduzido para melhor controle)
+        const CHUNK_SIZE = 500;
+        const HEARTBEAT_INTERVAL = 2000; // Atualizar a cada 2 segundos
         let processed = 0;
         let inserted = 0;
         let failed = 0;
         const errors: string[] = [];
+        const totalChunks = Math.ceil(rows.length / CHUNK_SIZE);
 
-        for (let i = 1; i < lines.length; i += CHUNK_SIZE) {
-          const chunk = lines.slice(i, Math.min(i + CHUNK_SIZE, lines.length));
+        console.log(`🔄 [PROCESSAMENTO] Iniciando em ${totalChunks} chunks de até ${CHUNK_SIZE} registros`);
+
+        for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+          const chunkNum = Math.floor(i / CHUNK_SIZE) + 1;
+          const chunkStart = Date.now();
+          const chunk = rows.slice(i, Math.min(i + CHUNK_SIZE, rows.length));
           
-          const records = chunk.map(line => {
-            const values = line.split(',').map(v => v.trim().replace(/"/g, '').replace(/\r/g, ''));
-            const record: any = {};
-            
-            // Aplicar column_mapping do job com suporte a priorização
-            const mapping = job.column_mapping as Record<string, any>;
-            Object.entries(mapping).forEach(([dbField, priorities]) => {
-              // Se priorities é um objeto com primary/secondary/tertiary
-              if (typeof priorities === 'object' && priorities !== null) {
-                const primary = priorities.primary;
-                const secondary = priorities.secondary;
-                const tertiary = priorities.tertiary;
-                
-                // Tentar primary, depois secondary, depois tertiary
+          console.log(`📦 [CHUNK ${chunkNum}/${totalChunks}] Processando ${chunk.length} registros...`);
+          
+          // Mapear registros
+          const records = chunk.map((row, rowIndex) => {
+            try {
+              const record: any = {};
+              const mapping = job.column_mapping as Record<string, any>;
+              
+              Object.entries(mapping).forEach(([dbField, priorities]) => {
                 let value = null;
-                if (primary) {
-                  const idx = headers.indexOf(primary);
-                  if (idx >= 0 && values[idx]) value = values[idx];
-                }
-                if (!value && secondary) {
-                  const idx = headers.indexOf(secondary);
-                  if (idx >= 0 && values[idx]) value = values[idx];
-                }
-                if (!value && tertiary) {
-                  const idx = headers.indexOf(tertiary);
-                  if (idx >= 0 && values[idx]) value = values[idx];
+                
+                // Suporte a priorização (primary/secondary/tertiary)
+                if (typeof priorities === 'object' && priorities !== null) {
+                  const primary = priorities.primary;
+                  const secondary = priorities.secondary;
+                  const tertiary = priorities.tertiary;
+                  
+                  if (primary && row[primary]) value = row[primary];
+                  if (!value && secondary && row[secondary]) value = row[secondary];
+                  if (!value && tertiary && row[tertiary]) value = row[tertiary];
+                } else {
+                  // Mapeamento simples string -> string
+                  if (row[priorities]) value = row[priorities];
                 }
                 
                 if (value) record[dbField] = value;
-              } else {
-                // Suporte legado: mapeamento simples string -> string
-                const idx = headers.indexOf(priorities);
-                if (idx >= 0 && values[idx]) {
-                  record[dbField] = values[idx];
-                }
-              }
-            });
-            
-            return record;
-          }).filter(r => Object.keys(r).length > 0);
+              });
+              
+              return record;
+            } catch (error) {
+              const errorMsg = `Linha ${i + rowIndex + 1}: Erro no mapeamento - ${error.message}`;
+              errors.push(errorMsg);
+              console.error('❌', errorMsg);
+              return null;
+            }
+          }).filter(r => r !== null && Object.keys(r).length > 0);
 
-          console.log(`📦 Processando chunk ${Math.floor(i / CHUNK_SIZE) + 1}: ${records.length} registros`);
+          console.log(`✨ [CHUNK ${chunkNum}/${totalChunks}] ${records.length} registros mapeados`);
 
           // Insert batch
-          const { error: insertError } = await supabase
-            .from(job.target_table)
-            .insert(records);
+          if (records.length > 0) {
+            const insertStart = Date.now();
+            const { error: insertError } = await supabase
+              .from(job.target_table)
+              .insert(records);
 
-          if (insertError) {
-            failed += records.length;
-            const errorMsg = `Chunk ${i}-${i + chunk.length}: ${insertError.message}`;
-            errors.push(errorMsg);
-            console.error('❌', errorMsg);
-          } else {
-            inserted += records.length;
+            if (insertError) {
+              failed += records.length;
+              const errorMsg = `Chunk ${chunkNum}: ${insertError.message}`;
+              errors.push(errorMsg);
+              console.error('❌ [INSERT]', errorMsg);
+            } else {
+              inserted += records.length;
+              console.log(`✅ [INSERT] ${records.length} registros inseridos em ${Date.now() - insertStart}ms`);
+            }
           }
 
-          processed += records.length;
+          processed += chunk.length;
+          const progressPct = Math.round((processed / rows.length) * 100);
+          const avgTimePerRecord = (Date.now() - startTime) / processed;
+          const estimatedRemaining = Math.round((rows.length - processed) * avgTimePerRecord / 1000);
 
-          // Atualizar progresso a cada chunk
-          await supabase
-            .from('import_jobs')
-            .update({
-              processed_rows: processed,
-              inserted_rows: inserted,
-              failed_rows: failed,
-              errors: errors.slice(0, 100) // Limitar a 100 erros
-            })
-            .eq('id', job_id);
+          console.log(`📈 [PROGRESSO] ${progressPct}% (${processed}/${rows.length}) | Tempo restante estimado: ${estimatedRemaining}s`);
+
+          // Heartbeat: Atualizar progresso periodicamente
+          const now = Date.now();
+          if (now - lastHeartbeat > HEARTBEAT_INTERVAL) {
+            await supabase
+              .from('import_jobs')
+              .update({
+                processed_rows: processed,
+                inserted_rows: inserted,
+                failed_rows: failed,
+                errors: errors.slice(0, 100) // Limitar a 100 erros
+              })
+              .eq('id', job_id);
+            
+            lastHeartbeat = now;
+            console.log(`💓 [HEARTBEAT] Progresso atualizado no banco`);
+          }
+
+          console.log(`⏱️ [CHUNK ${chunkNum}/${totalChunks}] Concluído em ${Date.now() - chunkStart}ms`);
         }
 
         // Finalizar job
+        const totalTime = Date.now() - startTime;
+        const recordsPerSecond = Math.round((processed / totalTime) * 1000);
+        
+        console.log(`🎯 [FINALIZAÇÃO] Atualizando status do job...`);
         await supabase
           .from('import_jobs')
           .update({
@@ -159,24 +209,30 @@ serve(async (req) => {
             completed_at: new Date().toISOString(),
             processed_rows: processed,
             inserted_rows: inserted,
-            failed_rows: failed
+            failed_rows: failed,
+            errors: errors.slice(0, 100)
           })
           .eq('id', job_id);
 
         // Deletar arquivo do storage após processamento
+        console.log('🗑️ [LIMPEZA] Removendo arquivo do storage...');
         await supabase.storage
           .from('csv-imports')
           .remove([job.file_path]);
 
-        console.log(`✅ Importação concluída: ${inserted} inseridos, ${failed} falharam`);
+        console.log(`✅ [SUCESSO] Importação concluída em ${(totalTime / 1000).toFixed(1)}s`);
+        console.log(`📊 [ESTATÍSTICAS] ${inserted} inseridos | ${failed} falharam | ${recordsPerSecond} registros/s`);
 
       } catch (error) {
-        console.error('❌ Erro no processamento:', error);
+        const totalTime = Date.now() - startTime;
+        console.error('❌ [ERRO FATAL] Erro no processamento após', (totalTime / 1000).toFixed(1), 's:', error);
+        console.error('Stack:', error.stack);
+        
         await supabase
           .from('import_jobs')
           .update({
             status: 'failed',
-            error_message: error.message,
+            error_message: `${error.message} (após ${(totalTime / 1000).toFixed(1)}s)`,
             completed_at: new Date().toISOString()
           })
           .eq('id', job_id);
