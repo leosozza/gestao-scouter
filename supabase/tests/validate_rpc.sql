@@ -114,15 +114,15 @@ BEGIN
     PERFORM 
       scouter, 
       tier, 
-      latitude, 
-      longitude, 
-      last_seen,
+      lat, 
+      lng, 
+      at,
       status
     FROM public.get_scouters_last_locations() 
     LIMIT 1;
     
     RAISE NOTICE '✓ Colunas de retorno estão corretas';
-    RAISE NOTICE '  Colunas: scouter, tier, latitude, longitude, last_seen, status';
+    RAISE NOTICE '  Colunas: scouter, tier, lat, lng, at, status';
   EXCEPTION WHEN OTHERS THEN
     RAISE NOTICE '✗ ERRO nas colunas: %', SQLERRM;
   END;
@@ -133,9 +133,9 @@ END $$;
 SELECT 
   scouter,
   tier,
-  round(latitude::numeric, 4) as latitude,
-  round(longitude::numeric, 4) as longitude,
-  last_seen,
+  round(lat::numeric, 4) as lat,
+  round(lng::numeric, 4) as lng,
+  at,
   status
 FROM public.get_scouters_last_locations() 
 LIMIT 3;
@@ -165,16 +165,16 @@ BEGIN
   BEGIN
     PERFORM 
       id, 
-      latitude, 
-      longitude, 
-      criado, 
+      lat, 
+      lng, 
+      created_at, 
       projeto, 
       scouter
     FROM public.get_fichas_geo(start_date, end_date, NULL, NULL) 
     LIMIT 1;
     
     RAISE NOTICE '✓ Colunas de retorno estão corretas';
-    RAISE NOTICE '  Colunas: id, latitude, longitude, criado, projeto, scouter';
+    RAISE NOTICE '  Colunas: id, lat, lng, created_at, projeto, scouter';
   EXCEPTION WHEN OTHERS THEN
     RAISE NOTICE '✗ ERRO nas colunas: %', SQLERRM;
   END;
@@ -183,10 +183,10 @@ END $$;
 \echo ''
 \echo '8. Exemplo de retorno de get_fichas_geo():';
 SELECT 
-  substring(id::text, 1, 8) || '...' as id,
-  round(latitude::numeric, 4) as latitude,
-  round(longitude::numeric, 4) as longitude,
-  criado::date as criado,
+  id,
+  round(lat::numeric, 4) as lat,
+  round(lng::numeric, 4) as lng,
+  created_at::date as created_at,
   projeto,
   scouter
 FROM public.get_fichas_geo(

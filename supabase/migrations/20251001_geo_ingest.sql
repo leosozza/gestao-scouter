@@ -126,23 +126,33 @@ select * from public.scouter_last_location;
 
 -- Materialized view: fichas com geolocalização (para performance em heatmaps)
 -- Atualizar periodicamente via REFRESH MATERIALIZED VIEW
-create materialized view if not exists public.fichas_geo as
-  select 
-    f.id,
-    coalesce(f.lat, 0.0) as latitude,
-    coalesce(f.lng, 0.0) as longitude,
-    f.projeto,
-    f.scouter,
-    coalesce(f.created_at, f.criado::timestamptz) as criado,
-    f.localizacao
-  from public.fichas f
-  where (f.lat is not null and f.lng is not null)
-    and (f.deleted is null or f.deleted = false);
-
--- Criar índice na materialized view
-create unique index if not exists idx_fichas_geo_id on public.fichas_geo (id);
-create index if not exists idx_fichas_geo_coords on public.fichas_geo (latitude, longitude);
-create index if not exists idx_fichas_geo_criado on public.fichas_geo (criado);
+-- Só cria se a tabela fichas existir
+do $$ 
+begin
+  if exists (select 1 from information_schema.tables where table_schema='public' and table_name='fichas') then
+    -- Dropar se já existe para recriar
+    drop materialized view if exists public.fichas_geo;
+    
+    -- Criar materialized view
+    create materialized view public.fichas_geo as
+      select 
+        f.id,
+        coalesce(f.lat, 0.0) as latitude,
+        coalesce(f.lng, 0.0) as longitude,
+        f.projeto,
+        f.scouter,
+        coalesce(f.created_at, f.criado::timestamptz) as criado,
+        f.localizacao
+      from public.fichas f
+      where (f.lat is not null and f.lng is not null)
+        and (f.deleted is null or f.deleted = false);
+    
+    -- Criar índices na materialized view
+    create unique index if not exists idx_fichas_geo_id on public.fichas_geo (id);
+    create index if not exists idx_fichas_geo_coords on public.fichas_geo (latitude, longitude);
+    create index if not exists idx_fichas_geo_criado on public.fichas_geo (criado);
+  end if;
+end $$;
 
 -- ============================================================================
 -- ROW LEVEL SECURITY (RLS)
@@ -181,9 +191,9 @@ create or replace function public.get_scouters_last_locations()
 returns table(
   scouter text, 
   tier text, 
-  latitude double precision, 
-  longitude double precision, 
-  last_seen timestamptz,
+  lat double precision, 
+  lng double precision, 
+  at timestamptz,
   status text
 )
 language sql security definer set search_path=public 
@@ -192,9 +202,9 @@ as $$
   select 
     l.scouter, 
     l.tier, 
-    l.lat as latitude,
-    l.lng as longitude,
-    l.at as last_seen,
+    l.lat,
+    l.lng,
+    l.at,
     coalesce(l.status, 'active') as status
   from public.scouter_last_location l
   order by l.scouter asc;
@@ -213,10 +223,10 @@ create or replace function public.get_fichas_geo(
   p_scouter text default null
 ) 
 returns table(
-  id uuid, 
-  latitude double precision, 
-  longitude double precision, 
-  criado timestamptz, 
+  id bigint, 
+  lat double precision, 
+  lng double precision, 
+  created_at timestamptz, 
   projeto text, 
   scouter text
 )
@@ -228,10 +238,10 @@ begin
   if exists (select 1 from information_schema.tables where table_schema='public' and table_name='leads') then
     return query
     select 
-      l.id::uuid,
-      l.latitude,
-      l.longitude,
-      coalesce(l.criado, l.created_at) as criado,
+      l.id,
+      l.latitude as lat,
+      l.longitude as lng,
+      coalesce(l.criado, l.created_at) as created_at,
       coalesce(l.projeto, l.commercial_project_id) as projeto,
       l.scouter
     from public.leads l
@@ -249,10 +259,13 @@ begin
   if exists (select 1 from information_schema.tables where table_schema='public' and table_name='fichas') then
     return query
     select 
-      f.id::text::uuid,
-      f.lat as latitude,
-      f.lng as longitude,
-      coalesce(f.created_at, f.criado::timestamptz) as criado,
+      case 
+        when f.id ~ '^\d+$' then f.id::bigint  -- se é numérico, converte
+        else abs(hashtext(f.id))  -- senão, gera hash numérico
+      end as id,
+      f.lat,
+      f.lng,
+      coalesce(f.created_at, f.criado::timestamptz) as created_at,
       f.projeto,
       f.scouter
     from public.fichas f
