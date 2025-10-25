@@ -218,21 +218,21 @@ ALTER TABLE public.route_access_logs ENABLE ROW LEVEL SECURITY;
 -- ============================================================================
 
 -- Policy: Authenticated users can view active routes
-CREATE POLICY "Authenticated users can view active routes"
+CREATE POLICY IF NOT EXISTS "Authenticated users can view active routes"
   ON public.app_routes
   FOR SELECT
   TO authenticated
   USING (active = TRUE);
 
 -- Policy: Admins have full access to all routes
-CREATE POLICY "Admins have full access to app_routes"
+CREATE POLICY IF NOT EXISTS "Admins have full access to app_routes"
   ON public.app_routes
   FOR ALL
   USING (public.has_role(auth.uid(), 'admin'))
   WITH CHECK (public.has_role(auth.uid(), 'admin'));
 
 -- Policy: Service role has full access
-CREATE POLICY "Service role has full access to app_routes"
+CREATE POLICY IF NOT EXISTS "Service role has full access to app_routes"
   ON public.app_routes
   FOR ALL
   TO service_role
@@ -244,21 +244,21 @@ CREATE POLICY "Service role has full access to app_routes"
 -- ============================================================================
 
 -- Policy: Authenticated users can view permissions
-CREATE POLICY "Authenticated users can view route_permissions"
+CREATE POLICY IF NOT EXISTS "Authenticated users can view route_permissions"
   ON public.route_permissions
   FOR SELECT
   TO authenticated
   USING (true);
 
 -- Policy: Admins have full access to permissions
-CREATE POLICY "Admins have full access to route_permissions"
+CREATE POLICY IF NOT EXISTS "Admins have full access to route_permissions"
   ON public.route_permissions
   FOR ALL
   USING (public.has_role(auth.uid(), 'admin'))
   WITH CHECK (public.has_role(auth.uid(), 'admin'));
 
 -- Policy: Service role has full access
-CREATE POLICY "Service role has full access to route_permissions"
+CREATE POLICY IF NOT EXISTS "Service role has full access to route_permissions"
   ON public.route_permissions
   FOR ALL
   TO service_role
@@ -270,26 +270,26 @@ CREATE POLICY "Service role has full access to route_permissions"
 -- ============================================================================
 
 -- Policy: Users can view their own access logs
-CREATE POLICY "Users can view own access logs"
+CREATE POLICY IF NOT EXISTS "Users can view own access logs"
   ON public.route_access_logs
   FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Policy: Admins can view all access logs
-CREATE POLICY "Admins can view all access logs"
+CREATE POLICY IF NOT EXISTS "Admins can view all access logs"
   ON public.route_access_logs
   FOR SELECT
   USING (public.has_role(auth.uid(), 'admin'));
 
 -- Policy: Admins can manage all access logs
-CREATE POLICY "Admins can manage all access logs"
+CREATE POLICY IF NOT EXISTS "Admins can manage all access logs"
   ON public.route_access_logs
   FOR ALL
   USING (public.has_role(auth.uid(), 'admin'))
   WITH CHECK (public.has_role(auth.uid(), 'admin'));
 
 -- Policy: Service role has full access
-CREATE POLICY "Service role has full access to route_access_logs"
+CREATE POLICY IF NOT EXISTS "Service role has full access to route_access_logs"
   ON public.route_access_logs
   FOR ALL
   TO service_role
