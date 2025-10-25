@@ -54,6 +54,7 @@ export function RoutePermissionsManager() {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadData = async () => {
@@ -177,9 +178,10 @@ export function RoutePermissionsManager() {
       // Clear pending changes and reload
       setPendingChanges(new Map());
       await fetchPermissions();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving permissions:', error);
-      toast.error(`Erro ao salvar: ${error.message || 'Erro desconhecido'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      toast.error(`Erro ao salvar: ${errorMessage}`);
     } finally {
       setSaving(false);
     }
