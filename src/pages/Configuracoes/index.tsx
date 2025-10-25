@@ -6,6 +6,7 @@ import { Shield, UserCog, Database, Layers, FileText, Brain, Upload } from 'luci
 import { IntegrationsPanel } from '@/components/dashboard/integrations/IntegrationsPanel'
 import { UsersPanel } from '@/components/auth/UsersPanel'
 import { PermissionsPanel } from '@/components/auth/PermissionsPanel'
+import { RoutePermissionsManager } from '@/components/admin/RoutePermissionsManager'
 import { BitrixSyncPanel } from '@/components/dashboard/integrations/BitrixSyncPanel'
 import { ImportHistoryPanel } from '@/components/dashboard/ImportHistoryPanel'
 import { AIDebugPanel } from '@/components/ai-debug/AIDebugPanel'
@@ -35,6 +36,11 @@ export default function ConfiguracoesPage() {
               <Shield className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Permissões</span>
               <span className="sm:hidden">Perm</span>
+            </TabsTrigger>
+            <TabsTrigger value="rotas" className="rounded-xl">
+              <Route className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Permissões por Página</span>
+              <span className="sm:hidden">Rotas</span>
             </TabsTrigger>
             <TabsTrigger value="integracoes" className="rounded-xl">
               <Database className="h-4 w-4 mr-2" />
@@ -71,6 +77,11 @@ export default function ConfiguracoesPage() {
           {/* Permissões de Acesso */}
           <TabsContent value="permissoes" className="space-y-4">
             <PermissionsPanel />
+          </TabsContent>
+
+          {/* Permissões por Página */}
+          <TabsContent value="rotas" className="space-y-4">
+            <RoutePermissionsManager />
           </TabsContent>
 
           {/* Integrações */}
