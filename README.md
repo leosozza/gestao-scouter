@@ -86,6 +86,23 @@ Este projeto recebe dados do **TabuladorMax** através de sincronização PUSH u
 
 **Importante:** Não é necessário criar Edge Functions no Gestão Scouter para receber dados. O TabuladorMax acessa a tabela `leads` diretamente via REST API.
 
+### Interface de Sincronização
+
+O Gestão Scouter possui uma interface web completa para gerenciar a sincronização com o TabuladorMax:
+
+**Localização:** Configurações → Aba "Sync Gestão"
+
+**Funcionalidades:**
+- 🔍 **Validar Schema**: Verifica compatibilidade dos campos entre os sistemas
+- 🔄 **Recarregar Cache**: Força atualização do cache do PostgREST após mudanças no schema
+- 🔌 **Testar Conexão**: Valida credenciais e conectividade com o Gestão Scouter
+- 📤 **Iniciar Exportação**: Exporta leads por período (data início/fim)
+- ⏸️ **Pausar/Retomar**: Controle do processo de exportação
+- 📊 **Monitoramento**: Progress bar e métricas em tempo real (total, enviados, falhas, lotes)
+- 📝 **Log de Atividades**: Histórico detalhado com 100 últimas mensagens
+
+**Observação:** Esta interface está disponível no sistema **TabuladorMax** que envia dados para o Gestão Scouter, não no Gestão Scouter em si. O Gestão Scouter apenas recebe os dados via REST API.
+
 ### Documentação Completa
 
 📖 **[Arquitetura de Sincronização](./SYNC_ARCHITECTURE_GESTAO_SCOUTER.md)** - Guia completo da arquitetura  
@@ -109,11 +126,13 @@ gestao-scouter/
 ├── src/
 │   ├── components/         # Componentes React
 │   │   ├── dashboard/      # Dashboard e importação
+│   │   ├── sync/           # Interface de sincronização TabuladorMax
 │   │   ├── map/            # Mapas interativos
 │   │   ├── charts/         # Gráficos
 │   │   └── ui/             # Componentes UI (shadcn)
 │   ├── hooks/              # Custom hooks
 │   ├── pages/              # Páginas principais
+│   │   └── Configuracoes/  # Página de configurações (inclui sync)
 │   ├── repositories/       # Data access layer
 │   ├── services/           # Serviços e utils
 │   └── types/              # TypeScript types
@@ -123,6 +142,36 @@ gestao-scouter/
 │   └── migrations/         # Database migrations
 └── public/                 # Assets estáticos
 ```
+
+### Componente de Sincronização (GestaoScouterExportTab)
+
+**Arquivo:** `src/components/sync/GestaoScouterExportTab.tsx`
+
+Este componente fornece interface completa para gerenciar a sincronização com o sistema TabuladorMax:
+
+**Recursos Implementados:**
+- Seleção de período para exportação (data início/fim)
+- Validação de schema entre sistemas
+- Teste de conectividade
+- Controle de exportação (iniciar/pausar/retomar/resetar)
+- Monitoramento em tempo real com métricas
+- Log de atividades detalhado (últimas 100 mensagens)
+
+**Edge Functions Esperadas (devem existir no TabuladorMax):**
+- `validate-gestao-scouter-schema` - Valida compatibilidade de campos
+- `reload-gestao-scouter-schema-cache` - Força reload do cache PostgREST
+- `export-to-gestao-scouter-batch` - Exporta leads em lotes de 50
+
+**Secrets Necessários (configurados no TabuladorMax):**
+- `GESTAO_URL` - URL do projeto Gestão Scouter
+- `GESTAO_SERVICE_KEY` - Service Role Key (não a Anon Key!)
+
+**Como Acessar:**
+1. Fazer login no sistema
+2. Navegar para Configurações (menu lateral)
+3. Clicar na aba "Sync Gestão"
+
+Para mais detalhes sobre a arquitetura, consulte [PROMPT_TABULADORMAX.md](./PROMPT_TABULADORMAX.md).
 
 ### O que é o IQS?
 
