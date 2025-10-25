@@ -107,8 +107,8 @@ echo ""
 
 # Check App.tsx routes
 echo "🗺️  Checking App.tsx routes..."
-protected_routes=$(grep -c "checkRoutePermission" src/App.tsx || echo "0")
-if [ "$protected_routes" -gt 0 ]; then
+if grep -q "checkRoutePermission" src/App.tsx; then
+  protected_routes=$(grep -c "checkRoutePermission" src/App.tsx)
   echo "  ✅ Found $protected_routes routes with permission checks"
 else
   echo "  ❌ No routes with permission checks found"
@@ -123,10 +123,12 @@ echo ""
 
 # Build check
 echo "🏗️  Testing build..."
-if npm run build > /tmp/build_output.log 2>&1; then
+BUILD_LOG="./build_verification.log"
+if npm run build > "$BUILD_LOG" 2>&1; then
   echo "  ✅ Build successful"
+  rm -f "$BUILD_LOG"
 else
-  echo "  ❌ Build failed (check /tmp/build_output.log)"
+  echo "  ❌ Build failed (check $BUILD_LOG for details)"
 fi
 echo ""
 

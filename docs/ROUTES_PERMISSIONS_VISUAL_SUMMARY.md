@@ -267,12 +267,12 @@ WHERE route_path = '__default__';
 - **Cache Miss**: ~50-100ms (database RPC call)
 - **Cache TTL**: 30 seconds
 - **Memory Usage**: Minimal (Map with string keys/values)
-- **Network Requests**: Reduced by 30x with caching
+- **Network Requests**: Significantly reduced with caching
 
 ### Example: User navigates 10 times in 2 minutes
 
 Without cache: 10 RPC calls
-With cache (30s TTL): 4 RPC calls (saved 60%)
+With cache (30s TTL): 4 RPC calls (60% reduction)
 
 ## Documentation
 
