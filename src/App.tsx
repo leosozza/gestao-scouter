@@ -22,6 +22,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const BitrixCallback = lazy(() => import("./pages/BitrixCallback"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
+const AccessDenied = lazy(() => import("./pages/AccessDenied"));
 // TestFichas route disabled - functionality now integrated in /area-de-abordagem
 // const TestFichas = lazy(() => import("./pages/TestFichas"));
 // DashboardBuilder and AdvancedDashboard removed - functionality now unified in main Dashboard
@@ -50,21 +51,31 @@ const App = () => (
               {/* Rotas públicas */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
-              {/* Rotas protegidas */}
-              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/access-denied" element={<AccessDenied />} />
+              
+              {/* Rotas protegidas com verificação de permissão */}
+              <Route path="/" element={<ProtectedRoute checkRoutePermission><Dashboard /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute checkRoutePermission><Dashboard /></ProtectedRoute>} />
+              <Route path="/leads" element={<ProtectedRoute checkRoutePermission><Leads /></ProtectedRoute>} />
+              <Route path="/lead" element={<ProtectedRoute checkRoutePermission><Leads /></ProtectedRoute>} />
+              <Route path="/scouters" element={<ProtectedRoute checkRoutePermission><Scouters /></ProtectedRoute>} />
+              <Route path="/area-de-abordagem" element={<ProtectedRoute checkRoutePermission><AreaDeAbordagem /></ProtectedRoute>} />
+              <Route path="/scouter/area" element={<ProtectedRoute checkRoutePermission><AreaDeAbordagem /></ProtectedRoute>} />
+              <Route path="/scouter/analise" element={<ProtectedRoute checkRoutePermission><Dashboard /></ProtectedRoute>} />
+              
+              {/* Rotas protegidas sem verificação de permissão (todos os usuários autenticados) */}
               <Route path="/projecao" element={<ProtectedRoute><ProjecaoPage /></ProtectedRoute>} />
-              <Route path="/leads" element={<ProtectedRoute><Leads /></ProtectedRoute>} />
-              <Route path="/scouters" element={<ProtectedRoute><Scouters /></ProtectedRoute>} />
               <Route path="/pagamentos" element={<ProtectedRoute><Pagamentos /></ProtectedRoute>} />
-              <Route path="/area-de-abordagem" element={<ProtectedRoute><AreaDeAbordagem /></ProtectedRoute>} />
               <Route path="/configuracoes" element={<ProtectedRoute><ConfiguracoesPage /></ProtectedRoute>} />
               <Route path="/sync-monitor" element={<ProtectedRoute><SyncMonitor /></ProtectedRoute>} />
               <Route path="/bitrix-callback" element={<ProtectedRoute><BitrixCallback /></ProtectedRoute>} />
+              
               {/* TestFichas route disabled - functionality now in /area-de-abordagem */}
               {/* <Route path="/test-fichas" element={<ProtectedRoute><TestFichas /></ProtectedRoute>} /> */}
               {/* DashboardBuilder and AdvancedDashboard routes removed - functionality now unified in main Dashboard */}
               {/* <Route path="/dashboard-builder" element={<ProtectedRoute><DashboardBuilder /></ProtectedRoute>} /> */}
               {/* <Route path="/dashboard-advanced" element={<ProtectedRoute><AdvancedDashboard /></ProtectedRoute>} /> */}
+              
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
