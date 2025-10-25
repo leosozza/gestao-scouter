@@ -10,6 +10,9 @@ name: Migrations and Tests
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   setup-database:
     name: Setup Database and Apply Migrations
