@@ -2,13 +2,15 @@ import { useState } from 'react'
 import { AppShell } from '@/layouts/AppShell'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Shield, UserCog, Database, Layers, FileText, Brain } from 'lucide-react'
+import { Shield, UserCog, Database, Layers, FileText, Brain, Upload } from 'lucide-react'
 import { IntegrationsPanel } from '@/components/dashboard/integrations/IntegrationsPanel'
 import { UsersPanel } from '@/components/auth/UsersPanel'
 import { PermissionsPanel } from '@/components/auth/PermissionsPanel'
+import { RoutePermissionsManager } from '@/components/admin/RoutePermissionsManager'
 import { BitrixSyncPanel } from '@/components/dashboard/integrations/BitrixSyncPanel'
 import { ImportHistoryPanel } from '@/components/dashboard/ImportHistoryPanel'
 import { AIDebugPanel } from '@/components/ai-debug/AIDebugPanel'
+import { GestaoScouterExportTab } from '@/components/sync/GestaoScouterExportTab'
 
 export default function ConfiguracoesPage() {
   const [activeTab, setActiveTab] = useState('usuarios')
@@ -19,12 +21,12 @@ export default function ConfiguracoesPage() {
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
           <p className="text-muted-foreground">
-            Gerencie usuários, permissões, importação e sincronização com TabuladorMax
+            Gerencie usuários, permissões, importação e sincronização com sistemas externos
           </p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-6 rounded-2xl">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-7 rounded-2xl">
             <TabsTrigger value="usuarios" className="rounded-xl">
               <UserCog className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Usuários</span>
@@ -34,6 +36,11 @@ export default function ConfiguracoesPage() {
               <Shield className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Permissões</span>
               <span className="sm:hidden">Perm</span>
+            </TabsTrigger>
+            <TabsTrigger value="rotas" className="rounded-xl">
+              <Route className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Permissões por Página</span>
+              <span className="sm:hidden">Rotas</span>
             </TabsTrigger>
             <TabsTrigger value="integracoes" className="rounded-xl">
               <Database className="h-4 w-4 mr-2" />
@@ -49,6 +56,11 @@ export default function ConfiguracoesPage() {
               <FileText className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Importações</span>
               <span className="sm:hidden">Import</span>
+            </TabsTrigger>
+            <TabsTrigger value="gestao-sync" className="rounded-xl">
+              <Upload className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Sync Gestão</span>
+              <span className="sm:hidden">Sync</span>
             </TabsTrigger>
             <TabsTrigger value="ia-debug" className="rounded-xl">
               <Brain className="h-4 w-4 mr-2" />
@@ -67,6 +79,11 @@ export default function ConfiguracoesPage() {
             <PermissionsPanel />
           </TabsContent>
 
+          {/* Permissões por Página */}
+          <TabsContent value="rotas" className="space-y-4">
+            <RoutePermissionsManager />
+          </TabsContent>
+
           {/* Integrações */}
           <TabsContent value="integracoes" className="space-y-4">
             <IntegrationsPanel />
@@ -80,6 +97,11 @@ export default function ConfiguracoesPage() {
           {/* Histórico de Importações */}
           <TabsContent value="importacoes" className="space-y-4">
             <ImportHistoryPanel />
+          </TabsContent>
+
+          {/* Sincronização Gestão Scouter */}
+          <TabsContent value="gestao-sync" className="space-y-4">
+            <GestaoScouterExportTab />
           </TabsContent>
 
           {/* IA de Debug */}

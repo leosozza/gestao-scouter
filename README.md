@@ -14,6 +14,7 @@ Sistema de gestão e análise de desempenho para scouters com sincronização em
 - **🎯 Sistema de Projeções**: Previsões e metas personalizadas
 - **👥 Controle de Equipes**: Gestão de scouters, supervisores e telemarketing
 - **🔐 Segurança**: Row Level Security (RLS) com permissões granulares
+- **🛡️ Controle de Rotas**: Sistema de permissões baseado em rotas com cache inteligente
 
 ## 🛠️ Tecnologias
 
@@ -86,6 +87,23 @@ Este projeto recebe dados do **TabuladorMax** através de sincronização PUSH u
 
 **Importante:** Não é necessário criar Edge Functions no Gestão Scouter para receber dados. O TabuladorMax acessa a tabela `leads` diretamente via REST API.
 
+### Interface de Sincronização
+
+O Gestão Scouter possui uma interface web completa para gerenciar a sincronização com o TabuladorMax:
+
+**Localização:** Configurações → Aba "Sync Gestão"
+
+**Funcionalidades:**
+- 🔍 **Validar Schema**: Verifica compatibilidade dos campos entre os sistemas
+- 🔄 **Recarregar Cache**: Força atualização do cache do PostgREST após mudanças no schema
+- 🔌 **Testar Conexão**: Valida credenciais e conectividade com o Gestão Scouter
+- 📤 **Iniciar Exportação**: Exporta leads por período (data início/fim)
+- ⏸️ **Pausar/Retomar**: Controle do processo de exportação
+- 📊 **Monitoramento**: Progress bar e métricas em tempo real (total, enviados, falhas, lotes)
+- 📝 **Log de Atividades**: Histórico detalhado com 100 últimas mensagens
+
+**Observação:** Esta interface está disponível no sistema **TabuladorMax** que envia dados para o Gestão Scouter, não no Gestão Scouter em si. O Gestão Scouter apenas recebe os dados via REST API.
+
 ### Documentação Completa
 
 📖 **[Arquitetura de Sincronização](./SYNC_ARCHITECTURE_GESTAO_SCOUTER.md)** - Guia completo da arquitetura  
@@ -109,11 +127,13 @@ gestao-scouter/
 ├── src/
 │   ├── components/         # Componentes React
 │   │   ├── dashboard/      # Dashboard e importação
+│   │   ├── sync/           # Interface de sincronização TabuladorMax
 │   │   ├── map/            # Mapas interativos
 │   │   ├── charts/         # Gráficos
 │   │   └── ui/             # Componentes UI (shadcn)
 │   ├── hooks/              # Custom hooks
 │   ├── pages/              # Páginas principais
+│   │   └── Configuracoes/  # Página de configurações (inclui sync)
 │   ├── repositories/       # Data access layer
 │   ├── services/           # Serviços e utils
 │   └── types/              # TypeScript types
@@ -123,6 +143,36 @@ gestao-scouter/
 │   └── migrations/         # Database migrations
 └── public/                 # Assets estáticos
 ```
+
+### Componente de Sincronização (GestaoScouterExportTab)
+
+**Arquivo:** `src/components/sync/GestaoScouterExportTab.tsx`
+
+Este componente fornece interface completa para gerenciar a sincronização com o sistema TabuladorMax:
+
+**Recursos Implementados:**
+- Seleção de período para exportação (data início/fim)
+- Validação de schema entre sistemas
+- Teste de conectividade
+- Controle de exportação (iniciar/pausar/retomar/resetar)
+- Monitoramento em tempo real com métricas
+- Log de atividades detalhado (últimas 100 mensagens)
+
+**Edge Functions Esperadas (devem existir no TabuladorMax):**
+- `validate-gestao-scouter-schema` - Valida compatibilidade de campos
+- `reload-gestao-scouter-schema-cache` - Força reload do cache PostgREST
+- `export-to-gestao-scouter-batch` - Exporta leads em lotes de 50
+
+**Secrets Necessários (configurados no TabuladorMax):**
+- `GESTAO_URL` - URL do projeto Gestão Scouter
+- `GESTAO_SERVICE_KEY` - Service Role Key (não a Anon Key!)
+
+**Como Acessar:**
+1. Fazer login no sistema
+2. Navegar para Configurações (menu lateral)
+3. Clicar na aba "Sync Gestão"
+
+Para mais detalhes sobre a arquitetura, consulte [PROMPT_TABULADORMAX.md](./PROMPT_TABULADORMAX.md).
 
 ### O que é o IQS?
 
@@ -623,4 +673,78 @@ DROP VIEW IF EXISTS public.fichas_compat;
 
 - [CENTRALIZACAO_LEADS_SUMMARY.md](./CENTRALIZACAO_LEADS_SUMMARY.md) - Resumo técnico da migração
 - [LEADS_DATA_SOURCE.md](./LEADS_DATA_SOURCE.md) - Guia de desenvolvimento
+
+## 🛡️ Sistema de Controle de Rotas
+
+O sistema de controle de rotas permite gerenciar permissões de acesso baseadas em rotas específicas, com controle granular por role (admin, supervisor, scouter, etc.).
+
+### Funcionalidades
+
+- **Controle Baseado em Banco de Dados**: Permissões gerenciadas via tabelas `routes` e `route_permissions`
+- **Cache Inteligente**: Cache em memória de 5 minutos para otimizar performance
+- **Múltiplos Níveis de Proteção**: 
+  - Autenticação básica
+  - Verificação de role (admin, supervisor)
+  - Permissões específicas por rota
+- **Interface Amigável**: Página de "Acesso Negado" com navegação
+
+### Uso Básico
+
+```tsx
+import { ProtectedRoute } from '@/components/ProtectedRoute';
+
+// Apenas autenticação (comportamento padrão)
+<ProtectedRoute>
+  <Dashboard />
+</ProtectedRoute>
+
+// Apenas para administradores
+<ProtectedRoute requireAdmin={true}>
+  <AdminPanel />
+</ProtectedRoute>
+
+// Verificação de permissão via banco de dados
+<ProtectedRoute checkRoutePermission={true}>
+  <Configuracoes />
+</ProtectedRoute>
+
+// Combinando verificações
+<ProtectedRoute requireAdmin={true} checkRoutePermission={true}>
+  <AdvancedSettings />
+</ProtectedRoute>
+```
+
+### Hook de Permissões
+
+```tsx
+import { useRoutePermission } from '@/hooks/useRoutePermission';
+
+function MyComponent() {
+  const { canAccess, loading, routeName } = useRoutePermission('/admin');
+  
+  if (loading) return <Loading />;
+  if (!canAccess) return <AccessDenied />;
+  
+  return <AdminContent />;
+}
+```
+
+### Gerenciamento de Rotas
+
+```sql
+-- Adicionar nova rota protegida
+INSERT INTO routes (path, name, requires_admin) 
+VALUES ('/relatorios', 'Relatórios', false);
+
+-- Negar acesso para uma role específica
+INSERT INTO route_permissions (route_id, role_id, allowed)
+SELECT r.id, ro.id, false
+FROM routes r, roles ro
+WHERE r.path = '/relatorios' AND ro.name = 'scouter';
+
+-- Verificar permissão de usuário
+SELECT * FROM can_access_route('user-uuid', '/relatorios');
+```
+
+📖 **Documentação completa**: [docs/route-permission-system.md](./docs/route-permission-system.md)
 - `scripts/verify-leads-centralization.sh` - Script de verificação

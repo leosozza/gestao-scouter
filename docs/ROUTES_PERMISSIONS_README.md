@@ -2,431 +2,285 @@
 
 ## Overview
 
-The Route Permissions System provides fine-grained access control for routes in the Gestão Scouter application. It integrates with the existing role-based authentication system to determine whether users can access specific pages based on their assigned roles.
+The Route Permissions System allows administrators to manage page-level access control by configuring which departments and roles can access specific routes in the application.
 
 ## Architecture
 
-The system consists of three main components:
+### Database Tables
 
-1. **Database Layer** (`supabase/migrations/20251025_route_permissions.sql`)
-   - `route_permissions` table: Stores route configurations and required roles
-   - `can_access_route()` RPC function: Performs permission checks on the server
+#### `app_routes`
+Stores all application routes organized by module.
 
-2. **React Hook** (`src/hooks/useRoutePermission.ts`)
-   - `useRoutePermission()`: React hook for checking permissions with caching
-   - 30-second in-memory cache to minimize RPC calls
-   - User-specific cache keys for security
+**Columns:**
+- `id` (SERIAL): Primary key
+- `module` (TEXT): Module name (e.g., 'dashboard', 'leads', 'fichas')
+- `route_path` (TEXT): URL path (e.g., '/dashboard', '/leads')
+- `route_name` (TEXT): Human-readable route name
+- `description` (TEXT): Optional description
+- `is_active` (BOOLEAN): Whether the route is active
+- `created_at`, `updated_at` (TIMESTAMPTZ): Timestamps
 
-3. **Protected Route Component** (`src/components/ProtectedRoute.tsx`)
-   - Wraps routes to enforce authentication and optional permission checks
-   - Shows loading states during permission verification
-   - Redirects to `/access-denied` when access is denied
+#### `route_permissions`
+Stores permissions for each route by department and role.
 
-## How It Works
+**Columns:**
+- `id` (SERIAL): Primary key
+- `route_id` (INTEGER): References `app_routes.id`
+- `department` (TEXT): Department name (null = applies to all)
+- `role` (TEXT): Role name (null = applies to all roles)
+- `allowed` (BOOLEAN): Permission granted or denied
+- `created_at`, `updated_at` (TIMESTAMPTZ): Timestamps
 
-### Permission Check Flow
+**Unique Constraint:** `(route_id, department, role)`
 
-1. User navigates to a protected route
-2. `ProtectedRoute` component checks authentication first
-3. If `checkRoutePermission={true}` is set, the hook is invoked
-4. Hook checks in-memory cache first (30s TTL)
-5. If cache miss, calls `can_access_route()` RPC function
-6. RPC function:
-   - Gets user's role from `user_roles` table
-   - Admins always get access
-   - Checks if route is registered in `route_permissions`
-   - Supports wildcard patterns (e.g., `/scouter/*`)
-   - Falls back to `__default__` configuration if route not found
-7. Result is cached and returned to the component
-8. Component shows content, loading, or redirects to access denied page
+### Database Functions
 
-### Cache Behavior
+#### `set_route_permissions_batch(p_items jsonb)`
+Performs batch updates of route permissions in a single transaction.
 
-- **TTL**: 30 seconds per permission check
-- **Scope**: Per-user, per-route
-- **Storage**: In-memory (JavaScript Map)
-- **Clearing**: Cache is automatically cleared on browser refresh
-- **Manual Clear**: Use `clearRoutePermissionCache(routePath?)` function
+**Parameters:**
+- `p_items`: JSON array of permission objects with fields:
+  - `route_id`: Route ID
+  - `department`: Department name
+  - `role`: Role name
+  - `allowed`: Boolean permission value
 
-## Configuration
-
-### Database Configuration
-
-Route permissions are stored in the `route_permissions` table with this structure:
-
-```sql
-CREATE TABLE route_permissions (
-  id SERIAL PRIMARY KEY,
-  route_path TEXT NOT NULL UNIQUE,
-  required_roles TEXT[] NOT NULL DEFAULT '{}',
-  description TEXT,
-  allow_by_default BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-```
-
-### Default Route Configurations
-
-The system comes pre-configured with permissions for all main routes:
-
-| Route | Required Roles | Description |
-|-------|----------------|-------------|
-| `__default__` | (none) | Fallback - denies access by default |
-| `/dashboard` | admin, supervisor, scouter, gestor_telemarketing | Main dashboard |
-| `/dashboard-manager` | admin, supervisor, gestor_telemarketing | Manager dashboard |
-| `/leads` | admin, supervisor, scouter, telemarketing, gestor_telemarketing | Leads management |
-| `/lead` | admin, supervisor, scouter, telemarketing, gestor_telemarketing | Individual lead page |
-| `/scouter/*` | admin, supervisor, scouter | Scouter routes (wildcard) |
-| `/scouter/area` | admin, supervisor, scouter | Area de Abordagem |
-| `/scouter/analise` | admin, supervisor, scouter | Performance Analysis |
-| `/scouters` | admin, supervisor | Scouters management |
-| `/pagamentos` | admin, supervisor | Payment management |
-| `/admin/*` | admin | Admin panel (wildcard) |
-| `/sync-monitor` | admin | Sync monitoring |
-
-### Wildcard Routes
-
-Wildcard routes use the `*` character to match multiple paths:
-
-- `/scouter/*` matches `/scouter/area`, `/scouter/analise`, `/scouter/anything`
-- `/admin/*` matches `/admin/users`, `/admin/settings`, etc.
-
-When checking permissions, the system first tries exact matches, then checks wildcard patterns ordered by length (longest first).
-
-### Default Fallback
-
-The special route `__default__` defines the behavior for routes not explicitly registered:
-
-```sql
-INSERT INTO route_permissions (route_path, required_roles, allow_by_default)
-VALUES ('__default__', '{}', FALSE);
-```
-
-- `allow_by_default = FALSE`: Deny access to unregistered routes (secure by default)
-- `allow_by_default = TRUE`: Allow access to unregistered routes (open by default)
-
-**Recommendation**: Keep `allow_by_default = FALSE` for security.
-
-## Usage
-
-### Enabling Permission Checks on Routes
-
-In `src/App.tsx`, wrap routes with `ProtectedRoute` and set `checkRoutePermission`:
-
-```tsx
-// With permission check
-<Route 
-  path="/dashboard" 
-  element={
-    <ProtectedRoute checkRoutePermission>
-      <Dashboard />
-    </ProtectedRoute>
-  } 
-/>
-
-// Without permission check (only auth required)
-<Route 
-  path="/configuracoes" 
-  element={
-    <ProtectedRoute>
-      <ConfiguracoesPage />
-    </ProtectedRoute>
-  } 
-/>
-
-// Public route (no ProtectedRoute wrapper)
-<Route path="/login" element={<Login />} />
-```
-
-### Using the Hook Directly
-
-For advanced scenarios, you can use the hook directly in components:
-
-```tsx
-import { useRoutePermission } from '@/hooks/useRoutePermission';
-
-function MyComponent() {
-  const { hasAccess, loading, error } = useRoutePermission('/admin/users');
-
-  if (loading) return <div>Checking permissions...</div>;
-  if (error) return <div>Error checking permissions</div>;
-  if (!hasAccess) return <div>Access denied</div>;
-
-  return <div>Protected content</div>;
+**Returns:**
+```json
+{
+  "success": true,
+  "updated_count": 5,
+  "errors": []
 }
 ```
 
-### Clearing Cache
-
-Clear the cache when permissions are updated:
-
-```tsx
-import { clearRoutePermissionCache } from '@/hooks/useRoutePermission';
-
-// Clear cache for a specific route
-clearRoutePermissionCache('/dashboard');
-
-// Clear entire cache
-clearRoutePermissionCache();
-```
-
-## Managing Route Permissions
-
-### Adding New Routes
-
-To add permission requirements for a new route:
-
+**Example Usage:**
 ```sql
-INSERT INTO route_permissions (route_path, required_roles, description)
-VALUES (
-  '/new-feature',
-  ARRAY['admin', 'supervisor'],
-  'New feature page'
-);
+SELECT set_route_permissions_batch('[
+  {"route_id": 1, "department": "scouter", "role": "Agent", "allowed": true},
+  {"route_id": 1, "department": "scouter", "role": "Supervisor", "allowed": true},
+  {"route_id": 2, "department": "admin", "role": "Admin", "allowed": true}
+]'::jsonb);
 ```
 
-### Updating Existing Routes
+#### `user_has_route_permission(_user_id uuid, _route_path text)`
+Checks if a user has permission to access a specific route.
 
-```sql
-UPDATE route_permissions
-SET required_roles = ARRAY['admin', 'supervisor', 'scouter']
-WHERE route_path = '/dashboard';
-```
+**Parameters:**
+- `_user_id`: User UUID
+- `_route_path`: Route path to check
 
-### Removing Route Restrictions
+**Returns:** Boolean
 
-To allow all authenticated users:
+## Admin UI
 
-```sql
-UPDATE route_permissions
-SET required_roles = ARRAY['admin', 'supervisor', 'scouter', 'telemarketing', 'gestor_telemarketing']
-WHERE route_path = '/some-route';
-```
+### RoutePermissionsManager Component
 
-Or delete the entry to fall back to default behavior:
+Located at: `src/components/admin/RoutePermissionsManager.tsx`
 
-```sql
-DELETE FROM route_permissions WHERE route_path = '/some-route';
-```
+**Features:**
+- **Permission Matrix View**: Shows routes as rows and department/role combinations as columns
+- **Grouped by Module**: Routes are organized by their module for easier navigation
+- **Search and Filter**: Filter routes by name, path, or module
+- **Batch Operations**: Make multiple changes and save them all at once
+- **Pending Changes Indicator**: Visual feedback for unsaved changes
+- **Export to JSON**: Download current permissions configuration
 
-## Disabling Permission Enforcement
+**Access Requirements:**
+⚠️ **Admin role required** - Only users with the `admin` role can access this component.
 
-### Temporary Disable (Development)
+### How to Access
 
-To temporarily disable permission checks during development:
+1. Navigate to **Configurações** (Settings) page
+2. Click on the **Permissões por Página** (Page Permissions) tab
+3. The RoutePermissionsManager will load all routes and current permissions
 
-1. **Option A**: Remove `checkRoutePermission` prop from routes in `App.tsx`
-2. **Option B**: Set `__default__` to allow by default:
+### How to Use
 
-```sql
-UPDATE route_permissions
-SET allow_by_default = TRUE
-WHERE route_path = '__default__';
-```
+#### Viewing Permissions
+- Routes are grouped by module (dashboard, leads, fichas, etc.)
+- Each row represents a route
+- Each column represents a department + role combination
+- Checkboxes indicate whether access is allowed
 
-### Permanent Disable (Not Recommended)
+#### Editing Permissions
+1. Click checkboxes to toggle permissions
+2. Changed permissions will be highlighted (yellow border)
+3. A warning banner shows the number of pending changes
+4. Click **"Salvar Alterações"** (Save Changes) to apply all changes at once
 
-To completely disable the system:
+#### Filtering
+- Use the search box to filter by route name, path, or module
+- Use the module dropdown to filter by specific module
+- Filters apply in real-time
 
-1. Remove `checkRoutePermission` props from all routes in `App.tsx`
-2. Keep the ProtectedRoute wrapper for authentication
+#### Actions
+- **Salvar Alterações** (Save Changes): Applies all pending changes via batch RPC
+- **Recarregar** (Reload): Discards pending changes and reloads from database
+- **Exportar JSON** (Export JSON): Downloads current configuration as JSON file
 
-**Warning**: This removes fine-grained access control. Users will still need to be authenticated but won't have route-level restrictions.
+## Security
 
-## Roles
+### Row Level Security (RLS)
+Both `app_routes` and `route_permissions` tables have RLS enabled with admin-only policies:
+- Only admins can view routes
+- Only admins can manage routes
+- Only admins can view permissions
+- Only admins can manage permissions
 
-The system recognizes these roles (from `app_role` enum):
-
-- **admin**: Full access to all routes
-- **supervisor**: Management access (dashboards, reports, team management)
-- **scouter**: Field worker access (leads, area mapping, personal dashboard)
-- **telemarketing**: Telemarketing operator access (leads, tabulação)
-- **gestor_telemarketing**: Telemarketing manager access (extended telemarketing features)
-
-## Security Considerations
+### Functions Security
+All RPC functions use `SECURITY DEFINER` and verify admin role before executing.
 
 ### Best Practices
+1. **Regular Backups**: Export permissions to JSON regularly
+2. **Test Changes**: Test permission changes in a staging environment first
+3. **Audit Trail**: All changes include timestamps for audit purposes
+4. **Principle of Least Privilege**: Grant minimum necessary permissions
 
-1. **Secure by Default**: Keep `__default__` set to deny access
-2. **Least Privilege**: Only grant minimum necessary roles to routes
-3. **Admin Bypass**: Remember that admins always have access
-4. **Cache Invalidation**: Clear cache after permission updates
-5. **RPC Security**: The `can_access_route()` function uses `SECURITY DEFINER` and bypasses RLS
+## Default Configuration
 
-### Known Limitations
+### Departments
+- `scouter`: Field agents and supervisors
+- `telemarketing`: Call center agents and managers
+- `admin`: System administrators
 
-1. **Client-side Only**: This is UI-level security. Always enforce permissions on the server/API level
-2. **Cache Timing**: Users may access routes for up to 30 seconds after permissions are revoked (until cache expires)
-3. **Role Changes**: If a user's role changes, they need to re-login or cache needs to be cleared
-4. **Wildcard Precedence**: Longest wildcard pattern takes precedence. Be careful with overlapping patterns
+### Roles
+- `Agent`: Basic user role
+- `Supervisor`: Team supervisor
+- `Manager`: Department manager
+- `Admin`: System administrator
+
+### Default Routes
+The system comes pre-configured with common routes:
+- `/` - Dashboard Principal
+- `/dashboard` - Dashboard
+- `/leads` - Leads management
+- `/area-de-abordagem` - Field work area
+- `/scouters` - Scouter management
+- `/pagamentos` - Payments
+- `/projecao` - Financial projection
+- `/configuracoes` - Settings
+- `/sync-monitor` - Sync monitor
 
 ## Troubleshooting
 
-### User Can't Access Expected Route
+### Permissions Not Saving
+**Problem:** Batch update fails or returns errors
 
-1. Check user's role in database:
-   ```sql
-   SELECT * FROM user_roles WHERE user_id = '<user-uuid>';
-   ```
+**Solutions:**
+1. Check if user has admin role
+2. Verify route_id exists in app_routes table
+3. Check database logs for constraint violations
+4. Ensure Supabase RLS policies allow admin access
 
-2. Check route configuration:
-   ```sql
-   SELECT * FROM route_permissions WHERE route_path = '/your-route';
-   ```
+### Routes Not Showing
+**Problem:** No routes appear in the list
 
-3. Test RPC function directly:
-   ```sql
-   SELECT can_access_route('/your-route');
-   ```
+**Solutions:**
+1. Verify app_routes table has data (check `is_active = true`)
+2. Check if user has admin role for RLS policies
+3. Run the migration to seed default routes
+4. Check browser console for API errors
 
-4. Clear permission cache:
-   ```tsx
-   clearRoutePermissionCache();
-   ```
+### Changes Not Reflected
+**Problem:** Changes save but don't appear in UI
 
-### Permission Checks Not Working
-
-1. Verify migration was applied:
-   ```sql
-   SELECT * FROM route_permissions LIMIT 5;
-   ```
-
-2. Check browser console for errors
-3. Verify `checkRoutePermission` prop is set on the route
-4. Ensure user is authenticated (check `user` object in AuthContext)
-
-### Performance Issues
-
-If you notice slow page loads:
-
-1. Increase cache TTL (default 30s) in `useRoutePermission.ts`
-2. Verify RPC function isn't being called excessively (check Network tab)
-3. Consider caching user roles in AuthContext
-
-## Testing
-
-### Manual Testing
-
-1. Create test users with different roles
-2. Log in as each user
-3. Attempt to access various routes
-4. Verify access is granted/denied correctly
-5. Check that AccessDenied page appears for denied routes
-
-### SQL Testing
-
-Test the RPC function directly:
-
-```sql
--- Test as specific user (set auth context first)
-SELECT set_config('request.jwt.claims', '{"sub": "<user-uuid>"}', true);
-SELECT can_access_route('/dashboard');
-SELECT can_access_route('/admin/users');
-```
+**Solutions:**
+1. Click "Recarregar" to refresh from database
+2. Check if changes were actually saved (check database directly)
+3. Clear browser cache
+4. Verify permissions table has the new records
 
 ## Migration
 
-### Applying the Migration
-
-Run the migration file in Supabase:
+To set up the Route Permissions System, run the migration:
 
 ```bash
-# Via Supabase CLI
-supabase db push
-
-# Or manually in Supabase Dashboard SQL Editor
--- Copy and paste contents of supabase/migrations/20251025_route_permissions.sql
+# Migration file location
+supabase/migrations/20251025_create_route_permissions.sql
 ```
 
-### Rollback
+The migration will:
+1. Create `app_routes` and `route_permissions` tables
+2. Enable RLS with admin-only policies
+3. Create the `set_route_permissions_batch` RPC function
+4. Create the `user_has_route_permission` helper function
+5. Seed default routes
+6. Seed example permissions
 
-To remove the route permissions system:
+## Future Enhancements
 
-```sql
--- Drop function
-DROP FUNCTION IF EXISTS public.can_access_route(TEXT);
+### Potential Improvements
+- [ ] Role hierarchy support (inheritance)
+- [ ] Time-based permissions (schedule access)
+- [ ] IP-based restrictions
+- [ ] Permission templates for quick setup
+- [ ] Bulk permission import from CSV/JSON
+- [ ] Permission change history/audit log
+- [ ] Visual permission conflict detection
+- [ ] Integration with authentication middleware
 
--- Drop table
-DROP TABLE IF EXISTS public.route_permissions;
+## API Integration
+
+### Frontend Route Protection
+
+To protect routes in your frontend application, you can create a hook:
+
+```typescript
+import { supabase } from '@/lib/supabase-helper';
+
+export const useRoutePermission = (routePath: string) => {
+  const [hasPermission, setHasPermission] = useState<boolean>(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkPermission = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setHasPermission(false);
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase.rpc('user_has_route_permission', {
+        _user_id: user.id,
+        _route_path: routePath
+      });
+
+      if (!error) {
+        setHasPermission(data || false);
+      }
+      setLoading(false);
+    };
+
+    checkPermission();
+  }, [routePath]);
+
+  return { hasPermission, loading };
+};
 ```
 
-Then remove the `checkRoutePermission` props from routes in `App.tsx`.
+### Usage Example
 
-## Examples
+```typescript
+function ProtectedRoute({ path, children }) {
+  const { hasPermission, loading } = useRoutePermission(path);
 
-### Example 1: Restricting Admin Panel
-
-```tsx
-// App.tsx
-<Route 
-  path="/admin/*" 
-  element={
-    <ProtectedRoute checkRoutePermission>
-      <AdminPanel />
-    </ProtectedRoute>
-  } 
-/>
-```
-
-```sql
--- Database
-INSERT INTO route_permissions (route_path, required_roles, description)
-VALUES ('/admin/*', ARRAY['admin'], 'Admin panel and all admin routes');
-```
-
-### Example 2: Multi-Role Dashboard
-
-```tsx
-// App.tsx
-<Route 
-  path="/dashboard" 
-  element={
-    <ProtectedRoute checkRoutePermission>
-      <Dashboard />
-    </ProtectedRoute>
-  } 
-/>
-```
-
-```sql
--- Database
-INSERT INTO route_permissions (route_path, required_roles, description)
-VALUES (
-  '/dashboard',
-  ARRAY['admin', 'supervisor', 'scouter', 'gestor_telemarketing'],
-  'Main dashboard'
-);
-```
-
-### Example 3: Checking Permissions in Component
-
-```tsx
-import { useRoutePermission } from '@/hooks/useRoutePermission';
-import { Button } from '@/components/ui/button';
-
-function NavigationMenu() {
-  const { hasAccess: canViewAdmin } = useRoutePermission('/admin/users');
-  const { hasAccess: canViewReports } = useRoutePermission('/reports');
-
-  return (
-    <nav>
-      {canViewAdmin && <Button onClick={() => navigate('/admin')}>Admin</Button>}
-      {canViewReports && <Button onClick={() => navigate('/reports')}>Reports</Button>}
-    </nav>
-  );
+  if (loading) return <LoadingSpinner />;
+  if (!hasPermission) return <AccessDenied />;
+  
+  return children;
 }
 ```
 
 ## Support
 
 For issues or questions:
-- Check this documentation first
-- Review the browser console for errors
-- Check Supabase logs for RPC function errors
-- Contact the system administrator or development team
+1. Check this documentation
+2. Review the troubleshooting section
+3. Check database logs
+4. Contact the development team
 
----
+## License
 
-**Last Updated**: 2025-10-25  
-**Version**: 1.0.0
+This module is part of the Gestão Scouter system.

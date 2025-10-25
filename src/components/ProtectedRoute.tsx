@@ -1,24 +1,31 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useRoutePermission } from '@/hooks/useRoutePermission';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { AccessDenied } from '@/components/AccessDenied';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   checkRoutePermission?: boolean;
+  requireAdmin?: boolean;
+  requireSupervisor?: boolean;
 }
 
-export function ProtectedRoute({ children, checkRoutePermission = false }: ProtectedRouteProps) {
-  const { user, loading: authLoading } = useAuthContext();
+export function ProtectedRoute({ 
+  children, 
+  checkRoutePermission = false,
+  requireAdmin = false,
+  requireSupervisor = false,
+}: ProtectedRouteProps) {
+  const { user, loading: authLoading, isAdmin, isSupervisor } = useAuthContext();
   const location = useLocation();
   
-  // Check route permissions if enabled
-  const { hasAccess, loading: permissionLoading, error: permissionError } = useRoutePermission(
-    location.pathname,
-    checkRoutePermission && !!user
+  // Only call the hook if route permission checking is enabled
+  const shouldCheckRoute = checkRoutePermission && location.pathname;
+  const { canAccess, loading: permissionLoading, routeName } = useRoutePermission(
+    shouldCheckRoute ? location.pathname : ''
   );
 
-  // Show loading spinner while authentication is being checked
+  // Show loading state while checking authentication
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -32,36 +39,30 @@ export function ProtectedRoute({ children, checkRoutePermission = false }: Prote
     return <Navigate to="/login" replace />;
   }
 
-  // If route permission check is enabled
+  // Check admin requirement
+  if (requireAdmin && !isAdmin) {
+    return <AccessDenied message="Esta página requer privilégios de administrador." />;
+  }
+
+  // Check supervisor requirement
+  if (requireSupervisor && !isSupervisor && !isAdmin) {
+    return <AccessDenied message="Esta página requer privilégios de supervisor ou administrador." />;
+  }
+
+  // Check route permission if enabled
   if (checkRoutePermission) {
-    // Show loading spinner while checking permissions
+    // Show loading while checking permission
     if (permissionLoading) {
       return (
-        <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
-          <p className="text-sm text-gray-600 dark:text-gray-400">Verificando permissões...</p>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
         </div>
       );
     }
 
-    // Show error state if permission check failed
-    if (permissionError) {
-      return (
-        <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-4">
-          <AlertCircle className="h-12 w-12 text-amber-600" />
-          <p className="text-sm text-gray-700 dark:text-gray-300 text-center max-w-md">
-            Erro ao verificar permissões. Por favor, tente novamente.
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {permissionError.message}
-          </p>
-        </div>
-      );
-    }
-
-    // Deny access if permission check returned false
-    if (hasAccess === false) {
-      return <Navigate to="/access-denied" replace />;
+    // Show access denied if permission check failed
+    if (!canAccess) {
+      return <AccessDenied routeName={routeName} />;
     }
   }
 
