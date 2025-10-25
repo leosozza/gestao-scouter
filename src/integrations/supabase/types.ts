@@ -664,6 +664,75 @@ export type Database = {
           },
         ]
       }
+      route_permissions: {
+        Row: {
+          allowed: boolean | null
+          created_at: string | null
+          id: number
+          role_id: number | null
+          route_id: number | null
+        }
+        Insert: {
+          allowed?: boolean | null
+          created_at?: string | null
+          id?: number
+          role_id?: number | null
+          route_id?: number | null
+        }
+        Update: {
+          allowed?: boolean | null
+          created_at?: string | null
+          id?: number
+          role_id?: number | null
+          route_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "route_permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "route_permissions_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      routes: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: number
+          name: string
+          path: string
+          requires_admin: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          name: string
+          path: string
+          requires_admin?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          name?: string
+          path?: string
+          requires_admin?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       roles: {
         Row: {
           created_at: string | null
@@ -1019,6 +1088,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_route: {
+        Args: { _user_id: string; _route_path: string }
+        Returns: {
+          can_access: boolean
+          route_name: string | null
+        }[]
+      }
       get_table_columns: {
         Args: { table_name: string }
         Returns: {

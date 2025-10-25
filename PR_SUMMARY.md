@@ -1,133 +1,308 @@
-# Pull Request Summary: Tinder-Style Lead Analysis Feature
+# Route Permission System - PR Summary
 
 ## Overview
-This PR implements a complete Tinder-style swipe interface for analyzing leads in the Gestão Scouter application, fulfilling all requirements specified in the issue.
 
-## Changes Summary
-- **Files Changed**: 10 files
-- **Lines Added**: 907+ lines
-- **New Components**: 1 major component (TinderAnalysisModal)
-- **Database Changes**: 1 migration (add aprovado field)
-- **Dependencies Added**: 2 packages (react-tinder-card, @react-spring/web)
+This PR implements a comprehensive route-based permission system for the Gestão Scouter application, fulfilling all requirements from the issue.
 
-## Key Features Implemented
+## Deliverables
 
-### ✅ Multi-Selection System
-- Checkboxes in DataTable for selecting multiple leads
-- "Iniciar Análise (X)" button showing selected count
-- Button enabled only when leads are selected
+### ✅ 1. Database Schema (Migration)
 
-### ✅ Tinder-Style Analysis Modal
-- Fullscreen modal with card-based interface
-- Swipe right to approve, left to reject
-- Vertical swipe blocked
-- Manual heart/X buttons for non-swipe control
-- Visual feedback animations (green heart, red X)
-- Progress counter (e.g., "Lead 3 de 10")
-- Displays: photo, name, age, scouter, location, project, supervisor
+**File:** `supabase/migrations/20251025142425_7f2ed4f7-158a-424b-a3dc-416fd51211d2.sql`
 
-### ✅ Database Persistence
-- New `aprovado` boolean field in fichas table
-- Immediate save after each decision
-- Indexed for performance
-- Migration file included
+- Created `routes` table with route definitions
+- Created `route_permissions` table for role-to-route mappings
+- Implemented `can_access_route(_user_id, _route_path)` RPC function
+- Added indexes for performance
+- Seeded with common routes
 
-### ✅ Table Enhancement
-- New "Aprovado" column with visual badges
-- Green badge with heart icon for approved
-- Gray badge for not approved
-- Auto-refresh after analysis completion
+**Key Features:**
+- Admins bypass all permission checks
+- Unknown routes are allowed by default (permissive design)
+- Routes can be marked `requires_admin=true` for admin-only access
+- Role-specific permissions override defaults
 
-### ✅ UX Flow
-- Clean integration with existing UI
-- Toast notifications for feedback
-- Auto-clear selection after completion
-- Responsive design for mobile and desktop
+### ✅ 2. TypeScript Types
 
-## Technical Details
+**File:** `src/integrations/supabase/types.ts`
 
-### New Files
-1. `src/components/leads/TinderAnalysisModal.tsx` - Main Tinder component (253 lines)
-2. `supabase/migrations/20251016230108_add_aprovado_field.sql` - DB migration
-3. `TINDER_ANALYSIS_README.md` - User/developer documentation (230 lines)
-4. `TINDER_IMPLEMENTATION_SUMMARY.md` - Technical summary (216 lines)
+Updated with:
+- `routes` table type definition
+- `route_permissions` table type definition
+- `can_access_route` function signature in Functions section
 
-### Modified Files
-1. `src/components/shared/DataTable.tsx` - Added selection callback
-2. `src/pages/Leads.tsx` - Integrated Tinder analysis
-3. `src/repositories/types.ts` - Added aprovado field type
-4. `src/repositories/leadsRepo.ts` - Updated normalization
-5. `package.json` & `package-lock.json` - Dependencies
+### ✅ 3. React Hook: `useRoutePermission`
 
-### Testing
-- ✅ Build: Success
-- ✅ Linting: No new errors
-- ✅ TypeScript: Compiles successfully
-- ✅ Dev Server: Runs without errors
-- ✅ UI Rendering: All components load correctly
+**File:** `src/hooks/useRoutePermission.tsx`
 
-### Bundle Impact
-- Leads chunk: ~16KB → ~76KB (+60KB)
-- Due to react-tinder-card and @react-spring/web
-- Acceptable for the functionality provided
-
-## Migration Instructions
-
-### For Database
-```bash
-supabase migration up
+**Interface:**
+```typescript
+function useRoutePermission(routePath: string): {
+  canAccess: boolean;
+  loading: boolean;
+  routeName?: string | null;
+  error?: Error | null;
+}
 ```
 
-### For Application
+**Features:**
+- Calls `can_access_route` RPC with user ID and route path
+- In-memory caching with 5-minute TTL
+- Handles empty route paths gracefully
+- Error handling with safe defaults (deny on error)
+- Exported `clearPermissionCache()` for cache invalidation
+
+### ✅ 4. Enhanced ProtectedRoute Component
+
+**File:** `src/components/ProtectedRoute.tsx`
+
+**New Props:**
+- `checkRoutePermission?: boolean` - Enable database-driven permission checking
+- `requireAdmin?: boolean` - Require admin role
+- `requireSupervisor?: boolean` - Require supervisor or admin role
+
+**Behavior:**
+1. Shows loading spinner while checking auth or permissions
+2. Redirects to `/login` if not authenticated
+3. Shows AccessDenied if admin requirement not met
+4. Shows AccessDenied if supervisor requirement not met
+5. Shows AccessDenied if route permission check fails
+6. Renders children if all checks pass
+
+### ✅ 5. AccessDenied Component
+
+**File:** `src/components/AccessDenied.tsx`
+
+User-friendly access denied page with:
+- Clear error message
+- Route name display (if available)
+- "Go Back" button
+- "Go to Dashboard" button
+
+### ✅ 6. Unit Tests
+
+**Files:**
+- `src/__tests__/hooks/useRoutePermission.test.tsx`
+- `src/__tests__/components/ProtectedRoute.test.tsx`
+
+Comprehensive test coverage including:
+- Hook behavior with/without authentication
+- Permission granted/denied scenarios
+- Caching behavior
+- Error handling
+- Component rendering with different prop combinations
+
+**Note:** Tests are written with mocked Supabase. Project currently has no test infrastructure, but tests demonstrate proper testing approach.
+
+### ✅ 7. Documentation
+
+**File:** `docs/route-permission-system.md`
+
+Comprehensive documentation including:
+- Component overview and architecture
+- Usage examples for all features
+- Database setup and migration instructions
+- Manual testing procedures
+- Performance considerations
+- Security notes
+- Troubleshooting guide
+- Future enhancement ideas
+
+## Code Quality
+
+### TypeScript Compilation
+✅ **Passes** - No TypeScript errors
+
+### Build
+✅ **Successful** - Production build completes without errors
+
+### Linting
+✅ **Passes** - No new linting errors introduced
+
+### Security
+✅ **No vulnerabilities** - CodeQL analysis found 0 alerts
+
+### Code Review
+✅ **All issues addressed:**
+- Fixed SQL join to match foreign key relationship
+- Added empty route path handling in hook
+- Optimized hook invocation in ProtectedRoute
+
+## Testing Locally
+
+### 1. Apply Database Migration
+
 ```bash
-npm install
-npm run build
+# Using Supabase CLI
+supabase db reset
+# or
+supabase db push
 ```
 
-## Documentation
-Complete documentation provided in:
-- `TINDER_ANALYSIS_README.md` - Feature guide, usage, troubleshooting
-- `TINDER_IMPLEMENTATION_SUMMARY.md` - Technical architecture, implementation details
+### 2. Start Development Server
 
-## Screenshots
-- Leads Page: https://github.com/user-attachments/assets/2b376296-c33b-4c12-bd71-302e362eff97
-- Dashboard: https://github.com/user-attachments/assets/c1d624d1-a27e-4c1e-b3b8-a44ccf12156c
+```bash
+npm run dev
+```
 
-## Requirements Met
-All requirements from the original issue have been implemented:
-✅ Multi-selection in Leads2 table
-✅ "Iniciar Análise" button
-✅ Fullscreen modal with Tinder cards
-✅ Swipe right/left functionality
-✅ Manual approve/reject buttons
-✅ Visual feedback during swipe
-✅ Progress counter
-✅ Database persistence (aprovado field)
-✅ Aprovado column in table
-✅ Auto-refetch after analysis
-✅ Selection cleared after analysis
-✅ Field display (fixed set - configurable in future)
-✅ Responsive design
-✅ Toast notifications
+### 3. Test Scenarios
 
-## Future Enhancements (Optional)
-- Field mapping configuration via settings UI
-- Lazy loading for large batches (>50 leads)
-- Undo last decision feature
-- Real-time approval statistics
-- Export filtered by approval status
-- Bitrix CRM integration
+#### Scenario A: Admin Access
+1. Login as admin user
+2. Navigate to any route (e.g., `/configuracoes`)
+3. ✅ Should have access
 
-## Notes
-- No breaking changes
-- Respects existing RLS policies
-- Follows codebase conventions
-- Production-ready
-- Fully documented
+#### Scenario B: Basic Authentication
+1. Use existing `<ProtectedRoute>` without new props
+2. ✅ Should work exactly as before (backward compatible)
 
-## Review Checklist
-- [ ] Code review completed
-- [ ] Database migration reviewed
-- [ ] Documentation reviewed
-- [ ] Screenshots verified
-- [ ] Ready to merge
+#### Scenario C: Admin-Only Route
+```tsx
+<ProtectedRoute requireAdmin={true}>
+  <AdminPanel />
+</ProtectedRoute>
+```
+1. Login as non-admin
+2. Navigate to route
+3. ✅ Should see "Acesso Negado"
+
+#### Scenario D: Database-Driven Permission
+```tsx
+<ProtectedRoute checkRoutePermission={true}>
+  <Leads />
+</ProtectedRoute>
+```
+1. Login as any user
+2. Navigate to route
+3. ✅ Permission checked via database
+4. Open DevTools → Network tab
+5. ✅ Should see `can_access_route` RPC call
+6. Navigate away and back
+7. ✅ No new RPC call (cached)
+
+#### Scenario E: Combined Checks
+```tsx
+<ProtectedRoute requireAdmin={true} checkRoutePermission={true}>
+  <Settings />
+</ProtectedRoute>
+```
+1. ✅ Both admin role AND route permission checked
+
+### 4. Database Management
+
+#### Add a Protected Route
+```sql
+INSERT INTO routes (path, name, requires_admin) 
+VALUES ('/relatorios', 'Relatórios', false);
+```
+
+#### Deny Access to a Role
+```sql
+INSERT INTO route_permissions (route_id, role_id, allowed)
+SELECT r.id, ro.id, false
+FROM routes r, roles ro
+WHERE r.path = '/relatorios' AND ro.name = 'scouter';
+```
+
+#### Check Permission Manually
+```sql
+SELECT * FROM can_access_route('user-uuid', '/relatorios');
+```
+
+## Breaking Changes
+
+**None** - All changes are additive and backward compatible.
+
+Existing code using `<ProtectedRoute>` will continue to work without modifications.
+
+## Performance Impact
+
+- **Minimal** - RPC calls are cached for 5 minutes
+- **Database indexes** on frequently queried columns
+- **No impact** if `checkRoutePermission` not enabled
+- **Lazy evaluation** - hook only runs when needed
+
+## Security Considerations
+
+✅ **Admin Override** - Admins can access everything
+✅ **Permissive Default** - Unknown routes allowed (can be changed if needed)
+✅ **Error Safety** - Errors default to denying access
+✅ **Cache Management** - `clearPermissionCache()` available
+✅ **SQL Injection** - RPC function uses parameterized queries
+✅ **No Secrets** - No API keys or secrets in code
+
+## Files Changed
+
+### Added (8 files)
+1. `supabase/migrations/20251025142425_7f2ed4f7-158a-424b-a3dc-416fd51211d2.sql`
+2. `src/hooks/useRoutePermission.tsx`
+3. `src/components/AccessDenied.tsx`
+4. `src/__tests__/hooks/useRoutePermission.test.tsx`
+5. `src/__tests__/components/ProtectedRoute.test.tsx`
+6. `docs/route-permission-system.md`
+
+### Modified (2 files)
+1. `src/components/ProtectedRoute.tsx` - Added new props and permission checking
+2. `src/integrations/supabase/types.ts` - Added new table and function types
+
+## Migration Path
+
+For projects using existing route guards:
+
+1. **Phase 1:** Deploy this PR (no changes needed to existing code)
+2. **Phase 2:** Apply database migration
+3. **Phase 3:** Gradually enable `checkRoutePermission` on specific routes
+4. **Phase 4:** Migrate route-specific logic to database
+5. **Phase 5:** Eventually remove hardcoded prop-based guards if desired
+
+## Support & Maintenance
+
+### Cache Clearing
+
+After role changes, clear the cache:
+```tsx
+import { clearPermissionCache } from '@/hooks/useRoutePermission';
+
+async function handleRoleUpdate(userId, newRoleId) {
+  await updateUserRole(userId, newRoleId);
+  clearPermissionCache(); // Important!
+  toast.success('Permissões atualizadas');
+}
+```
+
+### Troubleshooting
+
+If permissions aren't working:
+1. Check user is authenticated (`useAuthContext()`)
+2. Check user has valid role in `users` table
+3. Check route exists in `routes` table (if it should)
+4. Check no conflicting `route_permissions` entries
+5. Clear cache: `clearPermissionCache()`
+
+## Future Enhancements
+
+Potential improvements (not in this PR):
+- Admin UI for managing routes and permissions
+- Permission inheritance for child routes
+- Wildcard route patterns (e.g., `/admin/*`)
+- Audit logging for access attempts
+- Rate limiting for security
+- Context-based permissions (supervisor relationships)
+
+## Summary
+
+This PR successfully implements all requirements:
+- ✅ Database migration with RPC function
+- ✅ TypeScript types updated
+- ✅ `useRoutePermission` hook with caching
+- ✅ Enhanced `ProtectedRoute` component
+- ✅ `AccessDenied` component
+- ✅ Unit tests with mocked dependencies
+- ✅ Comprehensive documentation
+- ✅ TypeScript compilation passes
+- ✅ Build succeeds
+- ✅ No security vulnerabilities
+- ✅ Code review feedback addressed
+- ✅ Backward compatible
+
+The implementation is production-ready and can be safely merged and deployed.

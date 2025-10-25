@@ -14,6 +14,7 @@ Sistema de gestão e análise de desempenho para scouters com sincronização em
 - **🎯 Sistema de Projeções**: Previsões e metas personalizadas
 - **👥 Controle de Equipes**: Gestão de scouters, supervisores e telemarketing
 - **🔐 Segurança**: Row Level Security (RLS) com permissões granulares
+- **🛡️ Controle de Rotas**: Sistema de permissões baseado em rotas com cache inteligente
 
 ## 🛠️ Tecnologias
 
@@ -672,4 +673,78 @@ DROP VIEW IF EXISTS public.fichas_compat;
 
 - [CENTRALIZACAO_LEADS_SUMMARY.md](./CENTRALIZACAO_LEADS_SUMMARY.md) - Resumo técnico da migração
 - [LEADS_DATA_SOURCE.md](./LEADS_DATA_SOURCE.md) - Guia de desenvolvimento
+
+## 🛡️ Sistema de Controle de Rotas
+
+O sistema de controle de rotas permite gerenciar permissões de acesso baseadas em rotas específicas, com controle granular por role (admin, supervisor, scouter, etc.).
+
+### Funcionalidades
+
+- **Controle Baseado em Banco de Dados**: Permissões gerenciadas via tabelas `routes` e `route_permissions`
+- **Cache Inteligente**: Cache em memória de 5 minutos para otimizar performance
+- **Múltiplos Níveis de Proteção**: 
+  - Autenticação básica
+  - Verificação de role (admin, supervisor)
+  - Permissões específicas por rota
+- **Interface Amigável**: Página de "Acesso Negado" com navegação
+
+### Uso Básico
+
+```tsx
+import { ProtectedRoute } from '@/components/ProtectedRoute';
+
+// Apenas autenticação (comportamento padrão)
+<ProtectedRoute>
+  <Dashboard />
+</ProtectedRoute>
+
+// Apenas para administradores
+<ProtectedRoute requireAdmin={true}>
+  <AdminPanel />
+</ProtectedRoute>
+
+// Verificação de permissão via banco de dados
+<ProtectedRoute checkRoutePermission={true}>
+  <Configuracoes />
+</ProtectedRoute>
+
+// Combinando verificações
+<ProtectedRoute requireAdmin={true} checkRoutePermission={true}>
+  <AdvancedSettings />
+</ProtectedRoute>
+```
+
+### Hook de Permissões
+
+```tsx
+import { useRoutePermission } from '@/hooks/useRoutePermission';
+
+function MyComponent() {
+  const { canAccess, loading, routeName } = useRoutePermission('/admin');
+  
+  if (loading) return <Loading />;
+  if (!canAccess) return <AccessDenied />;
+  
+  return <AdminContent />;
+}
+```
+
+### Gerenciamento de Rotas
+
+```sql
+-- Adicionar nova rota protegida
+INSERT INTO routes (path, name, requires_admin) 
+VALUES ('/relatorios', 'Relatórios', false);
+
+-- Negar acesso para uma role específica
+INSERT INTO route_permissions (route_id, role_id, allowed)
+SELECT r.id, ro.id, false
+FROM routes r, roles ro
+WHERE r.path = '/relatorios' AND ro.name = 'scouter';
+
+-- Verificar permissão de usuário
+SELECT * FROM can_access_route('user-uuid', '/relatorios');
+```
+
+📖 **Documentação completa**: [docs/route-permission-system.md](./docs/route-permission-system.md)
 - `scripts/verify-leads-centralization.sh` - Script de verificação
