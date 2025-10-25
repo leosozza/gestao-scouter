@@ -42,7 +42,7 @@ BEGIN
   -- Get user's role
   SELECT u.role_id, r.name INTO v_role_id, v_role_name
   FROM users u
-  JOIN roles r ON u.role_id = r.role_id
+  JOIN roles r ON u.role_id = r.id
   WHERE u.id = _user_id;
 
   -- If user not found, deny access

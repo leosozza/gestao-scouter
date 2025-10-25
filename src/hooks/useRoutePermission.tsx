@@ -27,6 +27,13 @@ export function useRoutePermission(routePath: string): RoutePermissionResult {
 
   useEffect(() => {
     const checkPermission = async () => {
+      // Don't check if routePath is empty
+      if (!routePath) {
+        setCanAccess(true); // Default to allow if no route specified
+        setLoading(false);
+        return;
+      }
+
       if (!user) {
         setCanAccess(false);
         setLoading(false);

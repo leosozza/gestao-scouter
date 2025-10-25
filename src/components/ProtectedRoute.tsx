@@ -18,8 +18,11 @@ export function ProtectedRoute({
 }: ProtectedRouteProps) {
   const { user, loading: authLoading, isAdmin, isSupervisor } = useAuthContext();
   const location = useLocation();
+  
+  // Only call the hook if route permission checking is enabled
+  const shouldCheckRoute = checkRoutePermission && location.pathname;
   const { canAccess, loading: permissionLoading, routeName } = useRoutePermission(
-    checkRoutePermission ? location.pathname : ''
+    shouldCheckRoute ? location.pathname : ''
   );
 
   // Show loading state while checking authentication
