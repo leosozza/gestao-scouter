@@ -593,11 +593,21 @@ npm run lint:fix   # Correção automática
 
 ## 📝 Contribuição
 
+Para contribuir com o projeto, consulte nosso [Guia de Contribuição (CONTRIBUTING.md)](./CONTRIBUTING.md) que inclui:
+
+- Configuração do ambiente de desenvolvimento
+- Processo de Pull Request
+- Workflow de CI/CD (GitHub Actions)
+- Padrões de código e testes
+- Como criar migrações de banco de dados
+
+**Fluxo Rápido:**
+
 1. Fork o projeto
 2. Crie uma branch feature (`git checkout -b feature/nova-funcionalidade`)
 3. Commit suas mudanças (`git commit -m 'feat: adiciona nova funcionalidade'`)
 4. Push para a branch (`git push origin feature/nova-funcionalidade`)
-5. Abra um Pull Request
+5. Abra um Pull Request (será validado automaticamente pelo workflow)
 
 ## 📞 Suporte
 
