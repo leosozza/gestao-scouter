@@ -31,7 +31,6 @@ interface DashboardProps {
 export const Dashboard = ({ onLogout }: DashboardProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [selectedFichas, setSelectedFichas] = useState<Set<string>>(new Set());
   const [config, setConfig] = useState({
     spreadsheetUrl: '',
     ajudaCustoDiaria: 30,
@@ -1184,10 +1183,6 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
             <FinancialControlPanel
               fichas={data.fichas || []}
               projetos={data.projetos || []}
-              selectedFichas={selectedFichas}
-              onSelectionChange={setSelectedFichas}
-              filterType="all"
-              filterValue=""
               selectedPeriod={filters.dateRange ? {
                 start: filters.dateRange.start,
                 end: filters.dateRange.end

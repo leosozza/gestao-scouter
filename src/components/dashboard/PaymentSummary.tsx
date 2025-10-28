@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,21 +21,21 @@ interface PaymentSummaryProps {
   filterValue: string;
   projetos: any[];
   selectedPeriod?: { start: string; end: string } | null;
-  filters?: FinancialFilterState;
+  filters: FinancialFilterState;
 }
 
 export const PaymentSummary = ({
-  fichasFiltradas = [],
+  fichasFiltradas,
   filterType,
   filterValue,
-  projetos = [],
+  projetos,
   selectedPeriod,
   filters
 }: PaymentSummaryProps) => {
   const { toast } = useToast();
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
-  const fichasAPagar = fichasFiltradas.filter(f => f && f['Ficha paga'] !== 'Sim');
+  const fichasAPagar = fichasFiltradas.filter(f => f['Ficha paga'] !== 'Sim');
   
   const valorTotalFichasAPagar = fichasAPagar.reduce((total, ficha) => {
     const valor = parseFichaValue(ficha['Valor por Fichas'], ficha.ID);
@@ -43,14 +44,14 @@ export const PaymentSummary = ({
 
   // Calcular ajuda de custo baseado no período e filtros
   const calcularAjudaDeCusto = () => {
-    if (!selectedPeriod || !filters?.scouter) return 0;
+    if (!selectedPeriod || !filters.scouter) return 0;
 
     // Buscar projeto do scouter para obter valores de ajuda de custo
-    const fichasDoScouter = fichasFiltradas.filter(f => f && f['Gestão de Scouter'] === filters.scouter);
+    const fichasDoScouter = fichasFiltradas.filter(f => f['Gestão de Scouter'] === filters.scouter);
     if (fichasDoScouter.length === 0) return 0;
 
     const projetoScouter = fichasDoScouter[0]['Projetos Cormeciais'];
-    const projeto = projetos?.find(p => p && p.nome === projetoScouter);
+    const projeto = projetos?.find(p => p.nome === projetoScouter);
     
     if (!projeto) return 0;
 
@@ -160,8 +161,8 @@ export const PaymentSummary = ({
         titulo: 'RELATÓRIO DE PAGAMENTO',
         periodo: selectedPeriod ? `${selectedPeriod.start} a ${selectedPeriod.end}` : 'Sem período definido',
         filtro: filterType ? `${filterType}: ${filterValue}` : 'Sem filtro',
-        scouter: filters?.scouter || 'Todos',
-        projeto: filters?.projeto || 'Todos',
+        scouter: filters.scouter || 'Todos',
+        projeto: filters.projeto || 'Todos',
         fichas: fichasAPagar.map(ficha => ({
           id: ficha.ID,
           scouter: ficha['Gestão de Scouter'] || 'N/A',
