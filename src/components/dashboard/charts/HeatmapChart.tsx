@@ -1,98 +1,121 @@
+/**
+ * Componente de Mapa de Calor usando ApexCharts
+ */
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid, RectangleProps } from "recharts";
-
-interface HeatmapData {
-  day: string;
-  hour: number;
-  value: number;
-  percentage: number;
-}
+import { useEffect, useState } from 'react';
+import Chart from 'react-apexcharts';
+import type { ApexOptions } from 'apexcharts';
 
 interface HeatmapChartProps {
-  title: string;
-  data: HeatmapData[];
-  isLoading?: boolean;
+  data: Record<string, number | string>[];
+  xKey: string;
+  yKey: string;
+  valueKey: string;
+  height?: number;
+  colorScale?: {
+    min: string;
+    max: string;
+  };
+  title?: string;
 }
 
-const CustomCell = (props: RectangleProps & { payload?: HeatmapData }) => {
-  const { x, y, width, height, payload } = props;
-  if (!payload) return null;
-  
-  const intensity = payload.percentage / 100;
-  const color = `hsl(142, ${Math.round(65 * intensity)}%, ${Math.round(90 - 40 * intensity)}%)`;
-  
+export function HeatmapChart({
+  data,
+  xKey,
+  yKey,
+  valueKey,
+  height = 400,
+  colorScale = {
+    min: '#3b82f6',
+    max: '#ef4444'
+  },
+  title
+}: HeatmapChartProps) {
+  const [chartData, setChartData] = useState<{ name: string; data: { x: string; y: number }[] }[]>([]);
+
+  useEffect(() => {
+    if (!data || data.length === 0) return;
+
+    // Group data by Y axis
+    const groupedData: Record<string, { x: string; y: number }[]> = {};
+    
+    data.forEach(item => {
+      const yValue = String(item[yKey] || 'N/A');
+      const xValue = String(item[xKey] || 'N/A');
+      const value = typeof item[valueKey] === 'number' 
+        ? item[valueKey] 
+        : parseFloat(String(item[valueKey])) || 0;
+
+      if (!groupedData[yValue]) {
+        groupedData[yValue] = [];
+      }
+      
+      groupedData[yValue].push({ x: xValue, y: value });
+    });
+
+    const series = Object.entries(groupedData).map(([name, data]) => ({
+      name,
+      data
+    }));
+
+    setChartData(series);
+  }, [data, xKey, yKey, valueKey]);
+
+  const options: ApexOptions = {
+    chart: {
+      type: 'heatmap',
+      toolbar: {
+        show: true
+      }
+    },
+    dataLabels: {
+      enabled: false
+    },
+    colors: [colorScale.min],
+    title: title ? {
+      text: title,
+      align: 'center',
+      style: {
+        fontSize: '16px',
+        fontWeight: 600
+      }
+    } : undefined,
+    xaxis: {
+      labels: {
+        rotate: -45,
+        rotateAlways: true
+      }
+    },
+    plotOptions: {
+      heatmap: {
+        shadeIntensity: 0.5,
+        colorScale: {
+          ranges: [
+            {
+              from: 0,
+              to: 0,
+              color: '#e2e8f0',
+              name: 'Nenhum'
+            }
+          ]
+        }
+      }
+    },
+    tooltip: {
+      y: {
+        formatter: (val: number) => val.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+      }
+    }
+  };
+
   return (
-    <rect
-      x={x}
-      y={y}
-      width={width}
-      height={height}
-      fill={color}
-      stroke="hsl(var(--border))"
-      strokeWidth={1}
-      rx={2}
-    />
+    <div className="w-full">
+      <Chart
+        options={options}
+        series={chartData}
+        type="heatmap"
+        height={height}
+      />
+    </div>
   );
-};
-
-export const HeatmapChart = ({ title, data, isLoading }: HeatmapChartProps) => {
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64 bg-muted rounded animate-pulse" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-  const hours = Array.from({ length: 24 }, (_, i) => i);
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-24 gap-1 text-xs">
-          {/* Header com horas */}
-          <div></div>
-          {hours.map(hour => (
-            <div key={hour} className="text-center text-muted-foreground">
-              {hour.toString().padStart(2, '0')}
-            </div>
-          ))}
-          
-          {/* Grid do heatmap */}
-          {days.map(day => (
-            <div key={day} className="contents">
-              <div className="text-muted-foreground font-medium py-2">{day}</div>
-              {hours.map(hour => {
-                const cellData = data.find(d => d.day === day && d.hour === hour);
-                const intensity = cellData?.percentage || 0;
-                const color = `hsl(142, ${Math.round(65 * intensity / 100)}%, ${Math.round(90 - 40 * intensity / 100)}%)`;
-                
-                return (
-                  <div
-                    key={`${day}-${hour}`}
-                    className="aspect-square rounded-sm border border-border/50 flex items-center justify-center text-xs cursor-pointer hover:ring-2 hover:ring-primary/50"
-                    style={{ backgroundColor: color }}
-                    title={`${day} ${hour}:00 - ${cellData?.value || 0} fichas (${intensity.toFixed(1)}%)`}
-                  >
-                    {cellData?.value || 0}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
+}

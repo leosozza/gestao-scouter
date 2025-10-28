@@ -1,84 +1,86 @@
+/**
+ * Componente de Gráfico de Funil
+ * Útil para visualizar conversões e pipeline de vendas
+ */
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { Cell, ResponsiveContainer, FunnelChart as RechartsFunction, Funnel, LabelList } from "recharts";
-
-interface FunnelData {
-  name: string;
-  value: number;
-  percentage: number;
-  color: string;
-}
+import { useMemo } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface FunnelChartProps {
-  title: string;
-  data: FunnelData[];
-  isLoading?: boolean;
+  data: Array<{
+    stage: string;
+    value: number;
+    color?: string;
+  }>;
+  height?: number;
+  showPercentages?: boolean;
+  showValues?: boolean;
 }
 
-const chartConfig = {
-  value: {
-    label: "Quantidade",
-  },
-};
-
-export const FunnelChart = ({ title, data, isLoading }: FunnelChartProps) => {
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64 bg-muted rounded animate-pulse" />
-        </CardContent>
-      </Card>
-    );
-  }
+export function FunnelChart({ 
+  data, 
+  height = 400, 
+  showPercentages = true,
+  showValues = true 
+}: FunnelChartProps) {
+  const maxValue = useMemo(() => Math.max(...data.map(d => d.value)), [data]);
+  
+  const colors = [
+    '#3b82f6', // blue
+    '#10b981', // green
+    '#f59e0b', // amber
+    '#ef4444', // red
+    '#8b5cf6', // purple
+    '#ec4899', // pink
+  ];
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig}>
-          <ResponsiveContainer width="100%" height={300}>
-            <RechartsFunction>
-              <Funnel
-                dataKey="value"
-                data={data}
-                isAnimationActive
-              >
-                {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-                <LabelList 
-                  position="center" 
-                  fill="#fff" 
-                  stroke="none" 
-                  fontSize={12}
-                  formatter={(value: number, payload: any) => {
-                    if (!payload || !payload.payload) return value;
-                    const entry = payload.payload;
-                    return `${entry.name}: ${value} (${entry.percentage.toFixed(1)}%)`;
+    <div className="w-full" style={{ height }}>
+      <div className="flex flex-col gap-1 h-full justify-center">
+        {data.map((item, index) => {
+          const widthPercent = (item.value / maxValue) * 100;
+          const percentOfPrevious = index === 0 
+            ? 100 
+            : (item.value / data[index - 1].value) * 100;
+          const color = item.color || colors[index % colors.length];
+          
+          return (
+            <div key={item.stage} className="flex items-center gap-3">
+              {/* Stage Label */}
+              <div className="w-32 text-sm font-medium text-right flex-shrink-0">
+                {item.stage}
+              </div>
+              
+              {/* Funnel Bar */}
+              <div className="flex-1 flex items-center">
+                <div
+                  className="relative transition-all duration-500 ease-out rounded-r-md"
+                  style={{
+                    width: `${widthPercent}%`,
+                    height: '50px',
+                    backgroundColor: color,
+                    opacity: 0.9
                   }}
-                />
-              </Funnel>
-              <ChartTooltip
-                content={
-                  <ChartTooltipContent
-                    formatter={(value, name, props) => [
-                      `${value} fichas (${props.payload?.percentage?.toFixed(1)}%)`,
-                      props.payload?.name
-                    ]}
-                  />
-                }
-              />
-            </RechartsFunction>
-          </ResponsiveContainer>
-        </ChartContainer>
-      </CardContent>
-    </Card>
+                >
+                  {/* Value and Percentage Labels */}
+                  <div className="absolute inset-0 flex items-center justify-center text-white font-semibold text-sm">
+                    {showValues && (
+                      <span>{item.value.toLocaleString('pt-BR')}</span>
+                    )}
+                    {showPercentages && showValues && (
+                      <span className="mx-1">·</span>
+                    )}
+                    {showPercentages && (
+                      <span>{percentOfPrevious.toFixed(1)}%</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
-};
+}
