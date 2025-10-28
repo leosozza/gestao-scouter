@@ -36,6 +36,11 @@ export class GoogleSheetsService {
           return [];
         }
         
+        // Se for erro 403, é problema de permissões
+        if (response.status === 403) {
+          throw new Error(`Acesso negado à planilha. Verifique se a planilha está configurada como "Qualquer pessoa com o link pode visualizar" nas configurações de compartilhamento do Google Sheets.`);
+        }
+        
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 

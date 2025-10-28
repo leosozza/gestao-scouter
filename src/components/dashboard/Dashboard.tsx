@@ -109,15 +109,16 @@ export const Dashboard = ({ onLogout }: DashboardProps) => {
       } else {
         toast({
           title: "Nenhum dado encontrado",
-          description: "Verifique a configuração da planilha",
+          description: "Verifique se a planilha está compartilhada como pública",
           variant: "destructive"
         });
       }
     } catch (error) {
       console.error('Dashboard: Erro ao carregar dados:', error);
+      const errorMessage = error instanceof Error ? error.message : "Verifique a conexão com a planilha";
       toast({
         title: "Erro ao carregar dados",
-        description: "Verifique a conexão com a planilha",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
