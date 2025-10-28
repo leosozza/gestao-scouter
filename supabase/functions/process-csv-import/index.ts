@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.1";
-import Papa from "npm:papaparse@5.4.1";
+import Papa from "npm:papaparse@5.5.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

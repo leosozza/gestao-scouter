@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { AppShell } from '@/layouts/AppShell'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Shield, UserCog, Database, Layers, FileText, Brain, Upload } from 'lucide-react'
+import { Shield, UserCog, Database, Layers, FileText, Brain, Upload, Map } from 'lucide-react'
 import { IntegrationsPanel } from '@/components/dashboard/integrations/IntegrationsPanel'
 import { UsersPanel } from '@/components/auth/UsersPanel'
 import { PermissionsPanel } from '@/components/auth/PermissionsPanel'
@@ -38,7 +38,7 @@ export default function ConfiguracoesPage() {
               <span className="sm:hidden">Perm</span>
             </TabsTrigger>
             <TabsTrigger value="rotas" className="rounded-xl">
-              <Route className="h-4 w-4 mr-2" />
+              <Map className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Permissões por Página</span>
               <span className="sm:hidden">Rotas</span>
             </TabsTrigger>
