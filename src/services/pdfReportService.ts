@@ -18,7 +18,7 @@ interface ReportData {
     data: string;
   }>;
   resumo: {
-    totalLeads: number;
+    totalFichas: number;
     valorFichas: number;
     valorAjudaCusto: number;
     valorTotal: number;
@@ -77,7 +77,7 @@ export class PDFReportService {
     doc.setFont('helvetica', 'normal');
     
     const resumoLines = [
-      `• Total de fichas: ${data.resumo.totalLeads.toLocaleString('pt-BR')}`,
+      `• Total de fichas: ${data.resumo.totalFichas.toLocaleString('pt-BR')}`,
       `• Valor das fichas: ${formatCurrency(data.resumo.valorFichas)}`,
       `• Ajuda de Custo: ${formatCurrency(data.resumo.valorAjudaCusto)}`,
     ];

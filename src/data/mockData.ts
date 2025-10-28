@@ -1,5 +1,5 @@
 // Mock data baseado nos exemplos fornecidos
-export interface Lead {
+export interface Ficha {
   ID: number;
   Projetos_Comerciais: string;
   Gestao_de_Scouter: string;
@@ -26,7 +26,7 @@ export interface MetaScouter {
 }
 
 // Dados simulados realistas
-export const mockFichas: Lead[] = [
+export const mockFichas: Ficha[] = [
   // Carlos Antônio - SELETIVA SANTO ANDRÉ-ABC (alta performance)
   ...Array.from({ length: 180 }, (_, i) => ({
     ID: 465856 + i,
@@ -126,10 +126,34 @@ export const mockMetasScouter: MetaScouter[] = [
   }
 ];
 
-// Função comentada - dados devem vir do Supabase
-// Legado: import de serviços externos descontinuado
+// Função para buscar dados reais do Google Sheets
+import { GoogleSheetsService } from '@/services/googleSheetsService';
 
 export const fetchSheetData = async (sheetType: 'fichas' | 'projetos' | 'metas'): Promise<any[]> => {
-  console.warn('fetchSheetData deprecated - use Supabase hooks instead');
-  return [];
+  try {
+    switch (sheetType) {
+      case 'fichas':
+        return await GoogleSheetsService.fetchFichas();
+      case 'projetos':
+        return await GoogleSheetsService.fetchProjetos();
+      case 'metas':
+        return await GoogleSheetsService.fetchMetasScouter();
+      default:
+        return [];
+    }
+  } catch (error) {
+    console.error(`Erro ao buscar dados (${sheetType}):`, error);
+    
+    // Fallback para dados mock em caso de erro
+    switch (sheetType) {
+      case 'fichas':
+        return mockFichas;
+      case 'projetos':
+        return mockProjetos;
+      case 'metas':
+        return mockMetasScouter;
+      default:
+        return [];
+    }
+  }
 };

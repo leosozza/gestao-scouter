@@ -6,8 +6,7 @@ import { MapPin } from "lucide-react";
 
 interface LocationData {
   local: string;
-  leads: number;
-  fichas: number; // alias para compatibilidade
+  fichas: number;
   percentFoto: number;
   percentConfirmacao: number;
   scouters: string[];

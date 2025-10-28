@@ -1,4 +1,3 @@
-// @ts-nocheck
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,15 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { formatBRL } from "@/utils/formatters";
+import { formatCurrency } from "@/utils/formatters";
 import { CalendarDays, DollarSign, Edit, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format, eachDayOfInterval, parseISO } from "date-fns";
-import type { Ficha, Project } from "@/repositories/types";
 
 interface CostAllowanceManagerProps {
-  leads: Lead[];
-  projetos: Project[];
+  fichas: any[];
+  projetos: any[];
   selectedPeriod: { start: string; end: string } | null;
   filters: { scouter: string | null; projeto: string | null };
 }
@@ -25,13 +23,13 @@ interface CostAllowanceManagerProps {
 interface DayInfo {
   date: string;
   hasFichas: boolean;
-  leadsCount: number;
+  fichasCount: number;
   status: 'trabalhou' | 'falta' | 'folga_remunerada';
   valorFolga?: number;
 }
 
 export const CostAllowanceManager = ({ 
-  leads, 
+  fichas, 
   projetos, 
   selectedPeriod, 
   filters 
@@ -62,8 +60,8 @@ export const CostAllowanceManager = ({
     end: parseISO(selectedPeriod.end)
   });
 
-  // Agrupar leads por data e scouter
-  const leadsPorDataScouter = leads.reduce((acc, ficha) => {
+  // Agrupar fichas por data e scouter
+  const fichasPorDataScouter = fichas.reduce((acc, ficha) => {
     const dataCriado = ficha.Criado;
     const scouter = ficha['Gestão de Scouter'] || 'Sem Scouter';
     
@@ -83,18 +81,18 @@ export const CostAllowanceManager = ({
     acc[scouter][dateKey].push(ficha);
     
     return acc;
-  }, {} as Record<string, Record<string, Lead[]>>);
+  }, {} as Record<string, Record<string, any[]>>);
 
   // Obter scouters únicos considerando os filtros
   const scouters = Array.from(new Set(
-    leads
+    fichas
       .map(f => f['Gestão de Scouter'])
       .filter(Boolean)
   )).filter(scouter => !filters.scouter || scouter === filters.scouter);
 
   // Calcular dados de ajuda de custo por scouter
   const calculateCostAllowance = (scouter: string) => {
-    const scouterDays = leadsPorDataScouter[scouter] || {};
+    const scouterDays = fichasPorDataScouter[scouter] || {};
     let diasTrabalhados = 0;
     let diasFalta = 0;
     let diasFolgaRemunerada = 0;
@@ -108,12 +106,12 @@ export const CostAllowanceManager = ({
       if (hasFichas) {
         diasTrabalhados++;
         // Valor da diária (se configurado no projeto)
-        const projeto = leads.find(f => f['Gestão de Scouter'] === scouter)?.['Projetos Cormeciais'];
+        const projeto = fichas.find(f => f['Gestão de Scouter'] === scouter)?.['Projetos Cormeciais'];
         if (projeto && projectSettings[projeto]) {
           valorTotalAjudaCusto += projectSettings[projeto].valorDiaria;
         }
       } else {
-        // Dia sem leads - verificar se é falta ou folga remunerada
+        // Dia sem fichas - verificar se é falta ou folga remunerada
         const status = dayInfo?.status || 'falta';
         if (status === 'folga_remunerada') {
           diasFolgaRemunerada++;
@@ -141,7 +139,7 @@ export const CostAllowanceManager = ({
       [key]: {
         date,
         hasFichas: false,
-        leadsCount: 0,
+        fichasCount: 0,
         status,
         valorFolga
       }
@@ -251,9 +249,9 @@ export const CostAllowanceManager = ({
                             <TableBody>
                               {allDays.map(day => {
                                 const dateKey = format(day, 'yyyy-MM-dd');
-                                const scouterDays = leadsPorDataScouter[scouter] || {};
+                                const scouterDays = fichasPorDataScouter[scouter] || {};
                                 const hasFichas = !!scouterDays[dateKey];
-                                const leadsCount = scouterDays[dateKey]?.length || 0;
+                                const fichasCount = scouterDays[dateKey]?.length || 0;
                                 const dayInfo = dayStatuses[`${scouter}-${dateKey}`];
                                 
                                 return (
@@ -261,9 +259,9 @@ export const CostAllowanceManager = ({
                                     <TableCell>{format(day, 'dd/MM/yyyy')}</TableCell>
                                     <TableCell>
                                       {hasFichas ? (
-                                        <Badge variant="default">{fichasCount} leads</Badge>
+                                        <Badge variant="default">{fichasCount} fichas</Badge>
                                       ) : (
-                                        <Badge variant="secondary">Sem leads</Badge>
+                                        <Badge variant="secondary">Sem fichas</Badge>
                                       )}
                                     </TableCell>
                                     <TableCell>
@@ -351,7 +349,7 @@ export const CostAllowanceManager = ({
                     <div>
                       <span className="text-muted-foreground">Ajuda de Custo:</span>
                       <br />
-                      <span className="font-medium text-green-600">{formatBRL(dados.valorTotalAjudaCusto)}</span>
+                      <span className="font-medium text-green-600">{formatCurrency(dados.valorTotalAjudaCusto)}</span>
                     </div>
                   </div>
                 </div>
@@ -369,13 +367,13 @@ export const CostAllowanceManager = ({
         <CardContent>
           <div className="flex flex-wrap gap-4">
             <Button variant="outline">
-              Pagar Apenas Leads
+              Pagar Apenas Fichas
             </Button>
             <Button variant="outline">
               Pagar Apenas Ajuda de Custo
             </Button>
             <Button>
-              Pagar Leads + Ajuda de Custo
+              Pagar Fichas + Ajuda de Custo
             </Button>
           </div>
         </CardContent>

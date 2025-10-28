@@ -23,16 +23,16 @@ export const TemplateModal = ({ isOpen, onClose }: TemplateModalProps) => {
       'Gestão de Scouter': 'Nome do Scouter',
       Criado: '01/08/2025',
       'Data de criação da Ficha': '01/08/2025 10:00',
-      'Valor por Leads': 'R$ 6,00'
+      'Valor por Fichas': 'R$ 6,00'
     }
   ];
 
   const templateProjetos = [
     {
       'agencia e seletiva': 'SELETIVA EXEMPLO',
-      'Meta de leads': '3000',
-      'Inicio Captação leads': '01/08/2025',
-      'Termino Captação leads': '31/08/2025',
+      'Meta de fichas': '3000',
+      'Inicio Captação fichas': '01/08/2025',
+      'Termino Captação fichas': '31/08/2025',
       'Meta Individual': '1000'
     }
   ];
@@ -41,7 +41,7 @@ export const TemplateModal = ({ isOpen, onClose }: TemplateModalProps) => {
     try {
       const wb = XLSX.utils.book_new();
       
-      // Aba Leads
+      // Aba Fichas
       const wsFichas = XLSX.utils.json_to_sheet(templateFichas);
       XLSX.utils.book_append_sheet(wb, wsFichas, "Fichas");
       
@@ -91,7 +91,7 @@ export const TemplateModal = ({ isOpen, onClose }: TemplateModalProps) => {
             
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold mb-3">Aba: Leads</h3>
+                <h3 className="text-lg font-semibold mb-3">Aba: Fichas</h3>
                 <div className="border rounded-lg overflow-hidden">
                   <Table>
                     <TableHeader>
@@ -153,8 +153,8 @@ export const TemplateModal = ({ isOpen, onClose }: TemplateModalProps) => {
                 <li><strong>Não altere os nomes das colunas</strong> - elas devem permanecer exatamente como mostrado</li>
                 <li><strong>Formato de datas:</strong> Use DD/MM/AAAA (exemplo: 01/08/2025)</li>
                 <li><strong>Formato de valores:</strong> Use R$ X,XX (exemplo: R$ 6,00)</li>
-                <li><strong>Projetos:</strong> Use nomes consistentes entre as abas Leads e Projetos</li>
-                <li><strong>Meta de leads:</strong> Use apenas números (exemplo: 3000)</li>
+                <li><strong>Projetos:</strong> Use nomes consistentes entre as abas Fichas e Projetos</li>
+                <li><strong>Meta de fichas:</strong> Use apenas números (exemplo: 3000)</li>
                 <li><strong>Para Google Sheets:</strong> Publique a planilha (Arquivo → Compartilhar → Publicar na web)</li>
               </ul>
             </div>

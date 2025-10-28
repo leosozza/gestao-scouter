@@ -6,17 +6,11 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-build_verification.log
 
 node_modules
 dist
 dist-ssr
 *.local
-
-# PWA temporary files
-generate-icons.js
-sw.js.map
-workbox-*.js.map
 
 # Editor directories and files
 .vscode/*

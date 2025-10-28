@@ -1,5 +1,4 @@
 import type { Config } from "tailwindcss";
-import tailwindcssAnimate from "tailwindcss-animate";
 
 export default {
 	darkMode: ["class"],
@@ -75,19 +74,6 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				},
-				looker: {
-					primary: '#4285F4',
-					success: '#34A853',
-					warning: '#FBBC04',
-					danger: '#EA4335',
-					info: '#9334E6',
-					neutral: '#5F6368',
-					chart1: '#4285F4',
-					chart2: '#34A853',
-					chart3: '#FBBC04',
-					chart4: '#EA4335',
-					chart5: '#9334E6'
 				}
 			},
 			borderRadius: {
@@ -119,5 +105,5 @@ export default {
 			}
 		}
 	},
-	plugins: [tailwindcssAnimate],
+	plugins: [require("tailwindcss-animate")],
 } satisfies Config;
